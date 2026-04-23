@@ -1,0 +1,509 @@
+plan_id: adhoc-templatepage2-for-blocks
+objective: Integrate the immediately feasible root for_blocks TSX entries into zip/src/pages/TemplatePage2.tsx as preview sections and explicitly document the gates required for blocks that cannot yet be translated 1:1.
+created_at: '2026-04-21T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 4
+  total_dependencies: 9
+  risk_score: medium
+
+tldr: |
+  The core completion path now covers only the immediately ready preview set: translate About1, reuse the existing About28 sibling, translate Feature285, and integrate that set into TemplatePage2 with preview-scoped validation. This keeps the plan aligned to the sandbox role of TemplatePage2 instead of overstating production-block readiness (sources: zip/src/pages/TemplatePage2.tsx, zip/src/pages/TemplatePage2.test.tsx, zip/src/components/sections/About28.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml, .github/instructions/design-system.instructions.md).
+  About3 moves behind a dedicated feasibility gate first because its source marquee API does not exist locally in the same shape, so the plan must decide whether a small local bridge is acceptable before scheduling translation work. Hero166 and the carousel pair remain explicit gate outcomes rather than completion blockers (sources: for_blocks/about3.tsx, zip/components/ui/marquee.tsx, for_blocks/hero166.tsx, for_blocks/logos10.tsx, for_blocks/testimonial7.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml, .github/instructions/design-system.instructions.md).
+  Package addition is treated as an explicit decision gate, not as a standing repo prohibition. The carousel path therefore ends in an approval-or-block verdict that can feed a later extension plan without deadlocking this one (sources: zip/package.json, for_blocks/logos10.tsx, for_blocks/testimonial7.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml).
+
+open_questions:
+  - Can the exact Hero166 image bundle be supplied into zip/public/images/hero166 so the block can move past gate review without changing appearance? (sources: for_blocks/hero166.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml)
+  - If the user wants the carousel pair moved from gated to implementable later, is package addition approval available for a shared carousel foundation that preserves the source interaction model? (sources: zip/package.json, for_blocks/logos10.tsx, for_blocks/testimonial7.tsx)
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Gated follow-up blocks are still wired into the critical path, so the plan cannot complete when one of the missing primitives, assets, or package decisions stays unresolved.
+      likelihood: medium
+      impact: critical
+      mitigation: |
+        Keep completion anchored to core preview integration plus gate outcomes only. Treat About3, Hero166, Logos10, and Testimonial7 as documented follow-up gates unless a later extension plan is explicitly authorized after those gates clear (sources: zip/src/pages/TemplatePage2.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml).
+    - scenario: Preview-level validation is misread as full reusable production-block approval.
+      likelihood: medium
+      impact: high
+      mitigation: |
+        State the validation scope explicitly in the integration and documentation tasks: lint, TemplatePage2 render/order checks, and route sanity are sufficient for preview integration only, not for final block-registry or production page-builder approval (sources: zip/src/pages/TemplatePage2.tsx, zip/src/pages/TemplatePage2.test.tsx, .github/instructions/design-system.instructions.md).
+    - scenario: The carousel pair is treated as blocked by repo policy even though the actual constraint is that package addition requires an explicit decision.
+      likelihood: medium
+      impact: medium
+      mitigation: |
+        Frame the carousel path as a package-decision gate with an approval-or-block output, and document the exact missing foundation instead of claiming an existing no-new-dependencies policy (sources: zip/package.json, for_blocks/logos10.tsx, for_blocks/testimonial7.tsx).
+  assumptions:
+    - The existing translated About28 section in zip/src/components/sections/About28.tsx is the canonical sibling to reuse for the About28 preview instead of translating the raw block again (sources: zip/src/components/sections/About28.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml).
+    - TemplatePage2 remains the correct preview sandbox for newly translated blocks, while TemplatePage remains the canonical design reference (sources: zip/src/pages/TemplatePage2.tsx, .github/instructions/design-system.instructions.md).
+    - For this workflow, lint plus TemplatePage2 render/order validation and route sanity is sufficient to claim preview integration completion, but not full reusable production-block completion (sources: zip/src/pages/TemplatePage2.test.tsx, .github/instructions/design-system.instructions.md).
+
+implementation_specification:
+  code_structure: |
+    Keep translated preview sections under zip/src/components/sections and keep TemplatePage2 as the only preview host updated by this plan. The critical path should modify only the immediately feasible previews, while gate tasks produce explicit outcomes for About3, Hero166, Logos10, and Testimonial7 without forcing their implementation into the same completion path (sources: zip/src/pages/TemplatePage2.tsx, zip/src/pages/TemplatePage2.test.tsx, zip/src/components/sections/About28.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml).
+    Treat About3, Hero166, and the carousel pair as follow-up extension candidates. Their gate outputs should name the exact missing API surface, asset inventory, or package decision needed for a later implementation plan instead of leaving ambiguous blockers in code review comments (sources: for_blocks/about3.tsx, zip/components/ui/marquee.tsx, for_blocks/hero166.tsx, for_blocks/logos10.tsx, for_blocks/testimonial7.tsx).
+  affected_areas:
+    - zip/src/components/sections/
+    - zip/src/pages/TemplatePage2.tsx
+    - zip/src/pages/TemplatePage2.test.tsx
+    - docs/plan/adhoc-templatepage2-for-blocks/
+  component_details:
+    - component: TemplatePage2 preview manifest
+      responsibility: Define the ordered preview inventory and classify each requested raw block as immediate translation, reuse, or gated follow-up.
+      interfaces:
+        - Ordered preview manifest for About1, About3, About28, Feature285, Hero166, Logos10, and Testimonial7.
+        - Readiness state per block: ready-now, reuse-existing, or gated-follow-up.
+    - component: Immediate-ready preview sections
+      responsibility: Deliver translation-only preview sections for About1 and Feature285 and reuse the existing About28 sibling without redesign.
+      interfaces:
+        - One section component export per translated block under zip/src/components/sections.
+        - Reuse path for About28 pointing at the existing translated section.
+    - component: About3 marquee feasibility gate
+      responsibility: Decide whether the missing source marquee API can be bridged locally with a small wrapper or whether About3 should remain a documented follow-up blocker.
+      interfaces:
+        - Feasibility verdict for About3: clear-for-follow-up or blocked.
+        - Exact missing marquee API surface and allowed wrapper boundary.
+    - component: Hero166 asset gate
+      responsibility: Verify whether source-equivalent image assets exist locally or can be supplied so Hero166 can move into a later implementation plan.
+      interfaces:
+        - Asset inventory required for /images/hero166.
+        - Blocked-or-cleared verdict for later implementation planning.
+    - component: Carousel package decision gate
+      responsibility: Decide whether a later plan may add a shared carousel foundation for Logos10 and Testimonial7 or must leave both blocks gated.
+      interfaces:
+        - Package-decision verdict covering the shared carousel foundation.
+        - Shared missing-foundation summary for both carousel blocks.
+    - component: Core preview integration and validation
+      responsibility: Wire the immediately ready previews into TemplatePage2 and keep validation explicitly scoped to preview integration.
+      interfaces:
+        - TemplatePage2 import list and render order for About1, About28, and Feature285.
+        - Preview validation summary covering lint, render/order assertions, and route sanity.
+  dependencies:
+    - component: zip/src/components/sections/About28.tsx
+      relationship: Supplies the existing translated sibling reused in the core preview path.
+    - component: zip/components/ui/button.tsx
+      relationship: Remains the shared CTA primitive for the immediate-ready translations and confirms no button-specific blocker exists for core integration.
+    - component: zip/components/ui/marquee.tsx
+      relationship: Informs whether About3 can be bridged locally without introducing a larger missing-API translation problem.
+    - component: zip/package.json
+      relationship: Defines the current frontend dependency inventory used by the carousel package-decision gate.
+    - component: zip/public/
+      relationship: Confirms whether the Hero166 image bundle is present locally.
+  integration_points:
+    - zip/src/pages/TemplatePage2.tsx
+    - zip/src/pages/TemplatePage2.test.tsx
+    - docs/plan/adhoc-templatepage2-for-blocks/
+
+contracts:
+  - from_task: lock_templatepage2_preview_manifest
+    to_task: translate_about1_section
+    interface: Final file name, preview label, and placement contract for the About1 translation.
+    format: Short manifest entry with component name and preview label
+  - from_task: lock_templatepage2_preview_manifest
+    to_task: translate_feature285_section
+    interface: Final file name, preview label, and placement contract for the Feature285 translation.
+    format: Short manifest entry with component name and preview label
+  - from_task: translate_about1_section
+    to_task: integrate_core_preview_set
+    interface: Ready About1 section component export for TemplatePage2 import.
+    format: Section component module path and export name
+  - from_task: translate_feature285_section
+    to_task: integrate_core_preview_set
+    interface: Ready Feature285 section component export for TemplatePage2 import.
+    format: Section component module path and export name
+  - from_task: assess_about3_marquee_feasibility
+    to_task: document_preview_inventory_and_gate_outcomes
+    interface: About3 feasibility verdict and the exact missing marquee API surface.
+    format: Gate note with clear-or-blocked status and missing-wrapper summary
+  - from_task: clear_hero166_asset_gate
+    to_task: document_preview_inventory_and_gate_outcomes
+    interface: Hero166 asset verdict and required inventory.
+    format: Asset checklist with cleared-or-blocked status
+  - from_task: decide_carousel_package_strategy
+    to_task: document_preview_inventory_and_gate_outcomes
+    interface: Carousel package-decision verdict shared by Logos10 and Testimonial7.
+    format: Decision note with approved-or-blocked status and missing-foundation summary
+  - from_task: integrate_core_preview_set
+    to_task: document_preview_inventory_and_gate_outcomes
+    interface: Verified TemplatePage2 baseline containing About1, About28, and Feature285 plus preview-scoped validation results.
+    format: Page/test baseline state and validation summary
+
+tasks:
+  - id: lock_templatepage2_preview_manifest
+    title: Lock the TemplatePage2 preview manifest and About28 reuse decision
+    description: |
+      Produce the execution contract for the seven requested previews before any code work starts. The task should fix the preview order, labels, section file names, and the rule that About28 reuses the already translated sibling instead of creating a duplicate section file. It should also classify each requested block as immediate translation, reuse-existing, or gated follow-up so later tasks do not guess at scope (sources: zip/src/pages/TemplatePage2.tsx, zip/src/components/sections/About28.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml).
+    wave: 1
+    agent: gem-researcher
+    prototype: false
+    covers:
+      - manifest-contract
+      - about28-reuse
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/src/pages/TemplatePage2.tsx
+        description: Current preview shell pattern and existing import order.
+      - path: zip/src/components/sections/About28.tsx
+        description: Existing translated sibling that should be reused for About28.
+      - path: docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml
+        description: Source-backed readiness matrix for all seven requested blocks.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: The revised plan needs one explicit manifest that separates immediate preview work from gated follow-up work so the DAG cannot deadlock on blocked extensions.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 120
+        focus_area: preview manifest
+        verification:
+          - Confirm every requested raw block maps to exactly one current outcome: immediate translation, reuse-existing, or gated follow-up.
+          - Confirm About28 is satisfied by the existing translated sibling.
+        acceptance_criteria:
+          - The seven-block preview manifest is explicit and ordered.
+          - About28 is marked as reuse, not duplicate translation.
+          - The manifest separates the core preview set from gated follow-up blocks.
+        failure_modes:
+          - scenario: Different tasks later invent different file names or labels for the same block.
+            likelihood: medium
+            impact: medium
+            mitigation: Freeze the manifest before any implementation task starts.
+
+  - id: assess_about3_marquee_feasibility
+    title: Decide whether About3 has a small local marquee-bridge path
+    description: |
+      Inspect the API mismatch between the raw About3 source and the local marquee primitives to determine whether the block has a small, translation-only bridge path or should remain blocked for a later extension plan. This task should name the exact missing marquee surface instead of assuming the current local marquee is automatically compatible (sources: for_blocks/about3.tsx, zip/components/ui/marquee.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml, .github/instructions/design-system.instructions.md).
+    wave: 1
+    agent: gem-researcher
+    prototype: false
+    covers:
+      - about3-feasibility-gate
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: for_blocks/about3.tsx
+        description: Raw About3 markup and source marquee API expectations.
+      - path: zip/components/ui/marquee.tsx
+        description: Existing local marquee implementation that may or may not cover the required API shape.
+      - path: .github/instructions/design-system.instructions.md
+        description: Translation-only rule that allows only minimal technical wrappers when appearance can still be preserved.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: About3 is not immediate-ready because its source marquee API does not exist locally in the same shape, so the plan needs a feasibility gate before any translation work is scheduled.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 110
+        focus_area: about3 feasibility
+        verification:
+          - Compare the raw About3 marquee API against the local marquee API surface.
+          - Return a binary verdict: small local bridge is feasible, or About3 remains gated.
+        acceptance_criteria:
+          - The plan records whether About3 is clear for later follow-up translation or blocked.
+          - The missing marquee API surface is explicit.
+          - No translation task for About3 is placed on the core completion path.
+        failure_modes:
+          - scenario: The plan assumes the existing marquee wrapper is close enough without proving the missing API boundary.
+            likelihood: medium
+            impact: medium
+            mitigation: Document the exact missing source API before clearing About3 for follow-up work.
+
+  - id: clear_hero166_asset_gate
+    title: Clear the Hero166 asset gate or record the exact blocker
+    description: |
+      Determine whether the missing Hero166 image bundle can be supplied into the repo without changing appearance. This task should output a concrete asset checklist or an explicit blocked verdict, not a placeholder-media workaround, because the translation-only workflow requires source-equivalent assets when the design depends on local images (sources: for_blocks/hero166.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml, .github/instructions/design-system.instructions.md).
+    wave: 1
+    agent: gem-researcher
+    prototype: false
+    covers:
+      - hero166-gate
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: for_blocks/hero166.tsx
+        description: Raw Hero166 dependencies on local images and aspect-ratio handling.
+      - path: zip/public/
+        description: Confirms whether the required hero166 assets already exist locally.
+      - path: .github/instructions/design-system.instructions.md
+        description: Translation-only rule that forbids visual improvisation when source assets are missing.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Hero166 must be treated as an asset gate rather than a coding task until the source-equivalent media path is known.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 90
+        focus_area: hero166 assets
+        verification:
+          - Confirm whether the required /images/hero166 files exist or can be supplied.
+          - Return a concrete asset checklist or a blocked verdict.
+        acceptance_criteria:
+          - Hero166 is either cleared for a later follow-up plan with a concrete asset checklist or explicitly marked blocked.
+          - No placeholder-media workaround is proposed as if it were source-equivalent.
+        failure_modes:
+          - scenario: Placeholder assets are treated as acceptable and Hero166 is incorrectly marked ready.
+            likelihood: medium
+            impact: high
+            mitigation: Require the exact source asset inventory before clearing the gate.
+
+  - id: decide_carousel_package_strategy
+    title: Decide whether the carousel pair gets a package-addition approval path
+    description: |
+      Evaluate the missing carousel foundation used by Logos10 and Testimonial7 and return an explicit decision-gate output: either a shared package-backed foundation may be approved for a later extension plan, or both blocks remain gated. This task should not describe package addition as a standing repo prohibition; it should describe the actual decision required to move beyond the current dependency inventory (sources: zip/package.json, for_blocks/logos10.tsx, for_blocks/testimonial7.tsx, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml, .github/instructions/design-system.instructions.md).
+    wave: 1
+    agent: gem-reviewer
+    prototype: false
+    covers:
+      - carousel-package-gate
+      - feasibility-verdict
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/package.json
+        description: Current dependency inventory available in the frontend.
+      - path: for_blocks/logos10.tsx
+        description: Raw logo carousel dependency requirements.
+      - path: for_blocks/testimonial7.tsx
+        description: Raw testimonial carousel dependency requirements.
+      - path: .github/instructions/design-system.instructions.md
+        description: Translation-only boundary that forbids silent behavior changes.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: The revised plan should frame the carousel problem as an explicit package-decision gate rather than as an assumed repo-wide no-new-dependencies policy.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 110
+        focus_area: carousel package decision
+        verification:
+          - Confirm whether the current workspace already contains the required shared carousel foundation.
+          - Return a single decision note that applies consistently to both Logos10 and Testimonial7.
+        acceptance_criteria:
+          - The plan explicitly states that package addition is a decision gate, not a presumed policy prohibition.
+          - The decision applies consistently to both carousel blocks.
+          - The missing shared foundation is explicit.
+        failure_modes:
+          - scenario: One carousel block is treated differently from the other even though both depend on the same missing foundation.
+            likelihood: medium
+            impact: medium
+            mitigation: Make the decision at the shared-foundation level, not per block.
+
+  - id: translate_about1_section
+    title: Translate About1 into a preview section component
+    description: |
+      Create the translated section component for About1 under zip/src/components/sections using the repo's translation-only workflow and existing primitives. The task should preserve the source block geometry while mapping only the necessary classes and primitives into the project vocabulary (sources: for_blocks/about1.tsx, .github/instructions/design-system.instructions.md, docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml).
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - about1-preview
+    priority: medium
+    status: pending
+    dependencies:
+      - lock_templatepage2_preview_manifest
+    conflicts_with: []
+    context_files:
+      - path: for_blocks/about1.tsx
+        description: Raw source geometry and icon usage.
+      - path: zip/src/components/sections/About28.tsx
+        description: Nearby translated-section style precedent.
+      - path: .github/instructions/design-system.instructions.md
+        description: Translation-only workflow constraints.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: About1 remains one of the lowest-friction translations and belongs on the immediate preview path.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 180
+        focus_area: about1 translation
+        verification:
+          - Render the section in isolation without new dependency errors.
+          - Run zip/npm run lint after the section file is added.
+        acceptance_criteria:
+          - A translated About1 section component exists under zip/src/components/sections.
+          - The component preserves the source block geometry without redesign.
+          - The implementation uses existing repo primitives only.
+        failure_modes:
+          - scenario: The translation drifts into a redesign because low friction is mistaken for permission to restyle.
+            likelihood: low
+            impact: medium
+            mitigation: Compare the translation strictly against the raw block geometry and the design-system translation rule.
+        tech_stack:
+          - TypeScript
+          - React 19
+          - Tailwind CSS 4
+        test_coverage: Validate via zip/npm run lint and the later TemplatePage2 preview smoke check.
+
+  - id: translate_feature285_section
+    title: Translate Feature285 and preserve its local animation support
+    description: |
+      Create the translated Feature285 preview section under zip/src/components/sections and preserve the source motion behavior without inventing a new visual direction. If the block needs a local CSS companion for marquee keyframes, keep that support tightly scoped to the section instead of scattering animation rules globally (sources: for_blocks/feature285.tsx, for_blocks/feature285.css, .github/instructions/design-system.instructions.md).
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - feature285-preview
+    priority: medium
+    status: pending
+    dependencies:
+      - lock_templatepage2_preview_manifest
+    conflicts_with: []
+    context_files:
+      - path: for_blocks/feature285.tsx
+        description: Raw section component and framer-motion usage.
+      - path: for_blocks/feature285.css
+        description: Section-specific animation support.
+      - path: .github/instructions/design-system.instructions.md
+        description: Translation-only boundary for visual parity.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Feature285 is immediate-ready and should land on the same core preview path as About1.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 220
+        focus_area: feature285 translation
+        verification:
+          - Confirm the section compiles with any scoped CSS import.
+          - Run zip/npm run lint after the section and CSS support land.
+        acceptance_criteria:
+          - A translated Feature285 section exists under zip/src/components/sections.
+          - Its required local animation support is preserved without global style sprawl.
+          - The implementation uses only the currently approved dependency inventory.
+        failure_modes:
+          - scenario: Animation support is moved into a global stylesheet and creates unintended side effects.
+            likelihood: medium
+            impact: medium
+            mitigation: Keep the animation support local to the section unless an existing shared pattern already covers it.
+        tech_stack:
+          - TypeScript
+          - React 19
+          - framer-motion
+          - Tailwind CSS 4
+        test_coverage: Validate via zip/npm run lint and the later TemplatePage2 preview smoke check.
+
+  - id: integrate_core_preview_set
+    title: Add the core ready-now previews to TemplatePage2 and validate the preview flow
+    description: |
+      Update TemplatePage2 and TemplatePage2.test in one pass so the page previews the core ready-now set only: About1, About28, and Feature285, alongside the existing preview sections. The task should own all ordering assertions and make the validation scope explicit: this is preview integration validation for /template2, not full reusable production-block approval (sources: zip/src/pages/TemplatePage2.tsx, zip/src/pages/TemplatePage2.test.tsx, zip/src/components/sections/About28.tsx, .github/instructions/design-system.instructions.md).
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - templatepage2-core-integration
+      - smoke-test-update
+    priority: high
+    status: pending
+    dependencies:
+      - lock_templatepage2_preview_manifest
+      - translate_about1_section
+      - translate_feature285_section
+    conflicts_with: []
+    context_files:
+      - path: zip/src/pages/TemplatePage2.tsx
+        description: Preview host that should receive the core preview imports and labels.
+      - path: zip/src/pages/TemplatePage2.test.tsx
+        description: Current static render smoke coverage that should be extended rather than duplicated.
+      - path: zip/src/components/sections/About28.tsx
+        description: Existing reused sibling that should join the preview list in this pass.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: One focused integration pass is sufficient for the ready-now previews and avoids binding blocked follow-up work to page completion.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 190
+        focus_area: core preview integration
+        verification:
+          - Run the TemplatePage2 node:test smoke test.
+          - Run zip/npm run lint after the page and test updates.
+          - Verify the /template2 preview route renders the new labels and sections without runtime errors.
+        acceptance_criteria:
+          - TemplatePage2 previews About1, About28, and Feature285 in the agreed order.
+          - TemplatePage2.test asserts the expanded preview ordering.
+          - The task explicitly records that validation is preview integration only.
+        failure_modes:
+          - scenario: The integration task silently broadens scope and claims all requested blocks are complete.
+            likelihood: medium
+            impact: high
+            mitigation: Limit the task to the ready-now previews and defer gated blocks to documented gate outcomes.
+        tech_stack:
+          - TypeScript
+          - React 19
+          - node:test
+        test_coverage: Extend the existing TemplatePage2 static render test, run zip/npm run lint, and perform route-level preview sanity.
+
+  - id: document_preview_inventory_and_gate_outcomes
+    title: Document the preview inventory, blocker reasons, and validation scope
+    description: |
+      Update the task documentation so the repo records which for_blocks entries now have TemplatePage2 previews, which one reuses an existing translated sibling, and which ones remain gated because of missing marquee API, assets, or package decisions. The documentation must also say clearly that the completed validation is preview integration validation, not full reusable production-block completion (sources: docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml, zip/src/pages/TemplatePage2.tsx, zip/src/pages/TemplatePage2.test.tsx, .github/instructions/design-system.instructions.md).
+    wave: 4
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - documentation-sync
+      - gate-outcome-record
+    priority: medium
+    status: pending
+    dependencies:
+      - integrate_core_preview_set
+      - assess_about3_marquee_feasibility
+      - clear_hero166_asset_gate
+      - decide_carousel_package_strategy
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml
+        description: Starting research baseline for the rollout and gate analysis.
+      - path: zip/src/pages/TemplatePage2.tsx
+        description: Final core preview inventory source.
+      - path: zip/src/pages/TemplatePage2.test.tsx
+        description: Validation anchor for the preview order.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: The revised plan completes when the core preview path is integrated and every gated block has an explicit recorded outcome, so documentation belongs on the critical path and should no longer wait for blocked implementations.
+        timestamp: '2026-04-21T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 140
+        focus_area: preview inventory and gate outcomes
+        verification:
+          - Confirm the documentation matches the final TemplatePage2 inventory.
+          - Confirm each gated block has an explicit reason and next required input or approval.
+          - Confirm the validation summary states preview integration scope.
+        acceptance_criteria:
+          - The documentation lists every requested block and its current state: integrated, reused, or gated.
+          - About3, Hero166, Logos10, and Testimonial7 have explicit blocker or approval notes.
+          - Validation commands and their preview-only scope are recorded.
+        failure_modes:
+          - scenario: The documentation says all blocks were added even though gated follow-up work was intentionally left out of the completion path.
+            likelihood: low
+            impact: medium
+            mitigation: Use the gate outputs and the core preview integration result as the only source for completion status.
+        task_type: update
+        audience: developers
+        coverage_matrix:
+          - Final TemplatePage2 preview inventory
+          - Reused versus newly translated sections
+          - Gate outcomes for About3, Hero166, Logos10, and Testimonial7
+          - Preview validation scope and commands

@@ -1,0 +1,238 @@
+plan_id: mobile-ui-hotfix-20260325
+objective: implement a minimal urgent mobile UI hotfix for the active BULWAR APP catering route only
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Keep the hotfix limited to the active /catering-wielkanocny flow and change only the three components directly responsible for the mobile regressions.
+  The planned edit surface is ProductItemAlt for mobile item stacking, CateringProductListAlt for category image/panel geometry, and CateringStickyCartControls for the floating cart badge colors.
+  Validate on the active catering route in mobile viewport, then deploy the frontend bundle only and restore dhosting permissions immediately after upload.
+
+open_questions:
+  - Should the adjacent special-offer section keep its current deeper mobile overlap, since the request explicitly names category image/text panels rather than every image-overlap section on the page?
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: A shared legacy component is edited instead of the active catering-only component, expanding the regression surface beyond the live route.
+      likelihood: medium
+      impact: high
+      mitigation: Restrict implementation to ProductItemAlt, CateringProductListAlt, and CateringStickyCartControls unless validation proves another active dependency is required.
+    - scenario: Mobile overlay geometry is corrected visually in one viewport but the white positions panel or text overlay clips on smaller devices.
+      likelihood: medium
+      impact: medium
+      mitigation: Validate with narrow mobile widths and confirm padding, vertical text placement, and ~40px overlap on the live route before deploy.
+  assumptions:
+    - The active route remains /catering-wielkanocny.
+    - The live mobile product rows on that route are rendered by ProductItemAlt through CateringProductListAlt.
+    - The active floating cart badge is rendered by CateringStickyCartControls.
+
+implementation_specification:
+  code_structure: Apply route-scoped presentational fixes in the active catering section components only, preserving existing data contracts, page composition, and design tokens.
+  affected_areas:
+    - zip/src/components/sections/ProductItemAlt.tsx
+    - zip/src/components/sections/CateringProductListAlt.tsx
+    - zip/src/components/sections/CateringStickyCartControls.tsx
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+  component_details:
+    - component: ProductItemAlt
+      responsibility: Render active mobile product rows so the text block uses full width and mobile price, grammage, quantity, and actions stack below without changing desktop layout.
+      interfaces:
+        - Preserve existing ProductItemAltProps and add-to-cart behavior.
+    - component: CateringProductListAlt
+      responsibility: Render the active category image panel so overlay text respects horizontal padding, sits around mid-image height on mobile, and the white product panel overlaps the image by about 40px.
+      interfaces:
+        - Preserve existing CateringProductListAltProps, data mapping, and desktop spacing.
+    - component: CateringStickyCartControls
+      responsibility: Restore the active mobile floating cart badge to red background with white text without changing its item-count behavior or trigger contract.
+      interfaces:
+        - Preserve existing itemCount, totalPrice, and onOpenCart props.
+    - component: CateringWielkanocnyPage
+      responsibility: Remain unchanged unless a minimal integration adjustment is needed to preserve spacing or validate the route-specific control path.
+      interfaces:
+        - Preserve existing route, cart state, and CheckoutDrawer wiring.
+  dependencies:
+    - component: CateringWielkanocnyPage
+      relationship: Composes CateringProductListAlt and CateringStickyCartControls on the active route.
+    - component: CateringProductListAlt
+      relationship: Composes ProductItemAlt for each mapped product row.
+    - component: CheckoutDrawer
+      relationship: Must continue to open from the active floating cart controls after the badge-only hotfix.
+  integration_points:
+    - ProductItemAlt is reached through CateringProductListAlt on /catering-wielkanocny.
+    - CateringProductListAlt is the single renderer for the mapped category image/text panels on the active route.
+    - CateringStickyCartControls is mounted by CateringWielkanocnyPage and drives the active mobile floating cart badge.
+
+contracts:
+  - from_task: t1
+    to_task: t4
+    interface: Mobile product rows stack text above mobile meta and actions while preserving desktop three-column behavior.
+    format: TSX markup and Tailwind responsive class changes in ProductItemAlt.
+  - from_task: t2
+    to_task: t4
+    interface: Mobile category panels place overlay copy inside the image area with page-margin-aligned padding and ~40px white panel overlap.
+    format: TSX markup and Tailwind spacing/positioning changes in CateringProductListAlt.
+  - from_task: t3
+    to_task: t4
+    interface: Active mobile floating cart badge uses red background and white count text with unchanged conditional rendering.
+    format: Tailwind class change in CateringStickyCartControls.
+
+tasks:
+  - id: t1
+    title: Fix Active Mobile Product Row Stacking
+    description: |
+      Refactor the mobile-only structure in ProductItemAlt so the product name and description occupy the full available width.
+      Move the mobile price, grammage, quantity controls, and add-to-cart action into a vertical flow below the text block while keeping the current desktop three-column presentation intact.
+      Do not expand this change into the legacy ProductItem unless validation shows the active route still renders it.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/ProductItemAlt.tsx: active mobile/desktop product row implementation for the catering route
+      - zip/src/components/sections/CateringProductListAlt.tsx: caller that renders ProductItemAlt for the active categories
+      - zip/src/pages/CateringWielkanocnyPage.tsx: confirms the active route path and scope
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 60
+    focus_area: active mobile product list layout
+    verification:
+      - Confirm mobile markup no longer renders text and price/grammage as side-by-side columns.
+      - Confirm desktop md+ row layout remains unchanged.
+      - Confirm add-to-cart and quantity controls still work with the existing props.
+    acceptance_criteria:
+      - On mobile, name and description span the row width.
+      - On mobile, price, grammage, and controls sit below the text content.
+      - The change affects the active catering route only.
+    failure_modes:
+      - scenario: The mobile stack fix accidentally alters desktop alignment.
+        likelihood: medium
+        impact: high
+        mitigation: Keep changes behind existing breakpoint classes and validate md+ markup before sign-off.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: Manual responsive verification on the active route.
+
+  - id: t2
+    title: Fix Active Mobile Category Panel Overlay Geometry
+    description: |
+      Update CateringProductListAlt so the category title and description behave like true overlay copy on mobile inside the image band instead of remaining in normal flow.
+      The mobile overlay text must respect existing horizontal padding, sit roughly around the middle height of the image, and the white positions panel should overlap the image by about 40px instead of the current deep pull-up.
+      Preserve the existing desktop look unless a small breakpoint-specific correction is required.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/CateringProductListAlt.tsx: active category image/text/panel renderer
+      - zip/src/components/sections/ProductItemAlt.tsx: downstream list row inside the white panel
+      - zip/src/index.css: source of the shared page-margin token used for horizontal padding
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 80
+    focus_area: active mobile category image/text panels
+    verification:
+      - Confirm overlay text is positioned within the image area on mobile.
+      - Confirm mobile horizontal padding matches the existing page-margin rhythm.
+      - Confirm the white panel overlap is visually about 40px on mobile and does not clip the content.
+    acceptance_criteria:
+      - Overlay title/description respects padding on mobile.
+      - Overlay copy sits around mid-image height on mobile.
+      - White positions panel overlaps the image by about 40px on mobile.
+    failure_modes:
+      - scenario: The mobile overlap is reduced but the overlay text remains flow content, so vertical placement still drifts.
+        likelihood: medium
+        impact: medium
+        mitigation: Treat text placement and overlap depth as one coordinated mobile layout change.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+      - framer-motion
+    test_coverage: Manual viewport validation on the active catering categories.
+
+  - id: t3
+    title: Fix Active Mobile Floating Cart Badge Colors
+    description: |
+      Apply the smallest possible class-only correction in CateringStickyCartControls so the mobile floating cart badge uses a red background with white text.
+      Preserve the existing button shape, count rendering, click target, and route scope.
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/CateringStickyCartControls.tsx: active mobile floating cart badge renderer
+      - zip/src/pages/CateringWielkanocnyPage.tsx: route-level consumer of the catering-specific control
+      - zip/src/components/sections/ProductItem.tsx: existing red badge styling reference already present in the UI
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 10
+    focus_area: active floating cart badge
+    verification:
+      - Confirm nonzero item count still shows the badge.
+      - Confirm badge classes render as red background and white text.
+      - Confirm zero-count state still hides the badge.
+    acceptance_criteria:
+      - Active mobile floating cart badge is red.
+      - Badge count text is white.
+      - No other sticky cart behavior changes.
+    failure_modes:
+      - scenario: The generic shared sticky cart control is edited instead of the catering-specific control.
+        likelihood: low
+        impact: high
+        mitigation: Limit the change to CateringStickyCartControls only.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: Component render check plus manual mobile verification.
+
+  - id: t4
+    title: Validate, Build, And Deploy The Frontend Hotfix
+    description: |
+      Validate the three mobile hotfixes on /catering-wielkanocny using a mobile viewport and a desktop sanity check.
+      Run the frontend build, deploy only the React frontend bundle for the active route, and immediately restore dhosting permissions so directories are 755 and files are 644.
+      Finish with a live route spot-check focused on the active catering page only.
+    wave: 2
+    agent: gem-devops
+    priority: medium
+    status: pending
+    dependencies:
+      - t1
+      - t2
+      - t3
+    context_files:
+      - zip/package.json: frontend build entry points
+      - deploy-react.sh: existing deployment script surface
+      - zip/src/pages/CateringWielkanocnyPage.tsx: active route to verify after release
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 0
+    focus_area: validation and deploy
+    verification:
+      - Confirm the production build succeeds.
+      - Confirm live /catering-wielkanocny shows the three requested mobile hotfixes.
+      - Confirm post-deploy permissions are corrected on dhosting.
+    acceptance_criteria:
+      - The hotfix is visible on the active catering route only.
+      - Frontend deploy completes without touching backend or shared WordPress logic.
+      - dhosting permissions are restored after upload.
+    failure_modes:
+      - scenario: Deployment succeeds but incorrect file permissions cause a white screen or asset access failure.
+        likelihood: medium
+        impact: high
+        mitigation: Make the permission-fix command a required post-deploy step, not an optional cleanup.
+    tech_stack:
+      - Vite
+      - React 19
+      - dhosting SCP/SSH deploy flow
+    environment: production
+    requires_approval: true
+    security_sensitive: false

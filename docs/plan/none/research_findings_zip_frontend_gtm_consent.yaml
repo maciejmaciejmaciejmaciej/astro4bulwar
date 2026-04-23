@@ -1,0 +1,267 @@
+plan_id: none
+objective: Quick compatibility review of a proposed Google Consent Mode v2 + GTM integration for the active BULWAR APP frontend in zip/
+focus_area: zip frontend GTM and consent bootstrap
+created_at: 2026-03-27
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The active frontend is a Vite SPA in zip/, not Next.js or Create React App.
+  - The correct global bootstrap points are zip/index.html and zip/src/main.tsx; the active router is mounted with basename /react.
+  - A GTM + Consent Mode v2 approach is technically compatible, but SPA route tracking, consent-default timing, and Vite-specific env/file conventions must be handled repo-specifically.
+  - No existing GTM, analytics, or consent-management layer was found in the active zip/src app.
+  - The obvious product/legal gap is the lack of a consent UI or CMP to issue consent updates after the default denied state.
+
+research_metadata:
+  methodology: hybrid retrieval using read_file, grep_search, semantic_search, file_search, and directory inspection; focused only on active frontend entry points, routing, and existing consent or analytics signals
+  scope: active frontend under zip/ with emphasis on bootstrap files, router model, and page-level metadata handling
+  confidence: high
+  coverage: 85
+
+files_analyzed:
+  - file: package.json
+    path: zip/package.json
+    purpose: Declares the active frontend stack and runtime scripts
+    key_elements:
+      - element: dependencies
+        type: variable
+        location: zip/package.json:1
+        description: Confirms React 19, TypeScript, Vite, React Router, and no GTM or consent package dependency
+      - element: scripts
+        type: variable
+        location: zip/package.json:5
+        description: Confirms Vite build and dev workflow for the active app
+    language: json
+    lines: 38
+  - file: index.html
+    path: zip/index.html
+    purpose: Vite HTML entry document and only static head/body bootstrap file for the active SPA
+    key_elements:
+      - element: root mount
+        type: pattern
+        location: zip/index.html:12
+        description: Contains the root div used by the SPA
+      - element: module entry
+        type: pattern
+        location: zip/index.html:13
+        description: Loads /src/main.tsx as the application bootstrap
+    language: html
+    lines: 14
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: React bootstrap and router mount for the active SPA
+    key_elements:
+      - element: BrowserRouter basename
+        type: pattern
+        location: zip/src/main.tsx:9
+        description: Mounts the app under /react, which matters for SPA page tracking and deployment assumptions
+      - element: createRoot render
+        type: function
+        location: zip/src/main.tsx:6
+        description: Global JS bootstrap point for any consent-state or analytics initialization module imported before render
+    language: tsx
+    lines: 12
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Defines the active route map for the SPA
+    key_elements:
+      - element: Routes
+        type: pattern
+        location: zip/src/App.tsx:11
+        description: Confirms client-side routing with route changes that will not automatically create fresh pageviews in GTM
+    language: tsx
+    lines: 17
+  - file: vite.config.ts
+    path: zip/vite.config.ts
+    purpose: Declares Vite-specific base path and environment model for the active app
+    key_elements:
+      - element: base
+        type: variable
+        location: zip/vite.config.ts:8
+        description: Confirms deployment under /react/
+      - element: loadEnv
+        type: function
+        location: zip/vite.config.ts:5
+        description: Confirms the app is built with Vite conventions rather than Next.js or CRA env conventions
+    language: ts
+    lines: 20
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: Represents the main page rendered by the SPA root route
+    key_elements:
+      - element: HomePage
+        type: function
+        location: zip/src/pages/HomePage.tsx:11
+        description: Standard route component with no analytics or consent logic present
+    language: tsx
+    lines: 63
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active ecommerce-like route with manual document metadata updates and checkout/cart behavior
+    key_elements:
+      - element: document.title metadata effect
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:117
+        description: Shows the app uses manual document head updates rather than a head manager library
+      - element: localStorage cart persistence
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:105
+        description: Confirms browser-only side effects already exist and consent-sensitive events should be handled carefully
+    language: tsx
+    lines: 220
+
+patterns_found:
+  - category: architecture
+    pattern: Vite SPA bootstrap through a single HTML entry and a single React mount file
+    description: Global third-party scripts belong either in index.html or in a module imported from src/main.tsx, not in Next.js layout or CRA-specific files
+    examples:
+      - file: zip/index.html
+        location: zip/index.html:1
+        snippet: <!doctype html>
+      - file: zip/src/main.tsx
+        location: zip/src/main.tsx:1
+        snippet: import {StrictMode} from 'react';
+    prevalence: common
+  - category: architecture
+    pattern: Client-side routing under /react basename
+    description: Route changes happen inside React Router and need explicit SPA pageview handling if GTM or GA4 is used
+    examples:
+      - file: zip/src/main.tsx
+        location: zip/src/main.tsx:9
+        snippet: <BrowserRouter basename="/react">
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:11
+        snippet: <Routes>
+    prevalence: common
+  - category: structure
+    pattern: Manual document head mutation inside route components
+    description: The app does not use react-helmet or a framework metadata API; page metadata is updated via useEffect
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:117
+        snippet: document.title = cateringPageTitle;
+    prevalence: occasional
+  - category: dependency
+    pattern: No existing analytics or consent implementation in active src
+    description: GTM and Consent Mode would be a new integration surface in the active app
+    examples:
+      - file: zip/package.json
+        location: zip/package.json:1
+        snippet: "dependencies": {
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: zip/index.html
+      responsibility: static head and body bootstrap for the SPA
+      location: zip/index.html
+      relationship_to_domain: domain depends on this
+    - component: zip/src/main.tsx
+      responsibility: runtime bootstrap and router mount
+      location: zip/src/main.tsx
+      relationship_to_domain: domain depends on this
+    - component: zip/src/App.tsx
+      responsibility: route switching for SPA pages
+      location: zip/src/App.tsx
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: BrowserRouter
+      location: zip/src/main.tsx
+      usage_pattern: SPA navigation under basename /react
+    - interface: document head APIs
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      usage_pattern: route-level metadata mutation with document.title and meta/link nodes
+  data_flow_involving_domain: Static HTML loads main.tsx, React mounts once, BrowserRouter handles client-side navigation under /react, and route components mutate document metadata after navigation. Any consent-default logic must run before analytics tags initialize, and any SPA page tracking must react to route changes after mount.
+  key_relationships_to_domain:
+    - from: zip/index.html
+      to: zip/src/main.tsx
+      relationship: imports
+    - from: zip/src/main.tsx
+      to: zip/src/App.tsx
+      relationship: imports
+    - from: zip/src/App.tsx
+      to: zip/src/pages/HomePage.tsx
+      relationship: imports
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - HTML
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: SPA UI runtime
+    - name: React Router 7
+      usage_in_domain: client-side route handling
+    - name: Vite 6
+      usage_in_domain: bundling, HTML entry processing, env loading, and base-path deployment
+  libraries_used_in_domain:
+    - name: react-dom
+      purpose_in_domain: application mount with createRoot
+    - name: lucide-react
+      purpose_in_domain: page UI icons; unrelated to analytics but confirms active TSX component usage
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: PascalCase page and component names, main.tsx as runtime bootstrap, App.tsx as active route map
+  structure_of_domain: zip/index.html for HTML bootstrap, zip/src/main.tsx for runtime mount, zip/src/App.tsx for routes, zip/src/pages for route components
+  error_handling_in_domain: minimal defensive browser guards such as typeof window and typeof document checks in browser-only effects
+  testing_in_domain: selective test files exist for active frontend features, but no analytics or consent tests were found
+  documentation_in_domain: README is generic Vite/AI Studio oriented and does not document analytics or consent integration
+
+related_dependencies:
+  internal:
+    - component: zip/index.html
+      relationship_to_domain: bootstrap container and script injection point
+      direction: outbound
+    - component: zip/src/main.tsx
+      relationship_to_domain: runtime bootstrap point for initialization logic
+      direction: outbound
+    - component: zip/src/App.tsx
+      relationship_to_domain: route changes drive SPA page measurement requirements
+      direction: outbound
+  external:
+    - name: react
+      purpose_for_domain: application runtime
+    - name: react-router-dom
+      purpose_for_domain: SPA routing
+    - name: vite
+      purpose_for_domain: build and HTML/env integration model
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: consent-default timing
+      location: zip/index.html or zip/src/main.tsx
+      concern: Consent defaults must execute before GTM or Google tags initialize, otherwise data may be collected before consent state is applied
+    - area: checkout and cart behavior
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      concern: Ecommerce events would touch shopping and transaction flows and must avoid duplicate firing in SPA or StrictMode scenarios
+  authentication_patterns_in_domain: none observed in the active frontend bootstrap files reviewed
+  authorization_patterns_in_domain: none observed in the active frontend bootstrap files reviewed
+  data_validation_in_domain: no consent-state or analytics payload validation layer exists yet in the active app
+
+testing_patterns:
+  framework: project-local TS/TSX tests alongside selected features
+  coverage_areas:
+    - catering cart and thank-you flows
+    - some product and section behavior
+  test_organization: colocated *.test.ts and *.test.tsx files under zip/src
+  mock_patterns:
+    - browser-oriented component tests exist, but no GTM or consent mocks were found
+
+open_questions:
+  - question: What exact GTM and Consent Mode snippet was proposed?
+    context: The repo inspection can validate compatibility and correct insertion points, but exact snippet correctness depends on whether it uses Vite-compatible filenames, env names, and SPA tracking logic.
+  - question: What consent UI or CMP will issue consent updates after the default denied state?
+    context: No active consent-management layer or banner exists in the frontend code that was reviewed.
+
+gaps:
+  - area: exact snippet text
+    description: The proposed integration code was not present in the workspace context during this review
+    impact: Exact line-by-line validation of variable names and code shape is not possible, so repo-specific compatibility is assessed against common GTM and Consent Mode patterns
+  - area: production GTM requirements
+    description: Container ID, event schema, and desired measurement scope were not specified
+    impact: The review can confirm compatibility and likely integration points, but not final production completeness

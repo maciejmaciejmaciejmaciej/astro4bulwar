@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": "..",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "jsx": "react-jsx",
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "../zip/node_modules/@types"
+    ],
+    "paths": {
+      "@/*": [
+        "zip/*"
+      ]
+    },
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.d.ts",
+    "../zip/src/blocks/registry/**/*.ts"
+  ]
+}

@@ -1,0 +1,279 @@
+plan_id: catering-hotfix-20260325
+objective: research the current BULWAR APP catering page implementation for a UI hotfix
+focus_area: footer_catering_page
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The active catering page at /catering-wielkanocny renders the shared Footer component directly, not through RootLayout.
+  - The current Footer content is template/demo content: ANDÉ branding, New York address, US phone, placeholder social/privacy links, and 2024 copyright.
+  - The catering page already contains some real BulwaR contact details in its feature grid, but no canonical footer data source or social URLs were found in src.
+  - The smallest blast-radius path for a catering-only footer is a sibling component fork of Footer used only by CateringWielkanocnyPage.
+  - Editing the shared Footer would affect HomePage immediately and may also affect any future pages using RootLayout or TemplatePage.
+
+research_metadata:
+  methodology: hybrid retrieval using semantic_search and grep_search, followed by targeted read_file examination of route, page, layout, navbar, and footer sources
+  scope: focused on active catering route wiring, footer usage chain, placeholder content identification, and isolation risk for a catering-only footer change
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: defines the currently active top-level routes for the React app
+    key_elements:
+      - element: CateringWielkanocnyPage route
+        type: pattern
+        location: zip/src/App.tsx:8
+        description: maps /catering-wielkanocny directly to CateringWielkanocnyPage without using RootLayout
+    language: TypeScript
+    lines: 9
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: active catering landing and ordering page
+    key_elements:
+      - element: Footer import
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:9
+        description: imports the shared Footer component from components/sections/Footer
+      - element: page-local Footer render
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:183
+        description: renders Footer directly below main content, making a page-specific footer swap straightforward
+      - element: real contact details block
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:71
+        description: feature grid includes BulwaR email and phone data that can act as reference content for a catering-only footer
+    language: TypeScript
+    lines: 201
+  - file: Footer.tsx
+    path: zip/src/components/sections/Footer.tsx
+    purpose: shared footer component currently used by the active home page and catering page
+    key_elements:
+      - element: Footer
+        type: function
+        location: zip/src/components/sections/Footer.tsx:1
+        description: no-props shared footer component with fully hardcoded content
+      - element: brand text
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:5
+        description: hardcoded ANDÉ text mark instead of BulwaR branding or shared logo asset
+      - element: location block
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:11
+        description: hardcoded New York address content
+      - element: contact block
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:16
+        description: hardcoded US phone number and andecurator email
+      - element: hours block
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:21
+        description: hardcoded restaurant hours in English
+      - element: social/legal links
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:27
+        description: anchor labels are present, but href values are all # placeholders
+      - element: copyright line
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:33
+        description: hardcoded 2024 ANDÉ CULINARY CURATOR copyright text
+    language: TypeScript
+    lines: 35
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: active homepage that also imports and renders the same shared Footer
+    key_elements:
+      - element: Footer import
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:10
+        description: imports shared Footer
+      - element: Footer render
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:67
+        description: renders shared Footer, confirming any shared Footer edits affect the homepage too
+    language: TypeScript
+    lines: 72
+  - file: RootLayout.tsx
+    path: zip/src/layouts/RootLayout.tsx
+    purpose: inactive shared layout pattern that also references Footer
+    key_elements:
+      - element: Footer import
+        type: pattern
+        location: zip/src/layouts/RootLayout.tsx:4
+        description: references the same shared Footer component
+      - element: Footer render
+        type: pattern
+        location: zip/src/layouts/RootLayout.tsx:17
+        description: would propagate shared Footer changes to any routes later moved under RootLayout
+    language: TypeScript
+    lines: 22
+  - file: Navbar.tsx
+    path: zip/src/components/sections/Navbar.tsx
+    purpose: shared page header showing current brand handling pattern
+    key_elements:
+      - element: logoSrc prop
+        type: variable
+        location: zip/src/components/sections/Navbar.tsx:4
+        description: header already supports passing a real image logo
+      - element: fallback brand text
+        type: pattern
+        location: zip/src/components/sections/Navbar.tsx:53
+        description: fallback still uses ANDÉ, showing template-origin branding remains in shared UI components
+    language: TypeScript
+    lines: 77
+
+patterns_found:
+  - category: architecture
+    pattern: direct page composition instead of shared layout for active routes
+    description: the active app routes mount concrete pages directly, and the catering page composes its own navbar, footer, sticky controls, and checkout drawer
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:8
+        snippet: <Route path="/catering-wielkanocny" element={<CateringWielkanocnyPage />} />
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:149
+        snippet: Navbar, main content, Footer, StickyCartControls, CheckoutDrawer are rendered directly in the page component
+    prevalence: common
+  - category: structure
+    pattern: shared section components with hardcoded presentation content
+    description: Footer is implemented as a shared presentational component with no props and fully inline strings
+    examples:
+      - file: zip/src/components/sections/Footer.tsx
+        location: zip/src/components/sections/Footer.tsx:1
+        snippet: export function Footer() { return (...) }
+    prevalence: occasional
+  - category: naming
+    pattern: template-era ANDÉ branding still present in shared UI
+    description: shared branded UI components retain ANDÉ strings even though active BulwaR pages use real BulwaR assets/content elsewhere
+    examples:
+      - file: zip/src/components/sections/Footer.tsx
+        location: zip/src/components/sections/Footer.tsx:5
+        snippet: A | NDÉ
+      - file: zip/src/components/sections/Navbar.tsx
+        location: zip/src/components/sections/Navbar.tsx:53
+        snippet: ANDÉ fallback text when no logoSrc is supplied
+    prevalence: occasional
+  - category: error_handling
+    pattern: placeholder anchors used instead of real destinations
+    description: footer social/legal links are visually present but non-functional because href is # for every link
+    examples:
+      - file: zip/src/components/sections/Footer.tsx
+        location: zip/src/components/sections/Footer.tsx:28
+        snippet: <a ... href="#">Facebook</a>
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Footer
+      responsibility: shared footer presentation
+      location: zip/src/components/sections/Footer.tsx
+      relationship_to_domain: domain depends on this directly today
+    - component: CateringWielkanocnyPage
+      responsibility: catering route page composition and cart state
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: this page uses the footer directly and is the narrowest replacement point
+    - component: HomePage
+      responsibility: homepage composition
+      location: zip/src/pages/HomePage.tsx
+      relationship_to_domain: also uses the same footer, so shared footer edits affect non-catering UI
+    - component: RootLayout
+      responsibility: optional shared route shell
+      location: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: future or inactive layout that also references the shared footer
+  interfaces_used_by_domain:
+    - interface: NavbarProps
+      location: zip/src/components/sections/Navbar.tsx:4
+      usage_pattern: shows existing pattern for optional branding via props in shared chrome
+  data_flow_involving_domain: The route /catering-wielkanocny resolves to CateringWielkanocnyPage in App.tsx, which imports Footer directly from components/sections/Footer and renders it after the page main section. Footer itself reads no props and no shared data source; all displayed content is inline in the component.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/Footer.tsx
+      relationship: imports
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/components/sections/Footer.tsx
+      relationship: imports
+    - from: zip/src/layouts/RootLayout.tsx
+      to: zip/src/components/sections/Footer.tsx
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: page composition and shared presentational components
+    - name: React Router
+      usage_in_domain: route mapping for the active catering page
+  libraries_used_in_domain:
+    - name: Tailwind CSS
+      purpose_in_domain: footer and page styling via utility classes
+    - name: lucide-react
+      purpose_in_domain: iconography on the catering page feature grid
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: shared chrome and content blocks live under components/sections; pages import these sections directly
+  structure_of_domain: active pages are mostly self-composed screens that import Navbar, Footer, cart controls, and section components rather than relying on a single active global layout
+  error_handling_in_domain: no runtime guards exist in Footer because it has no dynamic inputs; risk is content correctness rather than code failure
+  testing_in_domain: no footer-specific tests were found in the examined domain
+  documentation_in_domain: no local documentation describing canonical footer content or legal/social destinations was found in the examined domain
+
+related_dependencies:
+  internal:
+    - component: zip/src/components/sections/Footer.tsx
+      relationship_to_domain: direct shared dependency of the catering page
+      direction: outbound
+    - component: zip/src/components/sections/Navbar.tsx
+      relationship_to_domain: adjacent shared chrome with a more flexible branding pattern
+      direction: outbound
+    - component: zip/src/pages/HomePage.tsx
+      relationship_to_domain: co-consumer of the shared Footer
+      direction: bidirectional
+    - component: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: additional co-consumer of the shared Footer in layout-based routing
+      direction: bidirectional
+  external:
+    - name: react-router-dom
+      purpose_for_domain: route mapping and internal page links
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: legal and social links
+      location: zip/src/components/sections/Footer.tsx:27
+      concern: placeholder href values create incorrect or non-compliant navigation rather than a direct security issue
+  authentication_patterns_in_domain: none observed
+  authorization_patterns_in_domain: none observed
+  data_validation_in_domain: none in Footer; all content is hardcoded
+
+testing_patterns:
+  framework: not found for this domain
+  coverage_areas:
+    - no footer-specific tests were found
+  test_organization: no tests adjacent to Footer.tsx were found in the examined paths
+  mock_patterns:
+    - none observed
+
+open_questions:
+  - question: What are the canonical BulwaR footer values for address, opening hours, social URLs, privacy-policy destination, and copyright text?
+    context: The current footer is entirely template content, and only partial real contact data was found on the catering page itself.
+  - question: Should the catering-only footer reuse the existing image logo path used by Navbar, or should it remain a text mark styled like the current footer?
+    context: Footer currently uses hardcoded brand text while the page header already uses /react/images/logo.png.
+  - question: Are future routes expected to move under RootLayout?
+    context: Shared Footer changes would gain broader blast radius if RootLayout becomes the active route shell.
+
+gaps:
+  - area: canonical footer content source
+    description: No frontend config/data file was found that defines approved footer address, hours, legal links, or social URLs.
+    impact: Any footer replacement still needs validated content inputs from another source.
+  - area: dedicated catering footer abstraction
+    description: No existing catering-specific footer component or shared footer props model exists.
+    impact: The safest catering-only change path is structural isolation at the page import/render boundary, not a drop-in configuration toggle.
+  - area: legal destination mapping
+    description: No active privacy-policy or regulatory link targets were identified in the examined src files.
+    impact: A visual footer hotfix can still leave broken legal navigation if those URLs are not supplied.

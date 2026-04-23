@@ -1,0 +1,346 @@
+plan_id: adhoc-shadcn-block-normalization-20260422
+objective: >-
+  Implement a first proper v1 script in zip/ that takes an explicitly targeted raw
+  shadcn TSX block and normalizes typography and theme usage more safely than the
+  existing regex-wide scripts, while keeping scope limited to text-bearing elements
+  and reporting unresolved cases instead of guessing.
+created_at: '2026-04-22T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 3
+  risk_score: low
+
+tldr: |
+  zip/refactor_fonts.cjs, zip/refactor_scaleup.cjs, and zip/refactor_scaledown.cjs prove the current automation surface is broad text replacement rather than JSX-aware rewriting.
+  zip/src/index.css, .github/instructions/design-system.instructions.md, docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md, and /memories/repo/raw-import-typography.md already define the approved semantic text-size mapping and the banned font-weight, tracking, and leading classes.
+  The safest v1 is a typed opt-in CLI under a tsconfig-covered zip/src path that accepts explicit files only, rewrites only supported semantic text tags with static class strings, and emits an unresolved-case report for spans, divs, Button className stacks, or computed expressions.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: The transform removes every text-* class and accidentally strips color tokens such as text-zinc-500 or text-on-surface along with font-size classes.
+      likelihood: medium
+      impact: high
+      mitigation: Restrict size removal to a narrow allowlist of font-size utilities and arbitrary text-[<length>] tokens, and preserve semantic color classes defined in zip/src/index.css.
+    - scenario: The tool mutates curated Bulwar components or geometry-sensitive wrappers because it behaves like the old repo-wide walkers.
+      likelihood: low
+      impact: high
+      mitigation: Require explicit file arguments, default to dry-run, refuse directory recursion in v1, and keep layout-shell or nonsemantic wrapper changes out of scope.
+    - scenario: The new CLI lands at zip/ root and bypasses zip/tsconfig.json, so npm run lint does not validate the implementation.
+      likelihood: medium
+      impact: medium
+      mitigation: Place the implementation under a zip/src path already included by zip/tsconfig.json and keep the CLI wrapper thin.
+  assumptions:
+    - The user-approved v1 scope is limited to semantic text elements h1-h6, p, and small, with ambiguous text roles reported rather than rewritten.
+    - Button typography, span or div text roles, and computed className expressions are report-only in v1 because the role cannot be inferred deterministically from the checked-in rules.
+    - zip/src/index.css remains the theme and token source of truth, while the semantic size mapping from .github/instructions/design-system.instructions.md and /memories/repo/raw-import-typography.md governs typography cleanup.
+
+implementation_specification:
+  code_structure: >-
+    Add a typed CLI entrypoint and pure normalization helpers under zip/src so
+    zip/tsconfig.json includes the new code. Keep the file-system and argument
+    handling thin, and route all rewrite logic through a pure transform that uses
+    the existing TypeScript dependency to inspect TSX, limit edits to supported
+    semantic text tags, preserve non-typography classes, and return a structured
+    unresolved-case report. Add focused node:test coverage next to the tool and a
+    short operator-facing v1 usage note in this plan folder.
+  affected_areas:
+    - zip/src/tools/normalizeRawShadcnTypography.ts
+    - zip/package.json
+    - zip/src/tools/normalizeRawShadcnTypography.test.ts
+    - docs/plan/adhoc-shadcn-block-normalization-20260422/v1-usage.md
+  component_details:
+    - component: Typed CLI entrypoint
+      responsibility: Parse explicit file arguments, expose dry-run and write modes, and print a deterministic summary of rewrites and unresolved cases.
+      interfaces:
+        - CLI signature with explicit positional file paths only
+        - --write flag for in-place updates
+        - structured stdout summary for changed files and unresolved cases
+    - component: Semantic text normalization core
+      responsibility: Rewrite supported TSX text-bearing elements to the approved semantic text-size mapping and remove banned typography utilities without touching layout geometry.
+      interfaces:
+        - normalizeSource(sourceText, filePath) -> { output, changed, unresolved[] }
+        - supported tag mapping for h1-h6, p, and small
+        - banned typography class filter for leading-*, tracking-*, and raw font-weight utilities
+    - component: Unresolved-case reporter
+      responsibility: Capture ambiguous cases that v1 must not auto-fix, including nonsemantic text wrappers, computed className expressions, and indirect component text roles.
+      interfaces:
+        - unresolved item shape with file, element, location, and reason
+        - human-readable console rendering for review
+    - component: Focused test harness
+      responsibility: Prove the transform rewrites only the intended text-role classes and leaves ambiguous cases for manual review.
+      interfaces:
+        - node:test fixture cases for direct className and static cn(...) patterns
+        - regression assertions for unresolved-case reporting and dry-run behavior
+  dependencies:
+    - component: zip/src/index.css
+      relationship: Supplies the approved token vocabulary that non-typography classes must preserve.
+    - component: .github/instructions/design-system.instructions.md
+      relationship: Defines the semantic size mapping and banned typography classes that the transform must enforce.
+    - component: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+      relationship: Defines the geometry-preservation boundary and the report-instead-of-guess rule.
+    - component: zip/package.json and zip/tsconfig.json
+      relationship: Determine how the CLI is executed and whether the implementation is covered by the existing lint gate.
+  integration_points:
+    - Operator workflow in zip/ via an explicit tsx-powered package script or direct tsx invocation.
+    - Imported TSX blocks in zip/src/components/sections that still carry static raw shadcn typography stacks.
+    - Existing node:test validation pattern already used by zip/src/**/*.test.tsx.
+
+contracts:
+  - from_task: t-1
+    to_task: t-2
+    interface: Supported CLI contract and transform boundary, including explicit file-only targeting, dry-run default, write mode, supported tags, and report-only categories.
+    format: TypeScript option types plus CLI help text examples.
+  - from_task: t-2
+    to_task: t-3
+    interface: Pure transform return shape containing rewritten source, changed flag, and unresolved cases with stable reason codes.
+    format: TypeScript return type and fixture input-output expectations.
+  - from_task: t-3
+    to_task: t-4
+    interface: Verified invocation command, supported cases, and unresolved-case examples that operators need to recognize.
+    format: Test-backed CLI usage notes and example console output.
+
+tasks:
+  - id: t-1
+    title: Establish the typed opt-in CLI surface inside a tsconfig-covered zip/src path
+    description: |
+      Create the first safe operator surface for this workflow instead of another
+      repo-wide walker.
+
+      The implementation should:
+      - live under zip/src so zip/tsconfig.json covers it
+      - accept one or more explicit file paths only
+      - default to dry-run output and require an explicit write flag for mutation
+      - refuse directory or glob-style recursion in v1
+      - define the supported text-role scope up front: h1-h6, p, and small only
+
+      This task should also add the minimal package entry needed to run the tool
+      predictably from zip/ without widening scope into a general codemod framework.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/tsconfig.json
+        description: Confirms that zip/ root scripts are not covered by the existing lint gate, while zip/src/**/*.ts and zip/src/**/*.tsx are included.
+      - path: zip/package.json
+        description: Shows tsx and typescript are already available for a typed CLI without adding a new build step.
+      - path: zip/refactor_fonts.cjs
+        description: Representative example of the unsafe repo-wide walker pattern that v1 must replace.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Lock the operator boundary first so later tasks cannot drift back into repo-wide mutation.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 90
+        focus_area: CLI entrypoint and execution contract
+        verification:
+          - Running the CLI with no explicit files prints usage and exits without scanning zip/src.
+          - The new CLI is located under a path already included by zip/tsconfig.json.
+          - zip/package.json exposes a narrow invocation path for the tool.
+        acceptance_criteria:
+          - V1 cannot run as a repo-wide recursive refactor.
+          - Dry-run is the default behavior.
+          - The supported rewrite surface is declared before transform logic begins.
+        failure_modes:
+          - scenario: The entrypoint still accepts directories and silently walks them.
+            likelihood: medium
+            impact: high
+            mitigation: Validate each positional argument as a file path and reject directory traversal in the argument parser.
+    tech_stack:
+      - TypeScript 5.8 via the existing zip dependency set
+      - tsx CLI execution from zip/package.json
+      - Node.js fs/path utilities for explicit file IO only
+    test_coverage: Narrow CLI-surface assertions will be added in t-3.
+
+  - id: t-2
+    title: Implement semantic-tag normalization and unresolved-case reporting without layout rewrites
+    description: |
+      Implement the actual v1 transform using the existing TypeScript dependency
+      instead of broad regex substitution.
+
+      The transform should:
+      - inspect TSX and touch only supported semantic text elements with static class strings
+      - normalize h1-h6, p, and small to the approved single text-size mapping from
+        .github/instructions/design-system.instructions.md and /memories/repo/raw-import-typography.md
+      - remove banned leading-*, tracking-*, and raw font-weight utilities from the
+        targeted class list only
+      - preserve non-typography classes such as spacing, layout, radius, border,
+        and semantic text color tokens from zip/src/index.css
+      - emit unresolved entries instead of rewriting spans, divs, Button className
+        stacks, or computed/interpolated className expressions
+
+      Keep shell geometry, wrapper width, and layout composition fully out of scope.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    dependencies:
+      - t-1
+    conflicts_with: []
+    context_files:
+      - path: .github/instructions/design-system.instructions.md
+        description: Canonical raw-import cleanup protocol and semantic size mapping.
+      - path: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+        description: Geometry-preservation contract and report-the-blocker rule.
+      - path: zip/src/index.css
+        description: Source of approved semantic text colors and shared token vocabulary that must remain intact.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Implement the narrowest transform that is materially safer than the legacy regex scripts.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 220
+        focus_area: AST-guided class rewriting and unresolved reporting
+        verification:
+          - Targeted semantic tags lose banned font-weight, tracking, and leading classes.
+          - Targeted semantic tags end with exactly one approved size class.
+          - Semantic color tokens and layout classes remain unchanged.
+          - Unsupported cases are reported, not mutated.
+        acceptance_criteria:
+          - V1 is materially safer than zip/refactor_*.cjs because it is element-aware and file-targeted.
+          - Nonsemantic or computed cases are surfaced in the report with reasons.
+          - No layout-shell or width normalization is attempted.
+        failure_modes:
+          - scenario: The implementation still uses text-only replacement and cannot distinguish text-size tokens from text-color tokens.
+            likelihood: medium
+            impact: high
+            mitigation: Centralize class token parsing and rewrite only matched size tokens on known semantic elements.
+          - scenario: The transform tries to infer semantic meaning for spans or Button content and rewrites them incorrectly.
+            likelihood: medium
+            impact: medium
+            mitigation: Route unsupported tags and indirect text roles into unresolved-case reporting with explicit reason codes.
+    tech_stack:
+      - TypeScript compiler API from the existing typescript dependency
+      - TSX/React source parsing for TSX files only
+      - Existing project class vocabulary from zip/src/index.css
+    test_coverage: Fixture-driven transform assertions and unresolved-case coverage will be added in t-3.
+
+  - id: t-3
+    title: Add fixture-based tests and executable validation for the v1 transform
+    description: |
+      Add focused node:test coverage for the new tool using the repo's existing
+      render-and-assert style as precedent, but keep the tests centered on source
+      transformation and report output rather than UI rendering.
+
+      The test slice should cover:
+      - a representative heading and paragraph with literal className strings
+      - a static cn(...) pattern when all class fragments are string literals
+      - preservation of non-typography classes such as text-on-surface or text-zinc-500
+      - unresolved reporting for span/div wrappers, Button className cases, and
+        computed className expressions
+      - dry-run versus write-mode behavior on a disposable fixture file or temp copy
+
+      Validation should stay narrow and executable from zip/.
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    priority: medium
+    status: pending
+    dependencies:
+      - t-2
+    conflicts_with: []
+    context_files:
+      - path: zip/src/components/sections/OurServices.test.tsx
+        description: Example node:test style already used in the frontend.
+      - path: zip/src/components/sections/PageBuilderMenuSection.test.tsx
+        description: Example of asserting exact class fragments and absence of banned combinations.
+      - path: docs/plan/adhoc-templatepage2-for-blocks/research_findings_templatepage2_for_blocks.yaml
+        description: Records the existing npx tsx --test command pattern for zip/.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Add proof that the transform changes only the intended class slices and that the CLI can be run safely.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 180
+        focus_area: tool tests and focused validation commands
+        verification:
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP - kopia\zip'; npx tsx --test src/tools/normalizeRawShadcnTypography.test.ts passes.
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP - kopia\zip'; npm run lint passes.
+          - Test output proves unresolved cases are reported instead of rewritten.
+        acceptance_criteria:
+          - The v1 script has executable regression coverage.
+          - The validation commands are narrow enough to run during iterative work.
+          - At least one case proves color-token preservation while typography classes change.
+        failure_modes:
+          - scenario: Tests only cover successful rewrites and miss the unresolved-case safety boundary.
+            likelihood: medium
+            impact: medium
+            mitigation: Require at least one explicit fixture for each report-only category in v1.
+    tech_stack:
+      - node:test
+      - tsx test execution
+      - TypeScript fixture strings and temporary file helpers
+    test_coverage: Covers supported tag rewrites, unsupported-case reporting, and dry-run versus write behavior.
+
+  - id: t-4
+    title: Document the v1 operator contract and unresolved-case workflow
+    description: |
+      Add a concise operator-facing note in this plan folder that explains how to
+      use the new script without turning it into a repo-wide migration tool.
+
+      The note should document:
+      - the explicit-file invocation pattern
+      - dry-run and write semantics
+      - the supported semantic tags in v1
+      - the unresolved-case categories that require manual follow-up
+      - the intentional out-of-scope list, especially layout-shell and nonsemantic
+        text-role normalization
+    wave: 4
+    agent: gem-documentation-writer
+    prototype: false
+    priority: low
+    status: pending
+    dependencies:
+      - t-3
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/adhoc-shadcn-block-normalization-20260422/research_findings_zip-frontend.yaml
+        description: Captures the feasibility boundary and the unresolved decision points that user constraints now narrow.
+      - path: .github/instructions/design-system.instructions.md
+        description: Supplies the canonical semantic size mapping and banned typography classes that the usage note should reference.
+      - path: zip/src/tools/normalizeRawShadcnTypography.ts
+        description: Final implementation surface whose real flags and report output must be documented exactly.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Keep the first rollout reviewable by documenting what the tool will and will not change.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 40
+        focus_area: v1 usage and scope boundaries
+        verification:
+          - The note contains a copy-pasteable explicit-file invocation example.
+          - The note lists unresolved-case categories rather than implying full automation.
+          - The note does not advertise repo-wide or geometry-changing usage.
+        acceptance_criteria:
+          - Operators can distinguish supported rewrites from report-only cases.
+          - The document mirrors the actual CLI flags and validation command from t-3.
+          - The doc stays short and v1-specific.
+        failure_modes:
+          - scenario: The usage note overpromises support for spans, divs, or Button typography that v1 only reports.
+            likelihood: low
+            impact: medium
+            mitigation: Generate the note from the final tested behavior and explicitly separate supported versus unresolved categories.
+    task_type: documentation
+    audience: developers
+    coverage_matrix:
+      - Explicit-file CLI invocation is documented.
+      - Supported semantic tags and banned typography cleanup are documented.
+      - Unresolved-case workflow and out-of-scope boundaries are documented.

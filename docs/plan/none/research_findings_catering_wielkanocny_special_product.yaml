@@ -1,0 +1,413 @@
+plan_id: none
+objective: Map the current implementation pattern for /catering-wielkanocny relevant to a new special configurable product.
+focus_area: catering_wielkanocny_special_product
+created_at: 2026-03-24T00:00:00Z
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+	- The route /catering-wielkanocny is composed directly in the page component: hero, feature grid, then a flat map over normalized category data into repeated CateringProductListAlt sections.
+	- Product data is loaded from JSON and normalized eagerly; valid cartable items must have numeric ids, non-empty strings, finite prices, booleans for dietary flags, and image paths under /react/images/.
+	- Cart state is page-local and persisted in localStorage as Record<number, number>; rendered cart items are rebuilt from normalized category products and adapted into CheckoutDrawerCartItem.
+	- CateringProductListAlt is a presentational section wrapper; ProductItemAlt owns only a local quantity picker and emits add events upward, while current cart and checkout contracts do not carry option/configuration metadata.
+	- The existing clean extension seam is at page composition level in CateringWielkanocnyPage, because lower layers only understand standard product rows and numeric product ids.
+
+research_metadata:
+	methodology: Hybrid retrieval using semantic_search, grep_search, file_search, code usage discovery, targeted read_file passes, and terminal metadata collection for line counts.
+	scope: Focused on the /catering-wielkanocny route, its normalized data source, rendering components, cart persistence/rendering, and adjacent routing/UI shell components.
+	confidence: high
+	coverage: 92
+
+files_analyzed:
+	- file: CateringWielkanocnyPage.tsx
+		path: zip/src/pages/CateringWielkanocnyPage.tsx
+		purpose: Route-level composition for the Easter catering page, including cart state ownership and section ordering.
+		key_elements:
+			- element: CATERING_CART_STORAGE_KEY
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:16
+				description: localStorage key used to persist cart quantities for this route.
+			- element: loadCartQuantities
+				type: function
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:68
+				description: Loads and sanitizes persisted cart quantities into a numeric id to quantity map.
+			- element: buildCartItems
+				type: function
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:101
+				description: Rebuilds checkout-facing cart items by walking normalized category/product data.
+			- element: CateringWielkanocnyPage
+				type: function
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:124
+				description: Owns page layout, cart state, product section mapping, sticky cart controls, and checkout drawer wiring.
+		language: TypeScript/TSX
+		lines: 190
+
+	- file: cateringWielkanocny.ts
+		path: zip/src/data/cateringWielkanocny.ts
+		purpose: Data contract definition and runtime normalization layer for Easter catering JSON.
+		key_elements:
+			- element: RawCateringProduct
+				type: interface
+				location: zip/src/data/cateringWielkanocny.ts:5
+				description: Raw product shape expected from JSON source.
+			- element: CateringProductContract
+				type: interface
+				location: zip/src/data/cateringWielkanocny.ts:19
+				description: Normalized product shape consumed by UI and cart adaptation.
+			- element: normalizeProduct
+				type: function
+				location: zip/src/data/cateringWielkanocny.ts:70
+				description: Converts a raw product into the normalized contract and derives price label plus dietary tag.
+			- element: normalizeCategory
+				type: function
+				location: zip/src/data/cateringWielkanocny.ts:96
+				description: Validates category strings, image path prefix, and product arrays before exposing UI-facing data.
+			- element: cateringWielkanocnyCategories
+				type: variable
+				location: zip/src/data/cateringWielkanocny.ts:132
+				description: Final readonly normalized category array used by the page.
+		language: TypeScript
+		lines: 134
+
+	- file: cateringWielkanocny.json
+		path: zip/src/data/cateringWielkanocny.json
+		purpose: Source content for Easter catering categories and products.
+		key_elements:
+			- element: root array of categories
+				type: pattern
+				location: zip/src/data/cateringWielkanocny.json:1
+				description: Contains category objects with ids, descriptions, image paths, and pozycje arrays.
+			- element: category.pozycje
+				type: pattern
+				location: zip/src/data/cateringWielkanocny.json:7
+				description: Product arrays whose entries provide numeric id, combined description text, weight, price, and dietary booleans.
+		language: JSON
+		lines: 394
+
+	- file: CateringProductListAlt.tsx
+		path: zip/src/components/sections/CateringProductListAlt.tsx
+		purpose: Category section renderer with optional hero-style image block and per-product row rendering.
+		key_elements:
+			- element: CateringProductListItem
+				type: type
+				location: zip/src/components/sections/CateringProductListAlt.tsx:13
+				description: Union of normalized products and a legacy display-only shape.
+			- element: isNormalizedProduct
+				type: function
+				location: zip/src/components/sections/CateringProductListAlt.tsx:15
+				description: Type guard that distinguishes cart-capable normalized products from legacy rows.
+			- element: CateringProductListAlt
+				type: function
+				location: zip/src/components/sections/CateringProductListAlt.tsx:32
+				description: Renders section chrome and maps each product entry into ProductItemAlt.
+		language: TypeScript/TSX
+		lines: 98
+
+	- file: ProductItemAlt.tsx
+		path: zip/src/components/sections/ProductItemAlt.tsx
+		purpose: Individual product row with quantity selector, dietary indicator, and add-to-cart trigger.
+		key_elements:
+			- element: ProductItemAltProps
+				type: interface
+				location: zip/src/components/sections/ProductItemAlt.tsx:5
+				description: Props contract for a row, including product identifier, display fields, current cart quantity, and add callback.
+			- element: getDietaryIndicator
+				type: function
+				location: zip/src/components/sections/ProductItemAlt.tsx:15
+				description: Maps dietary flags to iconography and label.
+			- element: ProductItemAlt
+				type: function
+				location: zip/src/components/sections/ProductItemAlt.tsx:34
+				description: Holds local selector state and sends quantity additions upward when the CTA is clicked.
+		language: TypeScript/TSX
+		lines: 103
+
+	- file: StickyCartControls.tsx
+		path: zip/src/components/sections/StickyCartControls.tsx
+		purpose: Bottom sticky cart affordance for desktop and floating cart button for mobile.
+		key_elements:
+			- element: StickyCartControlsProps
+				type: interface
+				location: zip/src/components/sections/StickyCartControls.tsx:4
+				description: Accepts drawer-open callback plus item count and total price.
+			- element: StickyCartControls
+				type: function
+				location: zip/src/components/sections/StickyCartControls.tsx:11
+				description: Displays aggregate cart state only; it does not manage items itself.
+		language: TypeScript/TSX
+		lines: 56
+
+	- file: CheckoutDrawer.tsx
+		path: zip/components/CheckoutDrawer.tsx
+		purpose: Checkout overlay containing order summary UI and a validated checkout form.
+		key_elements:
+			- element: CheckoutDrawerCartItem
+				type: interface
+				location: zip/components/CheckoutDrawer.tsx:52
+				description: Summary-item contract limited to id, name, price, quantity, optional weight, and optional priceLabel.
+			- element: CheckoutDrawer
+				type: function
+				location: zip/components/CheckoutDrawer.tsx:84
+				description: Renders cart summary, quantity adjustments, totals, and form sections for personal data, payment, and delivery.
+			- element: onSubmit
+				type: function
+				location: zip/components/CheckoutDrawer.tsx:133
+				description: Current checkout action only logs form data, alerts success, and closes the drawer.
+		language: TypeScript/TSX
+		lines: 459
+
+	- file: FeatureGridSection.tsx
+		path: zip/src/components/sections/FeatureGridSection.tsx
+		purpose: Generic feature/info grid used on the catering page before product sections.
+		key_elements:
+			- element: FeatureGridSection
+				type: function
+				location: zip/src/components/sections/FeatureGridSection.tsx:24
+				description: Renders a four-card informational grid from ReactNode descriptions.
+		language: TypeScript/TSX
+		lines: 61
+
+	- file: App.tsx
+		path: zip/src/App.tsx
+		purpose: Top-level route registration for the SPA.
+		key_elements:
+			- element: Route for /catering-wielkanocny
+				type: pattern
+				location: zip/src/App.tsx:11
+				description: Connects the public route directly to CateringWielkanocnyPage.
+		language: TypeScript/TSX
+		lines: 13
+
+patterns_found:
+	- category: architecture
+		pattern: Route-owned composition and state
+		description: The page component owns section ordering and all cart state, then passes derived props downward to presentational children.
+		examples:
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:124
+				snippet: const [isCartOpen, setIsCartOpen] = useState(false); const [cartQuantities, setCartQuantities] = useState<CartQuantities>(() => loadCartQuantities());
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:185
+				snippet: Hero -> FeatureGridSection -> categories.map(category => <CateringProductListAlt ... />) -> StickyCartControls -> CheckoutDrawer.
+		prevalence: common
+
+	- category: structure
+		pattern: Eager runtime normalization of JSON into readonly UI contracts
+		description: Raw JSON is validated and transformed at import time before any rendering occurs.
+		examples:
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:33
+				snippet: normalizeString / normalizeNumber / normalizeBoolean / normalizeImageUrl throw on invalid shape.
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:132
+				snippet: export const cateringWielkanocnyCategories = rawCategories.map(normalizeCategory)
+		prevalence: common
+
+	- category: architecture
+		pattern: Cart persisted as numeric quantity map and rehydrated into summary items
+		description: The durable state is not an array of items but a Record keyed by numeric product id; display items are rebuilt from source categories.
+		examples:
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:15
+				snippet: type CartQuantities = Record<number, number>
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:101
+				snippet: buildCartItems walks cateringWielkanocnyCategories.flatMap(category => category.products.flatMap(...))
+		prevalence: common
+
+	- category: structure
+		pattern: Presentational section wrapper around reusable product rows
+		description: Category sections are largely display shells; per-row interactions are delegated to ProductItemAlt while section component only adapts props.
+		examples:
+			- file: zip/src/components/sections/CateringProductListAlt.tsx
+				location: zip/src/components/sections/CateringProductListAlt.tsx:32
+				snippet: Section component accepts title, description, products, bgImage, cartQuantities, onAddToCart.
+			- file: zip/src/components/sections/CateringProductListAlt.tsx
+				location: zip/src/components/sections/CateringProductListAlt.tsx:90
+				snippet: products.map(product => <ProductItemAlt ... />)
+		prevalence: common
+
+	- category: naming
+		pattern: Dual product model with normalized and legacy display-only entries
+		description: The section type allows non-normalized rows, but only normalized rows participate in cart quantities.
+		examples:
+			- file: zip/src/components/sections/CateringProductListAlt.tsx
+				location: zip/src/components/sections/CateringProductListAlt.tsx:7
+				snippet: LegacyProductDefAlt uses name/description/weight/price strings only.
+			- file: zip/src/components/sections/CateringProductListAlt.tsx
+				location: zip/src/components/sections/CateringProductListAlt.tsx:98
+				snippet: cartQuantity={isNormalizedProduct(product) ? (cartQuantities?.[product.id] ?? 0) : 0}
+		prevalence: occasional
+
+	- category: error_handling
+		pattern: Defensive sanitization for persisted state and source data
+		description: Invalid JSON source throws immediately, while invalid localStorage data is ignored and replaced with an empty cart.
+		examples:
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:37
+				snippet: invalid fields throw Error with field-specific messages.
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:68
+				snippet: loadCartQuantities catches parse failures and returns {}
+		prevalence: common
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: CateringWielkanocnyPage
+			responsibility: Owns route composition and all cart interactions.
+			location: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship_to_domain: domain root
+		- component: CateringWielkanocnyHero
+			responsibility: Renders top hero content for the route.
+			location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+			relationship_to_domain: page depends on this
+		- component: FeatureGridSection
+			responsibility: Shows delivery/payment/info cards before catalog sections.
+			location: zip/src/components/sections/FeatureGridSection.tsx
+			relationship_to_domain: page depends on this
+		- component: CateringProductListAlt
+			responsibility: Renders each category block and adapts product data to item rows.
+			location: zip/src/components/sections/CateringProductListAlt.tsx
+			relationship_to_domain: page depends on this
+		- component: ProductItemAlt
+			responsibility: Product row UI for quantity selection and add-to-cart action.
+			location: zip/src/components/sections/ProductItemAlt.tsx
+			relationship_to_domain: category sections depend on this
+		- component: StickyCartControls
+			responsibility: Displays aggregate cart state and opens checkout UI.
+			location: zip/src/components/sections/StickyCartControls.tsx
+			relationship_to_domain: page depends on this
+		- component: CheckoutDrawer
+			responsibility: Renders cart summary and checkout form overlay.
+			location: zip/components/CheckoutDrawer.tsx
+			relationship_to_domain: page depends on this
+	interfaces_used_by_domain:
+		- interface: CateringCategoryContract
+			location: zip/src/data/cateringWielkanocny.ts:27
+			usage_pattern: Page maps over readonly normalized category contracts to render category sections.
+		- interface: CateringProductContract
+			location: zip/src/data/cateringWielkanocny.ts:19
+			usage_pattern: Product sections and cart rebuilding assume numeric ids plus normalized display fields.
+		- interface: CheckoutDrawerCartItem
+			location: zip/components/CheckoutDrawer.tsx:52
+			usage_pattern: Page adapts product catalog entries into a reduced order-summary shape for the drawer.
+	data_flow_involving_domain: Raw JSON is imported into cateringWielkanocny.ts, normalized into readonly category/product contracts, consumed by CateringWielkanocnyPage, rendered through CateringProductListAlt/ProductItemAlt, accumulated as cartQuantities in page state and localStorage, then rebuilt as CheckoutDrawerCartItem[] for StickyCartControls and CheckoutDrawer.
+	key_relationships_to_domain:
+		- from: zip/src/App.tsx
+			to: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship: imports
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/data/cateringWielkanocny.ts
+			relationship: imports
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/components/sections/CateringProductListAlt.tsx
+			relationship: composes
+		- from: zip/src/components/sections/CateringProductListAlt.tsx
+			to: zip/src/components/sections/ProductItemAlt.tsx
+			relationship: composes
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/components/CheckoutDrawer.tsx
+			relationship: adapts and composes
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+		- JSON
+	frameworks_used_in_domain:
+		- name: React
+			usage_in_domain: Route and component composition with local state and effects.
+		- name: React Router
+			usage_in_domain: Registers the public /catering-wielkanocny route and breadcrumb links.
+	libraries_used_in_domain:
+		- name: lucide-react
+			purpose_in_domain: Icons for feature cards, dietary badges, and cart affordances.
+		- name: framer-motion
+			purpose_in_domain: Scroll-based parallax in CateringProductListAlt.
+		- name: motion/react
+			purpose_in_domain: Drawer/backdrop animation in CheckoutDrawer.
+		- name: react-hook-form
+			purpose_in_domain: Checkout form state and validation binding.
+		- name: zod
+			purpose_in_domain: Checkout form schema validation.
+		- name: @hookform/resolvers/zod
+			purpose_in_domain: Connects zod schema to react-hook-form.
+	external_apis_used_in_domain: []
+
+related_conventions:
+	naming_patterns_in_domain: Data contracts use Raw* for source shapes and *Contract for normalized UI shapes; page-level handlers follow handle* naming; storage key is a file-level constant.
+	structure_of_domain: One route file composes shell sections and owns cart logic, one data module validates the catalog, section components remain display-oriented, and checkout summary uses a narrowed item interface.
+	error_handling_in_domain: Source data validation fails fast with explicit thrown errors; persisted cart parsing is forgiving and falls back to empty state.
+	testing_in_domain: No route-specific test files were found in the researched domain.
+	documentation_in_domain: No domain-local README or inline architecture notes were found; behavior is inferred from source code only.
+
+related_dependencies:
+	internal:
+		- component: zip/src/data/cateringWielkanocny.ts
+			relationship_to_domain: supplies normalized catalog contracts
+			direction: outbound
+		- component: zip/src/data/cateringWielkanocnyHero.tsx
+			relationship_to_domain: supplies hero props
+			direction: outbound
+		- component: zip/src/components/sections/CateringProductListAlt.tsx
+			relationship_to_domain: renders category sections
+			direction: outbound
+		- component: zip/src/components/sections/StickyCartControls.tsx
+			relationship_to_domain: renders cart aggregate UI
+			direction: outbound
+		- component: zip/components/CheckoutDrawer.tsx
+			relationship_to_domain: renders order summary and checkout form
+			direction: outbound
+	external:
+		- name: react
+			purpose_for_domain: stateful route and component rendering
+		- name: react-router-dom
+			purpose_for_domain: route registration and breadcrumb link rendering
+		- name: framer-motion
+			purpose_for_domain: animated product section presentation
+		- name: motion
+			purpose_for_domain: checkout drawer animation primitives
+		- name: react-hook-form
+			purpose_for_domain: checkout form state management
+		- name: zod
+			purpose_for_domain: checkout form validation schema
+
+domain_security_considerations:
+	sensitive_areas:
+		- area: checkout personal/contact form
+			location: zip/components/CheckoutDrawer.tsx
+			concern: Collects name, phone, email, and delivery details in client state but current submit handler only logs locally.
+		- area: persisted cart state
+			location: zip/src/pages/CateringWielkanocnyPage.tsx
+			concern: localStorage is sanitized for numeric quantities only; no validation path exists for richer item configuration payloads.
+	authentication_patterns_in_domain: None present in the researched frontend route.
+	authorization_patterns_in_domain: None present in the researched frontend route.
+	data_validation_in_domain: JSON catalog fields are validated at import time and checkout form fields are validated with zod; cart persistence validates only numeric quantity maps.
+
+testing_patterns:
+	framework: none found in researched files
+	coverage_areas:
+		- Runtime source-data normalization in cateringWielkanocny.ts is untested in the researched domain.
+		- Cart persistence and rebuild logic in CateringWielkanocnyPage is untested in the researched domain.
+		- Product row quantity selector and add-to-cart callback wiring is untested in the researched domain.
+	test_organization: No colocated spec/test files were found for the route, data module, or related components.
+	mock_patterns: []
+
+open_questions:
+	- question: Should the new special configurable product behave like a single cart line with option metadata, or as multiple standard numeric products?
+		context: Current cart persistence and CheckoutDrawerCartItem contract only model id, quantity, name, price, and weight.
+	- question: Where should the special product appear in the existing section order?
+		context: The page currently has a single explicit insertion seam before the categories loop and otherwise renders all category sections uniformly from data.
+	- question: Does the special product need to be represented in the source JSON or remain a dedicated page component?
+		context: Existing normalization assumes a fixed category/product schema and cannot express richer configuration fields.
+
+gaps:
+	- area: Order submission integration
+		description: The researched checkout drawer currently logs form data and alerts success; no backend payload mapping for cart items or special configuration was examined.
+		impact: It is unclear how a configurable item would be serialized or transmitted beyond the current frontend summary state.
+	- area: Visual placement decision
+		description: The code reveals composition seams but not business intent for exact category ordering or merchandising prominence of a special product.
+		impact: The cleanest technical insertion point is visible, but final placement among hero/info/category sections remains a product decision.
+	- area: Source-of-truth strategy for configurable options
+		description: The current catalog JSON exposes only simple products with fixed price/weight fields.
+		impact: The research identifies contract limits, but not whether future options should extend JSON, remain component-local, or be modeled elsewhere.

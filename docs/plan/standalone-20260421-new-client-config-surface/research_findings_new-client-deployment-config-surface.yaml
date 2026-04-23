@@ -1,0 +1,852 @@
+plan_id: standalone-20260421-new-client-config-surface
+objective: "Zmapować techniczną i konfiguracyjną powierzchnię zmian potrzebnych do przeadresowania repozytorium BULWAR APP na innego klienta WooCommerce bez modyfikacji kodu."
+focus_area: new-client-deployment-config-surface
+created_at: "2026-04-21T00:00:00Z"
+created_by: github-copilot-gpt-5.4
+status: completed
+
+tldr: |
+  - Astro i React są ustawione na topologię WordPress na root domeny, React pod /react i Astro pod /astro; te bazowe ścieżki są wpisane w konfigurację buildu i routingu (sources: astro-site/astro.config.mjs:4-6, zip/vite.config.ts:9, zip/src/main.tsx:9, zip/src/App.tsx:24).
+  - Największa powierzchnia parametryzacji nowego klienta dotyczy domeny WordPress, slugu strony testowej, hosta/usera SSH, katalogów public_html, backupów oraz stałych BULWAR_BRIDGE_* w WordPressie (sources: astro-site/src/lib/config.ts:1, zip/src/pages/TestowaBlueprintPage.tsx:8, deploy-react.sh:4, SCRIPTS/deploy-astro-static.ps1:8-11, wordpress-plugin/bulwar-bridge/src/Config/Constants.php:16-21,38-52).
+  - Runtime React ma kilka lokalnych fallbacków do obecnego Bulwar i namespace bulwar/v1: page builder, Woo Store API, global layout oraz checkout bridge; przy nowym kliencie muszą wskazywać nową domenę albo być zasilane przez env (sources: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62-70, zip/src/blocks/registry/wordpressApi.ts:29-34, zip/src/blocks/registry/wooStoreApi.ts:55-60, zip/src/lib/fetchWordPressGlobalLayout.ts:35-79, zip/components/CheckoutDrawer.tsx:134-141,461-621).
+  - Bridge ma twarde kontrakty danych i nazewnictwa: REST namespace bulwar/v1, meta page_builder_schema/page_builder_schema_for_ai, opcje bulwar_bridge_global_layout/bulwar_bridge_site_context, special product ID i payment_method=manual_cash only (sources: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-46, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:14-17,53-58,136-147, wordpress-plugin/bulwar-bridge/src/Config/Constants.php:16-21,49,83,90, wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:120-121, wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:71,215).
+  - W repo są też twardo zaszyte operacyjne i brandowe sprzężenia do obecnego Bulwar: kanoniczne URL-e, adresy prawne/social, e-mail rezerwacji, ścieżki wp-load.php, stare aliasy hostingu typu legacy-client-alias i historyczny alias klienta oraz wygenerowane artefakty dist/deploy zawierające starą domenę (sources: zip/src/pages/CateringWielkanocnyPage.tsx:77,96-102,151,205,219-222; zip/src/pages/CateringWielkanocnyThankYouPage.tsx:28-34,89,96,110-113; get_db.js:6,21; get_settings.js:5,8; import.php:3; astro-site/dist/testowa-blueprint/index.html:1; astro-site/dist/restauracja-na-komunie/index.html:1).
+
+research_metadata:
+  methodology: "Hybrid retrieval: file_search dla priorytetowych ścieżek, semantic_search dla szerokiego wykrycia wzorców, grep_search dla domen/slugów/SSH/REST/meta keys, read_file dla szczegółowej inspekcji, vscode_listCodeUsages dla zależności WORDPRESS_BASE_URL oraz run_in_terminal do zebrania metadanych linii plików. PRD (docs/prd.yaml:1-20) został sprawdzony i nie zawierał wymagań specyficznych dla tej powierzchni wdrożeniowej."
+  scope: "Skupienie na warstwach wskazanych przez użytkownika: Astro config, React runtime fallbacks, deploy lokalny i CI, bridge WordPress/WooCommerce, skrypty operacyjne i weryfikacyjne, plus oczywiste rozszerzenia domeny badania: canonicale stron cateringowych, global layout fallback oraz wygenerowane artefakty ujawniające ukryte sprzężenia."
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: astro.config.mjs
+    path: astro-site/astro.config.mjs
+    purpose: "Konfiguracja bazowej ścieżki Astro i publicznej domeny generowanej strony."
+    key_elements:
+      - element: base
+        type: variable
+        location: astro-site/astro.config.mjs:4
+        description: "Astro jest budowane pod /astro/, co zakłada etap wdrożeniowy z techniczną ekspozycją pod subścieżką (source: astro-site/astro.config.mjs:4)."
+      - element: site
+        type: variable
+        location: astro-site/astro.config.mjs:6
+        description: "Publiczna domena SEO/canonical jest ustawiona na https://client.example (source: astro-site/astro.config.mjs:6)."
+    language: javascript
+    lines: 6
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: "Jednoźródłowa stała domeny WordPress używana przez build Astro."
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: "Twardy fallback Astro na https://client.example bez env override w tym pliku (source: astro-site/src/lib/config.ts:1)."
+    language: typescript
+    lines: 1
+
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: "Pobieranie buildable pages, page_builder_schema i global layoutu z WordPressa oraz fallback danych global layout."
+    key_elements:
+      - element: GLOBAL_LAYOUT_FALLBACK_OVERRIDE_ENV_VAR
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:48
+        description: "Astro dopuszcza obejście błędu global layout przez ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK (source: astro-site/src/lib/wordpress.ts:48)."
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:56
+        description: "Domyślny global layout zawiera brand Bulwar, adres Stary Rynek 37, kontakt, sociale i linki prawne obecnego klienta (source: astro-site/src/lib/wordpress.ts:56)."
+      - element: fetchWordPressBuildablePages
+        type: function
+        location: astro-site/src/lib/wordpress.ts:220
+        description: "Lista stron Astro jest budowana z GET /wp-json/bulwar/v1/page-builder/pages (source: astro-site/src/lib/wordpress.ts:220)."
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:242
+        description: "Pobiera page_builder_schema po slugu strony z namespace bulwar/v1 (source: astro-site/src/lib/wordpress.ts:242)."
+      - element: fetchWordPressGlobalLayout
+        type: function
+        location: astro-site/src/lib/wordpress.ts:253
+        description: "Pobiera global layout z bridge i wymaga statusów resolved w meta odpowiedzi (source: astro-site/src/lib/wordpress.ts:253)."
+    language: typescript
+    lines: 246
+
+  - file: "[slug].astro"
+    path: "astro-site/src/pages/[slug].astro"
+    purpose: "Główny pipeline build-time Astro dla każdej strony page-builder."
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:16
+        description: "Ścieżki statyczne są wyznaczane z listy buildable pages z WordPressa (source: astro-site/src/pages/[slug].astro:16)."
+      - element: loadGlobalLayout
+        type: function
+        location: astro-site/src/pages/[slug].astro:31
+        description: "Przy błędzie global layout Astro może spaść do DEFAULT_GLOBAL_LAYOUT_DATA, co przenosi brand Bulwar do nowej instancji, jeśli opcje nie zostaną zasiane (source: astro-site/src/pages/[slug].astro:31-43, astro-site/src/lib/wordpress.ts:56)."
+      - element: toAbsoluteAssetUrl
+        type: function
+        location: astro-site/src/pages/[slug].astro:53
+        description: "Relatywne assety są absolutyzowane względem WORDPRESS_BASE_URL, więc złe base URL przenosi się na obrazy, OG image i canonicale (source: astro-site/src/pages/[slug].astro:53-60, astro-site/src/lib/config.ts:1)."
+    language: astro
+    lines: 174
+
+  - file: vite.config.ts
+    path: zip/vite.config.ts
+    purpose: "Konfiguracja bazowej ścieżki React i expose env dla buildu Vite."
+    key_elements:
+      - element: base
+        type: variable
+        location: zip/vite.config.ts:9
+        description: "React build zakłada publikację pod /react/ (source: zip/vite.config.ts:9)."
+      - element: process.env.GEMINI_API_KEY
+        type: variable
+        location: zip/vite.config.ts:12
+        description: "Build React wstrzykuje GEMINI_API_KEY z env, co jest dodatkową powierzchnią sekretną poza wdrożeniem Woo/WordPress (source: zip/vite.config.ts:12)."
+    language: typescript
+    lines: 24
+
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: "Bootstrap React i routera SPA."
+    key_elements:
+      - element: BrowserRouter basename
+        type: variable
+        location: zip/src/main.tsx:9
+        description: "React Router ma basename=/react, więc każda instancja utrzymuje tę topologię, dopóki konfiguracja nie zostanie zmieniona (source: zip/src/main.tsx:9)."
+    language: typescript
+    lines: 12
+
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: "Definicja ścieżek React, w tym testowej strony page-builder i stron cateringowych."
+    key_elements:
+      - element: testowa-blueprint route
+        type: pattern
+        location: zip/src/App.tsx:24
+        description: "Trasa /testowa-blueprint jest na sztywno podpięta do TestowaBlueprintPage (source: zip/src/App.tsx:24)."
+    language: typescript
+    lines: 30
+
+  - file: TestowaBlueprintPage.tsx
+    path: zip/src/pages/TestowaBlueprintPage.tsx
+    purpose: "Testowa powierzchnia React do pobrania page_builder_schema po jednym slugu."
+    key_elements:
+      - element: PAGE_BUILDER_SLUG
+        type: variable
+        location: zip/src/pages/TestowaBlueprintPage.tsx:8
+        description: "Slug testowy jest twardo ustawiony na testowa-blueprint (source: zip/src/pages/TestowaBlueprintPage.tsx:8)."
+    language: typescript
+    lines: 50
+
+  - file: fetchWordPressPageBuilderSchema.ts
+    path: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+    purpose: "Reactowy klient page_builder_schema dla bloków registry."
+    key_elements:
+      - element: WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62
+        description: "Jeśli VITE_WORDPRESS_BASE_URL nie jest ustawione, runtime wraca do https://client.example (source: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62)."
+      - element: page-builder endpoint
+        type: function
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:70
+        description: "Schema jest pobierane z /wp-json/bulwar/v1/page-builder/pages/{slug} (source: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:70)."
+    language: typescript
+    lines: 74
+
+  - file: wordpressApi.ts
+    path: zip/src/blocks/registry/wordpressApi.ts
+    purpose: "Resolver bloków pobierających posty WordPressa po ID."
+    key_elements:
+      - element: WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/blocks/registry/wordpressApi.ts:30
+        description: "Resolver postów ma ten sam fallback domeny Bulwar co reszta registry (source: zip/src/blocks/registry/wordpressApi.ts:30)."
+      - element: wp/v2 posts fetch
+        type: function
+        location: zip/src/blocks/registry/wordpressApi.ts:68
+        description: "Posty są pobierane przez /wp-json/wp/v2/posts z _embed wp:featuredmedia (source: zip/src/blocks/registry/wordpressApi.ts:68-76)."
+    language: typescript
+    lines: 121
+
+  - file: wooStoreApi.ts
+    path: zip/src/blocks/registry/wooStoreApi.ts
+    purpose: "Resolver bloków page-builder zasilanych Woo Store API."
+    key_elements:
+      - element: WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/blocks/registry/wooStoreApi.ts:56
+        description: "Woo source w registry kieruje do starej domeny, jeśli env nie nadpisze base URL (source: zip/src/blocks/registry/wooStoreApi.ts:56)."
+      - element: Woo Store fetch
+        type: function
+        location: zip/src/blocks/registry/wooStoreApi.ts:60
+        description: "Pobiera kategorie i produkty z /wp-json/wc/store/v1/... i używa slugów kategorii jako sourceValue (source: zip/src/blocks/registry/wooStoreApi.ts:60,154-205)."
+    language: typescript
+    lines: 278
+
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: "Checkout React rozmawiający z bridge REST i trasą thank-you dla cateringu."
+    key_elements:
+      - element: buildBridgeBaseUrl
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:134
+        description: "SSR i localhost fallbackują do https://client.example, a produkcja używa window.location.origin (source: zip/components/CheckoutDrawer.tsx:134-141)."
+      - element: SLOT_LOOKAHEAD_DAYS
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:132
+        description: "Checkout zakłada 60-dniowe okno szukania slotów (source: zip/components/CheckoutDrawer.tsx:132,469,569)."
+      - element: bridge endpoints
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:461
+        description: "Drawer woła POST /wp-json/bulwar/v1/checkout/slots, /checkout/delivery-quote i /checkout/orders (source: zip/components/CheckoutDrawer.tsx:461,535,560,614)."
+      - element: manual_cash payload
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:621
+        description: "Payload zamówienia wysyła payment_method=manual_cash i po sukcesie nawigację do ścieżki thank-you cateringu (source: zip/components/CheckoutDrawer.tsx:621,679)."
+    language: typescript
+    lines: 945
+
+  - file: fetchWordPressGlobalLayout.ts
+    path: zip/src/lib/fetchWordPressGlobalLayout.ts
+    purpose: "Reactowy klient global layout bridge z klasyfikacją błędów."
+    key_elements:
+      - element: WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/lib/fetchWordPressGlobalLayout.ts:35
+        description: "Global layout po stronie React też ma fallback do starej domeny (source: zip/src/lib/fetchWordPressGlobalLayout.ts:35-37)."
+      - element: global layout endpoint
+        type: function
+        location: zip/src/lib/fetchWordPressGlobalLayout.ts:64
+        description: "Żąda /wp-json/bulwar/v1/layout/global i wymaga statusów meta resolved, analogicznie do Astro (source: zip/src/lib/fetchWordPressGlobalLayout.ts:64-143)."
+    language: typescript
+    lines: 150
+
+  - file: deploy-react.sh
+    path: deploy-react.sh
+    purpose: "Zdalny deploy archiwum React do katalogu live na dhosting."
+    key_elements:
+      - element: BASE
+        type: variable
+        location: deploy-react.sh:4
+        description: "Docelowy katalog live React jest twardo ustawiony pod obecny public_html Bulwar (source: deploy-react.sh:4)."
+      - element: chmod rules
+        type: pattern
+        location: deploy-react.sh:11
+        description: "Skrypt wymusza prawa 755/644 po rozpakowaniu, co jest częścią obowiązkowego workflow dhosting (source: deploy-react.sh:11-12)."
+    language: bash
+    lines: 13
+
+  - file: deploy-astro-static.ps1
+    path: SCRIPTS/deploy-astro-static.ps1
+    purpose: "Lokalny deploy Astro po SSH/SCP."
+    key_elements:
+      - element: sshKey
+        type: variable
+        location: SCRIPTS/deploy-astro-static.ps1:6
+        description: "Skrypt zakłada lokalny klucz id_rsa w root repo (source: SCRIPTS/deploy-astro-static.ps1:6)."
+      - element: remoteHost
+        type: variable
+        location: SCRIPTS/deploy-astro-static.ps1:8
+        description: "Host SSH jest ustawiony na client.ssh.host (source: SCRIPTS/deploy-astro-static.ps1:8)."
+      - element: remotePublicRoot
+        type: variable
+        location: SCRIPTS/deploy-astro-static.ps1:11
+        description: "Deploy idzie do /home/client-user/domains/client.example/public_html/astro z backupem w deploy_backups/astro (source: SCRIPTS/deploy-astro-static.ps1:11-12)."
+    language: powershell
+    lines: 44
+
+  - file: rollback-astro-static.ps1
+    path: SCRIPTS/rollback-astro-static.ps1
+    purpose: "Rollback Astro z backupów zdalnych."
+    key_elements:
+      - element: sshKey
+        type: variable
+        location: SCRIPTS/rollback-astro-static.ps1:8
+        description: "Rollback korzysta z tego samego lokalnego id_rsa (source: SCRIPTS/rollback-astro-static.ps1:8)."
+      - element: remoteHost
+        type: variable
+        location: SCRIPTS/rollback-astro-static.ps1:10
+        description: "Rollback jest przywiązany do hosta client.ssh.host (source: SCRIPTS/rollback-astro-static.ps1:10)."
+      - element: remotePublicRoot
+        type: variable
+        location: SCRIPTS/rollback-astro-static.ps1:12
+        description: "Rollback odtwarza wyłącznie katalog /astro w obecnym public_html Bulwar (source: SCRIPTS/rollback-astro-static.ps1:12-13)."
+    language: powershell
+    lines: 40
+
+  - file: deploy-astro-dhosting.yml
+    path: .github/workflows/deploy-astro-dhosting.yml
+    purpose: "CI deploy Astro z GitHub Actions."
+    key_elements:
+      - element: REMOTE_PUBLIC_ROOT
+        type: variable
+        location: .github/workflows/deploy-astro-dhosting.yml:24
+        description: "Workflow CI pakuje dist i wypycha je do katalogu /public_html/astro obecnej instancji Bulwar (source: .github/workflows/deploy-astro-dhosting.yml:24)."
+      - element: REMOTE_BACKUP_ROOT
+        type: variable
+        location: .github/workflows/deploy-astro-dhosting.yml:25
+        description: "Backupi CI są kierowane do /home/klient.dhosting.pl/bulwar/deploy_backups/astro (source: .github/workflows/deploy-astro-dhosting.yml:25)."
+      - element: deploy permission fix
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:76
+        description: "Workflow po deployu tworzy backup, czyści katalog live i wymusza 755/644 (source: .github/workflows/deploy-astro-dhosting.yml:76-87)."
+    language: yaml
+    lines: 82
+
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: "Źródło domyślnych stałych bridge i nazw opcji WordPress."
+    key_elements:
+      - element: bridge defaults
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:10
+        description: "Domyślne wartości obejmują timezone Europe/Warsaw, delivery fee rules, TTL, special product ID 53 i wersje slot/pricing (source: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:10-18)."
+      - element: option names
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20
+        description: "Nazwy opcji bridge są twarde: bulwar_bridge_global_layout i bulwar_bridge_site_context (source: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20-21,83,90)."
+      - element: required constants
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:57
+        description: "Bez store origin line1/city/postal code/country health endpoint pokaże missingRequiredConstants (source: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:57-64)."
+    language: php
+    lines: 82
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: "Rejestr REST API bridge."
+    key_elements:
+      - element: REST routes
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16
+        description: "Bridge wystawia health, checkout/delivery-quote, checkout/slots, checkout/orders, layout/global i page-builder/pages pod namespace bulwar/v1 (source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-46)."
+    language: php
+    lines: 60
+
+  - file: CheckoutController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+    purpose: "Walidacja REST checkoutu i delegacja do usług quote, slot i order."
+    key_elements:
+      - element: quote/slot/order validators
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:16
+        description: "Kontroler wymaga poprawnego destination, cart_lines, quote_token i slot_token zależnie od typu fulfillment (source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:16-116)."
+      - element: manual_cash restriction
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:120
+        description: "Tylko payment_method=manual_cash jest akceptowane w MVP (source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:120-121)."
+    language: php
+    lines: 138
+
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: "Bridge page-builder: listing, site-context i odczyt/zapis meta schema."
+    key_elements:
+      - element: registerMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:14
+        description: "Rejestruje meta page_builder_schema i page_builder_schema_for_ai dla typu page (source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:14-17)."
+      - element: siteContext
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:53
+        description: "CompanyName i websiteUrl mogą pochodzić z opcji bulwar_bridge_site_context albo z blogname/home_url (source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:53-58,219-246)."
+      - element: schema persistence
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:136
+        description: "Aktualizacja strony zapisuje oba meta keys w JSON, co stanowi kontrakt danych dla edycji AI i renderu (source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:136-147)."
+    language: php
+    lines: 327
+
+  - file: OrderService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+    purpose: "Tworzenie zamówienia Woo na podstawie payloadu bridge."
+    key_elements:
+      - element: payment method mapping
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:71
+        description: "Woo order jest zapisywane z payment_method manual_cash i tytułem Płatność przy odbiorze (source: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:71-72)."
+      - element: special menu item meta
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:94
+        description: "Specjalne menu dla 2 zapisuje szereg meta _bulwar_* i bulwar_person_* na itemach zamówienia (source: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:94-156)."
+    language: php
+    lines: 186
+
+  - file: QuoteService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+    purpose: "Wyliczanie kosztu dostawy i tokenu quote."
+    key_elements:
+      - element: provider fallback
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:94
+        description: "Usługa używa Google Maps przy obecnym API key, a bez niego przechodzi na Nominatim + OSRM (source: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:94-112,120-154,161-188)."
+      - element: store origin source
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:190
+        description: "Adres lokalu może pochodzić z BULWAR_BRIDGE_STORE_ORIGIN_* albo z opcji WooCommerce store_* i default_country (source: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:190-203)."
+    language: php
+    lines: 258
+
+  - file: MakeWebhookNotifier.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+    purpose: "Wysyłka podsumowania zamówienia do Make webhook po utworzeniu Woo order."
+    key_elements:
+      - element: webhook config
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:23
+        description: "Webhook jest brany z BULWAR_BRIDGE_MAKE_WEBHOOK_URL i działa tylko dla adresów https:// (source: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:23-27,72-75)."
+      - element: payload format
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:33
+        description: "Payload do Make zawiera order_id oraz text_long_string z HTML podsumowaniem zamówienia (source: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:33-38,100-163)."
+    language: php
+    lines: 199
+
+  - file: slots.json
+    path: wordpress-plugin/bulwar-bridge/config/slots.json
+    purpose: "Statyczna konfiguracja kalendarza slotów dla delivery i pickup."
+    key_elements:
+      - element: schedule config
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/config/slots.json:1
+        description: "Sloty są zapisane jako statyczny JSON z timezone Europe/Warsaw, datami, oknami, capacity i overrides, więc nowy klient wymaga osobnej konfiguracji kalendarza (source: wordpress-plugin/bulwar-bridge/config/slots.json:1-45)."
+    language: json
+    lines: 45
+
+  - file: set-bridge-config.sh
+    path: set-bridge-config.sh
+    purpose: "Skrypt dopisujący stałe bridge do wp-config.php obecnej instancji."
+    key_elements:
+      - element: TARGET
+        type: variable
+        location: set-bridge-config.sh:2
+        description: "Skrypt edytuje konkretne wp-config.php obecnego public_html Bulwar (source: set-bridge-config.sh:2,8)."
+      - element: bridge constants block
+        type: pattern
+        location: set-bridge-config.sh:11
+        description: "Wstawia twarde wartości Google Maps API key oraz adres Stary Rynek 37, Poznań 61-854, PL; nie ustawia webhooku ani pełnego zestawu delivery constants (source: set-bridge-config.sh:11-15)."
+    language: bash
+    lines: 23
+
+  - file: get_db.js
+    path: get_db.js
+    purpose: "Pobranie wp-config.php i zdalny odczyt ustawień Woo z bazy MySQL."
+    key_elements:
+      - element: remote wp-config download
+        type: pattern
+        location: get_db.js:6
+        description: "Script używa id_rsa i client@client.ssh.host, ale pobiera wp-config z aliasu legacy-client-alias/public_html (source: get_db.js:6)."
+      - element: remote mysql command
+        type: pattern
+        location: get_db.js:21
+        description: "Buduje komendę ssh+mysql z danymi DB wyciągniętymi z wp-config.php, co jest silnym sprzężeniem środowiskowym i sekretnym (source: get_db.js:21)."
+    language: javascript
+    lines: 31
+
+  - file: get_settings.js
+    path: get_settings.js
+    purpose: "Zdalny odczyt podstawowych ustawień Woo przez WP-CLI."
+    key_elements:
+      - element: remote wp-cli path
+        type: pattern
+        location: get_settings.js:8
+        description: "Script zakłada php83 /usr/local/bin/wp-cli.phar, host client.ssh.host i --path=legacy-client-alias, czyli obecne aliasy środowiska (source: get_settings.js:5,8)."
+    language: javascript
+    lines: 16
+
+  - file: import.php
+    path: import.php
+    purpose: "Import kategorii i prostych produktów Woo po wp-load.php."
+    key_elements:
+      - element: wp-load path
+        type: pattern
+        location: import.php:3
+        description: "Importer wymaga obecnej ścieżki client.example/public_html/wp-load.php (source: import.php:3)."
+    language: php
+    lines: 54
+
+  - file: verify scripts
+    path: verify-order.sh
+    purpose: "Pakiet ręcznych skryptów walidacyjnych dla zamówień i meta Woo po deployu bridge."
+    key_elements:
+      - element: wp-cli live root
+        type: pattern
+        location: verify-order.sh:4
+        description: "Skrypty verify-* wchodzą do konkretnego /home/client-user/domains/client.example/public_html i uruchamiają php83 wp-cli.phar eval (sources: verify-order.sh:4-5, verify-latest-order.sh:4-5, verify-order-item-meta.sh:4-5, verify-order-item-meta-latest.sh:4-5, verify-latest-order-full.sh:4-5)."
+      - element: fixed probe outputs
+        type: pattern
+        location: verify-order.sh:8
+        description: "Skrypty zwracają sentinel values typu ORDER_NOT_FOUND i NO_ORDERS, używane jako ręczna weryfikacja środowiska (sources: verify-order.sh:8, verify-latest-order.sh:15, verify-order-item-meta.sh:8, verify-order-item-meta-latest.sh:15, verify-latest-order-full.sh:15)."
+    language: bash
+    lines: 31
+
+  - file: wpcli-create-test-order.php
+    path: wpcli-create-test-order.php
+    purpose: "Tworzenie testowego Woo order przez bridge services na żywym pathie WordPressa."
+    key_elements:
+      - element: fixed special product and slots path
+        type: pattern
+        location: wpcli-create-test-order.php:7
+        description: "Skrypt testowy zakłada product_id 53, konkretne payloady personalne i slots.json pod obecnym wp-content/plugins/bulwar-bridge/config/slots.json (source: wpcli-create-test-order.php:7-44,45)."
+    language: php
+    lines: 72
+
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: "Sezonowa strona cateringu z twardym SEO i danymi Bulwar."
+    key_elements:
+      - element: canonical URL
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:102
+        description: "Canonical strony cateringu jest twardo ustawiony na https://client.example/react/catering-wielkanocny (source: zip/src/pages/CateringWielkanocnyPage.tsx:102,151)."
+      - element: brand links
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:205
+        description: "Page zawiera homeHref=https://bulwarrestauracja.pl, www.bulwarrestauracja.pl, rezerwacje@bulwarrestauracja.pl i linki prawne obecnego klienta (source: zip/src/pages/CateringWielkanocnyPage.tsx:77,96-97,205,219-222)."
+    language: typescript
+    lines: 246
+
+  - file: CateringWielkanocnyThankYouPage.tsx
+    path: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+    purpose: "Strona potwierdzenia zamówienia cateringu z twardym SEO/brandem."
+    key_elements:
+      - element: canonical URL
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:34
+        description: "Canonical thank-you jest twardo ustawiony na domenę v2 i ścieżkę /react (source: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:34,89)."
+      - element: legal/home links
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:96
+        description: "Page zawiera /react path powrotu do cateringu oraz linki www.bulwarrestauracja.pl i prawne URL-e Bulwar (source: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:28-29,96,110-113)."
+    language: typescript
+    lines: 132
+
+patterns_found:
+  - category: architecture
+    pattern: "Stała topologia ścieżek /astro + /react"
+    description: "Budowanie i routing obu frontendów zakładają niezmienny model WordPress na root domeny, React pod /react i Astro pod /astro."
+    examples:
+      - file: astro-site/astro.config.mjs
+        location: astro-site/astro.config.mjs:4-6
+        snippet: "base: '/astro/' i site: 'https://client.example'"
+      - file: zip/vite.config.ts
+        location: zip/vite.config.ts:9
+        snippet: "base: '/react/'"
+      - file: zip/src/main.tsx
+        location: zip/src/main.tsx:9
+        snippet: "<BrowserRouter basename=\"/react\">"
+    prevalence: common
+
+  - category: naming
+    pattern: "Slug testowej strony i namespace API są produktowo nazwane pod Bulwar"
+    description: "Slug testowa-blueprint i namespace bulwar/v1 są rozlane przez frontend, bridge, testy i skrypty seedujące."
+    examples:
+      - file: zip/src/pages/TestowaBlueprintPage.tsx
+        location: zip/src/pages/TestowaBlueprintPage.tsx:8
+        snippet: "const PAGE_BUILDER_SLUG = \"testowa-blueprint\""
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:24
+        snippet: "<Route path=\"/testowa-blueprint\" ... />"
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-46
+        snippet: "register_rest_route('bulwar/v1', ...)"
+    prevalence: common
+
+  - category: structure
+    pattern: "Fallback domeny WordPress przez env albo twardą wartość Bulwar"
+    description: "React registry i helper global layout korzystają z VITE_WORDPRESS_BASE_URL, ale każdy z tych modułów ma własny fallback do https://client.example. Astro ma osobną twardą stałą bez env override w config.ts."
+    examples:
+      - file: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62-70
+        snippet: "VITE_WORDPRESS_BASE_URL ?? 'https://client.example'"
+      - file: zip/src/blocks/registry/wordpressApi.ts
+        location: zip/src/blocks/registry/wordpressApi.ts:29-34
+        snippet: "const WORDPRESS_BASE_URL = ... ?? 'https://client.example'"
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:1
+        snippet: "export const WORDPRESS_BASE_URL = 'https://client.example';"
+    prevalence: common
+
+  - category: architecture
+    pattern: "Bridge checkout kontraktuje własny REST i własne tokeny"
+    description: "React checkout komunikuje się z bridge REST pod bulwar/v1, a bridge z kolei tworzy Woo orders i opcjonalnie wysyła webhook do Make."
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:461-621
+        snippet: "fetch(.../checkout/slots), fetch(.../checkout/delivery-quote), fetch(.../checkout/orders)"
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:22-34
+        snippet: "register_rest_route('bulwar/v1', '/checkout/...')"
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:115-118
+        snippet: "(new MakeWebhookNotifier())->send($order);"
+    prevalence: common
+
+  - category: error_handling
+    pattern: "Bridge i global layout używają meta-status i sentinel errors zamiast łagodnych defaultów produkcyjnych"
+    description: "Astro i React traktują unresolved global layout jako błąd kontraktu, a skrypty verify-* emitują własne kody tekstowe typu NO_ORDERS."
+    examples:
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:253-272
+        snippet: "throw new Error(`Global layout endpoint returned unresolved meta...`)"
+      - file: zip/src/lib/fetchWordPressGlobalLayout.ts
+        location: zip/src/lib/fetchWordPressGlobalLayout.ts:125-143
+        snippet: "kind: 'meta-status'"
+      - file: verify-latest-order.sh
+        location: verify-latest-order.sh:15
+        snippet: "echo \"NO_ORDERS\\n\";"
+    prevalence: occasional
+
+  - category: structure
+    pattern: "Deploy i operacje są twardo sprzężone z dhosting i bieżącą ścieżką public_html"
+    description: "Lokalne skrypty, workflow CI i narzędzia serwisowe zakładają jeden host SSH, jeden klucz id_rsa, jedną strukturę katalogów i ręczne chmod 755/644."
+    examples:
+      - file: SCRIPTS/deploy-astro-static.ps1
+        location: SCRIPTS/deploy-astro-static.ps1:6-12
+        snippet: "id_rsa, client.ssh.host, .../public_html/astro"
+      - file: .github/workflows/deploy-astro-dhosting.yml
+        location: .github/workflows/deploy-astro-dhosting.yml:24-25,76-87
+        snippet: "REMOTE_PUBLIC_ROOT, REMOTE_BACKUP_ROOT, chmod 755/644"
+      - file: deploy-react.sh
+        location: deploy-react.sh:4-12
+        snippet: "BASE=.../public_html; find ... chmod 755/644"
+    prevalence: common
+
+  - category: structure
+    pattern: "Brand i SEO obecnego klienta są wpisane poza page-builderem"
+    description: "Część sezonowych stron React i fallback global layout mają literalne URL-e, contact info, linki prawne i copy Bulwar, niezależnie od danych WordPressa."
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:77,96-102,205,219-222
+        snippet: "rezerwacje@bulwarrestauracja.pl, canonical v2, homeHref=https://bulwarrestauracja.pl"
+      - file: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:28-34,96,110-113
+        snippet: "canonical v2, legal links, www.bulwarrestauracja.pl"
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:56-155
+        snippet: "DEFAULT_GLOBAL_LAYOUT_DATA with Bulwar address/social/legal"
+    prevalence: occasional
+
+  - category: testing
+    pattern: "Testy i artefakty utrwalają starą domenę i slug"
+    description: "Część testów i wygenerowanych paczek sprawdza lub zawiera https://client.example i testowa-blueprint, co zwiększa powierzchnię zmian przy kliencie B."
+    examples:
+      - file: astro-site/src/lib/wordpress.test.ts
+        location: astro-site/src/lib/wordpress.test.ts:44
+        snippet: "assert.equal(..., 'https://client.example/wp-json/bulwar/v1/page-builder/pages')"
+      - file: zip/src/lib/fetchWordPressGlobalLayout.test.ts
+        location: zip/src/lib/fetchWordPressGlobalLayout.test.ts:83
+        snippet: "assert.equal(..., 'https://client.example/wp-json/bulwar/v1/layout/global')"
+      - file: astro-site/dist/testowa-blueprint/index.html
+        location: astro-site/dist/testowa-blueprint/index.html:1
+        snippet: "canonical href='https://client.example/astro/testowa-blueprint/'"
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Astro static site build pipeline
+      responsibility: "Pobiera listę stron, schema i global layout z WordPressa podczas buildu, a następnie generuje SEO i absolutne assety."
+      location: astro-site/src/lib/config.ts; astro-site/src/lib/wordpress.ts; astro-site/src/pages/[slug].astro
+      relationship_to_domain: "domain depends on this"
+    - component: React page-builder runtime
+      responsibility: "Pobiera page_builder_schema i źródła Woo/WordPress dla testowej strony oraz renderuje je klient-side."
+      location: zip/src/pages/TestowaBlueprintPage.tsx; zip/src/blocks/registry/**
+      relationship_to_domain: "domain depends on this"
+    - component: React checkout runtime
+      responsibility: "Wylicza quote, pobiera sloty i wysyła zamówienia do bridge REST."
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: "domain depends on this"
+    - component: WordPress bridge plugin
+      responsibility: "Wystawia REST, trzyma kontrakty page builder/global layout/site context i tłumaczy checkout React na Woo order + webhook."
+      location: wordpress-plugin/bulwar-bridge/**
+      relationship_to_domain: "domain depends on this"
+    - component: Deploy and operator scripts
+      responsibility: "Wypychają buildy i wykonują diagnostykę/seedowanie na zdalnym WordPressie."
+      location: deploy-react.sh; SCRIPTS/deploy-astro-static.ps1; SCRIPTS/rollback-astro-static.ps1; .github/workflows/deploy-astro-dhosting.yml; get_db.js; get_settings.js; import.php; verify-*.sh
+      relationship_to_domain: "domain depends on this"
+  interfaces_used_by_domain:
+    - interface: "GET /wp-json/bulwar/v1/page-builder/pages"
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46; astro-site/src/lib/wordpress.ts:220
+      usage_pattern: "Astro build uses it for getStaticPaths; listing omits unpublished/noindex pages."
+    - interface: "GET /wp-json/bulwar/v1/page-builder/pages/{slug}"
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52; zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:70; astro-site/src/lib/wordpress.ts:242
+      usage_pattern: "Astro and React both fetch render schema by slug."
+    - interface: "GET /wp-json/bulwar/v1/layout/global"
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40; astro-site/src/lib/wordpress.ts:253; zip/src/lib/fetchWordPressGlobalLayout.ts:64
+      usage_pattern: "Astro and React require resolved bridge meta for navbar/footer data."
+    - interface: "POST /wp-json/bulwar/v1/checkout/delivery-quote"
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:22; zip/components/CheckoutDrawer.tsx:535
+      usage_pattern: "React requests delivery fee/token before slot lookup and order creation."
+    - interface: "POST /wp-json/bulwar/v1/checkout/slots"
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:28; zip/components/CheckoutDrawer.tsx:461,560
+      usage_pattern: "React retrieves pickup/delivery slot options using lookahead days and optional quote token."
+    - interface: "POST /wp-json/bulwar/v1/checkout/orders"
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:34; zip/components/CheckoutDrawer.tsx:614
+      usage_pattern: "React submits manual_cash order and then navigates to thank-you route."
+    - interface: "Woo Store API /wp-json/wc/store/v1/products and /products/categories"
+      location: zip/src/blocks/registry/wooStoreApi.ts:154-205
+      usage_pattern: "Registry source resolution maps Woo categories/products into menu block data."
+  data_flow_involving_domain: "WordPress pages store page_builder_schema/page_builder_schema_for_ai in post meta (wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:14-17,83-147). Astro build reads the list and each schema from bridge REST, absolutizes assets against WORDPRESS_BASE_URL and writes canonical/OG URLs using Astro.site plus WordPress asset base (astro-site/src/lib/wordpress.ts:220-253; astro-site/src/pages/[slug].astro:16-160). React test page uses the same schema endpoint plus Woo/WordPress side resolvers (zip/src/pages/TestowaBlueprintPage.tsx:8-20; zip/src/blocks/registry/resolvePageBuilderSources.ts:35-118). Checkout React posts to bridge REST, bridge resolves tokens, reads Woo products/prices, creates Woo orders, stores _bulwar_* meta, and optionally sends a Make webhook (zip/components/CheckoutDrawer.tsx:461-679; wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:16-258; wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:16-186; wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:33-98)."
+  key_relationships_to_domain:
+    - from: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: astro-site/src/lib/wordpress.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: astro-site/src/lib/wordpress.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+      relationship: calls
+    - from: zip/components/CheckoutDrawer.tsx
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+      relationship: calls
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JavaScript
+    - PHP
+    - Bash
+    - PowerShell
+    - YAML
+    - JSON
+    - Astro
+  frameworks_used_in_domain:
+    - name: Astro ^5.14.2
+      usage_in_domain: "Static build of WordPress-fed pages and SEO shell (source: astro-site/package.json:1-20)."
+    - name: React ^19.0.0
+      usage_in_domain: "SPA runtime for page-builder preview and checkout flow (source: zip/package.json:1-48)."
+    - name: Vite ^6.2.0
+      usage_in_domain: "Build and base-path control for React deployment under /react (source: zip/package.json:1-48; zip/vite.config.ts:9)."
+    - name: WooCommerce / WordPress REST
+      usage_in_domain: "Source of products, categories, page builder schemas, global layout and final Woo order creation (sources: zip/src/blocks/registry/wooStoreApi.ts:154-205; wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-46)."
+  libraries_used_in_domain:
+    - name: zod ^4.3.6
+      purpose_in_domain: "Contract parsing for schema/global layout payloads in Astro and React (sources: astro-site/package.json:10; zip/package.json:30; astro-site/src/lib/wordpress.ts:1-35)."
+    - name: react-router-dom ^7.13.1
+      purpose_in_domain: "Client-side routing under basename /react (source: zip/package.json:27; zip/src/main.tsx:9; zip/src/App.tsx:15-27)."
+    - name: react-hook-form ^7.72.0
+      purpose_in_domain: "Checkout form validation and submit flow (source: zip/package.json:24; zip/components/CheckoutDrawer.tsx:6,21-55)."
+    - name: lucide-react ^0.546.0
+      purpose_in_domain: "Checkout UI icons in drawer (source: zip/package.json:21; zip/components/CheckoutDrawer.tsx:5)."
+  external_apis_used_in_domain:
+    - name: WordPress REST API
+      integration_point: "bulwar/v1 page-builder, layout and checkout routes plus wp/v2 posts (sources: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-46; zip/src/blocks/registry/wordpressApi.ts:68-76)."
+    - name: Woo Store API
+      integration_point: "/wp-json/wc/store/v1/products and /products/categories (source: zip/src/blocks/registry/wooStoreApi.ts:154-205)."
+    - name: Google Maps Geocoding/Distance Matrix
+      integration_point: "Delivery quote provider when BULWAR_BRIDGE_GOOGLE_MAPS_API_KEY is set (source: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:94-154)."
+    - name: Nominatim + OSRM
+      integration_point: "Fallback geocoding/routing when Google key is absent (source: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:107-188)."
+    - name: Make webhook
+      integration_point: "Post-order summary push controlled by BULWAR_BRIDGE_MAKE_WEBHOOK_URL (source: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:23-98)."
+
+related_conventions:
+  naming_patterns_in_domain: "Bridge używa prefiksu BULWAR_BRIDGE_* dla stałych i _bulwar_* dla meta zamówień; page builder przechowuje page_builder_schema oraz page_builder_schema_for_ai; testowy slug i część skryptów używają nazwy testowa-blueprint (sources: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:10-21; wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:108-156; zip/src/pages/TestowaBlueprintPage.tsx:8)."
+  structure_of_domain: "Astro ma jeden centralny config domeny (astro-site/src/lib/config.ts:1), podczas gdy React ma kilka niezależnych helperów WORDPRESS_BASE_URL z lokalnym env fallbackiem w registry/global layout helpers (zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62; zip/src/blocks/registry/wordpressApi.ts:30; zip/src/blocks/registry/wooStoreApi.ts:56; zip/src/lib/fetchWordPressGlobalLayout.ts:35)."
+  error_handling_in_domain: "Bridge zwraca własne kody VALIDATION_ERROR, QUOTE_REQUIRED, QUOTE_EXPIRED, SLOT_EXPIRED, UNKNOWN_PRODUCT, ORDER_CREATE_FAILED itd. (source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:16-138). Global layout React klasyfikuje błędy jako transport/http/application/contract/meta-status (source: zip/src/lib/fetchWordPressGlobalLayout.ts:17-143)."
+  testing_in_domain: "Testy jednostkowe i kontraktowe istnieją dla Astro typings/global layout, bridge PHP i generatorów page_builder_schema_for_ai, ale część z nich utrwala starą domenę i slug testowa-blueprint (sources: astro-site/src/lib/wordpress.test.ts:44; zip/src/lib/fetchWordPressGlobalLayout.test.ts:83; astro-site/src/lib/types.test.ts:9,57; SCRIPTS/generate-page-builder-ai-schema.test.js:12-20)."
+  documentation_in_domain: "Repo zawiera operator docs o klonowaniu/wdrożeniu nowego klienta w docs/setup/*, a bridge ma własne contracts.md opisujące namespace, checkout contract i manual_cash only (sources: docs/setup/day-1-checklista-klonowania.md:1-24; docs/setup/repo-do-klonowania-plan-parametryzacji.md:1-47; wordpress-plugin/bulwar-bridge/docs/contracts.md:5-28,356-460)."
+
+related_dependencies:
+  internal:
+    - component: astro-site/src/lib/config.ts
+      relationship_to_domain: "Provides WORDPRESS_BASE_URL consumed by Astro fetch helpers and SEO asset absolutization."
+      direction: outbound
+    - component: zip/src/blocks/registry/**
+      relationship_to_domain: "Consumes WordPress/Woo endpoints and emits resolved page-builder data for React preview/runtime."
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/**
+      relationship_to_domain: "Exposes the REST surface consumed by Astro and React."
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Checkout/**
+      relationship_to_domain: "Implements quote/order/webhook behaviors behind the REST surface."
+      direction: inbound
+    - component: deploy-react.sh and SCRIPTS/deploy-astro-static.ps1
+      relationship_to_domain: "Publish compiled frontends to remote dhosting paths."
+      direction: outbound
+  external:
+    - name: dhosting SSH/SCP + php83/wp-cli.phar
+      purpose_for_domain: "Deployment and live verification against remote WordPress install paths (sources: SCRIPTS/deploy-astro-static.ps1:8-12; get_settings.js:8; verify-order.sh:4-5)."
+    - name: WooCommerce runtime
+      purpose_for_domain: "Product lookup, store address fallback and order creation (sources: zip/src/blocks/registry/wooStoreApi.ts:154-205; wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:59-118; wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:72-92,190-203)."
+    - name: WordPress option/meta storage
+      purpose_for_domain: "Site context, global layout option and page builder schemas are stored there (sources: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20-21,83,90; wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:83-147,219-246)."
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: "Bridge config seeding script"
+      location: set-bridge-config.sh:11-15
+      concern: "Skrypt zawiera jawny Google Maps API key i adres lokalu obecnego klienta."
+    - area: "Remote DB extraction tooling"
+      location: get_db.js:6-21
+      concern: "Script pobiera wp-config.php, parsuje DB creds i składa komendę mysql po SSH."
+    - area: "SSH key assumption"
+      location: SCRIPTS/deploy-astro-static.ps1:6; SCRIPTS/rollback-astro-static.ps1:8; get_db.js:6; get_settings.js:8
+      concern: "Wiele narzędzi zakłada lokalny id_rsa w repo root lub stałą ścieżkę do klucza."
+    - area: "Temporary config artifact"
+      location: temp_wp_config.php:32
+      concern: "Workspace zawiera tymczasowy plik z hostem DB obecnego środowiska."
+  authentication_patterns_in_domain: "Deploy i narzędzia operatorskie używają SSH key auth przez scp/ssh; bridge REST checkout jest publiczny i opiera się na walidacji payloadu oraz tokenach quote/slot zamiast auth użytkownika (sources: SCRIPTS/deploy-astro-static.ps1:6-12; .github/workflows/deploy-astro-dhosting.yml:41-67; wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-46; wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:16-138)."
+  authorization_patterns_in_domain: "Publiczne są GET health/layout/page-builder oraz POST checkout routes; tylko POST update page-builder pages wymaga current_user_can('edit_pages') (sources: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16-58)."
+  data_validation_in_domain: "CheckoutController waliduje shape requestów, OrderService weryfikuje tokeny i produkty Woo, QuoteService waliduje destination i cart lines, a helpery React/Astro parsują odpowiedzi przez zod/normalizację kontraktu (sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:16-138; wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:16-118; wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:16-258; astro-site/src/lib/wordpress.ts:221-272; zip/src/lib/fetchWordPressGlobalLayout.ts:64-143)."
+
+testing_patterns:
+  framework: "Mieszane testy Node/TypeScript oraz lekkie testy PHP bez pełnego runtime WordPress; dodatkowo obecne są ręczne skrypty verify-* i wpcli-create-test-order.php do live verification."
+  coverage_areas:
+    - "Kontrakt list/buildable pages i global layout w Astro i React (sources: astro-site/src/lib/wordpress.test.ts:44; zip/src/lib/fetchWordPressGlobalLayout.test.ts:83)."
+    - "Bridge controllers/services dla checkout, availability i layout (sources: wordpress-plugin/bulwar-bridge/tests/AvailabilityServiceTest.php:1-98; wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:176; wordpress-plugin/bulwar-bridge/tests/PageBuilderControllerTest.php:252-315)."
+    - "Generatory i runtime page_builder_schema_for_ai oraz seed files dla testowa-blueprint (sources: SCRIPTS/generate-page-builder-ai-schema.test.js:12-20; SCRIPTS/seed-testowa-blueprint-schema.sh:6-27)."
+  test_organization: "Testy są rozrzucone po domenach: astro-site/src/lib/*.test.ts, zip/src/lib/*.test.ts, zip/src/blocks/registry/*.test.tsx, wordpress-plugin/bulwar-bridge/tests/*.php oraz SCRIPTS/*.test.*."
+  mock_patterns:
+    - "fetch stubs z twardą domeną client.example"
+    - "PHP helper stubs dla wp_json_encode/wp_salt i tymczasowe pliki slots JSON"
+    - "Ręczne live probes przez wp-cli.phar eval"
+
+open_questions:
+  - question: "Czy nowa instancja zachowuje ten sam model publikacji: WordPress na /, React na /react i Astro na /astro?"
+    context: "Base pathy i routing obu frontendów są twardo ustawione, więc zmiana topologii wpływa na build, router, canonicale i deploy."
+    type: decision_blocker
+    affects: [new-client-deployment-config-surface]
+  - question: "Czy slug testowej strony page-builder ma nadal pełnić rolę testowa-blueprint, czy ma zostać zastąpiony klientowym slugiem wdrożeniowym?"
+    context: "Slug jest zaszyty w React, seed scripts, testach i wygenerowanych artefaktach."
+    type: decision_blocker
+    affects: [new-client-deployment-config-surface]
+  - question: "Czy checkout nowego klienta nadal dopuszcza wyłącznie manual_cash, czy będzie potrzebne mapowanie do realnego kodu gatewaya WooCommerce?"
+    context: "Bridge i React są zamrożone na manual_cash only, a contracts.md sam wskazuje, że mapowanie do live gateway code wymaga potwierdzenia."
+    type: decision_blocker
+    affects: [new-client-deployment-config-surface]
+  - question: "Czy sezonowe strony cateringowe mają wejść do klonu 1:1, czy powinny zostać potraktowane jako osobna powierzchnia migracji brand/SEO?"
+    context: "CateringWielkanocnyPage i ThankYou mają osobne kanoniczne URL-e, linki brandowe i ścieżkę thank-you niezależną od page-buildera."
+    type: research
+    affects: [new-client-deployment-config-surface]
+  - question: "Czy opcje bulwar_bridge_global_layout i bulwar_bridge_site_context pozostają niezmienne jako nazwy techniczne, czy mają być też rebrandowane?"
+    context: "Nazwy opcji są używane po obu stronach bridge/site-context i nie są tylko copy marketingowym."
+    type: research
+    affects: [new-client-deployment-config-surface]
+
+gaps:
+  - area: "Wygenerowane artefakty deploy/dist"
+    description: "Potwierdzono obecność wielu wygenerowanych paczek i distów zawierających starą domenę oraz slug testowa-blueprint, ale nie zinwentaryzowano każdej kopii katalogów zip/deploy-* i react-deploy-* osobno."
+    impact: nice_to_know
+    affects: [new-client-deployment-config-surface]
+  - area: "Ignorowane env/secrets poza widocznymi plikami"
+    description: "Badanie nie otwierało wszystkich potencjalnych plików .env ani sekretów w katalogach ignorowanych; wykryto jedynie jawnie widoczne ślady jak zip/.env:1, temp_wp_config.php:32 i set-bridge-config.sh:11-15."
+    impact: nice_to_know
+    affects: [new-client-deployment-config-surface]
+  - area: "Workflow poza priorytetowymi ścieżkami"
+    description: "Nie wykonano pełnej analizy wszystkich pomocniczych skryptów SCRIPTS/* niezwiązanych bezpośrednio z listą priorytetową użytkownika, mimo że grep wykrył dalsze sprzężenia środowiskowe np. w run_upload.js, upload_products.js i sync_catering_category.js."
+    impact: nice_to_know
+    affects: [new-client-deployment-config-surface]

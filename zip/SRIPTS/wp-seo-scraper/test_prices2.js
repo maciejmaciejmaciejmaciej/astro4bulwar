@@ -1,0 +1,1 @@
+﻿const axios = require('axios'); const cheerio = require('cheerio'); axios.get('https://bulwarrestauracja.pl/menu/dania-glowne/').then(res => { const $ = cheerio.load(res.data); console.log(.bt-menu-price.text(), .price.text(), body.html().substring(10000, 10500)); });

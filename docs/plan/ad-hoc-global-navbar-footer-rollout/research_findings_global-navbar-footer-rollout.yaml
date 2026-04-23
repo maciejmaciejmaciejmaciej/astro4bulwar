@@ -1,0 +1,811 @@
+plan_id: ad-hoc-global-navbar-footer-rollout
+objective: Prepare read-only implementation notes for a global navbar/footer rollout across the Bulwar WordPress bridge, React app, and Astro site.
+focus_area: global-navbar-footer-rollout
+created_at: 2026-04-18T00:00:00Z
+created_by: github-copilot-gpt-5.4
+status: completed
+
+tldr: |
+  - The WordPress bridge currently exposes only page-level page-builder data at `GET/POST /wp-json/bulwar/v1/page-builder/pages/{slug}` and persists that data only in page post meta keys `page_builder_schema` and `page_builder_schema_for_ai` ([wordpress-plugin/bulwar-bridge/src/Http/Routes.php:39](wordpress-plugin/bulwar-bridge/src/Http/Routes.php#L39), [wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:33](wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php#L33), [wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:86](wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php#L86)).
+  - React resolves WordPress-driven page-builder content in two phases: schema fetch via `fetchWordPressPageBuilderSchema()` and source hydration via `resolvePageBuilderSchemaSources()`; `TestowaBlueprintPage` is the clearest live example of that chain ([zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:61](zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts#L61), [zip/src/blocks/registry/resolvePageBuilderSources.ts:38](zip/src/blocks/registry/resolvePageBuilderSources.ts#L38), [zip/src/pages/TestowaBlueprintPage.tsx:22](zip/src/pages/TestowaBlueprintPage.tsx#L22)).
+  - Astro uses a parallel build-time pipeline, but its schema/types currently cover only gallery and one menu block, and its layout chrome is still fully hardcoded in `BaseLayout.astro`, `Navbar.astro`, and `Footer.astro` ([astro-site/src/lib/wordpress.ts:50](astro-site/src/lib/wordpress.ts#L50), [astro-site/src/lib/pageBuilder.ts:5](astro-site/src/lib/pageBuilder.ts#L5), [astro-site/src/lib/types.ts:58](astro-site/src/lib/types.ts#L58), [astro-site/src/layouts/BaseLayout.astro:26](astro-site/src/layouts/BaseLayout.astro#L26)).
+  - The main React navbar/footer pair is not data-driven: `NavbarBigSpaceBetweenElements.tsx` embeds `NAV_ITEMS`, `FOOTER_LINKS`, `COMPANY_LINKS`, and local open-state internally, while `Footer.tsx` hardcodes all contact/legal/social content ([zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:6](zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx#L6), [zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:66](zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx#L66), [zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:85](zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx#L85), [zip/src/components/sections/Footer.tsx:1](zip/src/components/sections/Footer.tsx#L1)).
+  - The current rollout gotchas are concrete: React has duplicate shell ownership between `RootLayout` and `HomePage`, Astro has a separate hardcoded chrome implementation, and the only existing prop-driven layout pieces are the catering header/footer variants ([zip/src/layouts/RootLayout.tsx:13](zip/src/layouts/RootLayout.tsx#L13), [zip/src/pages/HomePage.tsx:71](zip/src/pages/HomePage.tsx#L71), [astro-site/src/components/Navbar.astro:6](astro-site/src/components/Navbar.astro#L6), [zip/src/components/sections/CateringPageHeader.tsx:1](zip/src/components/sections/CateringPageHeader.tsx#L1), [zip/src/components/sections/CateringPageFooter.tsx:6](zip/src/components/sections/CateringPageFooter.tsx#L6)).
+
+research_metadata:
+  methodology: hybrid retrieval using `file_search`, `grep_search`, `semantic_search`, targeted `read_file`, memory review, and one PowerShell line-count pass
+  scope: focused pass across the WordPress bridge entrypoints, page-builder fetch/hydration helpers in React and Astro, and all current navbar/footer shell components that affect a global rollout
+  confidence: high
+  coverage: 92
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: bulwar-bridge.php
+    path: wordpress-plugin/bulwar-bridge/bulwar-bridge.php
+    purpose: Plugin entrypoint that wires the bridge class graph into WordPress.
+    key_elements:
+      - element: Plugin bootstrap require chain
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/bulwar-bridge.php:13
+        description: Requires plugin, config, response, token, checkout, slots, controller, and route classes before calling `Plugin::bootstrap(__FILE__)`.
+    language: php
+    lines: 24
+  - file: Plugin.php
+    path: wordpress-plugin/bulwar-bridge/src/Plugin.php
+    purpose: Registers WordPress hooks for constants, page-builder meta, REST routes, and Woo order-meta presentation filters.
+    key_elements:
+      - element: bootstrap
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:13
+        description: Hooks constants bootstrap, page-builder meta registration, REST route registration, and Woo order item meta filters.
+      - element: filterHiddenOrderItemMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:35
+        description: Hides special-menu internal order item meta keys from default WooCommerce displays.
+    language: php
+    lines: 63
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Central REST route registry for bridge endpoints.
+    key_elements:
+      - element: register
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:11
+        description: Registers health, checkout, and page-builder routes under the `bulwar/v1` namespace.
+      - element: page-builder GET route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:39
+        description: Public GET route for page-builder data by page slug.
+      - element: page-builder POST route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:45
+        description: Edit-page-protected POST route for updating `schema` and `aiSchema`.
+    language: php
+    lines: 44
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Reads and writes page-builder schema from page post meta and normalizes page metadata into the API response.
+    key_elements:
+      - element: registerMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:13
+        description: Registers `page_builder_schema` and `page_builder_schema_for_ai` as page post meta.
+      - element: show
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:19
+        description: Resolves page by slug, reads `page_builder_schema`, normalizes it, and optionally includes normalized AI schema.
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:56
+        description: Accepts `schema` and `aiSchema`, coerces JSON/object payloads, then writes both meta keys.
+      - element: registerSchemaMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:102
+        description: Uses `register_post_meta('page', ...)` with `show_in_rest` and `edit_pages` auth callbacks.
+      - element: normalizeSchema
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:170
+        description: Forces schema version and section arrays, and overwrites `page.slug`, `page.title`, and `page.status` from the actual WP page.
+    language: php
+    lines: 179
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: Holds bridge configuration defaults and exposes normalized config values.
+    key_elements:
+      - element: DEFAULTS
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:9
+        description: Defines bridge constants including time zone, pricing values, slot TTLs, special product ID, and Make webhook URL.
+      - element: all
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:31
+        description: Returns normalized config keys consumed by checkout and availability services.
+      - element: missingRequiredConstants
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:64
+        description: Reports which store-origin constants are still unset.
+    language: php
+    lines: 70
+  - file: CheckoutController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+    purpose: Thin request validation and service dispatch layer for quote, slots, and order creation.
+    key_elements:
+      - element: deliveryQuote
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:15
+        description: Validates destination and cart lines, then delegates to `QuoteService`.
+      - element: slots
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:41
+        description: Validates slot request shape, decodes delivery quote tokens when required, then delegates to `AvailabilityService`.
+      - element: orders
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:94
+        description: Validates order payload shape and delegates final persistence to `OrderService`.
+    language: php
+    lines: 138
+  - file: QuoteService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+    purpose: Canonicalizes delivery quotes, computes fees, and mints quote tokens.
+    key_elements:
+      - element: quote
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:18
+        description: Canonicalizes destination, recalculates subtotal from Woo products, computes distance-based delivery, and mints the `bq_` quote token.
+      - element: storeOriginAddress
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:225
+        description: Resolves origin from bridge constants first, then falls back to WooCommerce options `woocommerce_store_address`, `woocommerce_store_city`, `woocommerce_store_postcode`, and `woocommerce_default_country`.
+      - element: cartFingerprintSource
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:253
+        description: Includes line configuration content in the cart fingerprint used by the quote token.
+    language: php
+    lines: 258
+  - file: OrderService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+    purpose: Creates Woo orders, validates quote and slot tokens, and persists fulfillment/special-menu meta.
+    key_elements:
+      - element: create
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:17
+        description: Handles idempotency, token validation, Woo order creation, fee insertion, order meta persistence, and post-save Make notification.
+      - element: addSpecialMenuFor2Meta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:138
+        description: Writes readable and hidden per-person special-menu item meta onto Woo order line items.
+      - element: findExistingOrder
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:185
+        description: Uses `_bulwar_idempotency_key` to make order creation idempotent.
+    language: php
+    lines: 186
+  - file: MakeWebhookNotifier.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+    purpose: Sends best-effort post-order Make notifications and tracks delivery status in order meta.
+    key_elements:
+      - element: SENT_AT_META_KEY
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:14
+        description: Order meta key marking a successful Make notification send.
+      - element: send
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:51
+        description: Posts the payload if the webhook URL is enabled and the order was not already sent.
+      - element: buildHtmlSummary
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:137
+        description: Builds the HTML summary string used in the outbound Make payload.
+    language: php
+    lines: 199
+  - file: AvailabilityService.php
+    path: wordpress-plugin/bulwar-bridge/src/Slots/AvailabilityService.php
+    purpose: Loads slot configuration and produces slot tokens and availability windows.
+    key_elements:
+      - element: getAvailability
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Slots/AvailabilityService.php:41
+        description: Loads slot configuration, resolves date rules, and returns `available_dates` with slot metadata.
+      - element: loadConfig
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Slots/AvailabilityService.php:452
+        description: Reads JSON slot config from the injected config path.
+    language: php
+    lines: 433
+  - file: fetchWordPressPageBuilderSchema.ts
+    path: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+    purpose: React helper for fetching and normalizing the bridge page-builder schema.
+    key_elements:
+      - element: normalizePageBuilderSchemaShape
+        type: function
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:27
+        description: Normalizes top-level `meta`, `seo`, `build`, and per-section `variant`, `source`, and `meta` before validation.
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:57
+        description: Reads `import.meta.env.VITE_WORDPRESS_BASE_URL` with fallback to `https://client.example`.
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:61
+        description: Fetches `GET /wp-json/bulwar/v1/page-builder/pages/{slug}` and validates the result through `parsePageBuilderSchema`.
+    language: typescript
+    lines: 71
+  - file: wordpressApi.ts
+    path: zip/src/blocks/registry/wordpressApi.ts
+    purpose: React helper for WordPress post-based page-builder source hydration.
+    key_elements:
+      - element: fetchWordPressJson
+        type: function
+        location: zip/src/blocks/registry/wordpressApi.ts:33
+        description: Thin fetch wrapper for WordPress REST requests.
+      - element: fetchWordPressPostsByIds
+        type: function
+        location: zip/src/blocks/registry/wordpressApi.ts:68
+        description: Fetches ordered posts from `wp/v2/posts` with `_embed=wp:featuredmedia`.
+      - element: resolveOfertaPostsSectionSource
+        type: function
+        location: zip/src/blocks/registry/wordpressApi.ts:121
+        description: Maps fetched posts to the `oferta_posts_section` data shape using featured media, excerpt, and `offer_url_link` fallbacks.
+    language: typescript
+    lines: 121
+  - file: wooStoreApi.ts
+    path: zip/src/blocks/registry/wooStoreApi.ts
+    purpose: React helper for Woo Store API source hydration inside page-builder blocks.
+    key_elements:
+      - element: fetchWooStoreJson
+        type: function
+        location: zip/src/blocks/registry/wooStoreApi.ts:49
+        description: Thin fetch wrapper for Woo Store API requests.
+      - element: resolveWooMenuColumnsFromSource
+        type: function
+        location: zip/src/blocks/registry/wooStoreApi.ts:113
+        description: Resolves either ordered product IDs or Woo categories into menu columns.
+      - element: resolvePromo2Source
+        type: function
+        location: zip/src/blocks/registry/wooStoreApi.ts:264
+        description: Hydrates the `promo2` block from Woo data and constrains split columns to a maximum of 2.
+    language: typescript
+    lines: 278
+  - file: resolvePageBuilderSources.ts
+    path: zip/src/blocks/registry/resolvePageBuilderSources.ts
+    purpose: React orchestration layer that hydrates source-backed blocks after schema fetch.
+    key_elements:
+      - element: resolvePageBuilderSchemaSources
+        type: function
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:38
+        description: Iterates sections, dispatches by `blockKey`, and returns a revalidated schema.
+      - element: block switch
+        type: pattern
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:48
+        description: Explicit switch table decides which source resolver runs for each supported block key.
+    language: typescript
+    lines: 133
+  - file: pageBuilderSchema.ts
+    path: zip/src/blocks/registry/pageBuilderSchema.ts
+    purpose: React page-builder contract validator.
+    key_elements:
+      - element: pageBuilderSchemaBaseSchema
+        type: variable
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:17
+        description: Base Zod contract for page-builder payloads.
+      - element: ensureUniqueSectionIds
+        type: function
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:39
+        description: Throws on duplicate section IDs.
+      - element: parsePageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:78
+        description: Validates block version, variants, block data, and source payloads against the registry.
+    language: typescript
+    lines: 93
+  - file: RootLayout.tsx
+    path: zip/src/layouts/RootLayout.tsx
+    purpose: Shared React route shell for most app pages.
+    key_elements:
+      - element: RootLayout shell
+        type: pattern
+        location: zip/src/layouts/RootLayout.tsx:13
+        description: Wraps `Outlet` with `Navbar2`, `Footer`, `StickyCartControls`, and `CheckoutDrawer`.
+    language: typescriptreact
+    lines: 18
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: Home page composition that currently duplicates shell chrome and mixes static sections with inline page-builder sections.
+    key_elements:
+      - element: HOME_PAGE_PROMO3_SCHEMA
+        type: variable
+        location: zip/src/pages/HomePage.tsx:24
+        description: Inline page-builder schema constant parsed locally from static data.
+      - element: HOME_PAGE_STORY_TEAM_SHOWCASE_SCHEMA
+        type: variable
+        location: zip/src/pages/HomePage.tsx:45
+        description: Second inline page-builder schema constant parsed locally from static data.
+      - element: Home shell
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:71
+        description: Renders `Navbar2`, `Footer`, `StickyCartControls`, and `CheckoutDrawer` directly instead of relying on `RootLayout`.
+    language: typescriptreact
+    lines: 115
+  - file: TestowaBlueprintPage.tsx
+    path: zip/src/pages/TestowaBlueprintPage.tsx
+    purpose: Clearest React example of loading page-builder content from WordPress at runtime.
+    key_elements:
+      - element: PAGE_BUILDER_SLUG
+        type: variable
+        location: zip/src/pages/TestowaBlueprintPage.tsx:12
+        description: Fixed slug used for the live page-builder fetch example.
+      - element: fetch chain
+        type: pattern
+        location: zip/src/pages/TestowaBlueprintPage.tsx:22
+        description: Fetches schema, resolves source-backed sections, then updates component state.
+    language: typescriptreact
+    lines: 61
+  - file: NavbarBigSpaceBetweenElements.tsx
+    path: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+    purpose: Primary React navbar implementation currently used as `Navbar2`.
+    key_elements:
+      - element: NAV_ITEMS
+        type: variable
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:6
+        description: Hardcoded top-level menu and submenu structure.
+      - element: FOOTER_LINKS
+        type: variable
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:66
+        description: Hardcoded legal links shown inside the open mobile/overlay menu.
+      - element: COMPANY_LINKS
+        type: variable
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:71
+        description: Hardcoded company/contact links shown inside the open overlay menu.
+      - element: isOpen
+        type: variable
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:85
+        description: Local UI state that controls the animated overlay menu.
+      - element: Navbar2 export alias
+        type: pattern
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:241
+        description: Re-exports this implementation as `Navbar2`, which is what pages import.
+    language: typescriptreact
+    lines: 253
+  - file: Footer.tsx
+    path: zip/src/components/sections/Footer.tsx
+    purpose: Main React footer implementation.
+    key_elements:
+      - element: Footer
+        type: function
+        location: zip/src/components/sections/Footer.tsx:1
+        description: Fully hardcoded footer with address, contact, hours, social links, legal links, and copyright line.
+    language: typescriptreact
+    lines: 84
+  - file: CateringPageHeader.tsx
+    path: zip/src/components/sections/CateringPageHeader.tsx
+    purpose: Existing prop-driven narrow header variant used on catering pages.
+    key_elements:
+      - element: CateringPageHeaderProps
+        type: interface
+        location: zip/src/components/sections/CateringPageHeader.tsx:1
+        description: Exposes `logoSrc`, `homeHref`, and `returnLabel` as props.
+    language: typescriptreact
+    lines: 32
+  - file: CateringPageFooter.tsx
+    path: zip/src/components/sections/CateringPageFooter.tsx
+    purpose: Existing prop-driven footer variant used on catering pages.
+    key_elements:
+      - element: CateringPageFooterProps
+        type: interface
+        location: zip/src/components/sections/CateringPageFooter.tsx:6
+        description: Exposes `logoSrc`, `socialLinks`, and `legalLinks` as props.
+      - element: social/legal link mapping
+        type: pattern
+        location: zip/src/components/sections/CateringPageFooter.tsx:78
+        description: Renders social and legal links from arrays instead of hardcoded anchors.
+    language: typescriptreact
+    lines: 103
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Astro-side WordPress host and static slug configuration.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: Hardcoded WordPress origin for Astro page-builder and Woo fetches.
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Current static route list contains only `testowa-blueprint`.
+    language: typescript
+    lines: 3
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Astro page-builder contract validator.
+    key_elements:
+      - element: wooProductsSourceSchema
+        type: variable
+        location: astro-site/src/lib/types.ts:27
+        description: Astro source contract for ordered Woo product IDs.
+      - element: wooCategorySourceSchema
+        type: variable
+        location: astro-site/src/lib/types.ts:33
+        description: Astro source contract for Woo category lookups.
+      - element: menuBlockSchema
+        type: variable
+        location: astro-site/src/lib/types.ts:58
+        description: Astro only has typed support for one menu block variant.
+      - element: pageBuilderSchema
+        type: variable
+        location: astro-site/src/lib/types.ts:79
+        description: Astro page-builder contract only unions `galleryBlockSchema` and `menuBlockSchema`.
+    language: typescript
+    lines: 86
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Astro helper for fetching and normalizing bridge page-builder schema.
+    key_elements:
+      - element: normalizeSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:22
+        description: Normalizes top-level `meta`, `seo`, `build`, and per-section `meta` before Zod parsing.
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:50
+        description: Fetches bridge schema from WordPress and validates it against Astro-local Zod types.
+    language: typescript
+    lines: 48
+  - file: woo.ts
+    path: astro-site/src/lib/woo.ts
+    purpose: Astro build-time Woo resolver for menu blocks.
+    key_elements:
+      - element: fetchJson
+        type: function
+        location: astro-site/src/lib/woo.ts:40
+        description: Thin fetch wrapper for Astro build-time Woo requests.
+      - element: splitIntoColumns
+        type: function
+        location: astro-site/src/lib/woo.ts:48
+        description: Converts fetched products into `MenuColumn[]`.
+      - element: fetchProductsByCategory
+        type: function
+        location: astro-site/src/lib/woo.ts:96
+        description: Resolves a category and fetches its products from Woo Store API.
+      - element: resolveMenuBlock
+        type: function
+        location: astro-site/src/lib/woo.ts:125
+        description: Rewrites `heroTitle` and `menuColumns` on source-backed menu blocks.
+    language: typescript
+    lines: 123
+  - file: pageBuilder.ts
+    path: astro-site/src/lib/pageBuilder.ts
+    purpose: Astro orchestration layer for schema fetch and build-time section hydration.
+    key_elements:
+      - element: buildStaticPage
+        type: function
+        location: astro-site/src/lib/pageBuilder.ts:5
+        description: Fetches page-builder schema and resolves only `menu-category-photo-parallax-full-width` sections.
+    language: typescript
+    lines: 19
+  - file: BaseLayout.astro
+    path: astro-site/src/layouts/BaseLayout.astro
+    purpose: Shared Astro chrome wrapper.
+    key_elements:
+      - element: Base layout shell
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:26
+        description: Wraps page content with Astro `Navbar`, `Footer`, and `StickyCartControls`.
+    language: astro
+    lines: 31
+  - file: Navbar.astro
+    path: astro-site/src/components/Navbar.astro
+    purpose: Current Astro navbar implementation.
+    key_elements:
+      - element: Props
+        type: interface
+        location: astro-site/src/components/Navbar.astro:2
+        description: Exposes only an optional `logoSrc` prop.
+      - element: default logoSrc
+        type: variable
+        location: astro-site/src/components/Navbar.astro:6
+        description: Defaults to a React asset URL hosted on the WordPress site.
+      - element: hardcoded links
+        type: pattern
+        location: astro-site/src/components/Navbar.astro:18
+        description: Hardcodes all main links, dropdown links, and the `/react/kontakt/` routing test anchor.
+    language: astro
+    lines: 63
+  - file: Footer.astro
+    path: astro-site/src/components/Footer.astro
+    purpose: Current Astro footer implementation.
+    key_elements:
+      - element: hardcoded footer blocks
+        type: pattern
+        location: astro-site/src/components/Footer.astro:11
+        description: Hardcodes address, contact, hours, social links, and legal links.
+    language: astro
+    lines: 34
+  - file: [slug].astro
+    path: astro-site/src/pages/[slug].astro
+    purpose: Astro static route that renders page-builder content inside the hardcoded site shell.
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:9
+        description: Restricts generated static routes to `TEST_PAGE_SLUGS`.
+      - element: buildStaticPage call
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:19
+        description: Fetches the full page-builder payload before rendering.
+      - element: BaseLayout usage
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:33
+        description: Renders all resolved sections inside the hardcoded Astro shell.
+    language: astro
+    lines: 71
+
+patterns_found:
+  - category: architecture
+    pattern: WordPress bridge uses thin controllers over service classes with a single route registry.
+    description: Bootstrap in `Plugin.php` wires a single `Routes::register()` entrypoint, while `CheckoutController` and `PageBuilderController` primarily validate request shape and delegate behavior into services or local normalization logic.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Plugin.php
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:17
+        snippet: add_action('rest_api_init', [Routes::class, 'register']);
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:31
+        snippet: $service = new QuoteService();
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:73
+        snippet: $service = new AvailabilityService(dirname(__DIR__, 3) . '/config/slots.json', Constants::all());
+    prevalence: common
+  - category: structure
+    pattern: Page-builder storage is page-scoped post meta, not global settings.
+    description: `PageBuilderController` only registers and reads `page_builder_schema` and `page_builder_schema_for_ai` on the `page` post type, and no route or service reads a shared navbar/footer settings object.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:104
+        snippet: register_post_meta('page', $metaKey, [...])
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:33
+        snippet: $rawSchema = get_post_meta($page->ID, 'page_builder_schema', true);
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:86
+        snippet: update_post_meta($page->ID, 'page_builder_schema', ...);
+    prevalence: common
+  - category: architecture
+    pattern: React page-builder runtime uses a fetch-then-hydrate pipeline.
+    description: React first fetches the schema from the bridge, then hydrates source-backed blocks through an explicit resolver switch before rendering.
+    examples:
+      - file: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:61
+        snippet: export const fetchWordPressPageBuilderSchema = async (...)
+      - file: zip/src/blocks/registry/resolvePageBuilderSources.ts
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:48
+        snippet: switch (section.blockKey) {
+      - file: zip/src/pages/TestowaBlueprintPage.tsx
+        location: zip/src/pages/TestowaBlueprintPage.tsx:22
+        snippet: fetchWordPressPageBuilderSchema(...).then((schema) => resolvePageBuilderSchemaSources(schema, ...))
+    prevalence: common
+  - category: architecture
+    pattern: Astro page-builder runtime mirrors React conceptually but is narrower.
+    description: Astro fetches bridge schema and resolves Woo menu blocks at build time, but only its typed block subset can pass validation and rendering.
+    examples:
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:50
+        snippet: export const fetchWordPressPageBuilderSchema = async (slug: string): Promise<PageBuilderSchema>
+      - file: astro-site/src/lib/pageBuilder.ts
+        location: astro-site/src/lib/pageBuilder.ts:14
+        snippet: return resolveMenuBlock(section);
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:87
+        snippet: sections: z.array(z.union([galleryBlockSchema, menuBlockSchema]))
+    prevalence: common
+  - category: structure
+    pattern: Main navbar/footer implementations are hardcoded and own their own data.
+    description: The main React navbar embeds menu arrays and local overlay state, Astro navbar hardcodes a separate link tree, and both main footers hardcode content instead of accepting structured props.
+    examples:
+      - file: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:6
+        snippet: const NAV_ITEMS = [
+      - file: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+        location: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx:85
+        snippet: const [isOpen, setIsOpen] = useState(false);
+      - file: astro-site/src/components/Navbar.astro
+        location: astro-site/src/components/Navbar.astro:18
+        snippet: <a class="site-navbar__link site-navbar__link--active" href="#">Home</a>
+      - file: zip/src/components/sections/Footer.tsx
+        location: zip/src/components/sections/Footer.tsx:41
+        snippet: href="https://www.facebook.com/bulwaRrestauracja/"
+    prevalence: common
+  - category: structure
+    pattern: React shell ownership is duplicated.
+    description: `RootLayout` already wraps routed pages with the main shell, but `HomePage` and `TestowaBlueprintPage` render navbar/footer/cart chrome directly again.
+    examples:
+      - file: zip/src/layouts/RootLayout.tsx
+        location: zip/src/layouts/RootLayout.tsx:13
+        snippet: <Navbar2 />
+      - file: zip/src/pages/HomePage.tsx
+        location: zip/src/pages/HomePage.tsx:71
+        snippet: <Navbar2 logoSrc="/react/images/logo.png" />
+      - file: zip/src/pages/TestowaBlueprintPage.tsx
+        location: zip/src/pages/TestowaBlueprintPage.tsx:53
+        snippet: <Navbar2 logoSrc="/react/images/logo.png" />
+    prevalence: occasional
+  - category: naming
+    pattern: Catering variants already expose the closest existing prop contracts for layout chrome.
+    description: Unlike the main shell, `CateringPageHeader` and `CateringPageFooter` already accept explicit data props for logo, links, and labels.
+    examples:
+      - file: zip/src/components/sections/CateringPageHeader.tsx
+        location: zip/src/components/sections/CateringPageHeader.tsx:1
+        snippet: export interface CateringPageHeaderProps {
+      - file: zip/src/components/sections/CateringPageFooter.tsx
+        location: zip/src/components/sections/CateringPageFooter.tsx:6
+        snippet: export interface CateringPageFooterProps {
+    prevalence: rare
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: WordPress bridge plugin bootstrap
+      responsibility: Loads bridge classes and registers WordPress hooks for constants, page-builder meta, routes, and Woo meta display filters.
+      location: wordpress-plugin/bulwar-bridge/bulwar-bridge.php
+      relationship_to_domain: domain owns the only current backend entrypoint for page-builder data
+    - component: PageBuilderController
+      responsibility: Reads and writes page-builder schema post meta for WordPress pages.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: domain is the current authoritative source for frontend page-builder payloads
+    - component: React page-builder fetch/hydration layer
+      responsibility: Fetches bridge schema and resolves WordPress/Woo-backed block sources before rendering.
+      location: zip/src/blocks/registry/
+      relationship_to_domain: domain would be the natural insertion point for any shared global layout payload on the React side
+    - component: React route shell
+      responsibility: Wraps routed pages with navbar, footer, sticky cart controls, and checkout drawer.
+      location: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: domain currently duplicates ownership with page-level shells
+    - component: Astro build-time page-builder pipeline
+      responsibility: Fetches page-builder schema and resolves menu blocks during static generation.
+      location: astro-site/src/lib/
+      relationship_to_domain: domain would need any global layout payload normalized before BaseLayout renders
+    - component: Astro shared layout shell
+      responsibility: Wraps Astro pages with static navbar/footer chrome.
+      location: astro-site/src/layouts/BaseLayout.astro
+      relationship_to_domain: this uses domain outputs indirectly but currently receives no global layout data
+  interfaces_used_by_domain:
+    - interface: Response success/error envelope
+      location: wordpress-plugin/bulwar-bridge/src/Support/Response.php
+      usage_pattern: All bridge routes return `{ success, data|error, meta }` envelopes.
+    - interface: React PageBuilderSchema
+      location: zip/src/blocks/registry/pageBuilderSchema.ts
+      usage_pattern: Bridge schema responses are normalized then validated against the local block registry.
+    - interface: Astro PageBuilderSchema
+      location: astro-site/src/lib/types.ts
+      usage_pattern: Bridge schema responses are normalized then validated against Astro-local, narrower block unions.
+    - interface: CateringPageFooterProps
+      location: zip/src/components/sections/CateringPageFooter.tsx
+      usage_pattern: Existing prop-driven footer variant already consumes arrays of social and legal links.
+  data_flow_involving_domain: WordPress page slug -> bridge `PageBuilderController::show()` -> response envelope with normalized `schema` and optional `aiSchema` -> React `fetchWordPressPageBuilderSchema()` or Astro `fetchWordPressPageBuilderSchema()` -> optional Woo/WordPress source hydration (`resolvePageBuilderSchemaSources()` in React, `resolveMenuBlock()` in Astro) -> route/layout components render chrome plus sections.
+  key_relationships_to_domain:
+    - from: wordpress-plugin/bulwar-bridge/src/Plugin.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship: imports
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: zip/src/pages/TestowaBlueprintPage.tsx
+      to: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      relationship: imports
+    - from: zip/src/pages/TestowaBlueprintPage.tsx
+      to: zip/src/blocks/registry/resolvePageBuilderSources.ts
+      relationship: imports
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/wordpress.ts
+      relationship: imports
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/woo.ts
+      relationship: imports
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/layouts/BaseLayout.astro
+      relationship: composes
+    - from: zip/src/layouts/RootLayout.tsx
+      to: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+      relationship: composes
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP 8 style strict-types code in the WordPress bridge ([wordpress-plugin/bulwar-bridge/src/Plugin.php:1](wordpress-plugin/bulwar-bridge/src/Plugin.php#L1))
+    - TypeScript/TSX in the React app ([zip/package.json](zip/package.json))
+    - TypeScript and Astro component syntax in the Astro site ([astro-site/package.json](astro-site/package.json))
+  frameworks_used_in_domain:
+    - name: WordPress REST API
+      usage_in_domain: Bridge endpoints are registered with `register_rest_route()` and use `WP_REST_Request` and `WP_REST_Response`.
+    - name: WooCommerce
+      usage_in_domain: Checkout services read Woo products, create Woo orders, and use Woo store options/meta.
+    - name: React 19
+      usage_in_domain: React runtime pages and shell components render the current global chrome and page-builder sections.
+    - name: React Router 7.13.1
+      usage_in_domain: `RootLayout` provides the route shell around `Outlet` pages.
+    - name: Astro 5.14.2
+      usage_in_domain: Astro statically builds page-builder pages using build-time fetches from WordPress and Woo endpoints.
+  libraries_used_in_domain:
+    - name: zod 4.3.6
+      purpose_in_domain: Validates page-builder payloads and source contracts in both React and Astro.
+    - name: framer-motion 12.38.0
+      purpose_in_domain: Powers the animated overlay menu in the React navbar.
+    - name: clsx 2.1.1
+      purpose_in_domain: Composes conditional class names in the React navbar.
+    - name: lucide-react 0.546.0
+      purpose_in_domain: Supplies overlay arrow icons in the React navbar.
+  external_apis_used_in_domain:
+    - name: WordPress REST API
+      integration_point: React and Astro fetch `/wp-json/bulwar/v1/page-builder/pages/{slug}` and React also fetches `/wp-json/wp/v2/posts`.
+    - name: Woo Store API
+      integration_point: React `wooStoreApi.ts` and Astro `woo.ts` fetch product/category data from `/wp-json/wc/store/v1/...`.
+
+related_conventions:
+  naming_patterns_in_domain: Bridge classes are grouped by responsibility (`Http/Controllers`, `Checkout`, `Slots`, `Support`, `Config`), React page-builder helpers use verb-prefixed names such as `fetchWordPressPageBuilderSchema` and `resolvePageBuilderSchemaSources`, and shell components use descriptive names like `NavbarBigSpaceBetweenElements`, `CateringPageHeader`, and `BaseLayout`.
+  structure_of_domain: Backend concerns are centralized in the bridge plugin; React keeps page-builder fetch/hydration under `zip/src/blocks/registry/`; Astro keeps analogous helpers under `astro-site/src/lib/`; shared shells live in `zip/src/layouts/` and `astro-site/src/layouts/`.
+  error_handling_in_domain: Bridge endpoints standardize errors through `Response::error(...)`; React/Astro fetch helpers throw `Error` with API or HTTP message text; `TestowaBlueprintPage` catches and surfaces fetch/hydration errors into local state.
+  testing_in_domain: Bridge has unit tests for availability and webhook behavior under `wordpress-plugin/bulwar-bridge/tests/`; React has registry/source resolver tests and component tests for catering footer/header variants.
+  documentation_in_domain: Bridge behavior is documented in `wordpress-plugin/bulwar-bridge/docs/contracts.md`; no equivalent checked-in docs were found for a global navbar/footer payload contract.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Support/Response.php
+      relationship_to_domain: Standardizes all bridge response envelopes consumed by frontends.
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Support/TokenCodec.php
+      relationship_to_domain: Used by checkout services for quote/slot token minting and decoding.
+      direction: outbound
+    - component: zip/src/blocks/registry/index.ts
+      relationship_to_domain: React schema parsing depends on the block registry for block data/source validation.
+      direction: outbound
+    - component: zip/src/components/sections/StickyCartControls.tsx
+      relationship_to_domain: Current React shell always bundles sticky cart UI with navbar/footer ownership.
+      direction: bidirectional
+    - component: astro-site/src/components/StickyCartControls.astro
+      relationship_to_domain: Current Astro layout bundles sticky cart UI with navbar/footer ownership.
+      direction: bidirectional
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Provides `Outlet` shell composition in React.
+    - name: zod
+      purpose_for_domain: Validates schema payload shapes in React and Astro.
+    - name: framer-motion
+      purpose_for_domain: Drives animated navbar overlay transitions in React.
+    - name: WooCommerce Store API
+      purpose_for_domain: Supplies menu/product data for source-backed page-builder sections.
+    - name: WordPress core post meta and options APIs
+      purpose_for_domain: Persist page-builder schema and resolve store-origin fallback settings.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Page-builder mutation endpoint
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:45
+      concern: Only the POST route is permission-gated; any future global navbar/footer write endpoint would need equivalent capability checks.
+    - area: Public page-builder read route
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:19
+      concern: Public reads are allowed only for published pages; draft/private pages require edit permission.
+    - area: Hardcoded external links and React asset URLs
+      location: zip/src/components/sections/Footer.tsx:41
+      concern: Current chrome sources content from code, not from sanitized CMS fields, so any move to CMS data would need sanitization rules for URLs and labels.
+  authentication_patterns_in_domain: Public page-builder GET uses `permission_callback => '__return_true'` and then enforces publish/edit checks inside the controller; page-builder POST uses `current_user_can('edit_pages')`; checkout routes are public by design and rely on payload/token validation.
+  authorization_patterns_in_domain: `PageBuilderController::update()` also checks `current_user_can('edit_post', $page->ID)` before writing post meta.
+  data_validation_in_domain: Bridge validates JSON payload shape and normalizes schema/meta before returning; React and Astro re-validate payloads locally with Zod before rendering.
+
+testing_patterns:
+  framework: PHP unit-style tests in the bridge plus React/Node test files in `zip/src/**.test.ts(x)`.
+  coverage_areas:
+    - Bridge availability generation and Make webhook behavior.
+    - React registry invariants and page-builder source hydration.
+    - Prop-driven catering footer/header rendering.
+  test_organization: Backend tests live under `wordpress-plugin/bulwar-bridge/tests/`; React tests live adjacent to source files under `zip/src/`.
+  mock_patterns:
+    - Fetch mocks for WordPress and Woo Store API URLs in `resolvePageBuilderSources.test.ts`.
+    - Injected `httpPost` and logger callbacks in `MakeWebhookNotifier` for testability.
+
+open_questions:
+  - question: What WordPress data source should become the authority for shared navbar/footer content?
+    context: Current bridge code only persists page-scoped page-builder post meta and a few checkout-related constants/options; no global layout entity or route exists.
+    type: decision_blocker
+    affects: [global-navbar-footer-rollout]
+  - question: Should the eventual shared payload align to the richer React navbar structure or the narrower Astro navbar structure?
+    context: React `Navbar2` has multi-column overlay sections plus company/legal footer links, while Astro `Navbar.astro` exposes only `logoSrc` and a flat hardcoded link tree.
+    type: decision_blocker
+    affects: [global-navbar-footer-rollout]
+  - question: Should React home keep page-level shell ownership or be normalized under `RootLayout` like other routed pages?
+    context: `HomePage.tsx` duplicates the same shell pieces that `RootLayout.tsx` already renders for route children.
+    type: research
+    affects: [global-navbar-footer-rollout]
+
+gaps:
+  - area: Global layout backend contract
+    description: No existing bridge route, storage schema, or controller handles site-wide navbar/footer payloads; only page-level page-builder data is modeled today.
+    impact: decision_blocker
+    affects: [global-navbar-footer-rollout]
+  - area: Astro layout payload compatibility
+    description: Astro `types.ts` only accepts gallery and one menu block type, and Astro `Navbar.astro`/`Footer.astro` lack structured props beyond `logoSrc`.
+    impact: research_blocker
+    affects: [global-navbar-footer-rollout]
+  - area: Shell ownership consistency in React
+    description: The same main chrome is owned by both `RootLayout` and standalone pages, which obscures the single insertion point for a future shared layout payload.
+    impact: research_blocker
+    affects: [global-navbar-footer-rollout]

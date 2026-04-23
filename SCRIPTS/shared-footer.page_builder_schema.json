@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "shared-footer-main",
+      "blockKey": "shared_footer",
+      "blockVersion": 1,
+      "variant": null,
+      "enabled": true,
+      "data": {
+        "brand": {
+          "name": "Bulwar",
+          "href": "/",
+          "logoSrc": null,
+          "logoAlt": null
+        },
+        "address": {
+          "heading": "Adres",
+          "lines": [
+            "Restauracja BulwaR",
+            "Stary Rynek 37",
+            "Poznan"
+          ]
+        },
+        "contact": {
+          "heading": "Kontakt",
+          "items": [
+            {
+              "label": "+48 533 181 171",
+              "href": "tel:+48533181171"
+            },
+            {
+              "label": "rezerwacje@bulwarrestauracja.pl",
+              "href": "mailto:rezerwacje@bulwarrestauracja.pl"
+            }
+          ]
+        },
+        "hours": {
+          "heading": "Godziny",
+          "lines": [
+            "Codziennie od 09.00 do 23.00"
+          ]
+        },
+        "socialLinks": [
+          {
+            "label": "Facebook",
+            "href": "https://www.facebook.com/bulwaRrestauracja/"
+          },
+          {
+            "label": "Instagram",
+            "href": "https://www.instagram.com/bulwar/"
+          },
+          {
+            "label": "Tripadvisor",
+            "href": "https://pl.tripadvisor.com/Restaurant_Review-g274847-d10184406-Reviews-Bulwar-Poznan_Greater_Poland_Province_Central_Poland.html"
+          }
+        ],
+        "legalLinks": [
+          {
+            "label": "Polityka prywatnosci",
+            "href": "https://bulwarrestauracja.pl/polityka-prywatnosci/"
+          },
+          {
+            "label": "Regulamin",
+            "href": "https://bulwarrestauracja.pl/regulamin/"
+          }
+        ],
+        "copyright": "© 2026 Restauracja BulwaR. All rights reserved."
+      },
+      "source": null,
+      "meta": {}
+    }
+  ]
+}

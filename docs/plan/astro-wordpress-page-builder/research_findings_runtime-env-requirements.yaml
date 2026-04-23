@@ -1,0 +1,381 @@
+plan_id: astro-wordpress-page-builder
+objective: Assess whether the agent warning about missing runtime env vars is a real blocker and determine the best next-step recommendation without implementation.
+focus_area: runtime-env-requirements
+created_at: 2026-04-21
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Current non-dry-run runtime publish requires both Firebase and WordPress env vars for both input modes because the CLI instantiates Firestore whenever dry-run is disabled and the workflow persists the draft multiple times before and after publish.
+  - For --draft-file, Firebase is not needed for dry-run, but it is still required today for publish because cli.ts enters the Firestore branch before WordPress client creation.
+  - The implementation-plan and related docs describe Firebase as an optional runtime variant and repo-first as the canonical workflow, so current file-based runtime publish is stricter than the documented repo-first operator truth.
+  - Focused runtime evidence came from cli.ts, runtimeWorkflow.ts, env parsers, targeted tests, current docs, and direct terminal runs showing publish fails first on PAGE_BUILDER_FIREBASE_PROJECT_ID when env vars are absent.
+
+research_metadata:
+  methodology: hybrid retrieval via memory notes, file_search, grep_search, targeted read_file ranges, and direct runtime invocation with run_in_terminal for --draft-file and --draft-doc-id publish behavior verification
+  scope: focused on SCRIPTS/page-builder-runtime/cli.ts, runtimeWorkflow.ts, liveFirestoreDraftStore.ts, wordpressPageBuilderClient.ts, runtime tests, and current docs under docs/plan/astro-wordpress-page-builder/
+  confidence: high
+  coverage: 90
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: cli.ts
+    path: SCRIPTS/page-builder-runtime/cli.ts
+    purpose: Runtime CLI entrypoint that selects draft source, validates env, creates adapters, and invokes publish or dry-run workflow.
+    key_elements:
+      - element: parseArgs
+        type: function
+        location: SCRIPTS/page-builder-runtime/cli.ts:76
+        description: Enforces mutually exclusive --draft-file and --draft-doc-id modes plus dry-run and verify-readback constraints.
+      - element: Firestore adapter gating
+        type: pattern
+        location: SCRIPTS/page-builder-runtime/cli.ts:199
+        description: Firestore env parsing and draft store creation happen whenever --draft-doc-id is used or dry-run is disabled.
+      - element: WordPress client gating
+        type: pattern
+        location: SCRIPTS/page-builder-runtime/cli.ts:216
+        description: WordPress env parsing and client creation happen on every non-dry-run invocation after draft loading/store setup.
+    language: TypeScript
+    lines: 226
+  - file: runtimeWorkflow.ts
+    path: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+    purpose: Canonical non-dry-run workflow that persists draft state, ensures WordPress page, compiles payloads, publishes, and optionally verifies readback.
+    key_elements:
+      - element: draftStore required guard
+        type: pattern
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:169
+        description: Non-dry-run workflow throws if no draft store is provided.
+      - element: wordpressClient required guard
+        type: pattern
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:173
+        description: Non-dry-run workflow throws if no WordPress client is provided.
+      - element: draft persistence sequence
+        type: pattern
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:177
+        description: Workflow upserts the draft before ensurePageExists, after site-context/postId enrichment, after compile, and after publish finalization.
+      - element: site context fallback
+        type: pattern
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:182
+        description: fetchSiteContext failure falls back to CompanyName and websiteUrl already present on the draft, allowing publish to continue.
+    language: TypeScript
+    lines: 223
+  - file: liveFirestoreDraftStore.ts
+    path: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts
+    purpose: Parses Firebase env vars and creates the live Firestore-backed draft store via firebase-admin.
+    key_elements:
+      - element: parsePageBuilderFirestoreEnv
+        type: function
+        location: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts:60
+        description: Requires PAGE_BUILDER_FIREBASE_PROJECT_ID, PAGE_BUILDER_FIREBASE_CLIENT_EMAIL, and PAGE_BUILDER_FIREBASE_PRIVATE_KEY.
+      - element: createLiveFirestoreFirebasePageDraftStore
+        type: function
+        location: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts:80
+        description: Initializes firebase-admin app and returns the shared Firestore-backed draft store adapter.
+    language: TypeScript
+    lines: 101
+  - file: wordpressPageBuilderClient.ts
+    path: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts
+    purpose: Parses WordPress env vars and handles ensure/create-or-update, publish, readback, and site-context calls.
+    key_elements:
+      - element: parsePageBuilderWordPressEnv
+        type: function
+        location: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts:234
+        description: Requires PAGE_BUILDER_WORDPRESS_BASE_URL, PAGE_BUILDER_WORDPRESS_USERNAME, and PAGE_BUILDER_WORDPRESS_APPLICATION_PASSWORD.
+      - element: ensurePageExists
+        type: function
+        location: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts:267
+        description: Uses core WordPress pages API to create or update the target page by slug.
+      - element: fetchSiteContext
+        type: function
+        location: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts:361
+        description: Reads CompanyName and websiteUrl from the public site-context endpoint used during non-dry-run publish.
+    language: TypeScript
+    lines: 314
+  - file: cli.test.ts
+    path: SCRIPTS/page-builder-runtime/cli.test.ts
+    purpose: Verifies mode-specific CLI behavior for dry-run and draft-doc-id env validation.
+    key_elements:
+      - element: dry-run from file test
+        type: test
+        location: SCRIPTS/page-builder-runtime/cli.test.ts:64
+        description: Confirms --draft-file --dry-run skips live draft store and WordPress client creation.
+      - element: draft-doc-id env test
+        type: test
+        location: SCRIPTS/page-builder-runtime/cli.test.ts:138
+        description: Confirms --draft-doc-id fails when PAGE_BUILDER_FIREBASE_PROJECT_ID is missing.
+    language: TypeScript
+    lines: 145
+  - file: runtimeWorkflow.test.ts
+    path: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts
+    purpose: Verifies the non-dry-run orchestration sequence and the dry-run no-live-dependency path.
+    key_elements:
+      - element: full publish workflow test
+        type: test
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts:82
+        description: Confirms persist -> site context -> ensure page -> publish -> readback ordering for non-dry-run runtime.
+      - element: dry-run workflow test
+        type: test
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts:184
+        description: Confirms dry-run compiles without touching Firestore or WordPress.
+    language: TypeScript
+    lines: 202
+  - file: README.md
+    path: docs/plan/astro-wordpress-page-builder/README.md
+    purpose: Start-here index that directs operators to the canonical workflow and classifies Firebase draft docs as non-starting material.
+    key_elements:
+      - element: runtime and workflow positioning
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/README.md:8
+        description: States the workflow doc is the operator truth and the runtime CLI executes that flow.
+      - element: optional Firebase doc classification
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/README.md:39
+        description: Labels firebase-page-draft-mvp.md as optional and not the main workflow.
+    language: Markdown
+    lines: 74
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Canonical operator workflow for composing and publishing page-builder pages.
+    key_elements:
+      - element: repo-first canonical flow statement
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:14
+        description: States other Firebase-target-state notes do not replace the current repo-first canonical flow.
+      - element: runtime CLI examples
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:213
+        description: Shows both --draft-file and --draft-doc-id runtime publish examples.
+      - element: runtime generic path statement
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:227
+        description: Documents the runtime as the generic create-or-update workflow for new pages.
+      - element: runtime-only combined create-and-publish statement
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:244
+        description: States the runtime is the only supported path that both ensures page existence and publishes the two payloads in one operator flow.
+    language: Markdown
+    lines: 256
+  - file: implementation-plan.md
+    path: docs/plan/astro-wordpress-page-builder/implementation-plan.md
+    purpose: Planning truth that distinguishes current repo-first workflow from optional or future Firebase runtime choices.
+    key_elements:
+      - element: optional Firebase runtime statement
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:14
+        description: Describes the Firebase draft model as an optional runtime variant, not the canonical workflow document.
+      - element: Stage 6 runtime decision
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:204
+        description: Reserves a future decision on whether Firebase becomes a real runtime layer or is left out of Production v1.
+    language: Markdown
+    lines: 197
+
+patterns_found:
+  - category: structure
+    pattern: Non-dry-run runtime always depends on both a draft store and a WordPress client.
+    description: The CLI provisions both adapters before invoking the workflow, and the workflow hard-fails if either adapter is missing.
+    examples:
+      - file: SCRIPTS/page-builder-runtime/cli.ts
+        location: SCRIPTS/page-builder-runtime/cli.ts:199
+        snippet: if (options.draftDocId || !options.dryRun) { firestoreEnv = parsePageBuilderFirestoreEnv(deps.env); draftStore = await deps.createDraftStore(firestoreEnv); }
+      - file: SCRIPTS/page-builder-runtime/cli.ts
+        location: SCRIPTS/page-builder-runtime/cli.ts:216
+        snippet: const wordpressClient = options.dryRun ? undefined : deps.createWordPressClient(parsePageBuilderWordPressEnv(deps.env));
+      - file: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:169
+        snippet: if (!draftStore) { throw new Error("draftStore is required when dryRun is disabled."); }
+    prevalence: common
+  - category: architecture
+    pattern: Publish workflow persists the runtime draft as part of orchestration, even when the initial draft comes from a file.
+    description: The runtime treats file-loaded drafts as working-state entities and writes them into Firestore before ensure/create-or-update, after site-context enrichment, after compile, and after final publish.
+    examples:
+      - file: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:177
+        snippet: const initialPersist = await draftStore.upsertDraft(initialDraft, { docId: initialDraft.pageSlug });
+      - file: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:195
+        snippet: await draftStore.upsertDraft(draftWithWordPressPostId, { docId: draftWithWordPressPostId.pageSlug });
+      - file: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts:242
+        snippet: await draftStore.upsertDraft(finalizedDraft, { docId: finalizedDraft.pageSlug });
+    prevalence: common
+  - category: testing
+    pattern: Tests explicitly distinguish dry-run file mode from live publish modes.
+    description: CLI and workflow tests confirm that dry-run from file avoids live clients, while non-dry-run exercises persistence and publish behavior.
+    examples:
+      - file: SCRIPTS/page-builder-runtime/cli.test.ts
+        location: SCRIPTS/page-builder-runtime/cli.test.ts:64
+        snippet: test("CLI dry-run from file stays in node-only orchestration and skips live clients", async () => {
+      - file: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts:184
+        snippet: test("node-only runtime workflow dry-run compiles without touching Firestore or WordPress", async () => {
+      - file: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts
+        location: SCRIPTS/page-builder-runtime/runtimeWorkflow.test.ts:82
+        snippet: test("node-only runtime workflow persists, compiles, publishes and verifies readback", async () => {
+    prevalence: occasional
+  - category: documentation
+    pattern: Current docs position repo-first as workflow truth and Firebase as optional or future-facing.
+    description: Operator-facing docs point to repo-first as the canonical day-to-day flow, while the implementation plan keeps Firebase as an optional runtime decision rather than a settled production requirement.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:14
+        snippet: That note does not replace this repo-first canonical flow.
+      - file: docs/plan/astro-wordpress-page-builder/implementation-plan.md
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:14
+        snippet: The Firebase draft model ... remains an optional runtime variant, not the canonical workflow document.
+      - file: docs/plan/astro-wordpress-page-builder/implementation-plan.md
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:204
+        snippet: Stage 6: Decide Whether Firebase Becomes A Real Runtime Layer
+    prevalence: common
+  - category: error_handling
+    pattern: Missing env vars fail fast with the exact variable name.
+    description: Both Firestore and WordPress env parsers enforce non-empty values and throw deterministic missing-variable errors.
+    examples:
+      - file: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts
+        location: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts:64
+        snippet: projectId: requireNonEmptyEnv(env.PAGE_BUILDER_FIREBASE_PROJECT_ID, "PAGE_BUILDER_FIREBASE_PROJECT_ID")
+      - file: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts
+        location: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts:239
+        snippet: baseUrl: requireNonEmptyEnv(env.PAGE_BUILDER_WORDPRESS_BASE_URL, "PAGE_BUILDER_WORDPRESS_BASE_URL")
+      - file: terminal runtime invocation
+        location: 2026-04-21 local run
+        snippet: Missing required environment variable: PAGE_BUILDER_FIREBASE_PROJECT_ID
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Runtime CLI
+      responsibility: Parses mode flags, validates env, loads file or Firestore draft, and assembles adapters.
+      location: SCRIPTS/page-builder-runtime/cli.ts
+      relationship_to_domain: domain entrypoint
+    - component: Runtime workflow
+      responsibility: Normalizes draft, persists state, enriches site context, ensures WordPress page, compiles payloads, publishes, and optionally verifies readback.
+      location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+      relationship_to_domain: orchestrates runtime publish behavior
+    - component: Live Firestore adapter
+      responsibility: Converts env secrets into a Firestore-backed FirebasePageDraftStore via firebase-admin.
+      location: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts
+      relationship_to_domain: provides runtime persistence layer
+    - component: WordPress page-builder client
+      responsibility: Talks to WordPress pages API and Bulwar bridge endpoints with application-password auth.
+      location: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts
+      relationship_to_domain: provides publish and page-ensure transport
+  interfaces_used_by_domain:
+    - interface: FirebasePageDraftStore
+      location: zip/src/blocks/registry/firebasePageDraftStore.ts
+      usage_pattern: runtimeWorkflow requires upsertDraft for every non-dry-run publish path
+    - interface: PageBuilderRuntimeWordPressClient
+      location: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+      usage_pattern: runtimeWorkflow requires fetchSiteContext, ensurePageExists, publishPageBuilderPayloads, and optional readback
+  data_flow_involving_domain: CLI parses the input mode, creates a Firestore store when publish is requested, loads the draft from file or Firestore, creates the WordPress client, runs the workflow, persists draft transitions, compiles both payloads, publishes them to WordPress, and optionally reads them back for verification.
+  key_relationships_to_domain:
+    - from: SCRIPTS/page-builder-runtime/cli.ts
+      to: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts
+      relationship: calls
+    - from: SCRIPTS/page-builder-runtime/cli.ts
+      to: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts
+      relationship: calls
+    - from: SCRIPTS/page-builder-runtime/cli.ts
+      to: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+      relationship: calls
+    - from: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+      to: SCRIPTS/make-page-draft-compile-gate.js
+      relationship: imports
+    - from: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts
+      to: zip/src/blocks/registry/firebasePageDraftStore.ts
+      relationship: depends on interface
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - Markdown
+  frameworks_used_in_domain:
+    - name: Node.js CLI runtime
+      usage_in_domain: Executes tsx-based runtime scripts and tests.
+  libraries_used_in_domain:
+    - name: firebase-admin
+      purpose_in_domain: Initializes the Firestore-backed live draft store.
+    - name: fetch / WordPress REST APIs
+      purpose_in_domain: Creates pages, writes page-builder payloads, reads readback payloads, and fetches site context.
+    - name: tsx
+      purpose_in_domain: Executes TypeScript runtime scripts directly from the CLI examples.
+  external_apis_used_in_domain:
+    - name: WordPress REST API
+      integration_point: wordpressPageBuilderClient.ts ensurePageExists and Bulwar page-builder endpoints
+    - name: Firebase Firestore
+      integration_point: liveFirestoreDraftStore.ts createLiveFirestoreFirebasePageDraftStore
+
+related_conventions:
+  naming_patterns_in_domain: PAGE_BUILDER_* env vars are scoped by backend target; dry-run and publish are modeled as explicit CLI modes; runtime adapters use parse*Env and create* factory naming.
+  structure_of_domain: Node-only runtime code is isolated under SCRIPTS/page-builder-runtime while shared draft contracts remain under zip/src/blocks/registry.
+  error_handling_in_domain: Env validation is fail-fast; workflow guards throw when required adapters are absent; site-context fetch degrades to draft values instead of aborting publish.
+  testing_in_domain: Focused node:test suites cover mode gating, env parsing, orchestration ordering, and WordPress client parsing behavior.
+  documentation_in_domain: README routes operators to page-builder-authoring-workflow as the current truth and implementation-plan as the longer-term architectural truth.
+
+related_dependencies:
+  internal:
+    - component: SCRIPTS/make-page-draft-compile-gate.js
+      relationship_to_domain: compile step for page_builder_schema and page_builder_schema_for_ai
+      direction: outbound
+    - component: zip/src/blocks/registry/firebasePageDraft.ts
+      relationship_to_domain: draft parsing and normalization contract
+      direction: outbound
+    - component: zip/src/blocks/registry/firebasePageDraftStore.ts
+      relationship_to_domain: shared draft store interface and Firestore-like adapter shape
+      direction: outbound
+  external:
+    - name: firebase-admin/app
+      purpose_for_domain: service-account app initialization for live Firestore access
+    - name: firebase-admin/firestore
+      purpose_for_domain: Firestore client access for draft persistence
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Firebase service account secrets
+      location: SCRIPTS/page-builder-runtime/liveFirestoreDraftStore.ts:64
+      concern: Non-dry-run runtime requires project id, client email, and private key even for file-based publish.
+    - area: WordPress application password credentials
+      location: SCRIPTS/page-builder-runtime/wordpressPageBuilderClient.ts:234
+      concern: Non-dry-run runtime requires authenticated WordPress write access for page ensure and publish.
+  authentication_patterns_in_domain: WordPress writes use Basic auth with username plus application password; Firestore uses firebase-admin service account credentials.
+  authorization_patterns_in_domain: WordPress publish path assumes a user capable of editing pages and posting to the custom Bulwar endpoint.
+  data_validation_in_domain: Draft input is normalized through parseFirebasePageDraft before compile or publish; env inputs are validated as non-empty strings.
+
+testing_patterns:
+  framework: node:test with assert/strict
+  coverage_areas:
+    - CLI dry-run versus publish adapter creation
+    - Firestore env parsing
+    - Runtime orchestration sequence
+    - Dry-run no-live-dependency behavior
+    - WordPress env parsing and client behavior
+  test_organization: Focused runtime tests live beside the runtime implementation under SCRIPTS/page-builder-runtime/*.test.ts.
+  mock_patterns:
+    - In-memory FirebasePageDraftStore adapter
+    - Injected WordPress client doubles
+    - Injected firebase-admin modules
+
+open_questions:
+  - question: Is there a separate documented operator helper for the manual repo-first authenticated publish path beyond the workflow prose?
+    context: The workflow doc states a manual path exists, but this focused pass did not inspect auxiliary publish helpers outside the requested runtime files.
+    type: nice_to_know
+    affects:
+      - runtime-env-requirements
+  - question: Which agent prompt or preflight currently teaches env requirements per runtime mode?
+    context: The handoff prompt points agents to workflow docs, but the focused scope did not identify a single canonical env matrix for dry-run versus publish modes.
+    type: nice_to_know
+    affects:
+      - runtime-env-requirements
+
+gaps:
+  - area: Manual non-runtime publish helper discovery
+    description: This pass did not inspect the full repo for standalone scripts that may publish both payloads directly to WordPress without the runtime.
+    impact: nice_to_know
+    affects:
+      - runtime-env-requirements
+  - area: Live secret inventory
+    description: No environment files or secret stores were inspected; conclusions are based on code paths, tests, docs, and no-secret runtime invocations only.
+    impact: nice_to_know
+    affects:
+      - runtime-env-requirements

@@ -1,0 +1,164 @@
+plan_id: rebuild-homepage
+objective: Plan the rebuild of the home page section by section based on wp-seo-scraper output.
+created_at: '2026-03-22T00:00:00Z'
+created_by: gem-planner
+status: approved
+research_confidence: high
+
+tldr: |
+  We will scaffold new sections line-by-line based on the content scraped from the WordPress website (Winiarnia, Wynos, Kuchnia Regionalna, Kawa, Lunch, Oferta Specjalna/Aktualności, Opinie) and reconstruct the new HomePage.tsx layout. The archiving of the old HomePage.tsx logic is already complete.
+open_questions:
+  - Do we need to update the global Footer as the scraped content includes contact info, privacy policy, and regulations at the bottom?
+  - Should the existing sections in 'src/components/sections' be reused or completely re-written?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The extracted content sections from markdown are mapped to wrong, existing components
+      likelihood: medium
+      impact: medium
+      mitigation: Recreate explicit, new, dedicated sections for the home page avoiding conflicts.
+    - scenario: Missing assets (images/icons) referenced in the old design or markdown content.
+      likelihood: high
+      impact: low
+      mitigation: Use placeholders and keep the structure clean, ready for new assets.
+  assumptions:
+    - All sections exist as standalone functional React components.
+    - The new sections will be styled with Tailwind CSS existing in the project.
+
+implementation_specification:
+  code_structure: 'The new home page will compose several new section components located in src/components/sections/home_new/.'
+  affected_areas:
+    - zip/src/pages/HomePage.tsx
+    - zip/src/components/sections/home_new/* (New feature folder)
+  component_details:
+    - component: HomePageNew
+      responsibility: Aggregates all landing page components based on the new structure
+      interfaces: []
+  dependencies:
+    - component: HomePageNew
+      relationship: composes home_new sections
+  integration_points:
+    - The main routing table pointing to HomePage
+
+contracts: []
+
+tasks:
+  - id: read_content_and_scaffold_hero_winiarnia
+    title: Scaffold Hero and Winiarnia sections
+    description: |
+      Read the output/home/content.md file and extract text to build the new Hero and Winiarnia sections in zip/src/components/sections/home_new/. Use Tailwind CSS to style them based on the Bulwar branding guidelines.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - 'zip/SRIPTS/wp-seo-scraper/output/home/content.md': 'Scraped text content'
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 100
+    focus_area: ui
+    verification:
+      - Ensure components export properly and receive no typed errors.
+    acceptance_criteria:
+      - New components are created with the correct text and buttons.
+    failure_modes:
+      - scenario: Text formatting varies too deeply
+        likelihood: low
+        impact: low
+        mitigation: Implement simple textual presentation initially.
+    tech_stack:
+      - React
+      - Tailwind CSS
+    test_coverage: null
+
+  - id: scaffold_wynos_kuchnia_lunch_kawa
+    title: Scaffold Wynos, Kuchnia Regionalna, Kawa, Lunch sections
+    description: |
+      Create the intermediate sections of the homepage that highlight delivery, local cuisine, morning coffee, and business lunch offers based on the `content.md` file. Build in `zip/src/components/sections/home_new/`.
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: completed
+    dependencies: []
+    context_files:
+      - 'zip/SRIPTS/wp-seo-scraper/output/home/content.md': 'Scraped text content'
+    estimated_effort: medium
+    estimated_files: 4
+    estimated_lines: 200
+    focus_area: ui
+    verification:
+      - Check if component definitions and prop structures are valid TS.
+    acceptance_criteria:
+      - All four sections exist and have correct titles/paragraphs/buttons.
+    failure_modes:
+      - scenario: Duplicate component names with existing components
+        likelihood: medium
+        impact: medium
+        mitigation: Use unique prefix or specific folder for the new segments.
+    tech_stack:
+      - React
+      - Tailwind CSS
+    test_coverage: null
+
+  - id: scaffold_aktualnosci_opinie
+    title: Scaffold Aktualnosci (News), Tarcza and Opinie sections
+    description: |
+      Produce the bottom features of the new layout using the data from the scraped markdown content (Oferta Specjalna/Aktualności, Tarcza PFR, Opinion of Jennifer).
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: completed
+    dependencies: []
+    context_files:
+      - 'zip/SRIPTS/wp-seo-scraper/output/home/content.md': 'Scraped text content'
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 150
+    focus_area: ui
+    verification:
+      - Confirm buttons and mock routing targets point to the intended slugs.
+    acceptance_criteria:
+      - The three components handle news lists, financial info text and a quote block correctly.
+    failure_modes:
+      - scenario: Missing data array structures for news
+        likelihood: low
+        impact: low
+        mitigation: Mock data hardcoded from markdown text.
+    tech_stack:
+      - React
+      - Tailwind CSS
+    test_coverage: null
+
+  - id: assemble_new_homepage
+    title: Assemble the New HomePage layout
+    description: |
+      Combine all newly created `home_new` sections inside `zip/src/pages/HomePage.tsx`. Replace the blank/old layout with the updated layout sequence corresponding precisely to the markdown content flow.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - read_content_and_scaffold_hero_winiarnia
+      - scaffold_wynos_kuchnia_lunch_kawa
+      - scaffold_aktualnosci_opinie
+    context_files:
+      - 'zip/src/pages/HomePage.tsx': 'File to rebuild'
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 100
+    focus_area: app
+    verification:
+      - The `HomePage.tsx` file imports all new sections successfully.
+    acceptance_criteria:
+      - Entire sequence is reconstructed, preserving imports and types.
+    failure_modes:
+      - scenario: Missing exports from newly created section modules
+        likelihood: low
+        impact: high
+        mitigation: Manually verify index exports or explicit default vs named exports.
+    tech_stack:
+      - React
+      - Tailwind CSS
+    test_coverage: null

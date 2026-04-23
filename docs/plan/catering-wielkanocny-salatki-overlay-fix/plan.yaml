@@ -1,0 +1,150 @@
+plan_id: catering-wielkanocny-salatki-overlay-fix
+objective: Refine the SAŁATKI NA WYNOS section on /catering-wielkanocny so the menu panel is slightly narrower than the background image, the heading aligns to the panel width, and both retain a layered parallax / overlap parallax relationship over the existing broad image width pattern.
+created_at: "2026-03-24T00:00:00Z"
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+	Keep the existing broad image-width section pattern in CateringProductListAlt and make only a minimal structural adjustment inside that component. The heading and the menu panel should share the same narrower content width, overlap the wider image, and preserve the current scroll-depth feel as layered parallax / overlap parallax. Validation should include the frontend build.
+open_questions: []
+
+pre_mortem:
+	overall_risk_level: low
+	critical_failure_modes:
+		- scenario: The panel and heading are narrowed at the wrong wrapper level, causing the image width pattern to collapse to the same width as the panel.
+			likelihood: medium
+			impact: medium
+			mitigation: Keep the outer broad image container unchanged and apply the narrower alignment only to the overlapping heading/panel shell.
+		- scenario: The overlap spacing is adjusted statically and weakens the existing vertical relative-motion depth effect while scrolling.
+			likelihood: low
+			impact: medium
+			mitigation: Preserve the current scroll-linked transform source and only retune the nested layout wrappers so the layered parallax / overlap parallax behavior remains intact.
+	assumptions:
+		- The requested section is the existing SAŁATKI NA WYNOS block rendered by CateringProductListAlt on /catering-wielkanocny.
+		- The broad image width pattern already in use should remain the visual reference and should not be replaced with a new layout rule.
+		- A minimal focused change means no route-level redesign and no new styling system primitives.
+
+implementation_specification:
+	code_structure: Keep the change isolated to the existing section component by separating the wide image shell from a slightly narrower overlapping content shell shared by the heading and panel.
+	affected_areas:
+		- zip/src/components/sections/CateringProductListAlt.tsx
+		- zip/src/pages/CateringWielkanocnyPage.tsx
+		- zip/package.json
+	component_details:
+		- component: CateringProductListAlt
+			responsibility: Render the wide background image band and the overlapping content group where the heading and product panel share a narrower aligned width.
+			interfaces:
+				- Accepts title, products, bgImage, and className without changing the public props contract.
+				- Preserves the existing scroll-linked motion behavior, described in the plan as layered parallax / overlap parallax.
+		- component: CateringWielkanocnyPage
+			responsibility: Continue rendering the existing SAŁATKI NA WYNOS section on the route without composition changes.
+			interfaces:
+				- Passes existing title, products, and bgImage props into CateringProductListAlt.
+	dependencies:
+		- component: CateringWielkanocnyPage
+			relationship: renders CateringProductListAlt on the /catering-wielkanocny route
+		- component: CateringProductListAlt
+			relationship: reuses the existing framer-motion scroll transform and current broad image shell pattern
+	integration_points:
+		- React Router route /catering-wielkanocny
+		- Existing Tailwind utility classes already used in the section
+		- Frontend build command exposed through zip/package.json
+
+contracts:
+	- from_task: implement_salatki_overlay_alignment
+		to_task: validate_salatki_overlay_alignment
+		interface: Updated section layout where the image remains broader than the overlapping heading/panel shell, with shared horizontal alignment and preserved layered parallax / overlap parallax behavior.
+		format: TSX layout adjustments in CateringProductListAlt verified by visual inspection and frontend build output.
+
+tasks:
+	- id: implement_salatki_overlay_alignment
+		title: Narrow the overlapping heading and menu panel without changing the broad image pattern
+		description: |
+			Update the SAŁATKI NA WYNOS section in CateringProductListAlt so the background image keeps its current broad width, while the overlapping content group becomes slightly narrower. The heading should align horizontally with the same narrower shell as the menu-items panel. Preserve the current overlap positioning over the image and keep the vertical depth effect while scrolling, identified here as layered parallax / overlap parallax. Limit the implementation to a minimal focused change in the existing section component.
+		wave: 1
+		agent: gem-implementer
+		priority: high
+		status: pending
+		dependencies: []
+		context_files:
+			- zip/src/components/sections/CateringProductListAlt.tsx: Active section component containing the wide image, heading, motion wrapper, and menu panel.
+			- zip/src/pages/CateringWielkanocnyPage.tsx: Confirms the route usage and current props passed into the section.
+		estimated_effort: small
+		estimated_files: 2
+		estimated_lines: 45
+		focus_area: frontend layout
+		verification:
+			- Confirm the image wrapper remains visually broader than the overlapping content shell.
+			- Confirm the heading left and right edges align with the menu-items panel shell rather than the full image width.
+			- Confirm the scroll-linked overlap still reads as layered parallax / overlap parallax.
+		acceptance_criteria:
+			- The menu-items panel is slightly narrower than the background image behind it.
+			- The heading aligns to the same horizontal margins as the panel.
+			- The heading and panel continue to overlap the image while preserving the existing depth-motion behavior.
+			- The section retains the established broad image width pattern.
+			- No route-level redesign or unrelated styling changes are introduced.
+		failure_modes:
+			- scenario: The narrower shell is applied to the wrong nested card and only changes inner padding instead of real outer alignment.
+				likelihood: medium
+				impact: medium
+				mitigation: Adjust the shared wrapper that contains both heading and panel, not only the inner white card.
+			- scenario: The overlap offset is changed without preserving current responsive spacing, causing the section to look detached on desktop or cramped on mobile.
+				likelihood: low
+				impact: medium
+				mitigation: Keep current overlap strategy and retune only the wrapper widths and alignment points.
+		tech_stack:
+			- React 19
+			- TypeScript
+			- Tailwind CSS v4
+			- framer-motion
+		test_coverage: null
+
+	- id: validate_salatki_overlay_alignment
+		title: Validate the overlay layout and frontend build
+		description: |
+			Verify that the refined SAŁATKI NA WYNOS section preserves the intended wide-image plus narrower-overlap composition, with the heading and panel aligned together and the scroll-linked depth effect still present. Confirm the frontend build succeeds after the focused layout change.
+		wave: 2
+		agent: gem-browser-tester
+		priority: medium
+		status: pending
+		dependencies:
+			- implement_salatki_overlay_alignment
+		context_files:
+			- zip/src/components/sections/CateringProductListAlt.tsx: Validate final wrapper structure and overlap behavior.
+			- zip/src/pages/CateringWielkanocnyPage.tsx: Validate route rendering scope remains unchanged.
+			- zip/package.json: Source of the frontend build command.
+		estimated_effort: small
+		estimated_files: 0
+		estimated_lines: 0
+		focus_area: frontend QA
+		verification:
+			- Check the section at desktop width to confirm the image remains broader than the heading/panel shell.
+			- Check that the overlap and scroll-depth effect remain visually intact.
+			- Run the frontend build in zip and confirm it succeeds.
+		acceptance_criteria:
+			- The section matches the requested narrower-panel-over-wide-image composition.
+			- The heading and panel share the same horizontal alignment.
+			- The layered parallax / overlap parallax effect is still visible.
+			- The frontend build completes successfully.
+		failure_modes:
+			- scenario: The layout appears correct statically but the transformed overlap shifts too aggressively during scroll.
+				likelihood: medium
+				impact: medium
+				mitigation: Review the section in motion and adjust only the overlap wrapper relationship, not the broader page shell.
+		validation_matrix:
+			- scenario: Desktop overlay alignment
+				steps:
+					- Open /catering-wielkanocny in a desktop viewport.
+					- Compare the width of the image band to the width of the heading and menu panel shell.
+					- Confirm the heading edges align with the panel shell.
+				expected_result: The image remains broader, while the heading and panel share one narrower aligned shell.
+			- scenario: Scroll-depth behavior
+				steps:
+					- Scroll through the SAŁATKI NA WYNOS section.
+					- Observe the relationship between the image and the overlapping heading/panel group.
+				expected_result: The section retains a clear layered parallax / overlap parallax feel rather than becoming flat or detached.
+			- scenario: Frontend build
+				steps:
+					- Run the frontend build from zip.
+				expected_result: The build completes without new errors.

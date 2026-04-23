@@ -1,0 +1,244 @@
+plan_id: none
+objective: Inspect the Catering Wielkanocny hero component on /catering-wielkanocny and identify exactly how the second image in the hero is rendered, including the desktop grid structure, current aspect ratio, and what minimal change would make that second image render as a 16:9 horizontal rectangle with a lower height while aligning its top edge on desktop with the top edge of the left text container in the lower half of the hero.
+focus_area: zip/src/components/sections/CateringWielkanocnyHero.tsx
+created_at: 2026-03-24
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - The /catering-wielkanocny route resolves to CateringWielkanocnyPage, which renders CateringWielkanocnyHero with data from zip/src/data/cateringWielkanocnyHero.tsx.
+  - The lower half of the hero uses a two-column desktop grid; the left column contains offer text and the right column renders secondaryImages via a map.
+  - The current second image wrapper is square because it uses aspect-square, so its rendered desktop box is 1:1 at the full width of the right grid column.
+  - The smallest code-only change that achieves a lower-height horizontal image is to change that wrapper from aspect-square to a 16:9 aspect class; adding lg:items-start on the parent grid is the minimal alignment guard if explicit desktop top-edge alignment is required.
+  - Only one secondary image is currently provided in data: /react/images/wypieki.webp.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic_search and grep_search to locate the route, page, component, and data source, followed by targeted read_file inspection of the exact JSX region and terminal-based line counting for report precision.
+  scope: Focused inspection of the /catering-wielkanocny route wiring, the hero component implementation, and the hero data source that supplies the secondary image.
+  confidence: high
+  coverage: 100
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Declares the client-side route that maps /catering-wielkanocny to the page component.
+    key_elements:
+      - element: /catering-wielkanocny route
+        type: pattern
+        location: zip/src/App.tsx:11
+        description: Registers the route element for CateringWielkanocnyPage.
+    language: TypeScript
+    lines: 14
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Page-level composition for the Catering Wielkanocny screen.
+    key_elements:
+      - element: CateringWielkanocnyHero render
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:184
+        description: Renders the hero and passes all content/image props from cateringWielkanocnyHeroData.
+    language: TypeScript
+    lines: 216
+  - file: CateringWielkanocnyHero.tsx
+    path: zip/src/components/sections/CateringWielkanocnyHero.tsx
+    purpose: Implements the hero layout, including the lower two-column offer/text plus secondary image region.
+    key_elements:
+      - element: lower hero grid
+        type: pattern
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:129
+        description: Uses a one-column mobile grid that becomes a two-column desktop grid with equal-width columns via lg:grid-cols-2.
+      - element: secondaryImages map
+        type: pattern
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:153
+        description: Iterates over secondaryImages and renders each image inside a styled wrapper div.
+      - element: secondary image wrapper
+        type: pattern
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:154
+        description: Applies relative aspect-square overflow-hidden rounded-[4px] bg-zinc-100, making the rendered image box square.
+    language: TypeScript
+    lines: 168
+  - file: cateringWielkanocnyHero.tsx
+    path: zip/src/data/cateringWielkanocnyHero.tsx
+    purpose: Supplies the hero content and image data.
+    key_elements:
+      - element: secondaryImages
+        type: variable
+        location: zip/src/data/cateringWielkanocnyHero.tsx:37
+        description: Defines the array of secondary hero images.
+      - element: wypieki secondary image entry
+        type: variable
+        location: zip/src/data/cateringWielkanocnyHero.tsx:39
+        description: Current secondary image source is /react/images/wypieki.webp with descriptive alt text.
+      - element: cateringWielkanocnyHeroData
+        type: variable
+        location: zip/src/data/cateringWielkanocnyHero.tsx:48
+        description: Bundles the page hero props consumed by CateringWielkanocnyHero.
+    language: TypeScript
+    lines: 63
+
+patterns_found:
+  - category: architecture
+    pattern: Route -> page -> data-driven section component
+    description: The page does not embed hero markup directly; it composes the hero component and injects content through a separate data module.
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:11
+        snippet: <Route path="/catering-wielkanocny" element={<CateringWielkanocnyPage />} />
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:184
+        snippet: <CateringWielkanocnyHero {...cateringWielkanocnyHeroData} />
+    prevalence: common
+  - category: structure
+    pattern: Lower hero section uses a symmetric desktop two-column grid
+    description: The offer copy and secondary image region sit side by side in desktop via lg:grid-cols-2, with no explicit column-span adjustments.
+    examples:
+      - file: zip/src/components/sections/CateringWielkanocnyHero.tsx
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:129
+        snippet: className="grid grid-cols-1 gap-12 lg:grid-cols-2"
+    prevalence: occasional
+  - category: structure
+    pattern: Secondary images are rendered from mapped data and dimensioned by wrapper aspect utilities
+    description: The image source comes from data, but the rendered box shape is controlled entirely by the wrapper class in the component.
+    examples:
+      - file: zip/src/components/sections/CateringWielkanocnyHero.tsx
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:153
+        snippet: {secondaryImages.map((image, index) => (
+      - file: zip/src/components/sections/CateringWielkanocnyHero.tsx
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:154
+        snippet: className="relative aspect-square overflow-hidden rounded-[4px] bg-zinc-100"
+    prevalence: common
+  - category: naming
+    pattern: Main vs secondary image separation in hero props
+    description: The component distinguishes a single mainImage from a secondaryImages collection.
+    examples:
+      - file: zip/src/components/sections/CateringWielkanocnyHero.tsx
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:19
+        snippet: mainImage?: CateringHeroImage;
+      - file: zip/src/components/sections/CateringWielkanocnyHero.tsx
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:26
+        snippet: secondaryImages?: readonly CateringHeroImage[];
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Composes the page and places the hero at the start of main content.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain depends on this
+    - component: CateringWielkanocnyHero
+      responsibility: Owns the layout and classNames for both hero image regions.
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      relationship_to_domain: domain is implemented here
+    - component: cateringWielkanocnyHeroData
+      responsibility: Supplies the actual secondary image entry rendered by the hero.
+      location: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: CateringHeroImage
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      usage_pattern: Used for both mainImage and secondaryImages entries.
+    - interface: CateringWielkanocnyHeroProps
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      usage_pattern: Page data object conforms to this prop contract.
+  data_flow_involving_domain: App.tsx routes to CateringWielkanocnyPage, the page spreads cateringWielkanocnyHeroData into CateringWielkanocnyHero, and the hero maps secondaryImages into img nodes whose box shape is determined by wrapper utility classes.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship: imports
+    - from: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      to: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship: this uses domain outputs
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Component rendering, prop composition, JSX mapping.
+    - name: Tailwind CSS
+      usage_in_domain: Grid, spacing, aspect ratio, typography, and visual box styling.
+    - name: Framer Motion
+      usage_in_domain: Wraps the hero sections with motion containers and stagger/fade animation variants.
+    - name: React Router
+      usage_in_domain: Provides the /catering-wielkanocny route.
+  libraries_used_in_domain:
+    - name: clsx/tailwind-merge via cn helper
+      purpose_in_domain: Merges optional className input for the section root.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Hero data and component names are feature-scoped and explicit, using CateringWielkanocnyHero, mainImage, secondaryImages, offerTitle, and offerParagraphs.
+  structure_of_domain: Route definition is separated from page composition, which is separated again from section implementation and text/image data.
+  error_handling_in_domain: No local error handling is present in the hero rendering path; this area is pure presentational composition.
+  testing_in_domain: No test file for this hero component was found during the focused inspection.
+  documentation_in_domain: No inline documentation beyond descriptive prop and variable naming was found in the inspected domain.
+
+related_dependencies:
+  internal:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: Renders the hero component.
+      direction: inbound
+    - component: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship_to_domain: Supplies the secondary image source and text content.
+      direction: outbound
+    - component: @/lib/utils
+      relationship_to_domain: Supplies cn for root class composition.
+      direction: outbound
+  external:
+    - name: framer-motion
+      purpose_for_domain: Animation wrappers for header and content blocks.
+    - name: react
+      purpose_for_domain: JSX and ReactNode typing.
+
+open_questions:
+  - question: Should the requested top-edge alignment be enforced explicitly even though the current layout already visually starts both columns at the top?
+    context: The current lower grid has no explicit items-start class, but both child blocks naturally render from the top of their grid areas because they are standard block flow content.
+  - question: Should the 16:9 change apply to all future secondary images or only to the current single image entry?
+    context: The component maps the whole secondaryImages array, so changing the wrapper class affects every item in that collection.
+
+gaps:
+  - area: Visual runtime verification
+    description: This research did not launch the page in a browser to measure computed pixel height at specific desktop breakpoints.
+    impact: The exact pixel height after switching to 16:9 is inferred from the column width and aspect utility rather than confirmed from a live render.
+  - area: Design intent for multiple secondary images
+    description: Only one secondary image is currently present in data, so stacked multi-image desktop behavior remains unexercised in the current page state.
+    impact: The minimal change is precise for the current page but would also affect any additional secondary images added later.
+
+status_summary:
+  status: completed
+  relevant_files:
+    - zip/src/App.tsx:11
+    - zip/src/pages/CateringWielkanocnyPage.tsx:184
+    - zip/src/components/sections/CateringWielkanocnyHero.tsx:129
+    - zip/src/components/sections/CateringWielkanocnyHero.tsx:153
+    - zip/src/components/sections/CateringWielkanocnyHero.tsx:154
+    - zip/src/data/cateringWielkanocnyHero.tsx:37
+    - zip/src/data/cateringWielkanocnyHero.tsx:39
+  exact_jsx_classname_region_to_edit: |
+    In zip/src/components/sections/CateringWielkanocnyHero.tsx, the lower hero grid starts at line 129:
+    className="grid grid-cols-1 gap-12 lg:grid-cols-2"
+
+    The secondary image box is rendered at lines 153-154:
+    {secondaryImages.map((image, index) => (
+      <div key={`${image.src}-${index}`} className="relative aspect-square overflow-hidden rounded-[4px] bg-zinc-100">
+  current_layout_explanation: |
+    The second hero image is currently the first and only entry of secondaryImages from zip/src/data/cateringWielkanocnyHero.tsx.
+    In the lower half of the hero, desktop layout becomes a two-column grid with text on the left and the secondary image stack on the right.
+    Because the image wrapper uses aspect-square, the rendered box stays 1:1 and fills the width of the right grid column, which makes it taller than a 16:9 rectangle at the same width.
+    The image itself uses h-full w-full object-cover, so the wrapper's aspect ratio fully determines the visible crop box.
+  safest_minimal_change_implementation_path: |
+    Minimal class-only path:
+    1. In zip/src/components/sections/CateringWielkanocnyHero.tsx line 154, replace aspect-square with aspect-[16/9].
+    2. If explicit desktop top-edge alignment must be guaranteed rather than left implicit by normal block flow, add lg:items-start to the parent lower grid class at line 129.
+
+    Effect of this path:
+    - The secondary image keeps the same column width, border radius, overflow, and object-cover behavior.
+    - Height drops automatically because a 16:9 box is shorter than a square at equal width.
+    - Top alignment remains visually consistent, and lg:items-start makes that intent explicit on desktop without restructuring markup or changing data contracts.

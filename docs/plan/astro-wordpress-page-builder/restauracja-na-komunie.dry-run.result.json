@@ -1,0 +1,343 @@
+{
+  "mode": "dry-run",
+  "input": {
+    "draftFilePath": "C:\\Users\\macie\\Documents\\BULWAR APP\\docs\\plan\\astro-wordpress-page-builder\\restauracja-na-komunie.firebase-draft.json"
+  },
+  "sourceMappingsPath": null,
+  "result": {
+    "draft": {
+      "pageSlug": "restauracja-na-komunie",
+      "pageKind": "generic_page",
+      "wordpressPostId": null,
+      "CompanyName": null,
+      "websiteUrl": null,
+      "title": "Restauracja na komunię",
+      "templateKey": "generic-page",
+      "status": "published",
+      "blocksOrder": [
+        "universal_header_block_2-01"
+      ],
+      "blocks": {
+        "universal_header_block_2-01": {
+          "id": "universal_header_block_2-01",
+          "blockKey": "universal_header_block_2",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "eyebrow": "Przyjęcia komunijne",
+            "title": "Restauracja na komunię",
+            "description": "Ta strona jest prostym, jedno-sekcyjnym szkieletem oferty komunijnej Bulwar. Na tym etapie wykorzystuje tylko blok hero/story bez dodatkowych sekcji i bez rozbudowanego copy sprzedażowego.",
+            "metadataItems": [
+              {
+                "label": "Format:",
+                "value": "Przyjęcie komunijne"
+              },
+              {
+                "label": "Status:",
+                "value": "Jedna sekcja page-builder"
+              }
+            ],
+            "contactCta": {
+              "label": "Kontakt:",
+              "buttonLabel": "zapytaj o termin",
+              "href": "/kontakt"
+            },
+            "heroImage": {
+              "src": "/react/images/home_hero.jpg",
+              "alt": "Restauracja Bulwar przygotowana na przyjęcie komunijne"
+            },
+            "storySections": [
+              {
+                "number": "01.",
+                "title": "Zakres strony.",
+                "content": "Jedyny blok tej strony zbiera nagłówek, metadane, CTA i jeden wiersz opowieści w ramach roboczego szkicu oferty komunijnej."
+              }
+            ]
+          },
+          "source": null,
+          "meta": {
+            "ai": {
+              "description": "Jedyna sekcja strony restauracja na komunię. Edytuj wyłącznie treści w data: eyebrow, title, description, metadataItems, contactCta, heroImage i storySections; nie zmieniaj geometrii Project10, choreografii motion ani klas stylujących blok."
+            }
+          }
+        }
+      },
+      "compiled": {
+        "page_builder_schema": {
+          "version": 1,
+          "page": {
+            "slug": "restauracja-na-komunie",
+            "title": "Restauracja na komunię",
+            "status": "published",
+            "templateKey": "generic-page"
+          },
+          "meta": {
+            "pageKind": "generic_page"
+          },
+          "sections": [
+            {
+              "id": "universal_header_block_2-01",
+              "blockKey": "universal_header_block_2",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "eyebrow": "Przyjęcia komunijne",
+                "title": "Restauracja na komunię",
+                "description": "Ta strona jest prostym, jedno-sekcyjnym szkieletem oferty komunijnej Bulwar. Na tym etapie wykorzystuje tylko blok hero/story bez dodatkowych sekcji i bez rozbudowanego copy sprzedażowego.",
+                "metadataItems": [
+                  {
+                    "label": "Format:",
+                    "value": "Przyjęcie komunijne"
+                  },
+                  {
+                    "label": "Status:",
+                    "value": "Jedna sekcja page-builder"
+                  }
+                ],
+                "contactCta": {
+                  "label": "Kontakt:",
+                  "buttonLabel": "zapytaj o termin",
+                  "href": "/kontakt"
+                },
+                "heroImage": {
+                  "src": "/react/images/home_hero.jpg",
+                  "alt": "Restauracja Bulwar przygotowana na przyjęcie komunijne"
+                },
+                "storySections": [
+                  {
+                    "number": "01.",
+                    "title": "Zakres strony.",
+                    "content": "Jedyny blok tej strony zbiera nagłówek, metadane, CTA i jeden wiersz opowieści w ramach roboczego szkicu oferty komunijnej."
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {
+                "ai": {
+                  "description": "Jedyna sekcja strony restauracja na komunię. Edytuj wyłącznie treści w data: eyebrow, title, description, metadataItems, contactCta, heroImage i storySections; nie zmieniaj geometrii Project10, choreografii motion ani klas stylujących blok."
+                }
+              }
+            }
+          ]
+        },
+        "page_builder_schema_for_ai": {
+          "version": 1,
+          "postId": null,
+          "slug": "restauracja-na-komunie",
+          "title": "Restauracja na komunię",
+          "blocks": [
+            {
+              "id": "universal_header_block_2-01",
+              "blockKey": "universal_header_block_2",
+              "variant": null,
+              "description": "Jedyna sekcja strony restauracja na komunię. Edytuj wyłącznie treści w data: eyebrow, title, description, metadataItems, contactCta, heroImage i storySections; nie zmieniaj geometrii Project10, choreografii motion ani klas stylujących blok.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.eyebrow",
+                "content.title",
+                "content.description",
+                "content.metadataItems[].label",
+                "content.metadataItems[].value",
+                "content.contactCta.label",
+                "content.contactCta.buttonLabel",
+                "content.contactCta.href",
+                "content.heroImage.src",
+                "content.heroImage.alt",
+                "content.storySections[].number",
+                "content.storySections[].title",
+                "content.storySections[].content"
+              ],
+              "editRoute": "Zmiany copy, metadanych, CTA, obrazu i kolekcji story rows wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru obrazow uzywaj narzedzi WordPress media. Nie korzystaj z WooCommerce dla tego bloku.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "eyebrow": "Przyjęcia komunijne",
+                "title": "Restauracja na komunię",
+                "description": "Ta strona jest prostym, jedno-sekcyjnym szkieletem oferty komunijnej Bulwar. Na tym etapie wykorzystuje tylko blok hero/story bez dodatkowych sekcji i bez rozbudowanego copy sprzedażowego.",
+                "metadataItems": [
+                  {
+                    "label": "Format:",
+                    "value": "Przyjęcie komunijne"
+                  },
+                  {
+                    "label": "Status:",
+                    "value": "Jedna sekcja page-builder"
+                  }
+                ],
+                "contactCta": {
+                  "label": "Kontakt:",
+                  "buttonLabel": "zapytaj o termin",
+                  "href": "/kontakt"
+                },
+                "heroImage": {
+                  "src": "/react/images/home_hero.jpg",
+                  "alt": "Restauracja Bulwar przygotowana na przyjęcie komunijne"
+                },
+                "storySections": [
+                  {
+                    "number": "01.",
+                    "title": "Zakres strony.",
+                    "content": "Jedyny blok tej strony zbiera nagłówek, metadane, CTA i jeden wiersz opowieści w ramach roboczego szkicu oferty komunijnej."
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "workflow": {
+        "requiresSourceMapping": false,
+        "unresolvedSourceBlockIds": [],
+        "sourceMappingNotes": {},
+        "needsCompile": false,
+        "needsPublish": true,
+        "needsDeploy": false
+      },
+      "needsCompile": false,
+      "needsPublish": true,
+      "needsDeploy": false
+    },
+    "ensuredPage": null,
+    "compiled": {
+      "page_builder_schema": {
+        "version": 1,
+        "page": {
+          "slug": "restauracja-na-komunie",
+          "title": "Restauracja na komunię",
+          "status": "published",
+          "templateKey": "generic-page"
+        },
+        "meta": {
+          "pageKind": "generic_page"
+        },
+        "sections": [
+          {
+            "id": "universal_header_block_2-01",
+            "blockKey": "universal_header_block_2",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "eyebrow": "Przyjęcia komunijne",
+              "title": "Restauracja na komunię",
+              "description": "Ta strona jest prostym, jedno-sekcyjnym szkieletem oferty komunijnej Bulwar. Na tym etapie wykorzystuje tylko blok hero/story bez dodatkowych sekcji i bez rozbudowanego copy sprzedażowego.",
+              "metadataItems": [
+                {
+                  "label": "Format:",
+                  "value": "Przyjęcie komunijne"
+                },
+                {
+                  "label": "Status:",
+                  "value": "Jedna sekcja page-builder"
+                }
+              ],
+              "contactCta": {
+                "label": "Kontakt:",
+                "buttonLabel": "zapytaj o termin",
+                "href": "/kontakt"
+              },
+              "heroImage": {
+                "src": "/react/images/home_hero.jpg",
+                "alt": "Restauracja Bulwar przygotowana na przyjęcie komunijne"
+              },
+              "storySections": [
+                {
+                  "number": "01.",
+                  "title": "Zakres strony.",
+                  "content": "Jedyny blok tej strony zbiera nagłówek, metadane, CTA i jeden wiersz opowieści w ramach roboczego szkicu oferty komunijnej."
+                }
+              ]
+            },
+            "source": null,
+            "meta": {
+              "ai": {
+                "description": "Jedyna sekcja strony restauracja na komunię. Edytuj wyłącznie treści w data: eyebrow, title, description, metadataItems, contactCta, heroImage i storySections; nie zmieniaj geometrii Project10, choreografii motion ani klas stylujących blok."
+              }
+            }
+          }
+        ]
+      },
+      "page_builder_schema_for_ai": {
+        "version": 1,
+        "postId": null,
+        "slug": "restauracja-na-komunie",
+        "title": "Restauracja na komunię",
+        "blocks": [
+          {
+            "id": "universal_header_block_2-01",
+            "blockKey": "universal_header_block_2",
+            "variant": null,
+            "description": "Jedyna sekcja strony restauracja na komunię. Edytuj wyłącznie treści w data: eyebrow, title, description, metadataItems, contactCta, heroImage i storySections; nie zmieniaj geometrii Project10, choreografii motion ani klas stylujących blok.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.eyebrow",
+              "content.title",
+              "content.description",
+              "content.metadataItems[].label",
+              "content.metadataItems[].value",
+              "content.contactCta.label",
+              "content.contactCta.buttonLabel",
+              "content.contactCta.href",
+              "content.heroImage.src",
+              "content.heroImage.alt",
+              "content.storySections[].number",
+              "content.storySections[].title",
+              "content.storySections[].content"
+            ],
+            "editRoute": "Zmiany copy, metadanych, CTA, obrazu i kolekcji story rows wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru obrazow uzywaj narzedzi WordPress media. Nie korzystaj z WooCommerce dla tego bloku.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "eyebrow": "Przyjęcia komunijne",
+              "title": "Restauracja na komunię",
+              "description": "Ta strona jest prostym, jedno-sekcyjnym szkieletem oferty komunijnej Bulwar. Na tym etapie wykorzystuje tylko blok hero/story bez dodatkowych sekcji i bez rozbudowanego copy sprzedażowego.",
+              "metadataItems": [
+                {
+                  "label": "Format:",
+                  "value": "Przyjęcie komunijne"
+                },
+                {
+                  "label": "Status:",
+                  "value": "Jedna sekcja page-builder"
+                }
+              ],
+              "contactCta": {
+                "label": "Kontakt:",
+                "buttonLabel": "zapytaj o termin",
+                "href": "/kontakt"
+              },
+              "heroImage": {
+                "src": "/react/images/home_hero.jpg",
+                "alt": "Restauracja Bulwar przygotowana na przyjęcie komunijne"
+              },
+              "storySections": [
+                {
+                  "number": "01.",
+                  "title": "Zakres strony.",
+                  "content": "Jedyny blok tej strony zbiera nagłówek, metadane, CTA i jeden wiersz opowieści w ramach roboczego szkicu oferty komunijnej."
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "compileMeta": {
+      "appliedSourceBlockIds": [],
+      "ignoredSourceBlockIds": [],
+      "usedCurrentPageBuilderSchema": false,
+      "usedCurrentPageBuilderSchemaForAi": false
+    },
+    "published": null,
+    "readback": null,
+    "dryRun": true
+  }
+}

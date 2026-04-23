@@ -1,0 +1,350 @@
+plan_id: standalone-20260418
+objective: Research best practices for optimizing a static Astro website for classic SEO and AI answer engines / LLM crawlers, tailored to a content-site generated from structured data.
+focus_area: astro-seo-ai-crawlers
+created_at: 2026-04-18
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The highest-leverage SEO work for this Astro site is still fundamentals: indexable HTML, crawlable internal links, unique titles/descriptions, canonical handling for duplicates, sitemap, robots, and strong page-level content quality. Sources: Google Search technical requirements, SEO Starter Guide, links guidance.
+  - Astro already provides an inherent advantage for SEO here because the site builds static HTML at build time (`output: 'static'`) and fetches structured page data before render, reducing dependence on client-side rendering. Sources: astro-site/astro.config.mjs, astro-site/src/pages/[slug].astro, Astro docs sitemap guidance.
+  - For Google AI features, there are no extra technical requirements beyond normal indexed search eligibility; Google explicitly says no special AI files or schema are required. Sources: Google Search docs on AI features and robots/snippet controls.
+  - For non-Google AI retrieval, crawler access matters: OpenAI uses `OAI-SearchBot` for ChatGPT search results and Anthropic uses `Claude-SearchBot` for search optimization; blocking those bots reduces visibility in those systems. Sources: OpenAI crawler docs, Anthropic crawler help article.
+  - In the current Astro code, the shared layout only renders a minimal `<head>` with charset, viewport, and title; no canonical, meta description, robots, Open Graph, sitemap, robots.txt, or JSON-LD implementation was found in `astro-site/`. Sources: astro-site/src/layouts/BaseLayout.astro, grep search over astro-site.
+
+research_metadata:
+  methodology: Hybrid retrieval over the repo using memory view, file_search, grep_search, semantic_search, list_dir, and targeted read_file calls, plus official-doc verification through Astro docs search and fetched Google/OpenAI/Anthropic pages.
+  scope: Focused on the Astro proof-of-concept app and official search / AI crawler guidance relevant to static, content-heavy pages generated from structured data.
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: astro.config.mjs
+    path: astro-site/astro.config.mjs
+    purpose: Astro build configuration for deployment URL and rendering mode.
+    key_elements:
+      - element: defineConfig
+        type: pattern
+        location: astro-site/astro.config.mjs:3
+        description: Configures Astro for static output and declares the production site URL.
+      - element: output
+        type: variable
+        location: astro-site/astro.config.mjs:5
+        description: Uses `static`, meaning pages are emitted as HTML files at build time.
+      - element: site
+        type: variable
+        location: astro-site/astro.config.mjs:6
+        description: Declares the canonical site origin used by Astro integrations such as sitemap.
+    language: javascript
+    lines: 6
+
+  - file: BaseLayout.astro
+    path: astro-site/src/layouts/BaseLayout.astro
+    purpose: Shared document shell and HTML head for Astro pages.
+    key_elements:
+      - element: Props.title
+        type: variable
+        location: astro-site/src/layouts/BaseLayout.astro:8
+        description: Accepts a title prop for the page.
+      - element: html head
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:18
+        description: Renders charset, viewport, title, and font preconnects only.
+      - element: slot layout
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:27
+        description: Wraps main content with navbar, footer, and sticky cart controls.
+    language: astro
+    lines: 33
+
+  - file: [slug].astro
+    path: astro-site/src/pages/[slug].astro
+    purpose: Static page route that builds content pages from structured WordPress-backed data.
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:15
+        description: Generates static routes from configured slugs.
+      - element: buildStaticPage
+        type: function
+        location: astro-site/src/pages/[slug].astro:48
+        description: Resolves page-builder schema into renderable sections at build time.
+      - element: title construction
+        type: variable
+        location: astro-site/src/pages/[slug].astro:51
+        description: Produces the page title from structured page data.
+    language: astro
+    lines: 85
+
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Zod schema definitions for the structured page-builder payload.
+    key_elements:
+      - element: pageBuilderSchema
+        type: variable
+        location: astro-site/src/lib/types.ts:79
+        description: Defines the page-level schema used to validate content input.
+      - element: page.slug
+        type: variable
+        location: astro-site/src/lib/types.ts:82
+        description: Captures the page slug used for routing.
+      - element: seo
+        type: variable
+        location: astro-site/src/lib/types.ts:89
+        description: Shows an optional SEO field exists in the content model, but no rendering path was found in the Astro page/layout files.
+    language: typescript
+    lines: 87
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Defines the WordPress origin and the current static slug list.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: Points the build to the WordPress backend origin.
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:2
+        description: Limits the current Astro POC to a single test page slug.
+    language: typescript
+    lines: 2
+
+  - file: README.md
+    path: astro-site/README.md
+    purpose: States the Astro proof-of-concept scope.
+    key_elements:
+      - element: POC scope summary
+        type: pattern
+        location: astro-site/README.md:1
+        description: Describes the Astro site as a build-time proof of concept that fetches page_builder_schema and outputs static HTML.
+    language: markdown
+    lines: 12
+
+  - file: package.json
+    path: astro-site/package.json
+    purpose: Declares framework/runtime dependencies and scripts.
+    key_elements:
+      - element: astro dependency
+        type: variable
+        location: astro-site/package.json:10
+        description: Uses Astro 5.14.2.
+      - element: zod dependency
+        type: variable
+        location: astro-site/package.json:11
+        description: Uses Zod 4.3.6 for schema validation.
+    language: json
+    lines: 15
+
+  - file: prd.yaml
+    path: docs/prd.yaml
+    purpose: Project PRD context for current in-scope work.
+    key_elements:
+      - element: refactor-app-tsx
+        type: variable
+        location: docs/prd.yaml:1
+        description: Current PRD is centered on React refactoring, not Astro SEO, so SEO research is effectively ad hoc / standalone.
+    language: yaml
+    lines: 19
+
+patterns_found:
+  - category: architecture
+    pattern: Static HTML is generated from structured content at build time.
+    description: The Astro route builds pages from validated structured data before rendering, which avoids SPA-style reliance on client JavaScript for primary content discovery.
+    examples:
+      - file: astro-site/astro.config.mjs
+        location: astro-site/astro.config.mjs:5
+        snippet: output: 'static'
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:48
+        snippet: buildStaticPage(slug)
+    prevalence: common
+
+  - category: structure
+    pattern: Shared HTML head is intentionally minimal.
+    description: The current shared layout sets document basics but does not yet expose the common SEO metadata expected for production content pages.
+    examples:
+      - file: astro-site/src/layouts/BaseLayout.astro
+        location: astro-site/src/layouts/BaseLayout.astro:19
+        snippet: <meta charset="UTF-8" />
+      - file: astro-site/src/layouts/BaseLayout.astro
+        location: astro-site/src/layouts/BaseLayout.astro:21
+        snippet: <title>{title}</title>
+    prevalence: common
+
+  - category: metadata
+    pattern: SEO data exists in the content model but is not yet wired into page output.
+    description: The page schema reserves an optional `seo` object, which indicates the project already anticipates page-specific metadata, but the rendered Astro page only passes `title` into the layout.
+    examples:
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:89
+        snippet: seo: z.record(z.string(), z.unknown()).optional()
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:64
+        snippet: <BaseLayout title={title} globalLayout={globalLayout}>
+    prevalence: occasional
+
+  - category: routing
+    pattern: Static route coverage is currently narrow.
+    description: The proof of concept currently emits one configured test slug, so crawl-scale behavior and broad internal-link topology are not yet visible in this Astro folder.
+    examples:
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:16
+        snippet: return TEST_PAGE_SLUGS.map((slug) => ({ params: { slug } }))
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:2
+        snippet: export const TEST_PAGE_SLUGS = ['testowa-blueprint'] as const;
+    prevalence: common
+
+  - category: external_guidance
+    pattern: Official search guidance treats AI visibility mostly as an extension of standard crawlability and indexing.
+    description: Google states there are no additional technical requirements or special AI markup for AI Overviews / AI Mode; OpenAI and Anthropic expose distinct crawler tokens for search visibility versus model training.
+    examples:
+      - file: Google Search docs
+        location: https://developers.google.com/search/docs/appearance/ai-features
+        snippet: There are no additional technical requirements. You don't need to create new machine readable files, AI text files, or markup to appear in these features.
+      - file: OpenAI crawler docs
+        location: https://developers.openai.com/api/docs/bots
+        snippet: OAI-SearchBot is used to surface websites in search results in ChatGPT’s search features.
+      - file: Anthropic crawler docs
+        location: https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web
+        snippet: Claude-SearchBot navigates the web to improve search result quality for users.
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Base layout
+      responsibility: Defines the shared document shell and head tags.
+      location: astro-site/src/layouts/BaseLayout.astro
+      relationship_to_domain: domain depends on this
+    - component: Dynamic static page route
+      responsibility: Transforms structured page-builder data into static pages.
+      location: astro-site/src/pages/[slug].astro
+      relationship_to_domain: domain depends on this
+    - component: Page builder schema
+      responsibility: Defines structured page payload and reserves SEO fields.
+      location: astro-site/src/lib/types.ts
+      relationship_to_domain: domain depends on this
+    - component: Build config
+      responsibility: Declares output mode and canonical site origin.
+      location: astro-site/astro.config.mjs
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: PageBuilderSchema
+      location: astro-site/src/lib/types.ts
+      usage_pattern: Validates structured content used to create static pages.
+    - interface: GlobalLayoutData
+      location: astro-site/src/lib/globalLayoutContract.ts
+      usage_pattern: Supplies global layout content for nav and footer.
+  data_flow_involving_domain: WordPress-backed page_builder_schema is fetched at build time, validated with Zod, transformed into Astro section props, and emitted as static HTML pages under Astro's static output mode.
+  key_relationships_to_domain:
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/lib/pageBuilder.ts
+      relationship: calls
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/wordpress.ts
+      relationship: calls
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/layouts/BaseLayout.astro
+      relationship: composes
+    - from: astro-site/src/layouts/BaseLayout.astro
+      to: astro-site/src/components/Navbar.astro
+      relationship: composes
+    - from: astro-site/src/layouts/BaseLayout.astro
+      to: astro-site/src/components/Footer.astro
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - Astro component syntax
+    - TypeScript
+    - JavaScript
+    - YAML
+  frameworks_used_in_domain:
+    - name: Astro 5.14.2
+      usage_in_domain: Static site generation and page rendering.
+  libraries_used_in_domain:
+    - name: Zod 4.3.6
+      purpose_in_domain: Validation of structured page-builder data before rendering.
+  external_apis_used_in_domain:
+    - name: WordPress custom JSON endpoints
+      integration_point: astro-site/src/lib/wordpress.ts
+    - name: WooCommerce-related product resolution
+      integration_point: astro-site/src/lib/woo.ts
+
+related_conventions:
+  naming_patterns_in_domain: Files are organized by concern (`layouts`, `pages`, `lib`, `components`) and use descriptive PascalCase component names with config/constants in uppercase.
+  structure_of_domain: A shared base layout wraps a slug-based page route; page content is data-driven from a validated schema rather than authored directly in page files.
+  error_handling_in_domain: Build-time fetch failures throw errors unless a local fallback is explicitly allowed for global layout retrieval.
+  testing_in_domain: Limited evidence in this focus area; one test file exists for global layout behavior (`astro-site/src/lib/globalLayout.test.ts`) but no SEO-specific tests were found.
+  documentation_in_domain: The Astro README documents the POC scope and confirms the goal is static HTML generated from WordPress-backed schemas.
+
+related_dependencies:
+  internal:
+    - component: astro-site/src/lib/pageBuilder.ts
+      relationship_to_domain: Resolves structured page data before rendering.
+      direction: outbound
+    - component: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: Fetches page-builder and global layout data.
+      direction: outbound
+    - component: astro-site/src/lib/woo.ts
+      relationship_to_domain: Enriches menu sections with product data.
+      direction: outbound
+    - component: astro-site/src/components/*
+      relationship_to_domain: Render final section HTML used by crawlers.
+      direction: outbound
+  external:
+    - name: Google Search systems
+      purpose_for_domain: Crawling, indexing, search display, AI Overviews / AI Mode inclusion.
+    - name: OpenAI OAI-SearchBot
+      purpose_for_domain: ChatGPT search result inclusion.
+    - name: Anthropic Claude-SearchBot
+      purpose_for_domain: Claude search optimization and retrieval visibility.
+
+related_security_conventions:
+  note: Not applicable as a primary focus area; this research centered on crawlability, metadata, and content discoverability rather than auth or sensitive workflows.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Public crawler access control
+      location: robots.txt / head metadata / CDN rules
+      concern: Overblocking crawlers or resources can suppress indexing and AI visibility.
+  authentication_patterns_in_domain: Public pages must remain accessible without login for search indexing; Google states logged-in or blocked content will not be indexed.
+  authorization_patterns_in_domain: Not a primary concern in the analyzed Astro files.
+  data_validation_in_domain: Structured page input is validated with Zod before rendering, reducing malformed content payload risk.
+
+open_questions:
+  - question: Will the Astro rollout live at the root domain, the `/astro/` base path, or another path long-term?
+    context: Canonical URL logic, sitemap URLs, and duplicate-content handling depend on the final public URL structure.
+    type: decision_blocker
+    affects:
+      - standalone-20260418
+  - question: Is the optional `seo` payload intended to hold title, description, canonical, OG, robots, and schema data per page?
+    context: The model supports an SEO object, but the render path does not yet show its contract or output behavior.
+    type: research
+    affects:
+      - standalone-20260418
+  - question: Which AI retrieval systems does the business actually want to allow: Google, OpenAI search, Anthropic search, model-training bots, or only traditional search crawlers?
+    context: OpenAI and Anthropic separate search visibility bots from training bots, so robots.txt policy can be selective.
+    type: research
+    affects:
+      - standalone-20260418
+
+gaps:
+  - area: Production crawl controls
+    description: No robots.txt or sitemap implementation was found in the analyzed Astro repo files, so current crawler-discovery behavior cannot be verified from code.
+    impact: research_blocker
+    affects:
+      - standalone-20260418
+  - area: Metadata output
+    description: No canonical tags, meta descriptions, robots meta, Open Graph tags, or JSON-LD output were found in `astro-site/`, so page-level metadata completeness is currently unknown beyond the absence of implementation in this POC.
+    impact: research_blocker
+    affects:
+      - standalone-20260418
+  - area: Live evidence
+    description: No Search Console, crawl-log, or real indexation evidence was available in the workspace, so findings are based on code inspection and official documentation rather than observed production performance.
+    impact: nice_to_know
+    affects:
+      - standalone-20260418

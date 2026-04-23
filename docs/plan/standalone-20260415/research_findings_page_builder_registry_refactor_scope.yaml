@@ -1,0 +1,539 @@
+plan_id: standalone-20260415
+objective: >-
+	Identify the minimal safe architecture change that reduces manual per-block wiring in
+	zip/src/blocks/registry/renderPageBuilderSections.tsx and
+	SCRIPTS/generate-page-builder-ai-schema.js.
+focus_area: page_builder_registry_refactor_scope
+created_at: 2026-04-15
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+	- The current React runtime already centralizes block registration in zip/src/blocks/registry/index.ts:20, but rendering still bypasses the registry and uses a blockKey switch in zip/src/blocks/registry/renderPageBuilderSections.tsx:19.
+	- The four examined block schema files already contain per-block render metadata at zip/src/blocks/about-1/schema.ts:105, zip/src/blocks/gallery-masonry-style1/schema.ts:56, zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:96, and zip/src/blocks/our-services/schema.ts:72; the minimal React-side refactor surface is therefore registry/types + those four schema files + renderPageBuilderSections.tsx.
+	- Colocating React render functions in the block definitions does not introduce an observed import cycle with the current dependency direction; the main hazard is widening schema modules from data-only definitions into React-aware modules, not a circular import (sources: zip/src/blocks/registry/index.ts:20, zip/src/blocks/registry/types.ts:16, zip/src/blocks/registry/renderPageBuilderSections.tsx:14).
+	- The AI generator is on a separate runtime boundary: it is a plain Node/CommonJS script invoked directly by node and tested through child_process, while the zip registry is TypeScript/ESM with bundler-oriented resolution, so importing TS/TSX block definitions into the generator is not the minimal safe path (sources: SCRIPTS/generate-page-builder-ai-schema.js:311, SCRIPTS/generate-page-builder-ai-schema.test.js:91, zip/package.json:5, zip/tsconfig.json:13, zip/tsconfig.json:24).
+	- The simplest descriptor-driven replacement for the AI generator if/else chain is an in-script or plain-.js keyed descriptor table consumed by a generic buildAiBlock path; this removes the branch at SCRIPTS/generate-page-builder-ai-schema.js:283 without requiring the generator to execute the React/TS registry.
+
+research_metadata:
+	methodology: >-
+		Hybrid retrieval using file_search, grep_search, semantic_search, and targeted read_file
+		inspection across the narrow page-builder registry and AI generator surfaces, plus
+		package/tooling reads to verify runtime boundaries.
+	scope: >-
+		Focused on the four requested block schema files, the registry renderer and registry
+		support files, the AI generator, adjacent tests, and the package/tooling files that
+		constrain shared-descriptor options.
+	confidence: high
+	coverage: 92
+	decision_blockers: 1
+	research_blockers: 0
+
+files_analyzed:
+	- file: renderPageBuilderSections.tsx
+		path: zip/src/blocks/registry/renderPageBuilderSections.tsx
+		purpose: Renders page-builder sections into React components.
+		key_elements:
+			- element: renderSection
+				type: function
+				location: zip/src/blocks/registry/renderPageBuilderSections.tsx:14
+				description: Applies enabled gating and hardcoded blockKey-to-component mapping.
+			- element: switch (section.blockKey)
+				type: pattern
+				location: zip/src/blocks/registry/renderPageBuilderSections.tsx:19
+				description: Central manual wiring point for all currently supported blocks.
+			- element: renderPageBuilderSections
+				type: function
+				location: zip/src/blocks/registry/renderPageBuilderSections.tsx:72
+				description: Maps schema.sections through renderSection.
+		language: TSX
+		lines: 74
+
+	- file: types.ts
+		path: zip/src/blocks/registry/types.ts
+		purpose: Declares the block-definition contract used by the registry.
+		key_elements:
+			- element: BlockRenderDescriptor
+				type: interface
+				location: zip/src/blocks/registry/types.ts:3
+				description: Stores inert render metadata such as componentName and componentImportPath.
+			- element: PageBuilderBlockDefinition
+				type: interface
+				location: zip/src/blocks/registry/types.ts:16
+				description: Core registry contract for schema/default/render/source metadata.
+		language: TypeScript
+		lines: 46
+
+	- file: index.ts
+		path: zip/src/blocks/registry/index.ts
+		purpose: Central registry assembly, lookup, validation, and default-instance creation.
+		key_elements:
+			- element: blockRegistry
+				type: variable
+				location: zip/src/blocks/registry/index.ts:20
+				description: Registers all examined block definitions by blockKey.
+			- element: getBlock
+				type: function
+				location: zip/src/blocks/registry/index.ts:33
+				description: Returns a registered block definition for downstream validation and lookup.
+			- element: createDefaultBlockInstance
+				type: function
+				location: zip/src/blocks/registry/index.ts:68
+				description: Builds a default section instance using block.defaultData and block.version.
+		language: TypeScript
+		lines: 87
+
+	- file: pageBuilderSchema.ts
+		path: zip/src/blocks/registry/pageBuilderSchema.ts
+		purpose: Validates incoming page-builder schema payloads against the registry.
+		key_elements:
+			- element: parsePageBuilderSchema
+				type: function
+				location: zip/src/blocks/registry/pageBuilderSchema.ts:42
+				description: Validates block existence, version, data, and source for each section.
+			- element: getBlock(section.blockKey)
+				type: pattern
+				location: zip/src/blocks/registry/pageBuilderSchema.ts:53
+				description: Registry lookup already exists in validation path before render time.
+		language: TypeScript
+		lines: 69
+
+	- file: resolvePageBuilderSources.ts
+		path: zip/src/blocks/registry/resolvePageBuilderSources.ts
+		purpose: Resolves source-backed sections before render.
+		key_elements:
+			- element: switch (section.blockKey)
+				type: pattern
+				location: zip/src/blocks/registry/resolvePageBuilderSources.ts:19
+				description: Separate manual per-block switch retained for source-aware blocks.
+		language: TypeScript
+		lines: 36
+
+	- file: schema.ts
+		path: zip/src/blocks/about-1/schema.ts
+		purpose: Defines the about-1 data contract, defaults, examples, and render metadata.
+		key_elements:
+			- element: about1BlockDefinition
+				type: variable
+				location: zip/src/blocks/about-1/schema.ts:98
+				description: Block definition for about-1.
+			- element: render
+				type: pattern
+				location: zip/src/blocks/about-1/schema.ts:105
+				description: Inert descriptor pointing at AboutSection.
+		language: TypeScript
+		lines: 114
+
+	- file: schema.ts
+		path: zip/src/blocks/gallery-masonry-style1/schema.ts
+		purpose: Defines the gallery block contract, defaults, examples, and render metadata.
+		key_elements:
+			- element: galleryMasonryStyle1BlockDefinition
+				type: variable
+				location: zip/src/blocks/gallery-masonry-style1/schema.ts:47
+				description: Block definition for gallery-masonry-style1.
+			- element: render
+				type: pattern
+				location: zip/src/blocks/gallery-masonry-style1/schema.ts:56
+				description: Inert descriptor pointing at GallerySection.
+		language: TypeScript
+		lines: 65
+
+	- file: schema.ts
+		path: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts
+		purpose: Defines the menu block contract, source support, defaults, examples, and render metadata.
+		key_elements:
+			- element: menuCategoryPhotoParallaxFullWidthBlockDefinition
+				type: variable
+				location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:86
+				description: Block definition for the menu category block.
+			- element: render
+				type: pattern
+				location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:96
+				description: Inert descriptor pointing at BreakfastSection.
+			- element: sourceResolver
+				type: pattern
+				location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:103
+				description: Static source metadata already lives with the block definition.
+		language: TypeScript
+		lines: 111
+
+	- file: schema.ts
+		path: zip/src/blocks/our-services/schema.ts
+		purpose: Defines the services block contract, defaults, examples, and render metadata.
+		key_elements:
+			- element: ourServicesBlockDefinition
+				type: variable
+				location: zip/src/blocks/our-services/schema.ts:65
+				description: Block definition for our-services.
+			- element: render
+				type: pattern
+				location: zip/src/blocks/our-services/schema.ts:72
+				description: Inert descriptor pointing at OurServices.
+		language: TypeScript
+		lines: 81
+
+	- file: generate-page-builder-ai-schema.js
+		path: SCRIPTS/generate-page-builder-ai-schema.js
+		purpose: CLI that generates page_builder_schema_for_ai from the render schema JSON.
+		key_elements:
+			- element: buildGalleryBlock
+				type: function
+				location: SCRIPTS/generate-page-builder-ai-schema.js:107
+				description: Gallery-specific AI block builder.
+			- element: buildMenuBlock
+				type: function
+				location: SCRIPTS/generate-page-builder-ai-schema.js:134
+				description: Menu block AI builder with source-aware branching.
+			- element: buildAbout1Block
+				type: function
+				location: SCRIPTS/generate-page-builder-ai-schema.js:211
+				description: About block AI builder.
+			- element: buildOurServicesBlock
+				type: function
+				location: SCRIPTS/generate-page-builder-ai-schema.js:245
+				description: Our-services block AI builder.
+			- element: buildAiBlock
+				type: function
+				location: SCRIPTS/generate-page-builder-ai-schema.js:283
+				description: Manual if/else dispatch by blockKey.
+			- element: buildAiSchema
+				type: function
+				location: SCRIPTS/generate-page-builder-ai-schema.js:311
+				description: Maps renderSchema.sections through buildAiBlock.
+		language: JavaScript
+		lines: 334
+
+	- file: wave2-pagebuilder.test.tsx
+		path: zip/src/blocks/registry/wave2-pagebuilder.test.tsx
+		purpose: Regression coverage for registry lookup, defaults, validation, and rendered output.
+		key_elements:
+			- element: createDefaultBlockInstance("our-services", 2)
+				type: pattern
+				location: zip/src/blocks/registry/wave2-pagebuilder.test.tsx:22
+				description: Verifies default-instance generation from registry data.
+			- element: validateBlockData("about-1", ...)
+				type: pattern
+				location: zip/src/blocks/registry/wave2-pagebuilder.test.tsx:45
+				description: Verifies Zod-backed data validation prior to rendering.
+			- element: renderPageBuilderSections(schema)
+				type: pattern
+				location: zip/src/blocks/registry/wave2-pagebuilder.test.tsx:109
+				description: Verifies visible markup for registered sections.
+		language: TSX
+		lines: 114
+
+	- file: generate-page-builder-ai-schema.test.js
+		path: SCRIPTS/generate-page-builder-ai-schema.test.js
+		purpose: Regression coverage for AI schema generation and stable ids.
+		key_elements:
+			- element: execFileSync(process.execPath, [generatorPath, ...])
+				type: pattern
+				location: SCRIPTS/generate-page-builder-ai-schema.test.js:91
+				description: Executes the generator as a plain Node script.
+			- element: assert.match(output.blocks[0].description, ...)
+				type: pattern
+				location: SCRIPTS/generate-page-builder-ai-schema.test.js:107
+				description: Verifies descriptive text for generated AI blocks.
+		language: JavaScript
+		lines: 109
+
+	- file: package.json
+		path: zip/package.json
+		purpose: Declares the zip app runtime and tooling boundary.
+		key_elements:
+			- element: type
+				type: variable
+				location: zip/package.json:5
+				description: The zip app is ESM.
+			- element: tsx
+				type: dependency
+				location: zip/package.json:42
+				description: tsx exists in zip devDependencies, not in the scripts package boundary.
+		language: JSON
+		lines: 49
+
+	- file: tsconfig.json
+		path: zip/tsconfig.json
+		purpose: Declares zip TypeScript module resolution behavior.
+		key_elements:
+			- element: moduleResolution
+				type: variable
+				location: zip/tsconfig.json:13
+				description: Uses bundler-oriented resolution.
+			- element: allowImportingTsExtensions
+				type: variable
+				location: zip/tsconfig.json:24
+				description: Allows TS extension imports in the bundler-oriented app boundary.
+		language: JSON
+		lines: 27
+
+patterns_found:
+	- category: architecture
+		pattern: Block definitions already centralize validation/defaults but not executable React rendering.
+		description: >-
+			Each block schema module exports a PageBuilderBlockDefinition with schema, defaultData,
+			exampleData, and a static render descriptor, while the executable JSX adapter remains
+			outside the definition.
+		examples:
+			- file: zip/src/blocks/about-1/schema.ts
+				location: zip/src/blocks/about-1/schema.ts:105
+				snippet: render: { kind: "existing-react-component", componentName: "AboutSection", ... }
+			- file: zip/src/blocks/gallery-masonry-style1/schema.ts
+				location: zip/src/blocks/gallery-masonry-style1/schema.ts:56
+				snippet: render: { kind: "existing-react-component", componentName: "GallerySection", ... }
+			- file: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts
+				location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:96
+				snippet: render: { kind: "existing-react-component", componentName: "BreakfastSection", ... }
+			- file: zip/src/blocks/our-services/schema.ts
+				location: zip/src/blocks/our-services/schema.ts:72
+				snippet: render: { kind: "existing-react-component", componentName: "OurServices", ... }
+		prevalence: common
+
+	- category: structure
+		pattern: React rendering uses a single central switch keyed by blockKey.
+		description: >-
+			The renderer performs enabled filtering and then switches on section.blockKey to instantiate
+			the appropriate component and per-block prop adapter.
+		examples:
+			- file: zip/src/blocks/registry/renderPageBuilderSections.tsx
+				location: zip/src/blocks/registry/renderPageBuilderSections.tsx:19
+				snippet: switch (section.blockKey) { case "about-1": ... case "gallery-masonry-style1": ... }
+		prevalence: common
+
+	- category: structure
+		pattern: Source resolution is also manually keyed by blockKey.
+		description: >-
+			The menu block source resolver is encoded in a separate switch, so removing manual wiring
+			only from renderPageBuilderSections would not eliminate all per-block branching in the
+			registry domain.
+		examples:
+			- file: zip/src/blocks/registry/resolvePageBuilderSources.ts
+				location: zip/src/blocks/registry/resolvePageBuilderSources.ts:19
+				snippet: switch (section.blockKey) { case "menu-category-photo-parallax-full-width": ... }
+		prevalence: occasional
+
+	- category: architecture
+		pattern: The AI generator duplicates per-block knowledge through one builder function per block plus a central dispatch chain.
+		description: >-
+			Four dedicated builder functions produce AI payloads, and buildAiBlock manually dispatches
+			by blockKey before buildAiSchema maps sections through that dispatch.
+		examples:
+			- file: SCRIPTS/generate-page-builder-ai-schema.js
+				location: SCRIPTS/generate-page-builder-ai-schema.js:107
+				snippet: function buildGalleryBlock(section) { ... }
+			- file: SCRIPTS/generate-page-builder-ai-schema.js
+				location: SCRIPTS/generate-page-builder-ai-schema.js:283
+				snippet: if (section.blockKey === 'gallery-masonry-style1') { return buildGalleryBlock(section); }
+		prevalence: common
+
+	- category: architecture
+		pattern: The React registry and the AI generator sit on different module/runtime boundaries.
+		description: >-
+			The zip app is ESM/TypeScript with bundler-oriented resolution, while the AI generator is a
+			plain Node/CommonJS entrypoint executed via process.execPath in tests.
+		examples:
+			- file: zip/package.json
+				location: zip/package.json:5
+				snippet: '"type": "module"'
+			- file: zip/tsconfig.json
+				location: zip/tsconfig.json:13
+				snippet: '"moduleResolution": "bundler"'
+			- file: SCRIPTS/generate-page-builder-ai-schema.test.js
+				location: SCRIPTS/generate-page-builder-ai-schema.test.js:91
+				snippet: execFileSync(process.execPath, [generatorPath, '--input', inputPath, ...])
+		prevalence: common
+
+	- category: testing
+		pattern: Existing tests verify output and ids, not the descriptor dispatch mechanism itself.
+		description: >-
+			The registry test asserts final markup and default-instance behavior, and the generator test
+			asserts stable ids and descriptive content after executing the script.
+		examples:
+			- file: zip/src/blocks/registry/wave2-pagebuilder.test.tsx
+				location: zip/src/blocks/registry/wave2-pagebuilder.test.tsx:109
+				snippet: const markup = renderToStaticMarkup(<>{renderPageBuilderSections(schema)}</>);
+			- file: SCRIPTS/generate-page-builder-ai-schema.test.js
+				location: SCRIPTS/generate-page-builder-ai-schema.test.js:107
+				snippet: assert.match(output.blocks[0].description, /.../)
+		prevalence: common
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: Block schema modules
+			responsibility: Own block data schemas, defaults, examples, and static descriptors.
+			location: zip/src/blocks/about-1/schema.ts and sibling block schema files
+			relationship_to_domain: domain depends on this
+		- component: Central block registry
+			responsibility: Aggregates block definitions and provides lookup/validation/default-instance APIs.
+			location: zip/src/blocks/registry/index.ts
+			relationship_to_domain: domain depends on this
+		- component: React renderer adapter
+			responsibility: Converts parsed section instances into JSX for the proof routes.
+			location: zip/src/blocks/registry/renderPageBuilderSections.tsx
+			relationship_to_domain: this uses domain outputs
+		- component: AI schema generator CLI
+			responsibility: Converts render-schema JSON into page_builder_schema_for_ai JSON.
+			location: SCRIPTS/generate-page-builder-ai-schema.js
+			relationship_to_domain: this uses domain outputs
+		- component: Source resolver
+			responsibility: Resolves Woo-backed sections before rendering.
+			location: zip/src/blocks/registry/resolvePageBuilderSources.ts
+			relationship_to_domain: this uses domain outputs
+	interfaces_used_by_domain:
+		- interface: BlockRenderDescriptor
+			location: zip/src/blocks/registry/types.ts:3
+			usage_pattern: Static metadata only; currently not executable by the renderer.
+		- interface: PageBuilderBlockDefinition
+			location: zip/src/blocks/registry/types.ts:16
+			usage_pattern: Registry contract consumed by index.ts for lookup and validation.
+	data_flow_involving_domain: >-
+		Render-schema sections are first validated through parsePageBuilderSchema using getBlock,
+		then optionally source-resolved for Woo-backed sections, and finally rendered through the
+		blockKey switch in renderPageBuilderSections. Separately, the repo-side generator reads the
+		same render-schema JSON and maps sections through buildAiBlock into page_builder_schema_for_ai.
+	key_relationships_to_domain:
+		- from: zip/src/blocks/registry/index.ts
+			to: zip/src/blocks/about-1/schema.ts
+			relationship: imports
+		- from: zip/src/blocks/registry/index.ts
+			to: zip/src/blocks/gallery-masonry-style1/schema.ts
+			relationship: imports
+		- from: zip/src/blocks/registry/index.ts
+			to: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts
+			relationship: imports
+		- from: zip/src/blocks/registry/index.ts
+			to: zip/src/blocks/our-services/schema.ts
+			relationship: imports
+		- from: zip/src/blocks/registry/pageBuilderSchema.ts
+			to: zip/src/blocks/registry/index.ts
+			relationship: calls
+		- from: zip/src/blocks/registry/renderPageBuilderSections.tsx
+			to: zip/src/components/sections/AboutSection.tsx and sibling section components
+			relationship: imports
+		- from: SCRIPTS/generate-page-builder-ai-schema.test.js
+			to: SCRIPTS/generate-page-builder-ai-schema.js
+			relationship: calls
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+		- JavaScript
+		- JSON
+	frameworks_used_in_domain:
+		- name: React 19
+			usage_in_domain: The proof renderer and section components are React-based and rendered in TSX.
+		- name: Vite
+			usage_in_domain: The zip app is bundled and resolved through Vite-oriented ESM tooling.
+	libraries_used_in_domain:
+		- name: zod
+			purpose_in_domain: Block data and source schemas are defined and validated with Zod.
+		- name: react-dom/server
+			purpose_in_domain: Registry tests render sections to static markup.
+		- name: node:test
+			purpose_in_domain: Registry and generator tests use the Node built-in test runner.
+	external_apis_used_in_domain:
+		- name: WooCommerce Store API resolver
+			integration_point: zip/src/blocks/registry/resolvePageBuilderSources.ts delegates menu blocks to wooStoreApi-backed resolution.
+
+related_conventions:
+	naming_patterns_in_domain: >-
+		Block keys use stable kebab-case names such as about-1 and menu-category-photo-parallax-full-width;
+		each block exports <name>DataSchema, <name>DefaultData, <name>ExampleData, and <name>BlockDefinition.
+	structure_of_domain: >-
+		Each approved block owns a local schema.ts file under zip/src/blocks/<block-key>/, the central
+		registry in zip/src/blocks/registry/index.ts owns lookup and validation, and downstream adapters
+		convert validated block data into React component props.
+	error_handling_in_domain: >-
+		Unknown block keys and invalid inputs fail fast with thrown Error instances in both the registry
+		path and the AI generator path.
+	testing_in_domain: >-
+		Tests are narrow regression tests that build sample payloads inline, then assert stable ids and
+		visible output using node:test.
+	documentation_in_domain: >-
+		The page-builder instructions require registry-backed dual payload generation, while
+		docs/block-registry/registry.machine.json carries a parallel machine-readable description of the
+		same blocks but is not imported by the active runtime surfaces.
+
+related_dependencies:
+	internal:
+		- component: zip/src/blocks/registry/types.ts
+			relationship_to_domain: Defines the block contract used by all block schema files.
+			direction: inbound
+		- component: zip/src/components/sections/AboutSection.tsx and sibling section components
+			relationship_to_domain: Receive adapted block data from the renderer.
+			direction: outbound
+		- component: zip/src/blocks/registry/resolvePageBuilderSources.ts
+			relationship_to_domain: Separate runtime phase for source-backed blocks.
+			direction: bidirectional
+		- component: docs/block-registry/registry.machine.json
+			relationship_to_domain: Parallel documentation artifact that overlaps block metadata but is not a runtime dependency.
+			direction: outbound
+	external:
+		- name: zod
+			purpose_for_domain: Schema validation and default parsing.
+		- name: react-dom/server
+			purpose_for_domain: Static markup assertions in registry tests.
+		- name: child_process
+			purpose_for_domain: Executes the AI generator in tests as a real CLI.
+
+domain_security_considerations:
+	sensitive_areas:
+		- area: Source-aware menu AI instructions
+			location: SCRIPTS/generate-page-builder-ai-schema.js:134
+			concern: The generator explicitly distinguishes page-schema edits from Woo-backed product edits; refactors must preserve that guidance split for source-backed menu blocks.
+	authentication_patterns_in_domain: >-
+		No authentication logic is present in the examined renderer and generator files.
+	authorization_patterns_in_domain: >-
+		No authorization logic is present in the examined renderer and generator files.
+	data_validation_in_domain: >-
+		Registry validation is Zod-backed in parsePageBuilderSchema, while the AI generator performs
+		lightweight runtime object/array assertions before building its output.
+
+testing_patterns:
+	framework: node:test
+	coverage_areas:
+		- Stable registry defaults and default-instance ids.
+		- Visible server-rendered output for registered blocks.
+		- Stable block ids and content fields in generated AI schema JSON.
+	test_organization: >-
+		Narrow file-local regression tests sit next to the registry domain and the script domain rather
+		than under a shared test harness.
+	mock_patterns:
+		- Temporary file-system fixture setup for generator input and output.
+		- Inline schema fixtures for render-path validation.
+
+open_questions:
+	- question: Is it acceptable for the AI generator to stop being a plain node-executed CommonJS file?
+		context: >-
+			A single-source-of-truth refactor that imports block schema definitions into the generator is
+			constrained by the current generator execution path and the zip app's ESM/TypeScript boundary.
+		type: decision_blocker
+		affects:
+			- page_builder_registry_refactor_scope
+
+	- question: Should the source-resolution switch in zip/src/blocks/registry/resolvePageBuilderSources.ts stay manual in this refactor?
+		context: >-
+			The requested scope names only renderPageBuilderSections.tsx and the AI generator, but source
+			resolution is another existing per-block switch in the same registry domain.
+		type: nice_to_know
+		affects:
+			- page_builder_registry_refactor_scope
+
+gaps:
+	- area: Shared runtime consumption of docs/block-registry/registry.machine.json
+		description: >-
+			The repo contains machine-readable block metadata, including aiEditing fields, but the active
+			React renderer and AI generator do not import that artifact.
+		impact: research_blocker
+		affects:
+			- page_builder_registry_refactor_scope
+
+	- area: Descriptor-path regression coverage
+		description: >-
+			Existing tests verify output and ids after execution, but they do not directly assert that the
+			renderer or generator dispatch is registry-driven rather than switch-driven.
+		impact: nice_to_know
+		affects:
+			- page_builder_registry_refactor_scope

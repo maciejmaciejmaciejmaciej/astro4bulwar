@@ -1,0 +1,345 @@
+plan_id: catering-special-menu-for-2
+objective: Identify active data sources and UI rendering paths for the special menu for 2 product on the active catering route, including exactly where main description text and option labels/descriptions are defined.
+focus_area: active_catering_route_special_menu_for_2
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The active React route is /catering-wielkanocny and renders the special product through CateringWielkanocnyPage -> CateringProductSpecialMenuFor2.
+  - The source-of-truth dataset is zip/src/data/cateringSpecialMenuFor2.ts, where shell product text, soup labels, main labels, and weight strings are defined.
+  - The user-facing hero/intro paragraph is not read from seed.intro; it is hardcoded in CateringProductSpecialMenuFor2.tsx.
+  - Cart and checkout reuse seed.shellProduct.displayName and generated summary lines from selected option labels; they do not define separate option-description datasets.
+  - Current source and dist contain per-1-person weights, while older packaged hotfix artifacts still contain stale per-2-person weights.
+
+research_metadata:
+  methodology: hybrid retrieval using semantic_search plus targeted grep_search, followed by focused read_file on route, data, component, cart, checkout, and deploy artifacts
+  scope: active React catering route, special-menu data seed, component rendering, cart/checkout propagation, and packaged build artifacts relevant to this product
+  confidence: high
+  coverage: 92
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Mounts the active React routes.
+    key_elements:
+      - element: CateringWielkanocnyPage route
+        type: pattern
+        location: zip/src/App.tsx:9
+        description: Active catering route is mounted at /catering-wielkanocny.
+    language: TypeScript
+    lines: 10
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active catering page that wires the special-menu component and cart/checkout plumbing.
+    key_elements:
+      - element: handleAddConfiguredSet
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:175
+        description: Adds configured special-menu sets into cart state.
+      - element: CateringProductSpecialMenuFor2 mount
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:223
+        description: Renders the special menu product with cateringSpecialMenuFor2Seed.
+      - element: cartItems/cartLinesPayload
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:184
+        description: Builds checkout drawer items and bridge checkout payload from cart state.
+    language: TypeScript
+    lines: 258
+  - file: cateringSpecialMenuFor2.ts
+    path: zip/src/data/cateringSpecialMenuFor2.ts
+    purpose: Source-of-truth data model and dataset for the special menu for 2 product.
+    key_elements:
+      - element: cateringSpecialMenuFor2Seed
+        type: variable
+        location: zip/src/data/cateringSpecialMenuFor2.ts:79
+        description: Defines shell product identity, intro, image, soup options, and main options.
+      - element: shellProduct.displayName
+        type: variable
+        location: zip/src/data/cateringSpecialMenuFor2.ts:87
+        description: Main product title/display name used in UI and cart lines.
+      - element: intro
+        type: variable
+        location: zip/src/data/cateringSpecialMenuFor2.ts:91
+        description: Seed intro string exists but is not the paragraph rendered in the product component.
+      - element: soups[].weight
+        type: pattern
+        location: zip/src/data/cateringSpecialMenuFor2.ts:98
+        description: Current source weights are per-1-person values 0,25 l.
+      - element: mains[].weight
+        type: pattern
+        location: zip/src/data/cateringSpecialMenuFor2.ts:124
+        description: Current source main-course weights are per-1-person values such as 1 szt. / 2 szt. / 100 ml.
+      - element: buildSpecialMenuPersonSummary
+        type: function
+        location: zip/src/data/cateringSpecialMenuFor2.ts:238
+        description: Generates cart/checkout summary lines from selected labels.
+    language: TypeScript
+    lines: 253
+  - file: CateringProductSpecialMenuFor2.tsx
+    path: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+    purpose: UI renderer for the special-menu product configurator.
+    key_elements:
+      - element: renderOptionButton
+        type: function
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:42
+        description: Renders option label, weight, and price label.
+      - element: hardcoded intro paragraph
+        type: pattern
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:192
+        description: Main user-facing descriptive paragraph about two people and per-1-person portions.
+      - element: seed.shellProduct.displayName render
+        type: pattern
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:206
+        description: Displays the main product name from the seed.
+      - element: seed.soups.map
+        type: pattern
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:242
+        description: Renders soup options for person 1 and reuses same dataset for person 2.
+      - element: seed.mains.map
+        type: pattern
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:254
+        description: Renders main options for person 1 and reuses same dataset for person 2.
+    language: TypeScript
+    lines: 334
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Converts special-menu selections into cart lines and bridge payloads.
+    key_elements:
+      - element: buildSpecialMenuFor2CartLine
+        type: function
+        location: zip/src/lib/cateringCart.ts:217
+        description: Copies seed.shellProduct.displayName and generated summary lines into cart lines.
+      - element: buildCheckoutDrawerItems
+        type: function
+        location: zip/src/lib/cateringCart.ts:368
+        description: Exposes special-menu name and summaryLines for drawer UI.
+      - element: buildBridgeCheckoutCartLines
+        type: function
+        location: zip/src/lib/cateringCart.ts:407
+        description: Sends special-menu configuration to the bridge; no separate labels are authored here.
+    language: TypeScript
+    lines: 425
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Renders cart and checkout UI, including special-menu summary lines.
+    key_elements:
+      - element: parseSpecialMenuFor2SummaryLine import
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:12
+        description: Parses generated summary lines for grouped display.
+      - element: renderSpecialCartItem
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:292
+        description: Displays special-menu name and parsed summary lines in the drawer.
+      - element: success snapshot item mapping
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:736
+        description: Carries item.name and summaryLines into order-success snapshot text.
+    language: TypeScript
+    lines: 900
+  - file: specialMenuFor2Summary.ts
+    path: zip/src/lib/specialMenuFor2Summary.ts
+    purpose: Parses summary strings for cart display.
+    key_elements:
+      - element: parseSpecialMenuFor2SummaryLine
+        type: function
+        location: zip/src/lib/specialMenuFor2Summary.ts:8
+        description: Converts summary text into person label plus soup/main items.
+    language: TypeScript
+    lines: 20
+  - file: index-BCGOpnO_.js
+    path: zip/dist/assets/index-BCGOpnO_.js
+    purpose: Current built bundle from source.
+    key_elements:
+      - element: embedded special-menu seed values
+        type: pattern
+        location: zip/dist/assets/index-BCGOpnO_.js:217
+        description: Contains per-1-person weights matching current source.
+    language: JavaScript
+    lines: 217
+  - file: index-B3c8CXal.js
+    path: zip/deploy-live-hotfix-20260325-112427/assets/index-B3c8CXal.js
+    purpose: Older packaged deployment artifact retained in workspace.
+    key_elements:
+      - element: embedded special-menu seed values
+        type: pattern
+        location: zip/deploy-live-hotfix-20260325-112427/assets/index-B3c8CXal.js:217
+        description: Contains stale per-2-person weights such as 0,5 l and doubled mains.
+    language: JavaScript
+    lines: 217
+
+patterns_found:
+  - category: architecture
+    pattern: Seed-driven special product
+    description: One typed seed object drives the special product identity and option dataset.
+    examples:
+      - file: zip/src/data/cateringSpecialMenuFor2.ts
+        location: zip/src/data/cateringSpecialMenuFor2.ts:79
+        snippet: export const cateringSpecialMenuFor2Seed: SpecialMenuFor2Seed = { ... }
+    prevalence: common
+  - category: structure
+    pattern: Component maps seed options directly
+    description: The configurator renders option cards by mapping seed.soups and seed.mains for both persons.
+    examples:
+      - file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:242
+        snippet: seed.soups.map((option) => renderOptionButton(...))
+      - file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:254
+        snippet: seed.mains.map((option) => renderOptionButton(...))
+    prevalence: common
+  - category: structure
+    pattern: Hardcoded product intro copy in component
+    description: The visible descriptive paragraph is not read from seed.intro but embedded in the TSX component.
+    examples:
+      - file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:192
+        snippet: Skonfiguruj świąteczny zestaw dla dwóch osób... Porcje widoczne przy opcjach podajemy na 1 osobę.
+    prevalence: occasional
+  - category: architecture
+    pattern: Summary text generated from selected option labels
+    description: Cart and checkout summaries do not have a separate dataset; they are built from chosen labels in config.persons.
+    examples:
+      - file: zip/src/data/cateringSpecialMenuFor2.ts
+        location: zip/src/data/cateringSpecialMenuFor2.ts:241
+        snippet: return `Osoba ${person.personIndex}: Zupa ${person.soupLabel} / Danie ${person.mainLabel}`;
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:229
+        snippet: metaSummary: buildSpecialMenuFor2SummaryLines(config)
+    prevalence: common
+  - category: naming
+    pattern: menu_for_2 domain naming
+    description: Types, constants, and line types are consistently named around special menu for 2 semantics.
+    examples:
+      - file: zip/src/data/cateringSpecialMenuFor2.ts
+        location: zip/src/data/cateringSpecialMenuFor2.ts:3
+        snippet: SPECIAL_MENU_FOR_2_KIND / SPECIAL_MENU_FOR_2_LINE_TYPE
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Active page composition for catering route
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain depends on this
+    - component: CateringProductSpecialMenuFor2
+      responsibility: Configurator UI for the special product
+      location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      relationship_to_domain: domain depends on this
+    - component: cateringCart
+      responsibility: Cart-line creation and checkout payload assembly
+      location: zip/src/lib/cateringCart.ts
+      relationship_to_domain: this uses domain outputs
+    - component: CheckoutDrawer
+      responsibility: Renders cart and order-success summaries
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: SpecialMenuFor2Seed
+      location: zip/src/data/cateringSpecialMenuFor2.ts:47
+      usage_pattern: Typed source-of-truth for shell product and option arrays
+    - interface: SpecialMenuFor2Config
+      location: zip/src/data/cateringSpecialMenuFor2.ts:31
+      usage_pattern: Captures chosen options for both persons and flows into cart/bridge
+  data_flow_involving_domain: Route /catering-wielkanocny mounts CateringWielkanocnyPage, which passes cateringSpecialMenuFor2Seed into CateringProductSpecialMenuFor2. The component renders option cards from seed.soups and seed.mains, builds a two-person config, then hands that config to addSpecialMenuFor2Line. Cart state stores shell product displayName plus summaryLines generated from selected labels, and CheckoutDrawer renders those summary lines.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship: imports
+    - from: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      to: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship: imports
+    - from: zip/src/lib/cateringCart.ts
+      to: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship: imports
+    - from: zip/components/CheckoutDrawer.tsx
+      to: zip/src/lib/specialMenuFor2Summary.ts
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - JavaScript
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Route page and configurator component rendering
+    - name: React Router
+      usage_in_domain: Active route mount at /catering-wielkanocny
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: Icons for configurator and page chrome
+    - name: react-hook-form
+      purpose_in_domain: Checkout drawer form handling adjacent to cart summary display
+    - name: zod
+      purpose_in_domain: Checkout validation adjacent to cart summary display
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: special-menu logic is grouped under cateringSpecialMenuFor2, SPECIAL_MENU_FOR_2_* constants, and SpecialMenuFor2* types
+  structure_of_domain: domain data is centralized in src/data, rendered by a dedicated section component, then propagated to cart and checkout via lib helpers
+  error_handling_in_domain: config creation returns null when required selections are missing; cart sanitizers drop invalid persisted lines
+  testing_in_domain: focused node:test coverage exists for data seed values, summary helpers, cart behavior, and component render smoke tests
+  documentation_in_domain: no standalone documentation found; tests and type names act as executable documentation
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship_to_domain: canonical dataset and helper source
+      direction: outbound
+    - component: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      relationship_to_domain: renders dataset in UI
+      direction: bidirectional
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: transforms dataset selections into cart lines
+      direction: outbound
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: displays derived special-menu summaries
+      direction: outbound
+  external:
+    - name: react
+      purpose_for_domain: UI composition and state
+    - name: react-router-dom
+      purpose_for_domain: route mounting
+    - name: lucide-react
+      purpose_for_domain: icon rendering
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: bridge payload configuration
+      location: zip/src/lib/cateringCart.ts:407
+      concern: selected labels are not sent separately; only structured config is sent, reducing duplicate text drift in payloads
+  authentication_patterns_in_domain: none in this domain slice
+  authorization_patterns_in_domain: none in this domain slice
+  data_validation_in_domain: special-menu config is type-guarded by isSpecialMenuFor2Config before persisted cart lines are accepted
+
+testing_patterns:
+  framework: node:test with assert/strict
+  coverage_areas:
+    - seed option counts and weight strings
+    - summary string generation
+    - cart-line generation and drawer items
+    - component smoke rendering
+  test_organization: colocated *.test.ts and *.test.tsx beside data, lib, and component files
+  mock_patterns:
+    - renderToStaticMarkup for component smoke tests
+    - direct config object construction for data/cart tests
+
+open_questions:
+  - question: Which exact deployed artifact is currently live on the server at this moment?
+    context: Local workspace shows both stale and updated packaged hotfix folders; deploy-react.sh confirms deployment method but not remote current folder contents.
+  - question: Should shellProduct.title/displayName also be changed from 'dla 2 osób' to per-1-person wording, or only option copy?
+    context: User asked specifically about description and option labels/descriptions; product identity text is a separate field but appears prominently in UI and cart.
+
+gaps:
+  - area: remote runtime verification
+    description: No direct fetch of the live site bundle was performed from the server in this task.
+    impact: Cannot prove from workspace alone which packaged artifact is currently being served, only that current dist and recent packaged folders match.

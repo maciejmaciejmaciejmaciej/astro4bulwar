@@ -1,0 +1,9 @@
+{
+  "menu-category-photo-parallax-full-width-01": {
+    "sourceType": "woo_category",
+    "sourceValue": "zestawy-specjalne",
+    "options": {
+      "splitIntoColumns": 2
+    }
+  }
+}

@@ -1,0 +1,226 @@
+plan_id: astro-seo-migration-answer-20260418
+objective: Prepare a concise Polish answer with three deliverables for the Astro + WordPress static migration: a minimal SEO contract for page_builder_schema, an SEO-safe migration checklist, and the first concrete astro-site implementation gaps.
+created_at: '2026-04-18T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 3
+  risk_score: low
+
+tldr: |
+  Recommended order is 1 -> 2 -> 3: first lock the smallest SEO contract already implied by the schema and Astro shell, then derive the migration checklist from that contract and the existing clone docs, and only then list the first implementation gaps against the agreed baseline (sources: astro-site/src/lib/types.ts, astro-site/src/layouts/BaseLayout.astro, astro-site/src/pages/[slug].astro, docs/setup/klonowanie-astro-wordpress-woocommerce.md, docs/plan/standalone-20260418/research_findings_astro_seo_wordpress.yaml).
+  The answer should stay intentionally minimal: only fields and steps needed to avoid obvious SEO loss during migration, not a full production SEO program (sources: astro-site/src/lib/types.ts, docs/plan/standalone-20260418/research_findings_astro-seo-ai-crawlers.yaml).
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: The SEO contract expands into a generic SEO wishlist instead of the minimum payload that Astro can realistically consume next.
+      likelihood: medium
+      impact: medium
+      mitigation: Keep the contract limited to fields already suggested by the current schema and missing head output, such as title, description, canonical, robots, and social image candidates (sources: astro-site/src/lib/types.ts, astro-site/src/layouts/BaseLayout.astro).
+    - scenario: The migration checklist drifts into deployment mechanics and stops prioritizing SEO-preserving moves such as canonicals, redirects, URL parity, and public link validation.
+      likelihood: low
+      impact: high
+      mitigation: Anchor the checklist to the existing clone docs sections that already call out canonical URLs and stale links, and keep infra details secondary (sources: docs/setup/klonowanie-astro-wordpress-woocommerce.md, /memories/repo/astro-wp-clone-workflow.md).
+  assumptions:
+    - The requested output is an answer plan, not an implementation plan; no code changes are required in this pass (source: user request).
+    - The current public topology remains WordPress on the root domain with Astro as a static overlay under /astro during the current repository stage (sources: astro-site/astro.config.mjs, astro-site/README.md, /memories/repo/astro-wp-clone-workflow.md).
+    - The current Astro page shell is the correct baseline for gap identification because it already renders the static page-builder output used by the migration POC (sources: astro-site/src/pages/[slug].astro, docs/plan/standalone-20260418/research_findings_astro_seo_wordpress.yaml).
+
+implementation_specification:
+  code_structure: |
+    Produce one concise Polish response with exactly three deliverables in order: (1) minimal SEO contract for page_builder_schema, (2) migration checklist that preserves SEO across old WordPress to new Astro/WordPress rollout, and (3) the first concrete gaps in astro-site measured against that contract.
+    Each deliverable should cite the repo files it is derived from, and the third deliverable should name only immediate, observable gaps from the current Astro code path.
+  affected_areas:
+    - astro-site/src/lib/types.ts
+    - astro-site/src/layouts/BaseLayout.astro
+    - astro-site/src/pages/[slug].astro
+    - astro-site/src/lib/config.ts
+    - docs/setup/klonowanie-astro-wordpress-woocommerce.md
+    - docs/plan/standalone-20260418/research_findings_astro_seo_wordpress.yaml
+  component_details:
+    - component: Minimal SEO contract
+      responsibility: Define the smallest page_builder_schema.seo payload that can drive page-level head metadata without overcommitting the schema.
+      interfaces:
+        - A compact field list for page_builder_schema.seo with field purpose and why each field is needed for migration safety.
+    - component: Migration checklist
+      responsibility: Turn the contract and clone documentation into a short, ordered checklist for moving from old WordPress URLs and metadata to the Astro/WordPress static setup without losing SEO signals.
+      interfaces:
+        - A Polish checklist ordered by pre-migration, cutover, and post-launch verification.
+    - component: astro-site gap audit
+      responsibility: Compare the current Astro implementation to the minimal contract and surface only the first concrete missing pieces.
+      interfaces:
+        - A short list of specific gaps tied to current files and current behavior.
+  dependencies:
+    - component: page_builder_schema
+      relationship: Supplies the existing page-level shape that the answer must extend minimally through the seo object.
+    - component: BaseLayout and [slug] route
+      relationship: Show which SEO fields are currently consumed versus ignored in the Astro render path.
+    - component: clone setup docs
+      relationship: Provide migration-safe checks for canonical URLs, stale links, and rollout verification.
+  integration_points:
+    - astro-site/src/lib/types.ts
+    - astro-site/src/layouts/BaseLayout.astro
+    - astro-site/src/pages/[slug].astro
+    - docs/setup/klonowanie-astro-wordpress-woocommerce.md
+
+contracts:
+  - from_task: define_minimal_seo_contract
+    to_task: draft_seo_safe_migration_checklist
+    interface: Agreed minimal SEO field set and field intent for page_builder_schema.seo.
+    format: Polish bullet list of field names with one-line rules
+  - from_task: define_minimal_seo_contract
+    to_task: identify_first_astro_site_gaps
+    interface: Baseline contract used to judge what astro-site is currently missing.
+    format: Comparison checklist of expected fields versus current rendering behavior
+  - from_task: draft_seo_safe_migration_checklist
+    to_task: identify_first_astro_site_gaps
+    interface: Ordered migration checks that help distinguish immediate code gaps from later rollout checks.
+    format: Polish ordered checklist
+
+tasks:
+  - id: define_minimal_seo_contract
+    title: Define the minimal page_builder_schema SEO contract
+    description: |
+      Extract the smallest useful seo contract from the current schema and Astro head layer. The deliverable should stay narrow and only cover fields that directly protect migration-era SEO signals, starting from the observed optional seo object in the schema and the currently minimal head output in BaseLayout (sources: astro-site/src/lib/types.ts, astro-site/src/layouts/BaseLayout.astro, docs/plan/standalone-20260418/research_findings_astro_seo_wordpress.yaml).
+    wave: 1
+    agent: gem-researcher
+    prototype: false
+    covers:
+      - deliverable-1
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/types.ts
+        description: Shows page_builder_schema already reserves an optional seo object.
+      - path: astro-site/src/layouts/BaseLayout.astro
+        description: Shows the current head is limited to charset, viewport, title, and fonts.
+      - path: docs/plan/standalone-20260418/research_findings_astro_seo_wordpress.yaml
+        description: Summarizes current Astro SEO posture and missing head metadata.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Establish the baseline before discussing migration steps or implementation gaps.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 120
+        focus_area: minimal SEO field set
+        verification:
+          - Confirm every proposed field maps to a concrete head concern visible in the current Astro shell.
+          - Confirm the contract stays smaller than a full SEO platform specification.
+        acceptance_criteria:
+          - The deliverable names the minimal seo fields to add or standardize in page_builder_schema.
+          - Each field includes a one-line purpose tied to migration safety.
+          - The contract is concise enough to fit into the final Polish answer without expanding into implementation details.
+        failure_modes:
+          - scenario: Proposed fields are too abstract to be actionable for later Astro wiring.
+            likelihood: medium
+            impact: medium
+            mitigation: Phrase each field as a concrete schema key with a plain-language rule.
+
+  - id: draft_seo_safe_migration_checklist
+    title: Draft the old WordPress to Astro/WordPress SEO migration checklist
+    description: |
+      Convert the contract into a short migration checklist that protects URL continuity, canonicals, metadata continuity, and validation after cutover. Reuse the existing clone setup guidance that already flags canonical URLs and stale links, but keep the checklist centered on SEO preservation rather than full deployment operations (sources: docs/setup/klonowanie-astro-wordpress-woocommerce.md, /memories/repo/astro-wp-clone-workflow.md, docs/plan/standalone-20260418/research_findings_astro-seo-ai-crawlers.yaml).
+    wave: 2
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - deliverable-2
+    priority: medium
+    status: pending
+    dependencies:
+      - define_minimal_seo_contract
+    conflicts_with: []
+    context_files:
+      - path: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+        description: Existing clone guide that already calls out canonical URLs and public link checks.
+      - path: astro-site/src/lib/config.ts
+        description: Shows current hardcoded origin and narrow route scope that matter during rollout planning.
+      - path: docs/plan/standalone-20260418/research_findings_astro-seo-ai-crawlers.yaml
+        description: Confirms that classic crawlability and indexing fundamentals remain the primary SEO lever.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The checklist should inherit the minimal contract instead of inventing independent SEO requirements.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 140
+        focus_area: migration-safe sequence
+        verification:
+          - Confirm the checklist covers pre-cutover, cutover, and immediate post-cutover verification.
+          - Confirm URL, canonical, and stale-link checks are explicitly included.
+        acceptance_criteria:
+          - The deliverable is a concise Polish checklist.
+          - The checklist preserves SEO-critical continuity from old WordPress to the new static setup.
+          - The checklist stays shorter than a full runbook and is suitable for a direct user answer.
+        failure_modes:
+          - scenario: The checklist becomes too operational and hides the SEO-preservation priority.
+            likelihood: medium
+            impact: medium
+            mitigation: Keep each item framed around preserved signals, not infrastructure mechanics.
+    task_type: documentation
+    audience: developers
+    coverage_matrix:
+      - URL and slug continuity
+      - Canonical and metadata continuity
+      - Redirect and public-link validation
+      - Post-launch crawl and index checks
+
+  - id: identify_first_astro_site_gaps
+    title: Identify the first concrete gaps in the current astro-site implementation
+    description: |
+      Compare the current Astro code path to the agreed contract and checklist, then produce only the first concrete, observable gaps. Keep this list limited to current facts such as the minimal head, the hardcoded test slug list, and the lack of seo consumption in the route/layout path, without drifting into speculative later-phase improvements (sources: astro-site/src/layouts/BaseLayout.astro, astro-site/src/pages/[slug].astro, astro-site/src/lib/types.ts, astro-site/src/lib/config.ts, docs/plan/standalone-20260418/research_findings_astro_seo_wordpress.yaml).
+    wave: 3
+    agent: gem-reviewer
+    prototype: false
+    covers:
+      - deliverable-3
+    priority: medium
+    status: pending
+    dependencies:
+      - define_minimal_seo_contract
+      - draft_seo_safe_migration_checklist
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/layouts/BaseLayout.astro
+        description: Confirms which head tags are currently rendered.
+      - path: astro-site/src/pages/[slug].astro
+        description: Confirms the route currently passes only title into the layout and builds only configured slugs.
+      - path: astro-site/src/lib/config.ts
+        description: Confirms the current route scope is limited to testowa-blueprint.
+      - path: astro-site/src/lib/types.ts
+        description: Confirms the schema reserves seo but does not constrain its shape.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Gap identification should be the final step so it uses an explicit baseline instead of a vague expectation.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 4
+        estimated_lines: 160
+        focus_area: first implementation gaps
+        verification:
+          - Confirm every gap is tied to a currently observable file and behavior.
+          - Confirm the list is ordered from the most immediate blocker to lower-priority follow-ups.
+        acceptance_criteria:
+          - The deliverable lists only immediate astro-site gaps relevant to the migration answer.
+          - Each gap is concrete, file-backed, and easy to translate into a later implementation task.
+          - The deliverable remains concise.
+        failure_modes:
+          - scenario: The audit mixes current gaps with future nice-to-haves.
+            likelihood: medium
+            impact: medium
+            mitigation: Keep only gaps directly visible in the current route, layout, schema, and config files.
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false

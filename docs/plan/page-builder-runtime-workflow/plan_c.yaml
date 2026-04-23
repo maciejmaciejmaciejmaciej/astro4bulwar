@@ -1,0 +1,444 @@
+plan_id: "page-builder-runtime-workflow"
+objective: >
+  Skorygowac kolejny etap wdrozenia runtime workflow page buildera po blocking
+  critique tak, aby prawdziwy runtime z sekretami nie mieszkal w zip/src,
+  node-only boundary zylo poza bundlerem Vite, compile pozostalo single source
+  of truth, a najblizszy etap byl praktyczny: move/extract runtime workflow,
+  live Firestore adapter, CLI z env validation i trybami dry-run/readback.
+created_at: "2026-04-19T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 4
+  risk_score: "medium"
+
+tldr: |
+  Po blocking critique nie wystarczy juz dokladac live adaptera obok runtime w
+  zip/src. Korekta planu musi zmienic boundary: zip zachowuje tylko czyste
+  kontrakty, typy i helpery bez sekretow, a realny execution path przechodzi do
+  node-only boundary pod SCRIPTS/. Minimalny praktyczny etap to:
+  1) wyodrebnic z obecnych modulow tylko czesci shared i zostawic je w zip,
+  2) przeniesc prawdziwy runtime workflow oraz realnych adapterow do
+  SCRIPTS/page-builder-runtime/,
+  3) dodac live Firestore adapter i WordPress adapter skladane tylko w Node,
+  4) dodac jeden CLI entrypoint z env validation oraz opcjami dry-run/readback,
+  5) przepiac testy i dokumentacje tak, aby compile dalej szedl tylko przez
+  SCRIPTS/make-page-draft-compile-gate.js. Sources:
+  zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+  zip/src/blocks/registry/firebasePageDraftStore.ts,
+  zip/src/blocks/registry/wordpressPageBuilderClient.ts,
+  zip/src/blocks/registry/firebasePageDraft.ts,
+  SCRIPTS/make-page-draft-compile-gate.js,
+  SCRIPTS/generate-page-draft-from-scrape.ts,
+  docs/plan/page-builder-runtime-workflow/plan_b.yaml,
+  .github/instructions/project-foundation.instructions.md,
+  /memories/repo/firebase-draft-compile-gates.md.
+
+open_questions:
+  - >
+    Czy po korekcie node-only runtime ma zostac uruchamiany dalej przez
+    `npx --prefix zip tsx --tsconfig zip/tsconfig.json ...`, czy od razu dostac
+    osobne toolchain/package boundary pod SCRIPTS/? Ten plan rekomenduje najpierw
+    zachowac obecny runner tsx z zip jako narzedzie developerskie, ale sam
+    runtime composition root i env contract przeniesc pod SCRIPTS/.
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: >
+        Sekrety WordPress albo Firebase nadal beda przechodzily przez pliki z
+        zip/src, bo nowy plan zostawi tam realny workflow lub realnego klienta
+        HTTP/store pod pozorem dependency injection.
+      likelihood: "high"
+      impact: "critical"
+      mitigation: >
+        Zip ma po korekcie przechowywac tylko czyste kontrakty, typy, parsery i
+        helpery bez env i bez klientow operacyjnych; realny workflow, env
+        loading i adaptery live maja miec jedyny composition root w SCRIPTS/.
+    - scenario: >
+        Compile zostanie skopiowany do nowego runtime boundary albo CLI zacznie
+        budowac payloady bokiem, przez co rozjedzie sie z kanonicznym
+        SCRIPTS/make-page-draft-compile-gate.js.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Runtime core i CLI maja wywolywac tylko compilePageDraft z istniejacego
+        gate. Brak drugiego buildera schema, brak drugiej translacji AI schema.
+    - scenario: >
+        Testy beda nadal targetowaly zip/src i dadza falszywe poczucie
+        bezpieczenstwa, mimo ze prawdziwy entrypoint i adaptery beda juz poza
+        tym drzewem.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Rozdzielic testy shared contracts od testow node-only runtime/CLI i
+        jawnie przestawic smoke path na SCRIPTS/page-builder-runtime/.
+  assumptions:
+    - >
+      Obecne testy runtime dla firebasePageDraftStore, wordpressPageBuilderClient
+      i pageBuilderRuntimeWorkflow przechodza w aktualnym stanie repo, wiec
+      korekta boundary jest refaktorem architektury, a nie ratowaniem logiki.
+      Source: terminal context z passing tests.
+    - >
+      compilePageDraft w SCRIPTS/make-page-draft-compile-gate.js jest juz
+      kanonicznym single source of truth dla page_builder_schema i
+      page_builder_schema_for_ai i nie powinien byc przenoszony do zip/src.
+      Sources: SCRIPTS/make-page-draft-compile-gate.js,
+      SCRIPTS/make-page-draft-compile-gate.test.js.
+    - >
+      SCRIPTS jest poprawnym repo-side boundary dla node-only tooling i juz
+      hostuje CLI bootstrapu draftu, wiec to jest najmniejszy bezpieczny target
+      dla realnego runtime execution path. Sources:
+      SCRIPTS/generate-page-draft-from-scrape.ts,
+      .github/instructions/project-foundation.instructions.md.
+    - >
+      zip/.env.example jest frontendowym artefaktem i nie jest dobrym miejscem
+      na runtime secrets dla page builder publish flow. Source: zip/.env.example.
+
+implementation_specification:
+  code_structure: |
+    Po korekcie boundary architektura powinna wygladac tak:
+
+    1. zip/src/blocks/registry pozostaje warstwa shared:
+       - firebasePageDraft.ts jako kontrakt draftu i workflow gates
+       - createPageDraftFromScrape.ts jako bootstrap structure-only
+       - types.ts, common.ts, pageBuilderSchema.ts i podobne helpery bez sekretow
+       - ewentualny nowy plik z czystymi runtime contracts/type aliases bez fetch,
+         env loading, Basic Auth i bez SDK Firebase.
+
+    2. SCRIPTS/page-builder-runtime/ staje sie node-only boundary:
+       - runtimeWorkflow.ts jako prawdziwy orchestration core
+       - adapters/liveFirestoreDraftStore.ts jako realny Firestore adapter
+       - adapters/wordpressPageBuilderClient.ts jako realny authenticated client
+       - env.ts jako env parsing i validation
+       - cli.ts jako jedyny operator entrypoint
+
+    3. SCRIPTS/make-page-draft-compile-gate.js pozostaje bezposrednio reuse'owany
+       przez runtime core jako jedyny compiler. Nie powstaje drugi compile path.
+  affected_areas:
+    - "zip/src/blocks/registry/firebasePageDraft.ts"
+    - "zip/src/blocks/registry/createPageDraftFromScrape.ts"
+    - "zip/src/blocks/registry/firebasePageDraftStore.ts"
+    - "zip/src/blocks/registry/wordpressPageBuilderClient.ts"
+    - "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+    - "SCRIPTS/make-page-draft-compile-gate.js"
+    - "SCRIPTS/generate-page-draft-from-scrape.ts"
+    - "SCRIPTS/page-builder-runtime/"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+    - "docs/plan/page-builder-runtime-workflow/"
+  component_details:
+    - component: "Shared draft contract layer"
+      responsibility: >
+        Utrzymywac czysty shape draftu, lifecycle gates i helpery compile-input
+        bez wiedzy o sekretach, env ani transportach runtime.
+      interfaces:
+        - "parseFirebasePageDraft(value)"
+        - "computeSourceMappingWorkflow(blocks, lifecycleFlags)"
+        - "type FirebasePageDraft"
+    - component: "Node-only runtime workflow"
+      responsibility: >
+        Orkiestrowac load/save draftu, ensure page, compile przez istniejacy gate,
+        publish i opcjonalny readback verify poza bundlerem Vite.
+      interfaces:
+        - "runPageBuilderRuntimeWorkflow({ draft, approvedSourceMappings, draftStore, wordpressClient, verifyReadback })"
+    - component: "Node-only live Firestore adapter"
+      responsibility: >
+        Inicjalizowac prawdziwy persistence layer dla draftu tylko po stronie
+        Node i zwracac store zgodny z runtime workflow contract.
+      interfaces:
+        - "createLiveFirestoreDraftStoreFromEnv(env)"
+        - "loadDraft(docId)"
+        - "saveDraft(draft, options)"
+        - "upsertDraft(draft, options)"
+    - component: "Node-only WordPress publish adapter"
+      responsibility: >
+        Obslugiwac authenticated ensure/create-update strony, publish obu meta
+        payloadow i readback weryfikacyjny bez wycieku sekretow do zip.
+      interfaces:
+        - "createNodeWordPressPageBuilderClientFromEnv(env)"
+        - "ensurePageExists(input)"
+        - "publishPageBuilderPayloads(input)"
+        - "readPageBuilderPayloads(slug)"
+    - component: "CLI entrypoint"
+      responsibility: >
+        Walidowac env i flagi operatora, skladac adaptery, uruchamiac runtime
+        workflow i raportowac dry-run/readback bez duplikacji compile.
+      interfaces:
+        - "page-builder-runtime publish --doc-id <id>|--slug <slug>"
+        - "--dry-run"
+        - "--readback"
+  dependencies:
+    - component: "Node-only runtime workflow"
+      relationship: "Reuse'uje compilePageDraft z SCRIPTS/make-page-draft-compile-gate.js jako jedyny compiler."
+    - component: "Node-only runtime workflow"
+      relationship: "Konsumuje live Firestore adapter i node-only WordPress publish adapter przez jawne interfaces."
+    - component: "CLI entrypoint"
+      relationship: "Jest jedynym composition root dla env loading i secret-bearing dependencies."
+    - component: "Shared draft contract layer"
+      relationship: "Pozostaje source of truth dla shape draftu uzywanego przez bootstrap i runtime."
+  integration_points:
+    - "zip/src/blocks/registry/firebasePageDraft.test.ts"
+    - "zip/src/blocks/registry/firebasePageDraftStore.test.ts"
+    - "zip/src/blocks/registry/wordpressPageBuilderClient.test.ts"
+    - "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts"
+    - "SCRIPTS/make-page-draft-compile-gate.test.js"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+
+contracts:
+  - from_task: "extract_shared_contract_surface"
+    to_task: "move_runtime_to_node_boundary"
+    interface: "Pure draft/runtime contracts that remain legal inside zip/src without secrets or live transports."
+    format: "TypeScript types and helper functions only"
+  - from_task: "move_runtime_to_node_boundary"
+    to_task: "add_live_firestore_and_node_adapters"
+    interface: "Node-only runtime core expecting injected draftStore and wordpressClient."
+    format: "Dependency-injected runtime workflow API"
+  - from_task: "add_live_firestore_and_node_adapters"
+    to_task: "add_cli_and_rewire_validation"
+    interface: "Concrete node-only adapters composed from validated env."
+    format: "Factory functions returning runtime dependencies"
+
+tasks:
+  - id: "extract_shared_contract_surface"
+    title: "Wyodrebnic z zip tylko czysta warstwe shared contracts i helperow"
+    description: |
+      Pierwszy krok po critique to wyczyszczenie boundary. Trzeba rozdzielic,
+      co z obecnych plikow jest legalna warstwa shared dla zip, a co jest juz
+      realnym runtime. W praktyce zip ma zachowac kontrakty draftu, helpery i
+      bootstrap bez sekretow, natomiast logika publish/store/client ma przestac
+      byc traktowana jako runtime mieszkajacy w drzewie Vite. Sources:
+      zip/src/blocks/registry/firebasePageDraft.ts,
+      zip/src/blocks/registry/createPageDraftFromScrape.ts,
+      zip/src/blocks/registry/firebasePageDraftStore.ts,
+      zip/src/blocks/registry/wordpressPageBuilderClient.ts,
+      zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+      /memories/repo/firebase-draft-compile-gates.md.
+    wave: 1
+    agent: "gem-code-simplifier"
+    prototype: false
+    covers:
+      - "No secrets in zip"
+      - "Correct Vite boundary"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/firebasePageDraft.ts"
+        description: "Czysty kontrakt draftu, ktory powinien zostac w zip."
+      - path: "zip/src/blocks/registry/createPageDraftFromScrape.ts"
+        description: "Bootstrap bez sekretow, ktory powinien zostac w zip."
+      - path: "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+        description: "Obecny realny workflow w zlym boundary; wymaga move/extract."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Bez najpierw poprawionego boundary kolejne taski tylko dokleilyby live
+          adaptery do zlego miejsca i utrwalily critique.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "shared-vs-node boundary"
+        verification:
+          - "Zip surface po tasku zawiera tylko kontrakty, typy i helpery bez env oraz bez authenticated runtime clients."
+          - "Nie zostaje aktywny publish/store workflow w drzewie Vite."
+        acceptance_criteria:
+          - "firebasePageDraft.ts i createPageDraftFromScrape.ts pozostaja w zip jako shared logic."
+          - "Realny workflow i realni klienci nie sa juz planowani jako wykonanie z zip/src."
+          - "Powstaje jawna lista plikow zostajacych vs przenoszonych/opakowanych."
+        failure_modes:
+          - scenario: "W zip zostanie pseudo-shared wrapper, ktory dalej buduje auth headers albo laduje compile gate runtime'owo."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Dopuszczac w zip tylko typy, parsery i helpery bez fetch, env i bez importow do SCRIPTS runtime."
+    requires_review: true
+    review_depth: "full"
+    review_security_sensitive: true
+
+  - id: "move_runtime_to_node_boundary"
+    title: "Przeniesc prawdziwy runtime workflow do node-only boundary pod SCRIPTS"
+    description: |
+      Po wyczyszczeniu surface trzeba przeniesc lub wyodrebnic prawdziwy core
+      workflow do SCRIPTS/page-builder-runtime/. To ten task ma sprawic, ze
+      orchestration save -> ensure -> compile -> publish -> verify przestanie
+      mieszkac w zip/src i bedzie wykonywane tylko poza bundlerem Vite, przy
+      zachowaniu compile jako single source of truth. Sources:
+      zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+      SCRIPTS/make-page-draft-compile-gate.js,
+      docs/plan/page-builder-runtime-workflow/plan_b.yaml.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Move real runtime out of zip"
+      - "Keep compile single source of truth"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "extract_shared_contract_surface"
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+        description: "Obecny orchestration path wymagajacy move/extract."
+      - path: "SCRIPTS/make-page-draft-compile-gate.js"
+        description: "Kanoniczny compiler, ktory runtime ma reuse'owac bez kopiowania."
+      - path: "SCRIPTS/generate-page-draft-from-scrape.ts"
+        description: "Istniejacy wzorzec node-only script path w repo."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          To jest glowny skutek blocking critique: execution root ma opuscic zip,
+          ale bez przepisywania compile i bez poszerzania backend surface.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 260
+        focus_area: "node-only runtime core"
+        verification:
+          - "Nowy runtime core uruchamia compile tylko przez compilePageDraft z SCRIPTS."
+          - "Node-only workflow nie wymaga importu z bundlowanego entrypointu React."
+        acceptance_criteria:
+          - "Prawdziwy runtime workflow mieszka pod SCRIPTS/page-builder-runtime/."
+          - "Compile nie zostaje skopiowany ani przepisany do nowego pliku."
+          - "Zip nie pozostaje miejscem uruchamiania publish flow."
+        failure_modes:
+          - scenario: "Przeniesiony workflow zachowa ukryty coupling do zip runtime imports i bundlerowych aliasow."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "W node-only boundary importowac tylko shared kontrakty/helpery, nie React render tree ani browser env layer."
+    tech_stack:
+      - "Node.js"
+      - "TypeScript"
+      - "tsx"
+    test_coverage: "Injected contract tests for node runtime core plus compile reuse path"
+
+  - id: "add_live_firestore_and_node_adapters"
+    title: "Dodac live Firestore adapter i node-only WordPress adapter z env composition"
+    description: |
+      Gdy runtime core siedzi juz w dobrym boundary, kolejny praktyczny krok to
+      dodanie realnych adapterow live. Firestore adapter ma inicjalizowac
+      prawdziwy persistence layer tylko w Node, a WordPress adapter ma byc
+      authenticated clientem skladanym z env. Ten task nie zmienia compile i nie
+      cofa move/extract do zip. Sources:
+      zip/src/blocks/registry/firebasePageDraftStore.ts,
+      zip/src/blocks/registry/wordpressPageBuilderClient.ts,
+      .github/instructions/project-foundation.instructions.md,
+      /memories/repo/firebase-draft-compile-gates.md.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Live Firestore adapter"
+      - "Node-only secret-bearing adapters"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "move_runtime_to_node_boundary"
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/firebasePageDraftStore.ts"
+        description: "Obecny env-agnostic store contract, z ktorego trzeba zachowac shape API."
+      - path: "zip/src/blocks/registry/wordpressPageBuilderClient.ts"
+        description: "Obecny client logic candidate do move lub wrap jako node-only adapter."
+      - path: ".github/instructions/project-foundation.instructions.md"
+        description: "Reguly dla env.example i secret handling."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          User wymaga praktycznego kolejnego etapu, a to jest pierwszy realny
+          krok pod live execution po poprawieniu boundary.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 280
+        focus_area: "live node adapters"
+        verification:
+          - "Live Firestore adapter jest tworzony tylko w SCRIPTS boundary."
+          - "WordPress auth config nie trafia do zip ani do frontend env file."
+        acceptance_criteria:
+          - "Istnieje prawdziwy live Firestore adapter zgodny z runtime store contract."
+          - "Istnieje node-only WordPress adapter skladany z env i reusable przez CLI."
+          - "Zaden adapter live nie mieszka w zip/src."
+        failure_modes:
+          - scenario: "Adaptery beda reuzywac stare pliki z zip jako miejsca realnego wykonania zamiast czystych contracts."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Traktowac pliki zip tylko jako source kontraktow i helperow, a logike live skladać w nowych plikach pod SCRIPTS/page-builder-runtime/."
+    tech_stack:
+      - "Node.js"
+      - "TypeScript"
+      - "Firebase Admin / Firestore"
+      - "WordPress REST API"
+    test_coverage: "Adapter factory smoke tests plus injected HTTP/store contract tests"
+
+  - id: "add_cli_and_rewire_validation"
+    title: "Dodac CLI z env validation, dry-run/readback oraz przepiac testy i workflow docs"
+    description: |
+      Ostatni minimalny etap ma domknac operator path. Potrzebny jest jeden
+      CLI entrypoint w node-only boundary z jawna walidacja env, opcjami dry-run
+      i readback, bez drugiej sciezki compile/publish. W tym samym kroku trzeba
+      przepiac testy i dokumentacje tak, aby potwierdzaly nowy boundary i nowy
+      kanoniczny sposob uruchomienia. Sources:
+      SCRIPTS/generate-page-draft-from-scrape.ts,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      .github/instructions/project-foundation.instructions.md,
+      zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts.
+    wave: 4
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers:
+      - "CLI entrypoint"
+      - "Env validation"
+      - "Dry-run and readback"
+      - "Canonical operator path"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "add_live_firestore_and_node_adapters"
+    conflicts_with: []
+    context_files:
+      - path: "SCRIPTS/generate-page-draft-from-scrape.ts"
+        description: "Wzorzec obecnego repo-side CLI uruchamianego przez tsx."
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Kanoniczny workflow, ktory trzeba skorygowac o node-only runtime."
+      - path: "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts"
+        description: "Obecny kontrakt testowy, ktory po korekcie powinien miec odpowiednik dla node-only execution path."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Bez jednego CLI i bez przepiecia walidacji zespół zostalby z dwoma
+          prawie identycznymi torami uruchomienia, co zlamaloby cel critique.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 230
+        focus_area: "operator entrypoint and validation"
+        verification:
+          - "Istnieje jedna kanoniczna komenda publish flow z opcjami dry-run i readback."
+          - "Dokumentacja i test matrix wskazuja nowy node-only boundary zamiast zip runtime."
+        acceptance_criteria:
+          - "CLI waliduje wymagane env przed jakimkolwiek publish lub readback."
+          - "CLI obsluguje dry-run bez publish oraz readback jako osobna jawna opcje."
+          - "Workflow docs i test guidance nie sugeruja juz realnego runtime w zip/src."
+        failure_modes:
+          - scenario: "CLI stanie sie drugim orchestrator path z wlasna logika sequencingu."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "CLI ma skladac dependencies i delegowac tylko do jednego runtime core w SCRIPTS/page-builder-runtime/."
+    task_type: "update"
+    audience: "developers"
+    coverage_matrix:
+      - "CLI usage"
+      - "required env validation"
+      - "dry-run path"
+      - "readback verification"
+      - "node-only boundary"
+      - "compile single source of truth"

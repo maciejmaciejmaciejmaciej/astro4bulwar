@@ -1,0 +1,131 @@
+plan_id: typography-update
+objective: Safely refactor menu typography in zip/src/components/sections/ (convert text-[13px] and text-[11px] to text-sm, text-[10px] to text-xs, retain text-zinc-500). No global regex scripts. Manual literal string replacements only.
+created_at: '2026-03-22T00:00:00Z'
+created_by: gem-planner
+status: approved
+research_confidence: high
+
+tldr: |
+  Safely refactor typography in React sections file-by-file, avoiding dangerous global regex over-reach.
+open_questions:
+  - Are there any text sizing exceptions or responsive rules (e.g. md:text-sm) that should override these baseline updates?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Wrong text class replaced inside dynamic string literals breaking structure formatting.
+      likelihood: low
+      impact: medium
+      mitigation: Inspect 3 lines of exact context using literal replace_string_in_file carefully.
+  assumptions:
+    - zip/src/components/sections is the sole directory for these changes.
+    - ProductItem.tsx acts as the dominant presenter for menu items thus requiring primary focus.
+
+implementation_specification:
+  code_structure: React component static class updates.
+  affected_areas:
+    - zip/src/components/sections/ProductItem.tsx
+    - zip/src/components/sections/TheMenuSection.tsx
+    - zip/src/components/sections/BreakfastSection.tsx
+  component_details:
+    - component: ProductItem
+      responsibility: Display menu item cards with appropriate text scaling.
+      interfaces: []
+  dependencies:
+    - component: ProductItem
+      relationship: Utilized throughout menu sections.
+  integration_points:
+    - zip/src/components/sections
+
+contracts:
+  - from_task: t-1
+    to_task: t-2
+    interface: Exact target lines
+    format: List of files and old/new string block pairs
+
+tasks:
+  - id: t-1
+    title: Identify specific sizing usages in menu components
+    description: |
+      Grep for text-[13px], text-[11px], and text-[10px] inside zip/src/components/sections/.
+      Compile a list of exact lines needing updates.
+    wave: 1
+    agent: gem-researcher
+    priority: medium
+    status: pending
+    dependencies: []
+    context_files: []
+    estimated_effort: small
+    estimated_files: 5
+    estimated_lines: 0
+    focus_area: search
+    verification:
+      - Sizing instances documented for implementer.
+    acceptance_criteria:
+      - All targets identified strictly matching goal.
+    failure_modes:
+      - scenario: Misses a size class.
+        likelihood: low
+        impact: low
+        mitigation: Grep comprehensively.
+
+  - id: t-2
+    title: Refactor typography sizing file by file
+    description: |
+      Update typography manually:
+      - text-[13px] -> text-sm
+      - text-[11px] -> text-sm
+      - text-[10px] -> text-xs
+      Retain text-zinc-500. Target `ProductItem.tsx`, `TheMenuSection.tsx`, etc.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - t-1
+    context_files: []
+    estimated_effort: medium
+    estimated_files: 5
+    estimated_lines: 50
+    focus_area: refactor
+    verification:
+      - Files safely edited.
+    acceptance_criteria:
+      - Target pixel sizes removed in favor of Tailwind base sizes.
+    failure_modes:
+      - scenario: Replace breaks file formatting or drops quotes.
+        likelihood: low
+        impact: high
+        mitigation: Only use literal replace_string_in_file with exact context.
+    tech_stack:
+      - React
+      - Tailwind CSS
+    test_coverage: null
+
+  - id: t-3
+    title: Code Review and Build test
+    description: |
+      Double check the replaced components have not broken syntactic layout or React return structures. Look at git diff.
+    wave: 3
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - t-2
+    context_files: []
+    estimated_effort: small
+    estimated_files: 5
+    estimated_lines: 0
+    focus_area: syntax integrity
+    verification:
+      - Ensure no compilation TS errors.
+    acceptance_criteria:
+      - Code syntax is intact.
+    failure_modes:
+      - scenario: Bad string replacement leaves file uncompilable.
+        likelihood: medium
+        impact: high
+        mitigation: Review diff carefully before finalizing.
+    requires_review: false
+    review_depth: standard
+    security_sensitive: false

@@ -1,0 +1,251 @@
+plan_id: shadcn-typography-instruction-guardrails-20260422
+objective: >-
+  Strengthen strict agent rules for freshly imported shadcn components by enforcing a
+  typography cleanup protocol that bans arbitrary font-weight, tracking, and leading
+  classes and maps headings/body copy to approved single text-size classes, while
+  preserving the existing geometry-first translation workflow defined in
+  .github/instructions/design-system.instructions.md and reinforced in
+  .github/copilot-instructions.md.
+created_at: '2026-04-22T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: medium
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 3
+  risk_score: low
+
+tldr: |
+  The current Translation-Only Rule in .github/instructions/design-system.instructions.md preserves source text sizes, font weights, line heights, and letter spacing, which conflicts with the requested stricter typography cleanup protocol.
+  The current downstream whitelist in docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md still enumerates tracking, leading, and font-weight-heavy typography patterns that could reintroduce the same conflict.
+  This plan keeps the existing no-redesign workflow intact, but narrows typography handling into an explicit cleanup exception with mirrored reinforcement in .github/copilot-instructions.md and a final consistency check across all touched instruction files.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: The update removes the translation-only geometry guardrail instead of carving out only a typography exception, causing agents to treat imported blocks as redesign opportunities.
+      likelihood: low
+      impact: high
+      mitigation: Keep layout, width, composition, spacing, and responsive-preservation language intact in .github/instructions/design-system.instructions.md while rewriting only the typography clause.
+    - scenario: Secondary docs still contain examples that normalize banned tracking, leading, or font-weight classes, making the instruction set internally inconsistent.
+      likelihood: medium
+      impact: medium
+      mitigation: Limit reinforcement edits to the known downstream instruction surfaces and validate with targeted grep for preserved-source typography language and banned class examples.
+  assumptions:
+    - .github/instructions/design-system.instructions.md remains the canonical workflow document for raw shadcn block adaptation.
+    - .github/copilot-instructions.md is the correct secondary reinforcement surface for repo-wide agent behavior.
+    - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md is the minimal downstream whitelist that must be aligned because it currently teaches approved typography patterns.
+
+implementation_specification:
+  code_structure: >-
+    Instruction-layer documentation update only. Establish the canonical typography
+    cleanup rule in .github/instructions/design-system.instructions.md, mirror the
+    rule in .github/copilot-instructions.md, and prune conflicting typography
+    examples from docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+    without changing the broader raw-block workflow.
+  affected_areas:
+    - .github/instructions/design-system.instructions.md
+    - .github/copilot-instructions.md
+    - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+  component_details:
+    - component: Primary raw-block workflow instruction
+      responsibility: Define the translation-only workflow and add the explicit typography cleanup exception for imported shadcn blocks.
+      interfaces:
+        - Translation-Only Rule wording
+        - Typography cleanup protocol wording
+        - Allowed heading/body text-size mapping
+    - component: Repo-wide copilot reinforcement instruction
+      responsibility: Repeat the strict shadcn-processing rule at the higher-level agent instruction surface so the primary doc is not the only enforcement point.
+      interfaces:
+        - Raw import processing order
+        - Typography cleanup do-not-preserve guidance
+    - component: Typography whitelist
+      responsibility: Remove or rewrite downstream whitelist examples that would contradict the new typography cleanup protocol.
+      interfaces:
+        - Approved text-role examples
+        - Prohibited arbitrary typography utility guidance
+  dependencies:
+    - component: Repo-wide copilot reinforcement instruction
+      relationship: Must mirror the canonical rule defined in .github/instructions/design-system.instructions.md.
+    - component: Typography whitelist
+      relationship: Must align with the canonical rule so examples do not override the instruction text in practice.
+  integration_points:
+    - Agent behavior when translating raw shadcn blocks into project classes.
+    - Future block-refinement instructions that inherit wording from the design-system rule set.
+
+contracts:
+  - from_task: t-1
+    to_task: t-2
+    interface: Canonical typography cleanup language, including the preserved geometry rules and the approved heading/body mapping.
+    format: Markdown rule text and a short allowed-vs-banned class matrix.
+  - from_task: t-2
+    to_task: t-3
+    interface: Final list of touched instruction files and the phrases/classes that should no longer appear after alignment.
+    format: File checklist plus grep targets.
+
+tasks:
+  - id: t-1
+    title: Rewrite the primary raw-block instruction with a typography cleanup exception
+    description: |
+      Update .github/instructions/design-system.instructions.md so the existing
+      Translation-Only Rule continues to preserve geometry, layout, width, spacing,
+      and responsive behavior, but no longer preserves source text sizes,
+      font weights, line heights, or letter spacing.
+
+      Add a strict typography cleanup protocol for freshly imported shadcn
+      components that:
+      - bans arbitrary font-weight, tracking, and leading classes during translation
+      - maps headings to approved single text-size classes
+      - maps body copy to approved single text-size classes
+      - keeps the workflow as translation rather than redesign
+    wave: 1
+    agent: gem-documentation-writer
+    prototype: false
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: .github/instructions/design-system.instructions.md
+        description: Contains the current Translation-Only Rule that explicitly preserves source text sizes, font weights, line heights, and letter spacing.
+      - path: .github/copilot-instructions.md
+        description: Provides repo-wide strict design and adaptation rules that the primary instruction should stay compatible with.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Define the canonical rule first so reinforcement docs can mirror exact wording.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 30
+        focus_area: primary instruction rule text
+        verification:
+          - The rewritten rule still preserves layout and geometry language.
+          - The new typography exception explicitly bans arbitrary font-weight, tracking, and leading classes.
+          - The rule names approved single-size mapping for headings and body copy.
+        acceptance_criteria:
+          - The preserve-source typography clause is removed or rewritten.
+          - The existing no-redesign workflow remains intact.
+          - The canonical wording is specific enough for downstream docs to mirror.
+        failure_modes:
+          - scenario: The rule becomes too vague and does not clearly distinguish typography cleanup from redesign.
+            likelihood: low
+            impact: medium
+            mitigation: Use explicit do-not-preserve and do-preserve bullets in the same section.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - Primary rule removes the preserve-source typography conflict.
+      - Primary rule preserves the geometry-first translation workflow.
+
+  - id: t-2
+    title: Align reinforcement docs and typography examples with the canonical rule
+    description: |
+      Update the two reinforcement surfaces so they cannot override or dilute the
+      new primary rule:
+      - .github/copilot-instructions.md should reinforce the required cleanup order
+        for freshly imported shadcn blocks.
+      - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+        should replace conflicting typography examples with approved role-based,
+        single-size guidance for headings and body copy.
+
+      Keep this task scoped to wording and whitelist examples only; do not expand
+      into broader design-system restructuring.
+    wave: 2
+    agent: gem-documentation-writer
+    prototype: false
+    priority: medium
+    status: pending
+    dependencies:
+      - t-1
+    conflicts_with: []
+    context_files:
+      - path: .github/copilot-instructions.md
+        description: Repo-wide reinforcement surface for strict raw-block adaptation behavior.
+      - path: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+        description: Downstream whitelist that currently includes tracking, leading, and font-weight-heavy typography examples.
+      - path: .github/instructions/design-system.instructions.md
+        description: Canonical wording from task t-1 that this reinforcement task must mirror.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Mirror the canonical rule and remove conflicting downstream examples without widening scope.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 35
+        focus_area: reinforcement wording and whitelist cleanup
+        verification:
+          - Secondary docs repeat the cleanup rule rather than the old preserve-source typography guidance.
+          - Whitelist examples no longer endorse banned typography classes.
+        acceptance_criteria:
+          - .github/copilot-instructions.md reinforces the strict cleanup order.
+          - The whitelist reflects approved heading/body text-size mappings only.
+          - No new workflow branch or redesign permission is introduced.
+        failure_modes:
+          - scenario: The whitelist still contains examples that look like approved tracking or leading overrides.
+            likelihood: medium
+            impact: medium
+            mitigation: Replace typography pattern examples with role-based mappings instead of utility stacks.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - Repo-wide reinforcement mirrors the primary rule.
+      - Downstream examples no longer contradict the primary typography cleanup protocol.
+
+  - id: t-3
+    title: Validate instruction consistency with targeted grep and reviewer pass
+    description: |
+      Run a narrow validation across the touched instruction files to confirm the
+      update resolved the conflict without damaging the existing workflow.
+
+      Validation should confirm:
+      - no touched file still instructs agents to preserve source text sizes,
+        font weights, line heights, or letter spacing for raw imports
+      - no touched file still presents arbitrary font-weight, tracking, or leading
+        classes as approved translation defaults
+      - the preserved layout/geometry/no-redesign workflow still appears in the
+        primary instruction
+    wave: 3
+    agent: gem-reviewer
+    prototype: false
+    priority: medium
+    status: pending
+    dependencies:
+      - t-1
+      - t-2
+    conflicts_with: []
+    context_files:
+      - path: .github/instructions/design-system.instructions.md
+        description: Primary rule source that must still protect geometry-first translation.
+      - path: .github/copilot-instructions.md
+        description: Reinforcement doc that must not drift from the primary rule.
+      - path: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+        description: Typography whitelist that must no longer contradict the primary rule.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Validate the edited instruction set before any implementation agent relies on it.
+        timestamp: '2026-04-22T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 0
+        focus_area: instruction consistency validation
+        verification:
+          - Grep confirms the old preserve-source typography wording is gone from touched files.
+          - Review confirms the geometry-preservation workflow still exists.
+          - Review confirms heading/body mappings are described as approved single-size classes.
+        acceptance_criteria:
+          - No direct wording conflict remains across the touched docs.
+          - The updated docs still read as a translation workflow, not a redesign workflow.
+          - Validation output is precise enough to unblock a follow-up documentation edit.
+        failure_modes:
+          - scenario: Validation checks only the new language and misses an old contradictory sentence in one touched file.
+            likelihood: low
+            impact: medium
+            mitigation: Use explicit grep targets derived from the old wording and banned typography utilities.
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false

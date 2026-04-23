@@ -1,0 +1,318 @@
+plan_id: ad-hoc-block-color-variants
+objective: "Ustalić najlepszy wzorzec dla wielu wersji kolorystycznych jednego bloku w BULWAR APP z uwzględnieniem design systemu i page-buildera."
+focus_area: block-color-variants
+created_at: "2026-04-16"
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Repo ma już semantyczny słownik kolorów w globalnym CSS i instrukcję, że styling ma bazować na istniejącym design language, nie na nowym ad hoc systemie (sources: zip/src/index.css:9-17, .github/instructions/design-system.instructions.md:18,44-45).
+  - Komponenty blokowe używają semantycznych tokenów i lokalnych stałych klas; Promo2 dopuszcza tylko ogólne className override, bez jawnego wariantu kolorystycznego (sources: zip/components/Promo2.tsx:28,101,121,146; zip/src/components/sections/OurServices.tsx:78-85).
+  - Page-builder ma już osobne pole section.variant oraz wsparcie registry-level dla variants[], więc wariant kolorystyczny jest architektonicznie bliższy nazwanej wartości string niż surowym klasom lub obiektom stylów (sources: zip/src/blocks/registry/types.ts:33,45; zip/src/blocks/registry/pageBuilderSchema.ts:10; zip/src/blocks/registry/blueprint.ts:19).
+  - Obecne definicje bloków promo2 i our-services nie deklarują jeszcze dozwolonych variants[], mimo że runtime i schema registry już to przewidują (sources: zip/src/blocks/promo2/schema.ts, zip/src/blocks/our-services/schema.ts, zip/src/blocks/registry/types.ts:33).
+  - Domyślny flow page-buildera inicjalizuje variant jako null i zachowuje stabilne ids w sections[], więc wariant powinien być jawny, serializowalny i bezpieczny dla AI/page-builder payloadów (sources: zip/src/blocks/registry/index.ts:89, .github/instructions/page-builder.instructions.md:19,39).
+
+research_metadata:
+  methodology: "Hybrid retrieval: grep_search for exact contracts and tokens, targeted read_file on design-system instructions, page-builder instructions, block registry files, and representative components."
+  scope: "Skupiono się na globalnych tokenach stylu, dwóch reprezentatywnych blokach UI, rejestrze bloków i kontrakcie page-buildera."
+  confidence: high
+  coverage: 88
+  decision_blockers: 1
+  research_blockers: 0
+
+files_analyzed:
+  - file: design-system.instructions.md
+    path: .github/instructions/design-system.instructions.md
+    purpose: Definiuje kontrakt design systemu i zasady dopuszczalnych wariantów bloków.
+    key_elements:
+      - element: "Global Style Source Of Truth"
+        type: pattern
+        location: ".github/instructions/design-system.instructions.md:16-18"
+        description: "Wskazuje zip/src/index.css jako źródło prawdy dla kolorów, fontów i shared utilities."
+      - element: "Visual Rules"
+        type: pattern
+        location: ".github/instructions/design-system.instructions.md:42-45"
+        description: "Nakazuje używać istniejącego design language i zakazuje nowego ad hoc styling system."
+      - element: "Reusability Rules"
+        type: pattern
+        location: ".github/instructions/design-system.instructions.md:70-75"
+        description: "Wymaga, aby meaningful variants były nazwane i udokumentowane explicite."
+    language: markdown
+    lines: 98
+  - file: index.css
+    path: zip/src/index.css
+    purpose: Globalne tokeny kolorów i utilities używane przez sekcje.
+    key_elements:
+      - element: "project color tokens"
+        type: variable
+        location: "zip/src/index.css:9-17"
+        description: "Definiuje --color-primary, --color-on-primary, --color-surface, --color-on-surface, --color-surface-container-low, --color-surface-container-high i outline variant."
+      - element: menu-leader
+        type: pattern
+        location: "zip/src/index.css:40"
+        description: "Pokazuje semantyczne użycie outline tokena w utility."
+    language: css
+    lines: 177
+  - file: Promo2.tsx
+    path: zip/components/Promo2.tsx
+    purpose: Reprezentatywny blok content-driven z className override i semantycznymi tokenami kolorów.
+    key_elements:
+      - element: Promo2Props.className
+        type: variable
+        location: "zip/components/Promo2.tsx:28"
+        description: "Komponent dopuszcza tylko zewnętrzny className override, bez dedykowanego propu wariantu."
+      - element: section shell merge
+        type: pattern
+        location: "zip/components/Promo2.tsx:101"
+        description: "Shell sekcji scala bazowe klasy z className przez cn()."
+      - element: semantic token usage
+        type: pattern
+        location: "zip/components/Promo2.tsx:121-146"
+        description: "Wnętrze używa bg-surface-container-low, bg-surface i text-on-surface zamiast arbitralnych kolorów."
+    language: typescript
+    lines: 176
+  - file: OurServices.tsx
+    path: zip/src/components/sections/OurServices.tsx
+    purpose: Reprezentatywny blok z wydzielonymi stałymi className i semantic token usage.
+    key_elements:
+      - element: cardClassName
+        type: pattern
+        location: "zip/src/components/sections/OurServices.tsx:78-79"
+        description: "Kolorystyka kart jest zamknięta w stałej opartej o bg-surface i hover:bg-surface-container-low."
+      - element: primaryButtonClassName
+        type: pattern
+        location: "zip/src/components/sections/OurServices.tsx:84-85"
+        description: "CTA używa bg-primary i text-on-primary z istniejącego słownika tokenów."
+    language: typescript
+    lines: 132
+  - file: types.ts
+    path: zip/src/blocks/registry/types.ts
+    purpose: Kontrakt rejestru bloków i instancji sekcji page-buildera.
+    key_elements:
+      - element: PageBuilderBlockDefinition.variants
+        type: variable
+        location: "zip/src/blocks/registry/types.ts:33"
+        description: "Registry wspiera jawne, dozwolone variants[] dla definicji bloku."
+      - element: PageBuilderSectionInstance.variant
+        type: variable
+        location: "zip/src/blocks/registry/types.ts:45"
+        description: "Instancja sekcji przenosi variant jako string | null."
+    language: typescript
+    lines: 47
+  - file: pageBuilderSchema.ts
+    path: zip/src/blocks/registry/pageBuilderSchema.ts
+    purpose: Walidacja schematu renderowego page-buildera.
+    key_elements:
+      - element: pageBuilderSectionSchema.variant
+        type: variable
+        location: "zip/src/blocks/registry/pageBuilderSchema.ts:10"
+        description: "Schema serializuje variant jako nullable string."
+    language: typescript
+    lines: 65
+  - file: blueprint.ts
+    path: zip/src/blocks/registry/blueprint.ts
+    purpose: Tworzenie render schema z blueprintu.
+    key_elements:
+      - element: pageBlueprintSchema.sections[].variant
+        type: variable
+        location: "zip/src/blocks/registry/blueprint.ts:19"
+        description: "Blueprint dopuszcza variant jako opcjonalny string już na etapie authoringu."
+      - element: createPageBuilderSchemaFromBlueprint
+        type: function
+        location: "zip/src/blocks/registry/blueprint.ts:82"
+        description: "Brak wartości variant kończy się fallbackiem do null."
+    language: typescript
+    lines: 87
+  - file: index.ts
+    path: zip/src/blocks/registry/index.ts
+    purpose: Rejestr bloków i fabryka domyślnych instancji.
+    key_elements:
+      - element: createDefaultBlockInstance
+        type: function
+        location: "zip/src/blocks/registry/index.ts:89"
+        description: "Nowa instancja sekcji startuje z variant: null."
+    language: typescript
+    lines: 102
+  - file: promo2 schema
+    path: zip/src/blocks/promo2/schema.ts
+    purpose: Definicja block registry dla promo2.
+    key_elements:
+      - element: promo2BlockDefinition
+        type: variable
+        location: "zip/src/blocks/promo2/schema.ts:79-106"
+        description: "Definicja nie deklaruje variants[], mimo że registry to wspiera."
+    language: typescript
+    lines: 106
+  - file: our-services schema
+    path: zip/src/blocks/our-services/schema.ts
+    purpose: Definicja block registry dla our-services.
+    key_elements:
+      - element: ourServicesBlockDefinition
+        type: variable
+        location: "zip/src/blocks/our-services/schema.ts:68-87"
+        description: "Definicja nie deklaruje variants[], mimo że registry to wspiera."
+    language: typescript
+    lines: 87
+  - file: page-builder.instructions.md
+    path: .github/instructions/page-builder.instructions.md
+    purpose: Kontrakt przechowywania i mapowania bloków do page-builder schema i AI schema.
+    key_elements:
+      - element: sections[] model
+        type: pattern
+        location: ".github/instructions/page-builder.instructions.md:19"
+        description: "Każdy element sections[] jest jedną instancją bloku."
+      - element: id mapping rule
+        type: pattern
+        location: ".github/instructions/page-builder.instructions.md:39"
+        description: "AI schema musi mapować 1:1 do render schema po stabilnym id."
+    language: markdown
+    lines: 104
+
+patterns_found:
+  - category: architecture
+    pattern: "Semantyczne tokeny kolorów zamiast arbitralnych utility klas"
+    description: "Kolory są prowadzone przez globalny słownik w index.css i konsumowane przez bloki jako bg-surface, text-on-surface, bg-primary, text-on-primary i pochodne."
+    examples:
+      - file: zip/src/index.css
+        location: "zip/src/index.css:9-17"
+        snippet: "--color-primary / --color-surface / --color-surface-container-low / --color-surface-container-high"
+      - file: zip/components/Promo2.tsx
+        location: "zip/components/Promo2.tsx:121-146"
+        snippet: "bg-surface-container-low text-on-surface ... bg-surface"
+      - file: zip/src/components/sections/OurServices.tsx
+        location: "zip/src/components/sections/OurServices.tsx:78-85"
+        snippet: "bg-surface ... hover:bg-surface-container-low ... bg-primary text-on-primary"
+    prevalence: common
+  - category: structure
+    pattern: "Blok zachowuje własny domyślny styling, a z zewnątrz dopuszcza co najwyżej className na shellu"
+    description: "Promo2 pokazuje wzorzec, w którym zewnętrzny caller może dopiąć klasy, ale nie steruje pełną paletą przez dowolne stringi per fragment."
+    examples:
+      - file: zip/components/Promo2.tsx
+        location: "zip/components/Promo2.tsx:28,101"
+        snippet: "className?: string ... cn('page-margin py-32', className)"
+    prevalence: occasional
+  - category: architecture
+    pattern: "Registry i page-builder mają już osobny kanał na nazwany variant"
+    description: "Model danych bloków i instancji sekcji przewiduje variant niezależny od data payload oraz opcjonalną listę variants[] przy definicji bloku."
+    examples:
+      - file: zip/src/blocks/registry/types.ts
+        location: "zip/src/blocks/registry/types.ts:33,45"
+        snippet: "variants?: readonly string[] ... variant: string | null"
+      - file: zip/src/blocks/registry/pageBuilderSchema.ts
+        location: "zip/src/blocks/registry/pageBuilderSchema.ts:10"
+        snippet: "variant: z.string().nullable()"
+      - file: zip/src/blocks/registry/blueprint.ts
+        location: "zip/src/blocks/registry/blueprint.ts:19"
+        snippet: "variant: z.string().optional()"
+    prevalence: common
+  - category: documentation
+    pattern: "Meaningful variants mają być jawnie nazwane i udokumentowane"
+    description: "Instrukcja design-systemu odrzuca niejawne systemy stylowania i wymaga nazwania wariantów bloku, jeśli są znaczące biznesowo lub wizualnie."
+    examples:
+      - file: .github/instructions/design-system.instructions.md
+        location: ".github/instructions/design-system.instructions.md:44-45,75"
+        snippet: "Use only the existing project design language ... Do not invent new ad hoc styling systems ... name and document them explicitly"
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Promo2
+      responsibility: Renderuje story-led promo block z dolnym panelem menu.
+      location: zip/components/Promo2.tsx
+      relationship_to_domain: "Pokazuje obecny wzorzec: semantyczne tokeny + opcjonalny shell className, bez jawnego propu wariantu."
+    - component: OurServices
+      responsibility: Renderuje content-only services section z lokalnymi stałymi klas.
+      location: zip/src/components/sections/OurServices.tsx
+      relationship_to_domain: "Pokazuje porządkowanie stylu przez stałe klas i semantic tokens."
+    - component: blockRegistry
+      responsibility: Rejestruje zatwierdzone business blocks i ich kontrakty.
+      location: zip/src/blocks/registry/index.ts
+      relationship_to_domain: "Jest źródłem prawdy dla blockKey, schema, runtime i domyślnego variant."
+    - component: page builder schema
+      responsibility: Serializuje instancje bloków do render payloadu i AI payloadu.
+      location: zip/src/blocks/registry/pageBuilderSchema.ts
+      relationship_to_domain: "Przenosi variant jako część instancji sekcji."
+  interfaces_used_by_domain:
+    - interface: PageBuilderBlockDefinition
+      location: zip/src/blocks/registry/types.ts:17-35
+      usage_pattern: "Definicja bloku może ogłosić variants[] jako whitelistę dopuszczalnych wariantów."
+    - interface: PageBuilderSectionInstance
+      location: zip/src/blocks/registry/types.ts:37-45
+      usage_pattern: "Każda instancja sekcji niesie variant jako string | null obok data/source/meta."
+  data_flow_involving_domain: "Authoring blueprint może podać variant jako string, blueprint builder przekształca go do page_builder_schema.sections[].variant, a runtime renderSection renderuje komponent na podstawie blockKey i danych sekcji. Obecnie brak osobnej warstwy, która tłumaczy variant na zestaw klas w konkretnych blokach."
+  key_relationships_to_domain:
+    - from: zip/src/blocks/registry/blueprint.ts
+      to: zip/src/blocks/registry/pageBuilderSchema.ts
+      relationship: calls
+    - from: zip/src/blocks/promo2/schema.ts
+      to: zip/components/Promo2.tsx
+      relationship: composes
+    - from: zip/src/blocks/our-services/schema.ts
+      to: zip/src/components/sections/OurServices.tsx
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - CSS
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: "Bloki są renderowane jako existing-react-component w registry runtime."
+    - name: Tailwind CSS v4
+      usage_in_domain: "Styling używa utility classes i @theme semantic token mapping w globalnym CSS."
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: "Walidacja data schema, source schema i page-builder schema."
+    - name: clsx/tailwind merge via cn utility
+      purpose_in_domain: "Łączenie klas bazowych i opcjonalnych override na poziomie komponentu."
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: "Bloki mają blockKey w kebab-case, komponenty i content interfejsy w PascalCase, a potencjalne warianty są przewidziane jako named strings."
+  structure_of_domain: "Kolorystyka ma źródło w zip/src/index.css, komponenty renderujące są odseparowane od schema registry, a instancje stron przechodzą przez registry/page-builder contracts."
+  error_handling_in_domain: "Walidacja zod rzuca błędy dla nieznanych blockKey, niezgodnych wersji i błędnych payloadów danych lub source."
+  testing_in_domain: "Registry ma testy invariants/page-builder, ale z badanego wycinka nie wynika jeszcze dedykowany test dla color variant flow."
+  documentation_in_domain: "Instrukcje projektowe wymagają jawnego nazwania i udokumentowania meaningful variants oraz spójności z registry/page-builder docs."
+
+related_dependencies:
+  internal:
+    - component: zip/src/index.css
+      relationship_to_domain: "Dostarcza semantyczne tokeny kolorów dla wszystkich wariantów bloków."
+      direction: outbound
+    - component: zip/src/blocks/registry/types.ts
+      relationship_to_domain: "Definiuje strukturalne miejsce na variant i variants[]."
+      direction: bidirectional
+    - component: .github/instructions/design-system.instructions.md
+      relationship_to_domain: "Ogranicza dopuszczalne podejście do stylowania wariantów."
+      direction: outbound
+    - component: .github/instructions/page-builder.instructions.md
+      relationship_to_domain: "Wymusza serializowalność i stabilne mapowanie wariantu w payloadach."
+      direction: outbound
+  external:
+    - name: React
+      purpose_for_domain: "Rendering komponentów blokowych."
+    - name: Tailwind CSS
+      purpose_for_domain: "Semantyczne utility klasy i theme token mapping."
+    - name: Zod
+      purpose_for_domain: "Walidacja schem page-buildera i bloków."
+
+open_questions:
+  - question: "Czy wariant kolorystyczny ma być rozumiany jako wariant całej instancji sekcji, czy tylko wybranego fragmentu wnętrza bloku?"
+    context: "Repo ma structural slot na section.variant, ale nie ma jeszcze udokumentowanej konwencji translacji variant -> konkretne klasy w runtime bloków."
+    type: decision_blocker
+    affects: [standalone]
+  - question: "Czy lista dozwolonych wariantów ma być trzymana wyłącznie w registry variants[], czy równolegle także w dokumentacji block-registry dla AI/page-builder authoringu?"
+    context: "Instrukcja design-systemu wymaga nazwania i dokumentacji, ale obecne definicje bloków nie deklarują jeszcze variants[]."
+    type: research
+    affects: [standalone]
+
+gaps:
+  - area: "Per-block variant whitelist"
+    description: "Zbadane definicje promo2 i our-services nie deklarują variants[], mimo że registry contract to przewiduje."
+    impact: decision_blocker
+    affects: [standalone]
+  - area: "Runtime variant mapping"
+    description: "Nie znaleziono w badanym zakresie warstwy, która mapowałaby section.variant na zamknięty zestaw klas semantycznych wewnątrz komponentu."
+    impact: research_blocker
+    affects: [standalone]

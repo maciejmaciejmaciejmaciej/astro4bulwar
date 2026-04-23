@@ -1,0 +1,151 @@
+---
+import AboutSection from './AboutSection.astro';
+import BlockDownloadSection from './BlockDownloadSection.astro';
+import GallerySection from './GallerySection.astro';
+import MenuCategorySection from './MenuCategorySection.astro';
+import MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection from './MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.astro';
+import OurServicesSection from './OurServicesSection.astro';
+import UniversalHeaderBlock1Section from './UniversalHeaderBlock1Section.astro';
+import UniversalHeaderBlock2Section from './UniversalHeaderBlock2Section.astro';
+import UniversalMultilinkBlockSection from './UniversalMultilinkBlockSection.astro';
+import { resolveAstroRenderer } from '../lib/astroRegistry.ts';
+import type {
+  AboutBlock,
+  BlockDownloadSectionBlock,
+  GalleryBlock,
+  MenuBlock,
+  MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock,
+  PageBuilderSection,
+  OurServicesBlock,
+  UniversalHeaderBlock1SectionBlock,
+  UniversalHeaderBlock2SectionBlock,
+  UniversalMultilinkSectionBlock,
+} from '../lib/types.ts';
+
+type ImageAsset = {
+  src: string;
+  alt: string;
+};
+
+interface Props {
+  section: PageBuilderSection;
+  toAbsoluteAssetUrl: (src: string) => string;
+  toAbsoluteImageAssets: (images: ImageAsset[]) => ImageAsset[];
+}
+
+const { section, toAbsoluteAssetUrl, toAbsoluteImageAssets } = Astro.props;
+const renderer = resolveAstroRenderer(section.blockKey);
+---
+
+{renderer.blockKey === 'about-1' && (
+  <AboutSection
+    leftImages={toAbsoluteImageAssets((section as AboutBlock).data.leftImages)}
+    leftText={(section as AboutBlock).data.leftText}
+    rightText={(section as AboutBlock).data.rightText}
+    rightImages={toAbsoluteImageAssets((section as AboutBlock).data.rightImages)}
+  />
+)}
+
+{renderer.blockKey === 'our-services' && (
+  <OurServicesSection
+    title={(section as OurServicesBlock).data.title}
+    description={(section as OurServicesBlock).data.description}
+    primaryCta={(section as OurServicesBlock).data.primaryCta}
+    cards={(section as OurServicesBlock).data.cards}
+  />
+)}
+
+{renderer.blockKey === 'block_download' && (
+  <BlockDownloadSection
+    title={(section as BlockDownloadSectionBlock).data.title}
+    subtitle={(section as BlockDownloadSectionBlock).data.subtitle}
+    primaryCta={(section as BlockDownloadSectionBlock).data.primaryCta}
+    secondaryCta={(section as BlockDownloadSectionBlock).data.secondaryCta}
+    helperText={(section as BlockDownloadSectionBlock).data.helperText}
+    versionLabel={(section as BlockDownloadSectionBlock).data.versionLabel}
+    fileMeta={(section as BlockDownloadSectionBlock).data.fileMeta}
+    panelCaption={(section as BlockDownloadSectionBlock).data.panelCaption}
+    features={(section as BlockDownloadSectionBlock).data.features}
+  />
+)}
+
+{renderer.blockKey === 'gallery-masonry-style1' && (
+  <GallerySection
+    title={(section as GalleryBlock).data.title}
+    images={(section as GalleryBlock).data.images.map((image: GalleryBlock['data']['images'][number]) => ({
+      ...image,
+      src: toAbsoluteAssetUrl(image.src),
+    }))}
+  />
+)}
+
+{renderer.blockKey === 'menu-category-photo-parallax-full-width' && (
+  <MenuCategorySection
+    heroTitle={(section as MenuBlock).data.heroTitle}
+    backgroundImageSrc={toAbsoluteAssetUrl((section as MenuBlock).data.backgroundImage.src)}
+    backgroundImageAlt={(section as MenuBlock).data.backgroundImage.alt}
+    overlayOpacity={(section as MenuBlock).data.overlayOpacity}
+    heroHeight={(section as MenuBlock).data.layout.heroHeight}
+    menuColumns={(section as MenuBlock).data.menuColumns}
+    emptyStateText={(section as MenuBlock).data.emptyStateText}
+  />
+)}
+
+{renderer.blockKey === 'menu_two_columns_with_with_heading_with_img_fullwidth_paralax' && (
+  <MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection
+    heroTitle={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.heroTitle}
+    backgroundImage={{
+      ...(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.backgroundImage,
+      src: toAbsoluteAssetUrl(
+        (section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.backgroundImage.src,
+      ),
+    }}
+    overlayOpacity={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.overlayOpacity}
+    heroHeight={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.layout.heroHeight}
+    menuColumns={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.menuColumns}
+    emptyStateText={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.emptyStateText}
+  />
+)}
+
+{renderer.blockKey === 'universal_header_block_1' && (
+  <UniversalHeaderBlock1Section
+    eyebrow={(section as UniversalHeaderBlock1SectionBlock).data.eyebrow}
+    title={(section as UniversalHeaderBlock1SectionBlock).data.title}
+    description={(section as UniversalHeaderBlock1SectionBlock).data.description}
+    links={(section as UniversalHeaderBlock1SectionBlock).data.links}
+    gallery={{
+      primaryImage: {
+        ...(section as UniversalHeaderBlock1SectionBlock).data.gallery.primaryImage,
+        src: toAbsoluteAssetUrl((section as UniversalHeaderBlock1SectionBlock).data.gallery.primaryImage.src),
+      },
+      secondaryImage: {
+        ...(section as UniversalHeaderBlock1SectionBlock).data.gallery.secondaryImage,
+        src: toAbsoluteAssetUrl((section as UniversalHeaderBlock1SectionBlock).data.gallery.secondaryImage.src),
+      },
+    }}
+    detailSection={(section as UniversalHeaderBlock1SectionBlock).data.detailSection}
+  />
+)}
+
+{renderer.blockKey === 'universal_header_block_2' && (
+  <UniversalHeaderBlock2Section
+    eyebrow={(section as UniversalHeaderBlock2SectionBlock).data.eyebrow}
+    title={(section as UniversalHeaderBlock2SectionBlock).data.title}
+    description={(section as UniversalHeaderBlock2SectionBlock).data.description}
+    metadataItems={(section as UniversalHeaderBlock2SectionBlock).data.metadataItems}
+    contactCta={(section as UniversalHeaderBlock2SectionBlock).data.contactCta}
+    heroImage={{
+      ...(section as UniversalHeaderBlock2SectionBlock).data.heroImage,
+      src: toAbsoluteAssetUrl((section as UniversalHeaderBlock2SectionBlock).data.heroImage.src),
+    }}
+    storySections={(section as UniversalHeaderBlock2SectionBlock).data.storySections}
+  />
+)}
+
+{renderer.blockKey === 'universal_multilink_block' && (
+  <UniversalMultilinkBlockSection
+    title={(section as UniversalMultilinkSectionBlock).data.leftColumn.title}
+    primaryCta={(section as UniversalMultilinkSectionBlock).data.leftColumn.primaryCta}
+    cards={(section as UniversalMultilinkSectionBlock).data.cards}
+  />
+)}

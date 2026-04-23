@@ -1,0 +1,353 @@
+plan_id: adhoc-registry-ai-instance-split
+objective: Zbadac obecny kontrakt registry AI descriptors i generatora page_builder_schema_for_ai pod refactor rozdzielajacy opisy techniczne od biznesowych opisow instancji.
+focus_area: page-builder-ai-schema
+created_at: 2026-04-18
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Generator AI schema sklada dzis jeden obiekt per blok z danymi technicznymi i opisem biznesowo-redakcyjnym; linie laczenia sa w SCRIPTS/generate-page-builder-ai-schema.js:229-253.
+  - Wspolne registry descriptors w zip/src/blocks/registry/ai/descriptors.cjs przechowuja jednoczesnie techniczny kontrakt edycji i opis celu/widoku bloku; przyklady zaczynaja sie od zip/src/blocks/registry/ai/descriptors.cjs:270, 433, 455, 492.
+  - Fallback dla nowych blokow jest centralny i dziala poza registry przez buildGenericDescriptor; nieznane bloki nadal dostaja description, editableFields, editRoute i doNotEditDirectly z generatora.
+  - Instancje render schema i firebase draft maja juz otwarte meta jako record unknown, wiec istnieje gotowy kanal na instancyjne wskazowki bez rozszerzania danych blokow.
+  - Twarde zalozenia o obecnym polu description siedza glownie w testach generatora i registry invariants, nie w runtime WordPress/React.
+
+research_metadata:
+  methodology: Hybrid retrieval przez grep_search, semantic_search, read_file, file_search oraz weryfikacje instrukcji page-builder i PRD.
+  scope: Analiza generatora AI schema, wspolnych descriptors, testow kontraktu, compile gate, typow registry i kontrolera WordPress.
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: generate-page-builder-ai-schema.js
+    path: SCRIPTS/generate-page-builder-ai-schema.js
+    purpose: Buduje page_builder_schema_for_ai z render schema i fallback dla blokow bez dedykowanego descriptora.
+    key_elements:
+      - element: AI_BLOCK_REGISTRY
+        type: variable
+        location: SCRIPTS/generate-page-builder-ai-schema.js:114
+        description: Laduje wspolne descriptors z registry/ai/descriptors.cjs.
+      - element: buildGenericDescriptor
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:196
+        description: Generuje generyczny fallback dla nowych lub nieopisanych blokow.
+      - element: buildAiBlock
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:220
+        description: Laczy descriptor z instancja sekcji i zapisuje description, contentSource, editableFields, editRoute, doNotEditDirectly oraz content.
+      - element: buildAiSchema
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:244
+        description: Buduje finalny payload z top-level blocks[].
+    language: javascript
+    lines: 275
+
+  - file: descriptors.cjs
+    path: zip/src/blocks/registry/ai/descriptors.cjs
+    purpose: Centralny katalog AI descriptors wspoldzielony z generatorem.
+    key_elements:
+      - element: createAiBlockRegistry
+        type: function
+        location: zip/src/blocks/registry/ai/descriptors.cjs:1
+        description: Zwraca mapowanie blockKey -> descriptor.
+      - element: about-1 descriptor
+        type: pattern
+        location: zip/src/blocks/registry/ai/descriptors.cjs:433
+        description: Przechowuje jednoczesnie opis biznesowy widoku sekcji i techniczne zasady edycji.
+      - element: our-services descriptor
+        type: pattern
+        location: zip/src/blocks/registry/ai/descriptors.cjs:492
+        description: Typowy direct-edit descriptor z business copy w description i technicznymi polami editableFields/editRoute.
+      - element: source-backed menu descriptors
+        type: pattern
+        location: zip/src/blocks/registry/ai/descriptors.cjs:286
+        description: Descriptory zalezne od sourceType rozdzielaja edycje page schema od edycji WooCommerce/WordPress.
+    language: javascript
+    lines: 939
+
+  - file: generate-page-builder-ai-schema.test.js
+    path: SCRIPTS/generate-page-builder-ai-schema.test.js
+    purpose: Testuje shape AI schema, specyficzne descriptors oraz generic fallback.
+    key_elements:
+      - element: description assertions
+        type: pattern
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:107
+        description: Regexy wprost zakladaja biznesowa tresc pola description z registry descriptors.
+      - element: generic fallback test
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:501
+        description: Pilnuje, ze nowe bloki bez descriptora nadal dostaja bezpieczny description i techniczne pola.
+    language: javascript
+    lines: 558
+
+  - file: registry-invariants.test.tsx
+    path: zip/src/blocks/registry/registry-invariants.test.tsx
+    purpose: Pilnuje spojnosci registry i generatora dla wszystkich zarejestrowanych blokow.
+    key_elements:
+      - element: shared AI descriptors test
+        type: function
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:69
+        description: Zaklada, ze descriptor ma pole description na poziomie registry.
+      - element: AI schema coverage test
+        type: function
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:159
+        description: Wymaga niepustego description dla kazdego wygenerowanego blocka.
+    language: typescript
+    lines: 235
+
+  - file: pageBuilderSchema.ts
+    path: zip/src/blocks/registry/pageBuilderSchema.ts
+    purpose: Waliduje render schema i przepuszcza sekcyjne meta jako otwarty record.
+    key_elements:
+      - element: section meta
+        type: variable
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:14
+        description: Meta sekcji jest juz otwarte i domyslnie ustawiane na pusty record.
+      - element: page description
+        type: variable
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:25
+        description: page.description istnieje na poziomie strony, nie instancji bloku.
+      - element: parsed section normalization
+        type: function
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:80
+        description: source i meta sa zachowywane przy parsowaniu sekcji.
+    language: typescript
+    lines: 109
+
+  - file: make-page-draft-compile-gate.js
+    path: SCRIPTS/make-page-draft-compile-gate.js
+    purpose: Kompiluje firebase draft do obu schematow i wywoluje buildAiSchema.
+    key_elements:
+      - element: buildPageBuilderSchemaFromDraft
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:107
+        description: Przenosi block.meta do sections[].meta render schema.
+      - element: buildAiSchema invocation
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:195
+        description: Compile gate w calosci polega na generatorze AI schema.
+    language: javascript
+    lines: 260
+
+  - file: firebasePageDraft.ts
+    path: zip/src/blocks/registry/firebasePageDraft.ts
+    purpose: Definiuje kontrakt draftu stron i blokow przed kompilacja.
+    key_elements:
+      - element: firebaseDraftBlockSchema.meta
+        type: variable
+        location: zip/src/blocks/registry/firebasePageDraft.ts:30
+        description: Draft block ma otwarte meta jako record unknown.
+      - element: compiled.page_builder_schema_for_ai
+        type: variable
+        location: zip/src/blocks/registry/firebasePageDraft.ts:37
+        description: AI schema jest przechowywane jako unknown i nie ma twardego lokalnego schematu.
+    language: typescript
+    lines: 280
+
+  - file: types.ts
+    path: zip/src/blocks/registry/types.ts
+    purpose: Definiuje typ registry block definition.
+    key_elements:
+      - element: PageBuilderBlockDefinition.description
+        type: variable
+        location: zip/src/blocks/registry/types.ts:28
+        description: Pole description istnieje na poziomie typu bloku, ale znalezione uzycia operacyjne sa ograniczone do testu invariants.
+    language: typescript
+    lines: 53
+
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Odczyt i zapis obu metapol WordPress dla page buildera.
+    key_elements:
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:46
+        description: Aktualizuje page_builder_schema i page_builder_schema_for_ai razem.
+      - element: normalizeAiSchema
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:182
+        description: Nie waliduje shape blocks[] poza podstawowym normalizowaniem top-level.
+    language: php
+    lines: 214
+
+patterns_found:
+  - category: architecture
+    pattern: Generator jest jedynym miejscem skladania finalnego AI block payload.
+    description: Registry descriptors sa tylko zrodlem danych, a pole description trafia do outputu dopiero w buildAiBlock.
+    examples:
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:229
+        snippet: const descriptor = AI_BLOCK_REGISTRY[section.blockKey] ?? buildGenericDescriptor(section);
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:235
+        snippet: description: resolveDescriptorValue(descriptor.description, section)
+    prevalence: common
+
+  - category: structure
+    pattern: Descriptors mieszaja opis biznesowy bloku z kontraktem technicznym edycji.
+    description: W jednym obiekcie obok siebie wystepuja description, contentSource, editableFields, editRoute i doNotEditDirectly.
+    examples:
+      - file: zip/src/blocks/registry/ai/descriptors.cjs
+        location: zip/src/blocks/registry/ai/descriptors.cjs:433
+        snippet: description: 'Ten blok wyswietla sekcje opowiadajaca o restauracji...'
+      - file: zip/src/blocks/registry/ai/descriptors.cjs
+        location: zip/src/blocks/registry/ai/descriptors.cjs:446
+        snippet: editRoute: 'Zmiany copy wprowadzaj bezposrednio...'
+    prevalence: common
+
+  - category: fallback
+    pattern: Nowe bloki bez descriptora maja bezpieczny fallback poza registry.
+    description: Generic fallback wyprowadza description i techniczne pola bez zaleznosci od dedykowanego wpisu blockKey.
+    examples:
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:196
+        snippet: function buildGenericDescriptor(section) {
+      - file: SCRIPTS/generate-page-builder-ai-schema.test.js
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:501
+        snippet: test('AI schema generator falls back safely for a new block without a dedicated descriptor'
+    prevalence: common
+
+  - category: data-model
+    pattern: Instancje sekcji i draft blockow maja otwarte meta.
+    description: Obecny model pozwala dosztukowac per-instance wskazowki bez zmiany data schema blokow.
+    examples:
+      - file: zip/src/blocks/registry/pageBuilderSchema.ts
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:14
+        snippet: meta: z.record(z.string(), z.unknown()).default({})
+      - file: zip/src/blocks/registry/firebasePageDraft.ts
+        location: zip/src/blocks/registry/firebasePageDraft.ts:30
+        snippet: meta: z.record(z.string(), z.unknown()).default({})
+    prevalence: common
+
+  - category: testing
+    pattern: Testy pilnuja wording description, nie tylko shape techniczny.
+    description: Refactor bedzie wymagal zmiany asercji z regexow biznesowych na asercje pochodzenia instancyjnego albo neutralnego fallbacku.
+    examples:
+      - file: SCRIPTS/generate-page-builder-ai-schema.test.js
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:107
+        snippet: assert.match(output.blocks[0].description, /wewnetrznej podstrony|wewnetrzny route|internal/i)
+      - file: zip/src/blocks/registry/registry-invariants.test.tsx
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:140
+        snippet: assert.equal(typeof aboutDescriptor.description, 'string')
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: AI descriptor registry
+      responsibility: Definiuje wspolne per-block build/content i reguly edycji.
+      location: zip/src/blocks/registry/ai/descriptors.cjs
+      relationship_to_domain: domain depends on this
+    - component: AI schema generator
+      responsibility: Konwertuje render schema na page_builder_schema_for_ai.
+      location: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: domain depends on this
+    - component: compile gate
+      responsibility: Buduje oba payloady z firebase draft i zatwierdzonych source mappings.
+      location: SCRIPTS/make-page-draft-compile-gate.js
+      relationship_to_domain: this uses domain outputs
+    - component: WordPress page builder controller
+      responsibility: Przechowuje i zwraca oba meta payloady.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: PageBuilderSectionInstance
+      location: zip/src/blocks/registry/types.ts
+      usage_pattern: Sekcja render schema jako wejscie dla generatora i descriptors.
+    - interface: PageBuilderBlockDefinition
+      location: zip/src/blocks/registry/types.ts
+      usage_pattern: Registry blokow i createDefaultBlockInstance.
+  data_flow_involving_domain: Firebase draft block.meta -> render schema sections[].meta w compile gate -> buildAiSchema -> blocks[] AI schema -> zapis w WordPress page_builder_schema_for_ai.
+  key_relationships_to_domain:
+    - from: zip/src/blocks/registry/ai/descriptors.cjs
+      to: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship: imports
+    - from: SCRIPTS/generate-page-builder-ai-schema.js
+      to: SCRIPTS/make-page-draft-compile-gate.js
+      relationship: imported by
+    - from: SCRIPTS/make-page-draft-compile-gate.js
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: produces payload consumed by
+
+related_technology_stack:
+  languages_used_in_domain:
+    - JavaScript
+    - TypeScript
+    - PHP
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Registry runtime i invariant tests w zip/src/blocks/registry.
+    - name: Zod
+      usage_in_domain: Walidacja render schema i firebase draft.
+    - name: WordPress REST/meta APIs
+      usage_in_domain: Przechowywanie page_builder_schema i page_builder_schema_for_ai.
+  libraries_used_in_domain:
+    - name: node:test
+      purpose_in_domain: Testy generatora i invariants.
+    - name: react-dom/server
+      purpose_in_domain: Statyczna walidacja renderow blokow w invariants.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: blockKey jako stabilny identyfikator typu bloku, id jako stabilny identyfikator instancji, contentSource/editableFields/editRoute/doNotEditDirectly jako slownik AI schema.
+  structure_of_domain: Render schema trzyma sections[], AI schema trzyma blocks[] mapowane 1:1 po id.
+  error_handling_in_domain: Generator i compile gate rzucaja jawne bledy dla zlego kształtu inputu i brakujacych source mappings.
+  testing_in_domain: Poziom skryptowy przez node:test oraz end-to-end invariant coverage dla calego registry.
+  documentation_in_domain: Reguly page-builder instruction wymagaja zachowania mapowania po id i generowania instancyjnego description.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/ai/descriptors.cjs
+      relationship_to_domain: Dostarcza descriptor map
+      direction: outbound
+    - component: zip/src/blocks/registry/pageBuilderSchema.ts
+      relationship_to_domain: Definiuje shape render schema i meta passthrough
+      direction: outbound
+    - component: zip/src/blocks/registry/firebasePageDraft.ts
+      relationship_to_domain: Definiuje shape draft block.meta przed kompilacja
+      direction: outbound
+    - component: SCRIPTS/make-page-draft-compile-gate.js
+      relationship_to_domain: Oparty na buildAiSchema
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: Zapisuje wynikowy AI schema
+      direction: inbound
+  external: []
+
+testing_patterns:
+  framework: node:test
+  coverage_areas:
+    - dedykowane block descriptors
+    - source-aware menu blocks
+    - generic fallback dla nowych blokow
+    - compile gate integrujacy oba schematy
+    - registry coverage dla wszystkich blokow
+  test_organization: Testy skryptowe w SCRIPTS oraz invariants przy registry React.
+  mock_patterns:
+    - tymczasowe pliki JSON dla input/output generatora
+    - createDefaultBlockInstance dla przekrojowego coverage wszystkich blokow
+
+open_questions:
+  - question: Jakie ma byc kanoniczne zrodlo instancyjnego opisu biznesowego przed wygenerowaniem AI schema?
+    context: Generator aktualnie bierze description z registry descriptor, a render schema ma tylko otwarte meta bez ustalonej konwencji kluczy.
+    type: decision_blocker
+    affects: [adhoc-registry-ai-instance-split]
+  - question: Czy pole blocks[].description ma zostac zachowane dla kompatybilnosci i tylko zmienic znaczenie, czy ma zostac zastapione nowym polem typu instanceDescription/businessPurpose?
+    context: Testy i obecne payloady znaja pole description; WordPress controller nie waliduje shape, ale tooling i testy juz tak.
+    type: decision_blocker
+    affects: [adhoc-registry-ai-instance-split]
+  - question: Czy pole PageBuilderBlockDefinition.description ma podlegac tej samej zasadzie refactoru juz teraz, czy pozostaje poza zakresem tej zmiany?
+    context: Pole istnieje w zip/src/blocks/registry/types.ts, ale znalezione uzycia sa tylko testowe.
+    type: research
+    affects: [adhoc-registry-ai-instance-split]
+
+gaps:
+  - area: Konsument zewnetrzny aiSchema poza repo
+    description: W repo nie znaleziono lokalnego klienta, ktory interpretuje blocks[].description poza testami i zapisem w WordPress; nie da sie potwierdzic, czy zewnetrzny agent/Make flow polega na obecnym wording.
+    impact: research_blocker
+    affects: [adhoc-registry-ai-instance-split]
+  - area: Ustalona konwencja dla meta.ai na instancji sekcji
+    description: Model meta jest otwarty, ale brak istniejacego, ustandaryzowanego namespace dla instancyjnych wskazowek AI.
+    impact: decision_blocker
+    affects: [adhoc-registry-ai-instance-split]

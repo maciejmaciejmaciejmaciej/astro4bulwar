@@ -1,0 +1,557 @@
+plan_id: astro-wordpress-page-builder
+objective: Read-only research to identify which React component renders the footer visible on /react/, extract the current footer content model hardcoded in repo sources, confirm whether a shared_footer block/schema already exists, and map the current footer content into the shared footer/public global layout contract.
+focus_area: react_footer_source
+created_at: 2026-04-21
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The /react homepage footer render chain is BrowserRouter basename=/react -> App routes -> RootLayout -> Footer. The concrete renderer is zip/src/components/sections/Footer.tsx, mounted only by zip/src/layouts/RootLayout.tsx for shared-shell routes including the index route. Sources: zip/src/main.tsx:6-11, zip/src/App.tsx:18-28, zip/src/layouts/RootLayout.tsx:81-159, zip/src/components/sections/Footer.tsx:16-66.
+  - Catering uses a separate footer component and separate routes, but those routes are outside RootLayout and do not power the /react index route. Sources: zip/src/App.tsx:24-28, zip/src/pages/CateringWielkanocnyPage.tsx:252-256, zip/src/components/sections/CateringPageFooter.tsx:12-110.
+  - The repo already contains a dedicated shared_footer storage contract and a checked-in shared footer page_builder_schema payload. The public footer shape and the shared_footer block shape are defined in zip/src/blocks/registry/globalLayoutContract.ts and mirrored in docs plus Astro. Sources: zip/src/blocks/registry/globalLayoutContract.ts:3-97, SCRIPTS/shared-footer.page_builder_schema.json:1-61, docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:13-43.
+  - There are multiple hardcoded footer content models in repo sources. The checked-in shared footer JSON is minimal and only includes Instagram plus Polityka prywatnosci, while astro-site/src/lib/wordpress.ts keeps a richer fallback footer with Facebook, Instagram, Tripadvisor, both legal links, and the same address/contact/hours. Sources: SCRIPTS/shared-footer.page_builder_schema.json:8-57, astro-site/src/lib/wordpress.ts:128-160.
+  - The live endpoint queried on 2026-04-21 returned footer_status=fallback_missing_footer_page_id and an empty fallback footer, but a live page fetch still observed a populated footer with the richer social/legal set. That mismatch is not explainable from repo code alone and remains an open runtime question. Sources: https://client.example/wp-json/bulwar/v1/layout/global, zip/src/lib/fetchWordPressGlobalLayout.ts:126-147, zip/src/layouts/RootLayout.tsx:96-155.
+
+research_metadata:
+  methodology: Hybrid repo research using memory review, targeted semantic_search, grep_search, symbol usage discovery, targeted file reads, and one live fetch of the public page plus the public global layout endpoint.
+  scope: Focused on the React /react route shell, shared footer contract files, live bridge footer resolution, checked-in shared footer payloads, and excluding catering-specific footer variants except to prove they are not used for the shared /react index route.
+  confidence: high
+  coverage: 86
+  decision_blockers: 0
+  research_blockers: 1
+
+files_analyzed:
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Creates the React router for the /react basename.
+    key_elements:
+      - element: BrowserRouter basename
+        type: variable
+        location: zip/src/main.tsx:6-10
+        description: Mounts the entire app under /react.
+    language: tsx
+    lines: 11
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Declares which routes use RootLayout and which routes bypass it.
+    key_elements:
+      - element: RootLayout route group
+        type: pattern
+        location: zip/src/App.tsx:19-24
+        description: Wraps the index route and other shared-shell routes with RootLayout.
+      - element: catering route exclusions
+        type: pattern
+        location: zip/src/App.tsx:25-28
+        description: Keeps catering pages outside the shared shell and therefore outside the shared footer.
+    language: tsx
+    lines: 29
+  - file: RootLayout.tsx
+    path: zip/src/layouts/RootLayout.tsx
+    purpose: Owns shared navbar/footer shell, fetches global layout, and mounts the Footer presenter.
+    key_elements:
+      - element: fetchWordPressGlobalLayout
+        type: function call
+        location: zip/src/layouts/RootLayout.tsx:96-130
+        description: Loads the public global layout payload on mount.
+      - element: Footer mount
+        type: pattern
+        location: zip/src/layouts/RootLayout.tsx:151-155
+        description: Renders the shared Footer only when globalLayout is non-null.
+      - element: resolveInitialGlobalLayout
+        type: function
+        location: zip/src/layouts/RootLayout.tsx:63-66
+        description: Seeds the shell only from explicit initial data or a sessionStorage last-known-good cache.
+    language: tsx
+    lines: 162
+  - file: Footer.tsx
+    path: zip/src/components/sections/Footer.tsx
+    purpose: Renders the DOM and field order for the shared /react footer.
+    key_elements:
+      - element: Footer
+        type: function
+        location: zip/src/components/sections/Footer.tsx:16-66
+        description: Renders brand wordmark, address, contact, hours, merged social/legal links, and copyright.
+      - element: renderBrandWordmark
+        type: function
+        location: zip/src/components/sections/Footer.tsx:7-14
+        description: Converts footer.brand.name into the split Bulwar wordmark presentation.
+    language: tsx
+    lines: 66
+  - file: fetchWordPressGlobalLayout.ts
+    path: zip/src/lib/fetchWordPressGlobalLayout.ts
+    purpose: Fetches the public layout endpoint and rejects unresolved footer meta states.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: zip/src/lib/fetchWordPressGlobalLayout.ts:28-31
+        description: Defaults the React shell to the live WordPress domain.
+      - element: meta-status gate
+        type: pattern
+        location: zip/src/lib/fetchWordPressGlobalLayout.ts:133-147
+        description: Rejects payloads unless both layout_option_status and footer_status equal resolved.
+    language: ts
+    lines: 148
+  - file: globalLayoutContract.ts
+    path: zip/src/blocks/registry/globalLayoutContract.ts
+    purpose: Defines the public global layout footer schema and the dedicated shared_footer block schema.
+    key_elements:
+      - element: SHARED_FOOTER_BLOCK_KEY
+        type: constant
+        location: zip/src/blocks/registry/globalLayoutContract.ts:3
+        description: Locks the dedicated footer block key to shared_footer.
+      - element: globalLayoutFooterSchema
+        type: schema
+        location: zip/src/blocks/registry/globalLayoutContract.ts:50-58
+        description: Defines the public footer fields consumed by the React Footer presenter.
+      - element: sharedFooterSectionBlockSchema
+        type: schema
+        location: zip/src/blocks/registry/globalLayoutContract.ts:80-89
+        description: Defines the valid page_builder_schema section shape for the shared footer page.
+    language: ts
+    lines: 97
+  - file: shared-footer.page_builder_schema.json
+    path: SCRIPTS/shared-footer.page_builder_schema.json
+    purpose: Checked-in example and seed payload for one shared_footer page_builder_schema block.
+    key_elements:
+      - element: shared-footer-main
+        type: json block
+        location: SCRIPTS/shared-footer.page_builder_schema.json:4-58
+        description: Stores a minimal concrete footer data payload under blockKey=shared_footer.
+    language: json
+    lines: 61
+  - file: GlobalLayoutResolver.php
+    path: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+    purpose: Resolves the public footer from footerPageId and the referenced page_builder_schema.
+    key_elements:
+      - element: resolveFooter
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:73-124
+        description: Uses footerPageId, scans page_builder_schema.sections[], and resolves the first enabled shared_footer block.
+      - element: normalizeFooter
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:145-157
+        description: Normalizes authored footer data and falls back when invalid.
+    language: php
+    lines: 240
+  - file: how-navbar-footer-work.md
+    path: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+    purpose: Documents the authoritative React route scope, shared footer storage rule, and runtime fail-closed behavior.
+    key_elements:
+      - element: React consumption section
+        type: documentation
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:60-103
+        description: States that /, /template, and /testowa-blueprint use RootLayout and that catering stays outside it.
+      - element: shared_footer authoring contract
+        type: documentation
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:14-35
+        description: Documents the dedicated shared_footer block shape and first-match semantics.
+    language: markdown
+    lines: 167
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Contains the Astro-only DEFAULT_GLOBAL_LAYOUT_DATA fallback with a richer hardcoded footer model.
+    key_elements:
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA.footer
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:128-160
+        description: Hardcodes the richer fallback footer content with full social/legal links.
+    language: ts
+    lines: 210
+  - file: globalLayoutContract.test.ts
+    path: zip/src/blocks/registry/globalLayoutContract.test.ts
+    purpose: Verifies both the public footer payload and the checked-in shared_footer payload.
+    key_elements:
+      - element: globalLayoutPayload.footer
+        type: test fixture
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:52-93
+        description: Provides a concrete footer fixture used to validate the public contract.
+      - element: checked-in shared footer compatibility test
+        type: test
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:142-156
+        description: Confirms the checked-in JSON payload contains exactly one enabled shared_footer block.
+    language: ts
+    lines: 176
+
+patterns_found:
+  - category: architecture
+    pattern: The /react footer is a shared shell presenter owned by RootLayout rather than by HomePage.
+    description: The React index route does not render its own footer. App mounts the index route under RootLayout, and RootLayout conditionally mounts Footer with globalLayout.footer.
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:19-24
+        snippet: <Route element={<RootLayout />}><Route index element={<HomePage />} /></Route>
+      - file: zip/src/layouts/RootLayout.tsx
+        location: zip/src/layouts/RootLayout.tsx:151-155
+        snippet: {globalLayout ? <Footer footer={globalLayout.footer} /> : null}
+    prevalence: common
+  - category: routing
+    pattern: Catering footer variants are explicitly excluded from the shared /react shell.
+    description: Catering routes are defined as top-level siblings, not children of RootLayout, so their CateringPageFooter component does not affect the /react index route.
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:25-28
+        snippet: <Route path={CATERING_WIELKANOCNY_PATH} element={<CateringWielkanocnyPage />} />
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:252-256
+        snippet: <CateringPageFooter logoSrc="/react/images/logo.png" socialLinks={cateringPageSocialLinks} legalLinks={cateringPageLegalLinks} />
+    prevalence: common
+  - category: structure
+    pattern: Footer authoring and public runtime consumption are separated by a dedicated shared_footer contract.
+    description: Runtime clients consume only globalLayout.footer, while WordPress storage resolves that object from a page_builder_schema section whose blockKey is shared_footer and whose blockVersion is 1.
+    examples:
+      - file: zip/src/blocks/registry/globalLayoutContract.ts
+        location: zip/src/blocks/registry/globalLayoutContract.ts:50-89
+        snippet: globalLayoutFooterSchema ... sharedFooterSectionBlockSchema
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:87-118
+        snippet: if (($section['blockKey'] ?? null) !== self::SHARED_FOOTER_BLOCK_KEY) { continue; }
+    prevalence: common
+  - category: error_handling
+    pattern: React fails closed when footer meta is unresolved and does not synthesize placeholder footer chrome.
+    description: fetchWordPressGlobalLayout throws on unresolved meta statuses, RootLayout renders Footer only when globalLayout exists, and tests assert that no placeholder business footer appears before resolution.
+    examples:
+      - file: zip/src/lib/fetchWordPressGlobalLayout.ts
+        location: zip/src/lib/fetchWordPressGlobalLayout.ts:133-147
+        snippet: if (parsedPayload.meta.layout_option_status !== RESOLVED_GLOBAL_LAYOUT_STATUS || parsedPayload.meta.footer_status !== RESOLVED_GLOBAL_LAYOUT_STATUS) { throw ... }
+      - file: zip/src/layouts/RootLayout.test.tsx
+        location: zip/src/layouts/RootLayout.test.tsx:76-90
+        snippet: assert.doesNotMatch(markup, /Stary Rynek 37/)
+    prevalence: common
+  - category: content
+    pattern: Hardcoded footer content currently exists in more than one repo-owned model and the models are not identical.
+    description: The checked-in shared_footer JSON is a minimal concrete payload, the React test fixture is almost the same but keeps quotes around BulwaR, and the Astro fallback model carries the richer social/legal set that matches the live page scrape more closely.
+    examples:
+      - file: SCRIPTS/shared-footer.page_builder_schema.json
+        location: SCRIPTS/shared-footer.page_builder_schema.json:14-57
+        snippet: socialLinks contains only Instagram; legalLinks contains only Polityka prywatnosci
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:147-160
+        snippet: socialLinks contains Facebook, Instagram, Tripadvisor; legalLinks contains Polityka prywatnosci and Regulamin
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: RootLayout
+      responsibility: Owns shared chrome for shared-shell React routes and mounts Footer.
+      location: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: domain depends on this
+    - component: Footer
+      responsibility: Renders the shared footer DOM from a GlobalLayoutFooter object.
+      location: zip/src/components/sections/Footer.tsx
+      relationship_to_domain: domain depends on this
+    - component: fetchWordPressGlobalLayout
+      responsibility: Supplies validated public global layout data to RootLayout.
+      location: zip/src/lib/fetchWordPressGlobalLayout.ts
+      relationship_to_domain: domain depends on this
+    - component: GlobalLayoutResolver
+      responsibility: Resolves public footer data from WordPress option data plus the shared footer page.
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship_to_domain: this uses domain outputs
+    - component: shared footer page_builder_schema payload
+      responsibility: Checked-in source example for one enabled shared_footer section.
+      location: SCRIPTS/shared-footer.page_builder_schema.json
+      relationship_to_domain: domain depends on this
+    - component: CateringPageFooter
+      responsibility: Page-specific footer for catering routes only.
+      location: zip/src/components/sections/CateringPageFooter.tsx
+      relationship_to_domain: this is excluded from domain
+  interfaces_used_by_domain:
+    - interface: GlobalLayoutFooter
+      location: zip/src/blocks/registry/globalLayoutContract.ts:50-58
+      usage_pattern: Footer presenter prop type and public footer contract.
+    - interface: SharedFooterSectionBlock
+      location: zip/src/blocks/registry/globalLayoutContract.ts:80-89
+      usage_pattern: Valid page_builder_schema section shape for the dedicated shared footer page.
+  data_flow_involving_domain: The /react index route enters RootLayout, RootLayout fetches GET /wp-json/bulwar/v1/layout/global, the bridge resolves navbar directly from the option and footer indirectly from footerPageId -> referenced page_builder_schema.sections[] -> first enabled shared_footer block, then RootLayout passes globalLayout.footer into Footer for rendering. If the fetch is unresolved but sessionStorage contains a last-known-good snapshot, RootLayout can still render the cached footer.
+  key_relationships_to_domain:
+    - from: zip/src/main.tsx
+      to: zip/src/App.tsx
+      relationship: composes
+    - from: zip/src/App.tsx
+      to: zip/src/layouts/RootLayout.tsx
+      relationship: composes
+    - from: zip/src/layouts/RootLayout.tsx
+      to: zip/src/components/sections/Footer.tsx
+      relationship: composes
+    - from: zip/src/layouts/RootLayout.tsx
+      to: zip/src/lib/fetchWordPressGlobalLayout.ts
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      to: SCRIPTS/shared-footer.page_builder_schema.json
+      relationship: mirrors contract used by
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - PHP
+    - JSON
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Renders the /react shared shell and Footer presenter. Source: zip/package.json.
+    - name: React Router 7.13.1
+      usage_in_domain: Scopes the shared RootLayout routes under /react. Source: zip/package.json, zip/src/main.tsx.
+    - name: WordPress REST + plugin bridge
+      usage_in_domain: Serves the public global layout endpoint and resolves the shared footer page. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Defines strict public footer and shared_footer block contracts. Source: zip/src/blocks/registry/globalLayoutContract.ts.
+    - name: react-dom
+      purpose_in_domain: Shared shell rendering and static test rendering. Source: zip/package.json, zip/src/layouts/RootLayout.test.tsx.
+  external_apis_used_in_domain:
+    - name: GET /wp-json/bulwar/v1/layout/global
+      integration_point: zip/src/lib/fetchWordPressGlobalLayout.ts and astro-site/src/lib/wordpress.ts
+
+related_conventions:
+  naming_patterns_in_domain: Public client-facing footer data uses camelCase fields under globalLayout.footer, while the internal page-builder block key is shared_footer and the storage pointer key is footerPageId.
+  structure_of_domain: The public React footer is presentational only; storage and normalization live in the WordPress bridge and the checked-in shared footer page_builder_schema artifact.
+  error_handling_in_domain: The bridge always returns a normalized footer plus meta.footer_status, while React accepts the payload only when both meta statuses equal resolved and otherwise leaves shared chrome absent unless a cached valid snapshot exists.
+  testing_in_domain: TypeScript tests validate the React contract, RootLayout routing behavior, and checked-in shared footer JSON compatibility; PHP tests validate endpoint resolution from footerPageId and shared_footer blocks.
+  documentation_in_domain: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md and how-navbar-footer-work.md document both the public footer fields and the internal shared_footer authoring workflow.
+
+related_dependencies:
+  internal:
+    - component: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: supplies the shared footer presenter to /react routes
+      direction: inbound
+    - component: zip/src/lib/fetchWordPressGlobalLayout.ts
+      relationship_to_domain: supplies validated footer data
+      direction: inbound
+    - component: zip/src/blocks/registry/globalLayoutContract.ts
+      relationship_to_domain: defines footer and shared_footer shapes
+      direction: bidirectional
+    - component: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship_to_domain: produces the public normalized footer payload
+      direction: inbound
+    - component: SCRIPTS/shared-footer.page_builder_schema.json
+      relationship_to_domain: checked-in authored footer payload example and seeding input
+      direction: inbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: shared-shell route scoping under /react
+    - name: zod
+      purpose_for_domain: runtime validation of public footer and shared_footer contracts
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: footerPageId storage detail
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75-81
+      concern: The page identifier is intentionally internal and must not leak to public React/Astro consumers.
+    - area: public contract boundary
+      location: zip/src/blocks/registry/globalLayoutContract.ts:60-69 and zip/src/blocks/registry/globalLayoutContract.test.ts:110-121
+      concern: Public contract parsing rejects payloads that expose footerPageId.
+  authentication_patterns_in_domain: The global layout endpoint is intentionally public, so protection relies on limiting the response to normalized public navbar/footer data and keeping footerPageId internal.
+  authorization_patterns_in_domain: No client authorization is required for footer reads; authority is enforced server-side by resolving storage internals before emitting the public payload.
+  data_validation_in_domain: PHP normalizes footer groups and links, and React Zod parsing plus meta-status checks reject unresolved or malformed client payloads before Footer renders.
+
+testing_patterns:
+  framework: node:test for TypeScript and custom PHP test harness for bridge code
+  coverage_areas:
+    - Shared-shell route mounting of one Footer around nested React routes
+    - Absence of placeholder footer chrome before successful global layout resolution
+    - Public contract parsing and rejection of leaked footerPageId
+    - Compatibility of SCRIPTS/shared-footer.page_builder_schema.json with the shared_footer block contract
+    - Bridge resolution from footerPageId to a shared_footer page_builder_schema block
+  test_organization: React tests live beside the relevant TS/TSX modules, while bridge resolver tests live under wordpress-plugin/bulwar-bridge/tests.
+  mock_patterns:
+    - MemoryRouter-based shell rendering with explicit initialGlobalLayout fixtures
+    - PHP global option/post/meta arrays simulating WordPress storage
+
+footer_findings:
+  source_files:
+    runtime_render_chain:
+      - zip/src/main.tsx
+      - zip/src/App.tsx
+      - zip/src/layouts/RootLayout.tsx
+      - zip/src/components/sections/Footer.tsx
+    runtime_data_chain:
+      - zip/src/lib/fetchWordPressGlobalLayout.ts
+      - wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+    checked_in_footer_contract_and_payload:
+      - zip/src/blocks/registry/globalLayoutContract.ts
+      - SCRIPTS/shared-footer.page_builder_schema.json
+      - docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md
+    excluded_variant_sources:
+      - zip/src/components/sections/CateringPageFooter.tsx
+      - zip/src/pages/CateringWielkanocnyPage.tsx
+      - zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+    fallback_only_reference:
+      - astro-site/src/lib/wordpress.ts
+  exact_current_footer_content_model_present_in_code:
+    checked_in_shared_footer_block_payload:
+      source: SCRIPTS/shared-footer.page_builder_schema.json:8-57
+      brand:
+        name: Bulwar
+        href: /
+        logoSrc: null
+        logoAlt: null
+      address:
+        heading: Adres
+        lines:
+          - Restauracja BulwaR
+          - Stary Rynek 37
+          - Poznan
+      contact:
+        heading: Kontakt
+        items:
+          - label: +48 533 181 171
+            href: tel:+48533181171
+          - label: rezerwacje@bulwarrestauracja.pl
+            href: mailto:rezerwacje@bulwarrestauracja.pl
+      hours:
+        heading: Godziny
+        lines:
+          - Codziennie od 09.00 do 23.00
+      socialLinks:
+        - label: Instagram
+          href: https://www.instagram.com/bulwar/
+      legalLinks:
+        - label: Polityka prywatnosci
+          href: https://bulwarrestauracja.pl/polityka-prywatnosci/
+      copyright: (c) 2026 Restauracja BulwaR. All rights reserved.
+    react_contract_test_fixture:
+      source: zip/src/blocks/registry/globalLayoutContract.test.ts:52-93
+      differences_vs_checked_in_shared_footer_block:
+        - address.lines[0] is Restauracja "BulwaR" with quotes rather than Restauracja BulwaR without quotes.
+        - socialLinks still contains only Instagram.
+        - legalLinks still contains only Polityka prywatnosci.
+    astro_default_global_layout_footer:
+      source: astro-site/src/lib/wordpress.ts:128-160
+      brand:
+        name: Bulwar
+        href: /
+        logoSrc: null
+        logoAlt: null
+      address:
+        heading: Adres
+        lines:
+          - Restauracja "BulwaR"
+          - Stary Rynek 37
+          - Poznan
+      contact:
+        heading: Kontakt
+        items:
+          - label: +48 533 181 171
+            href: tel:+48533181171
+          - label: rezerwacje@bulwarrestauracja.pl
+            href: mailto:rezerwacje@bulwarrestauracja.pl
+      hours:
+        heading: Godziny
+        lines:
+          - Codziennie od 09.00 do 23.00
+      socialLinks:
+        - label: Facebook
+          href: https://www.facebook.com/bulwaRrestauracja/
+        - label: Instagram
+          href: https://www.instagram.com/bulwar/
+        - label: Tripadvisor
+          href: https://pl.tripadvisor.com/Restaurant_Review-g274847-d10184406-Reviews-Bulwar-Poznan_Greater_Poland_Province_Central_Poland.html
+      legalLinks:
+        - label: Polityka prywatnosci
+          href: https://bulwarrestauracja.pl/polityka-prywatnosci/
+        - label: Regulamin
+          href: https://bulwarrestauracja.pl/regulamin/
+      copyright: © 2026 Restauracja BulwaR. All rights reserved.
+    live_endpoint_payload_2026_04_21:
+      source: https://client.example/wp-json/bulwar/v1/layout/global
+      note: The endpoint was resolved at the option layer but not at the footer layer.
+      meta:
+        layout_option_status: resolved
+        footer_status: fallback_missing_footer_page_id
+      footer:
+        brand:
+          name: Bulwar
+          href: /
+          logoSrc: null
+          logoAlt: null
+        address:
+          heading: Adres
+          lines: []
+        contact:
+          heading: Kontakt
+          items: []
+        hours:
+          heading: Godziny
+          lines: []
+        socialLinks: []
+        legalLinks: []
+        copyright: (c) Bulwar
+    live_page_footer_observed_2026_04_21:
+      source: https://client.example/react/
+      note: The scraped live page showed a populated footer that aligns much more closely with the richer Astro fallback than with the current endpoint response.
+      brand_wordmark: BULWAR
+      address:
+        heading: ADRES
+        lines:
+          - Restauracja "BulwaR"
+          - Stary Rynek 37
+          - Poznan
+      contact:
+        heading: KONTAKT
+        items:
+          - label: +48 533 181 171
+            href: tel:+48533181171
+          - label: rezerwacje@bulwarrestauracja.pl
+            href: mailto:rezerwacje@bulwarrestauracja.pl
+      hours:
+        heading: GODZINY
+        lines:
+          - Codziennie od 09.00 do 23.00
+      merged_links:
+        - Facebook
+        - Instagram
+        - Tripadvisor
+        - Polityka prywatnosci
+        - Regulamin
+      copyright: © 2026 RESTAURACJA BULWAR. ALL RIGHTS RESERVED.
+  whether_shared_footer_already_exists:
+    answer: yes
+    evidence:
+      - zip/src/blocks/registry/globalLayoutContract.ts defines SHARED_FOOTER_BLOCK_KEY=shared_footer and the dedicated block schema. Source: zip/src/blocks/registry/globalLayoutContract.ts:3-4, 80-89.
+      - SCRIPTS/shared-footer.page_builder_schema.json contains one enabled shared_footer section with id shared-footer-main. Source: SCRIPTS/shared-footer.page_builder_schema.json:4-58.
+      - The WordPress bridge resolver explicitly scans page_builder_schema.sections[] for shared_footer. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:87-118.
+      - Contract/operator docs describe the same storage model. Source: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:35-43 and docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:14-35.
+  current_to_shared_footer_public_global_layout_mapping:
+    note: This mapping is already implied by the locked v1 public contract and shared_footer block contract; the same field names are expected in both shared_footer.data and success.data.globalLayout.footer.
+    mapping:
+      - current footer wordmark text Bulwar or BulwaR wordmark intent -> brand.name
+      - home target for footer brand click -> brand.href
+      - logo asset if the footer ever switches from text wordmark to image; currently null in repo-owned shared footer models -> brand.logoSrc and brand.logoAlt
+      - section heading Adres -> address.heading
+      - business/location lines such as Restauracja BulwaR or Restauracja "BulwaR", Stary Rynek 37, Poznan -> address.lines[]
+      - section heading Kontakt -> contact.heading
+      - clickable phone and email items -> contact.items[] with label and href
+      - section heading Godziny -> hours.heading
+      - opening-hours lines -> hours.lines[]
+      - social destinations such as Facebook, Instagram, Tripadvisor -> socialLinks[] with label and href
+      - legal destinations such as Polityka prywatnosci and Regulamin -> legalLinks[] with label and href
+      - footer copyright string -> copyright
+    contract_alignment:
+      - shared_footer.data must match globalLayout.footer shape exactly. Source: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:35-43.
+      - Footer.tsx renders merged socialLinks plus legalLinks in one link row, so both arrays remain distinct in data even though presentation merges them. Source: zip/src/components/sections/Footer.tsx:52-62.
+      - RootLayout consumes only globalLayout.footer, not raw page_builder_schema sections. Source: zip/src/layouts/RootLayout.tsx:151-155.
+
+open_questions:
+  - question: Why did the live page scrape show a populated footer while the public global layout endpoint queried immediately afterward reported footer_status=fallback_missing_footer_page_id and the React shell code fails closed on unresolved footer meta?
+    context: RootLayout only mounts Footer when globalLayout is non-null, and fetchWordPressGlobalLayout rejects unresolved meta statuses. A populated visible footer under an unresolved endpoint implies either browser session cache reuse, stale build/runtime state, or some non-repo factor.
+    type: research
+    affects:
+      - react_footer_source
+  - question: Which repo-owned content set should be treated as the authoritative footer payload going forward: the minimal checked-in shared footer JSON or the richer full-link footer currently hardcoded in Astro fallback and observed on the live page scrape?
+    context: The repo currently contains materially different hardcoded social/legal link sets across shared-footer.page_builder_schema.json and astro-site/src/lib/wordpress.ts.
+    type: decision_blocker
+    affects:
+      - react_footer_source
+
+gaps:
+  - area: verified live shared footer page identity
+    description: No inspected repo artifact records the current production footerPageId or the actual live page_builder_schema contents for the shared footer page; only test fixtures and checked-in sample payloads exist.
+    impact: research_blocker
+    affects:
+      - react_footer_source
+  - area: runtime cache evidence
+    description: The repo documents sessionStorage last-known-good caching in React, but no inspected artifact proves whether the live footer scrape was served from a cached layout snapshot.
+    impact: nice_to_know
+    affects:
+      - react_footer_source

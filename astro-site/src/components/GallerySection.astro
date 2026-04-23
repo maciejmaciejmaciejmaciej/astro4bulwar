@@ -1,0 +1,45 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface Props {
+  title?: string;
+  images: ImageAsset[];
+}
+
+const { title = 'Galeria', images } = Astro.props;
+const fallbackImages = images.length > 0 ? images : [];
+const lastImage = fallbackImages[fallbackImages.length - 1] ?? { src: '', alt: '' };
+const safeImages = Array.from({ length: 7 }, (_, index) => fallbackImages[index] ?? lastImage);
+---
+
+<section class="gallery-section">
+  <div class="gallery-section__inner theme-section-wrapper">
+    <div class="gallery-section__header">
+      <h2 class="gallery-section__title">{title}</h2>
+    </div>
+
+    <div class="gallery-section__grid">
+      <div class="gallery-section__column gallery-section__column--one">
+        <div class="gallery-section__image gallery-section__image--square" style={`background-image: url('${safeImages[0].src}')`} role="img" aria-label={safeImages[0].alt}></div>
+        <div class="gallery-section__image gallery-section__image--portrait" style={`background-image: url('${safeImages[1].src}')`} role="img" aria-label={safeImages[1].alt}></div>
+      </div>
+
+      <div class="gallery-section__column gallery-section__column--two">
+        <div class="gallery-section__image gallery-section__image--medium" style={`background-image: url('${safeImages[2].src}')`} role="img" aria-label={safeImages[2].alt}></div>
+        <div class="gallery-section__image gallery-section__image--square" style={`background-image: url('${safeImages[3].src}')`} role="img" aria-label={safeImages[3].alt}></div>
+      </div>
+
+      <div class="gallery-section__column gallery-section__column--three">
+        <div class="gallery-section__image gallery-section__image--portrait" style={`background-image: url('${safeImages[4].src}')`} role="img" aria-label={safeImages[4].alt}></div>
+      </div>
+
+      <div class="gallery-section__column gallery-section__column--four">
+        <div class="gallery-section__image gallery-section__image--square" style={`background-image: url('${safeImages[5].src}')`} role="img" aria-label={safeImages[5].alt}></div>
+        <div class="gallery-section__image gallery-section__image--portrait" style={`background-image: url('${safeImages[6].src}')`} role="img" aria-label={safeImages[6].alt}></div>
+      </div>
+    </div>
+  </div>
+</section>

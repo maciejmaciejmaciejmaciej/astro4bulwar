@@ -1,0 +1,306 @@
+plan_id: catering-hotfix-20260325
+objective: implement a catering-page-only UI/content hotfix in BULWAR APP
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Deliver the hotfix with page-scoped chrome to avoid regressions on HomePage and any future shared-layout routes.
+  The safest path is to add dedicated catering-only header, footer, and sticky cart controls, then swap them into the active CateringWielkanocnyPage.
+  Browser validation is required because the requested behavior is responsive and position-sensitive: sticky header on mobile/desktop, mobile FAB with badge, and desktop bottom order bar pinned to the viewport.
+
+open_questions:
+  - Confirm the exact Facebook, Instagram, Tripadvisor, Polityka prywatnosci, and Regulamin URLs if they are not already captured in the implementation brief available to the implementer.
+  - Confirm whether the breadcrumb strip under the header should remain, be simplified, or be removed once the temporary catering-only header is introduced.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: A shared chrome component is edited instead of adding catering-only variants, causing unwanted UI changes on HomePage or future routes.
+      likelihood: medium
+      impact: high
+      mitigation: Keep the hotfix isolated to new catering-only components and wire them only inside CateringWielkanocnyPage.
+    - scenario: Sticky/fixed UI layers overlap the drawer trigger area or obscure content on small screens.
+      likelihood: medium
+      impact: high
+      mitigation: Validate with real mobile and desktop viewports and adjust page bottom/top spacing together with component z-index.
+    - scenario: Missing or incorrect real-world URLs leave footer social/legal links broken on the live catering page.
+      likelihood: medium
+      impact: medium
+      mitigation: Treat URLs as explicit content inputs, verify them before merge, and block release if placeholders remain.
+  assumptions:
+    - The active route to patch remains /catering-wielkanocny and is still mounted directly by CateringWielkanocnyPage.
+    - Using dedicated catering-only components is acceptable and preferred over mutating shared Navbar, Footer, or StickyCartControls.
+    - The logo asset already used by the catering page can be reused in the new header and footer.
+
+implementation_specification:
+  code_structure: Add three page-scoped presentation components under zip/src/components/sections for the catering route only, keep cart state and drawer state in CateringWielkanocnyPage, and confine content edits to the active catering page or its direct data module.
+  affected_areas:
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+    - zip/src/components/sections/
+    - zip/src/data/cateringWielkanocnyHero.tsx
+  component_details:
+    - component: CateringPageHeader
+      responsibility: Render a temporary catering-only sticky header with BulwaR logo on the left and a small grey return-to-home text link on the right, preserving the existing design language.
+      interfaces:
+        - logoSrc: string
+        - homeHref: string
+        - returnLabel: string
+    - component: CateringPageFooter
+      responsibility: Render a catering-only footer based on the existing footer structure but with real BulwaR location, contact, hours, social links, legal links, logo, and updated copyright.
+      interfaces:
+        - logoSrc: string
+        - socialLinks: array of label/url pairs
+        - legalLinks: array of label/url pairs
+    - component: CateringStickyCartControls
+      responsibility: Render page-only responsive sticky cart triggers so mobile FAB and desktop bottom bar can be changed without affecting HomePage.
+      interfaces:
+        - onOpenCart: () => void
+        - itemCount: number
+        - totalPrice: number
+  dependencies:
+    - component: CateringWielkanocnyPage
+      relationship: Composes CateringPageHeader, CateringPageFooter, and CateringStickyCartControls while continuing to own cart and drawer state.
+    - component: CheckoutDrawer
+      relationship: Continues to consume page-owned cart state and open/close handlers triggered from the new catering-only sticky controls.
+    - component: cateringWielkanocnyHeroData
+      relationship: Supplies page copy that may need cleanup if any remaining placeholder or branding mismatch is found on the active catering route.
+  integration_points:
+    - Swap Navbar for CateringPageHeader only in CateringWielkanocnyPage.
+    - Swap Footer for CateringPageFooter only in CateringWielkanocnyPage.
+    - Swap StickyCartControls for CateringStickyCartControls only in CateringWielkanocnyPage.
+    - Adjust page wrapper spacing so sticky header and sticky desktop/mobile cart affordances do not cover content.
+
+contracts:
+  - from_task: t1
+    to_task: t3
+    interface: Catering-only chrome components exported from zip/src/components/sections and ready for page composition.
+    format: TSX React components with typed props for logo source, links, and cart trigger state.
+  - from_task: t2
+    to_task: t3
+    interface: Cleaned page-local content set for brand/address/site text and footer destinations.
+    format: Inline TSX strings plus optional data-module constants for hero/content copy.
+  - from_task: t3
+    to_task: t4
+    interface: Active /catering-wielkanocny route renders the new components with preserved cart-open behavior.
+    format: Running Vite route with responsive UI states available for manual browser validation.
+  - from_task: t3
+    to_task: t5
+    interface: Final isolated hotfix diff touching only the catering page and new catering-only section components unless an explicitly justified content module edit is needed.
+    format: Git diff limited to the planned files with no shared chrome regression surface.
+
+tasks:
+  - id: t1
+    title: Build Catering-Only Chrome Components
+    description: |
+      Create new page-scoped components for the catering route instead of editing shared Navbar, Footer, or StickyCartControls.
+      The new header must be sticky on desktop and mobile, show the BulwaR logo on the left, and show a small grey '<-powrót do strony głównej' link on the right pointing to https://bulwarrestauracja.pl.
+      The new footer must be derived from the existing footer structure but use real BulwaR content and real destinations only.
+      The new sticky cart controls must preserve the current cart trigger contract while providing the requested mobile FAB badge and desktop bottom bar behavior.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/Navbar.tsx: shared header pattern and class vocabulary to mimic without modifying
+      - zip/src/components/sections/Footer.tsx: shared footer structure to fork safely for the catering page
+      - zip/src/components/sections/StickyCartControls.tsx: existing responsive cart control contract to preserve in the page-only variant
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 260
+    focus_area: catering-page chrome isolation
+    verification:
+      - Confirm the new components compile and export cleanly with typed props.
+      - Confirm no shared Navbar/Footer/StickyCartControls source file was modified in this task.
+      - Confirm the new footer contains logo, real BulwaR copy, and non-placeholder link targets.
+    acceptance_criteria:
+      - A new catering-only header component exists and is designed for sticky behavior on mobile and desktop.
+      - A new catering-only footer component exists with the requested real content and legal/social link slots.
+      - A new catering-only sticky cart control component exists and preserves the existing cart trigger interface.
+    failure_modes:
+      - scenario: The implementer copies shared markup but accidentally imports or edits shared chrome during cleanup.
+        likelihood: medium
+        impact: high
+        mitigation: Treat shared components as read-only references and keep all new work in distinct catering-only files.
+      - scenario: The new footer introduces placeholder href values because the provided URLs are not wired through.
+        likelihood: medium
+        impact: medium
+        mitigation: Fail the task if any social/legal link remains '#'.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+      - lucide-react
+    test_coverage: Component-level compile validation plus route-level manual verification in browser.
+
+  - id: t2
+    title: Clean Catering Page Copy And Real-World Content Inputs
+    description: |
+      Audit the active catering page for fake/template branding or mismatched business identity and replace it with the real BulwaR name, location, and site reference where required by the hotfix.
+      Keep the scope on the active catering route and its direct content modules only.
+      This includes preparing the exact footer content set and resolving any page-local text that conflicts with the temporary catering-only chrome.
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: active route composition and breadcrumb/header strip copy
+      - zip/src/data/cateringWielkanocnyHero.tsx: page hero copy and supporting brand-facing text
+      - zip/src/components/sections/Footer.tsx: source footer content block to map into real BulwaR data
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 120
+    focus_area: catering-page content correctness
+    verification:
+      - Search the active catering page path and its direct chrome for remaining placeholder/demo branding after edits.
+      - Confirm the real business identity appears consistently as BulwaR/Bulwar according to the provided wording.
+      - Confirm no homepage content is changed by this task.
+    acceptance_criteria:
+      - The active catering page no longer exposes fake/template restaurant branding in its page-only UI surface.
+      - Real business name, address, and site reference are available for use in the new catering-only chrome.
+      - Footer social/legal destinations are resolved to concrete URLs before release.
+    failure_modes:
+      - scenario: Real content is updated in the new footer but template copy remains in the breadcrumb or hero area, leaving the page inconsistent.
+        likelihood: medium
+        impact: medium
+        mitigation: Run a targeted text audit on the active route after the content pass.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: Text audit via search plus visual spot-check on the active route.
+
+  - id: t3
+    title: Integrate The Hotfix Into The Active Catering Route
+    description: |
+      Replace the shared Navbar, Footer, and StickyCartControls usages in CateringWielkanocnyPage with the new catering-only variants.
+      Preserve existing cart state, CheckoutDrawer behavior, and route structure.
+      Adjust page spacing and stacking context so the sticky header, fixed mobile FAB, badge, and sticky desktop bottom bar remain visible without obscuring content or controls.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - t1
+      - t2
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: integration point for the page-only hotfix
+      - zip/src/components/CheckoutDrawer.tsx: preserve trigger and drawer-open behavior contract
+      - zip/src/App.tsx: verify the active route remains /catering-wielkanocny after the page swap
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 180
+    focus_area: active route integration
+    verification:
+      - Build/typecheck the affected route after wiring the new components.
+      - Confirm the page still opens CheckoutDrawer from both desktop and mobile sticky triggers.
+      - Confirm the sticky desktop order bar stays pinned to the viewport bottom and the mobile FAB stays bottom-right.
+    acceptance_criteria:
+      - The active catering page uses only the new catering-only header/footer/sticky controls.
+      - Cart item count and subtotal still flow from page state into the drawer trigger UI.
+      - The page remains route-compatible and does not alter HomePage or shared layout behavior.
+    failure_modes:
+      - scenario: Spacing adjustments fix one viewport but create overlap with hero/breadcrumb content on another viewport.
+        likelihood: medium
+        impact: high
+        mitigation: Validate both mobile and desktop layouts and adjust page padding together with sticky element heights.
+      - scenario: The new cart controls visually render but stop opening the shared CheckoutDrawer because the callback contract drifts.
+        likelihood: low
+        impact: high
+        mitigation: Keep the existing onOpenCart/itemCount/totalPrice prop contract unchanged.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - React Router
+      - Tailwind CSS v4
+    test_coverage: Route-level interaction test via dev build plus manual cart-open verification.
+
+  - id: t4
+    title: Validate Responsive Sticky Behavior In Browser
+    description: |
+      Run browser validation against the active catering route with both desktop and mobile viewports.
+      Focus on sticky positioning, overlap risk, cart-open interactions, footer link visibility, and the temporary return-to-home affordance.
+    wave: 3
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - t3
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: active route under test
+      - zip/src/components/sections/CateringStickyCartControls.tsx: expected responsive sticky trigger behavior
+      - zip/src/components/sections/CateringPageHeader.tsx: expected sticky header and return link behavior
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 0
+    focus_area: responsive browser QA
+    verification:
+      - Capture desktop and mobile pass/fail status for all requested UI behaviors.
+      - Verify footer social/legal links expose the intended destinations.
+      - Verify cart badge count increments visually when the cart has items.
+    acceptance_criteria:
+      - Desktop sticky order bar remains pinned at the bottom edge while scrolling.
+      - Mobile FAB remains fixed at the bottom-right and shows a round badge above it with the cart count.
+      - Header remains sticky on both desktop and mobile and the return-to-home link is visible and clickable.
+    failure_modes:
+      - scenario: Mobile viewport safe-area or browser chrome causes the FAB or badge to be partially clipped.
+        likelihood: medium
+        impact: medium
+        mitigation: Test at least one narrow mobile viewport and one taller mobile viewport before sign-off.
+    validation_matrix:
+      - scenario: Desktop sticky chrome
+        steps:
+          - Open /catering-wielkanocny in a desktop viewport.
+          - Scroll from hero through product sections to the footer.
+          - Click the bottom order bar action.
+        expected_result: Header stays sticky, bottom order bar stays pinned, and CheckoutDrawer opens.
+      - scenario: Mobile floating cart action
+        steps:
+          - Open /catering-wielkanocny in a mobile viewport.
+          - Add at least one item to the cart.
+          - Observe the FAB position and badge, then tap the button.
+        expected_result: FAB remains bottom-right, badge is round and visible above the button, and CheckoutDrawer opens.
+      - scenario: Footer content and links
+        steps:
+          - Scroll to the footer on the catering page.
+          - Inspect location, contact, hours, copyright, social links, and legal links.
+        expected_result: All displayed content matches the provided BulwaR data and no placeholder/demo text or '#' links remain.
+
+  - id: t5
+    title: Review Blast Radius And Release Readiness
+    description: |
+      Review the final diff for isolation, regression risk, and missing validation.
+      The primary goal is to ensure the hotfix stays limited to the active catering page unless a narrowly justified content-module edit was required, and that no shared template components were unintentionally changed.
+    wave: 3
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - t3
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: final integration surface
+      - zip/src/components/sections/: verify only new catering-only files were added or changed as intended
+      - zip/src/pages/HomePage.tsx: regression spot-check target because it shares the old chrome components
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 0
+    focus_area: regression containment
+    verification:
+      - Inspect the diff for accidental edits to shared Navbar/Footer/StickyCartControls.
+      - Confirm unresolved questions are either answered or explicitly blocking release.
+      - Confirm browser validation outcomes are attached before sign-off.
+    acceptance_criteria:
+      - The final change set is isolated to the active catering route and dedicated catering-only components.
+      - Any deviation from page-only isolation is documented and justified.
+      - Remaining risks, if any, are explicit and actionable.
+    failure_modes:
+      - scenario: A small shared-style tweak is merged as part of the hotfix and silently changes HomePage.
+        likelihood: medium
+        impact: medium
+        mitigation: Review shared component diffs explicitly and reject broadened scope unless requested.
+    requires_review: true
+    review_depth: standard
+    security_sensitive: false

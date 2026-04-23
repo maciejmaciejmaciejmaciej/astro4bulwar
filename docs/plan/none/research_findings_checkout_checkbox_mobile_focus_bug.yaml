@@ -1,0 +1,209 @@
+plan_id: none
+objective: Reassess the checkout checkbox bug in BULWAR APP with emphasis on whether the current label plus sr-only checkbox inside the mobile drawer can trigger a jump or blank-white drawer effect via mobile focus and scroll behavior.
+focus_area: checkout_checkbox_mobile_focus_bug
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The submit consent control in the checkout drawer is implemented as a label-wrapped custom UI that delegates activation to a focusable native checkbox hidden with sr-only.
+  - The checkbox sits inside a fixed, animated drawer with an internal overflow-y scroll container while body scrolling is disabled, which is a high-risk combination for mobile browser focus-to-reveal scroll glitches and white repaint flashes.
+  - The highest-probability trigger is the native label click focusing the hidden checkbox at the bottom of the scrollable drawer, not react-hook-form itself.
+  - The smallest safe fix is to stop using the hidden input as the tap target for this consent control and toggle the field explicitly with form.setValue from a button or div with checkbox semantics, while keeping react-hook-form state and validation.
+  - The same hidden-input pattern is also used for radio-style selectors in the drawer, but the reported bug is most plausibly tied to the consent checkbox because it lives in the final submit section inside the mobile scroll region.
+
+research_metadata:
+  methodology: Hybrid retrieval using targeted grep_search for checkbox, drawer, focus, and scroll markers, semantic_search for surrounding implementation context, read_file for exact code inspection, and metadata collection via terminal line count.
+  scope: Focused inspection of the current checkout drawer implementation in the frontend checkout UI, limited to the consent checkbox, drawer container, and nearby form wiring.
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Implements the mobile checkout drawer UI, form state, animated drawer container, and consent checkbox used before order submission.
+    key_elements:
+      - element: useForm checkout state
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:414
+        description: Initializes react-hook-form state including salesRegulationsAccepted defaulting to false.
+      - element: form helpers destructuring
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:426
+        description: Pulls watch, errors, and resetField from the form instance; setValue is not currently used.
+      - element: canSubmit gate
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:459
+        description: Submission enablement depends on salesRegulationsAccepted being true along with the rest of the checkout state.
+      - element: body scroll lock
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:554
+        description: Disables document body scrolling while the drawer is open.
+      - element: animated drawer shell
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:776
+        description: Uses motion.div with translate-y animation for the fixed mobile drawer.
+      - element: drawer scroll container
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:792
+        description: Inner drawer content scrolls with overflow-y-auto.
+      - element: consent checkbox label block
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:1113
+        description: Renders the custom consent UI as a label containing a hidden native checkbox and visual check indicator.
+      - element: hidden checkbox registration
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:1117
+        description: The native checkbox is registered through react-hook-form and hidden via sr-only while remaining the default focus target.
+    language: TSX
+    lines: 1056
+
+patterns_found:
+  - category: structure
+    pattern: Custom-styled form controls built from label plus sr-only native input
+    description: The drawer uses label-wrapped hidden inputs to preserve native form behavior while rendering custom visual states.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:986
+        snippet: '<input type="radio" value="cash" {...form.register("paymentMethod")} className="sr-only" />'
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:1018
+        snippet: '<input type="radio" value="pickup" {...form.register("deliveryMethod")} className="sr-only" />'
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:1117
+        snippet: '<input type="checkbox" {...form.register("salesRegulationsAccepted")} className="sr-only" />'
+    prevalence: common
+  - category: architecture
+    pattern: Fixed animated drawer with nested scroll container and body scroll lock
+    description: The checkout surface is rendered as a fixed bottom drawer animated via transform while page scrolling is disabled and drawer content scrolls internally.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:557
+        snippet: 'document.body.style.overflow = "hidden";'
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:776
+        snippet: 'initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}'
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:792
+        snippet: '<div className="flex-1 overflow-y-auto p-6">'
+    prevalence: common
+  - category: error_handling
+    pattern: Submission readiness is derived from watched form state and Zod validation
+    description: Consent is not separately controlled; it is part of the watched RHF state and directly gates submit availability.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:459
+        snippet: 'const canSubmit = isCheckoutReady && values.salesRegulationsAccepted && cartLinesPayload.length > 0 && !isSubmittingOrder;'
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:1126
+        snippet: '{errors.salesRegulationsAccepted && (<p className="mb-3 text-red-500 text-sm">{errors.salesRegulationsAccepted.message}</p>)}'
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CheckoutDrawer
+      responsibility: Renders the checkout UX, custom control widgets, validation errors, and final submit action.
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: domain itself
+    - component: Button
+      responsibility: Provides the submit action control styling and behavior.
+      location: zip/components/ui/button
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: CheckoutFormValues
+      location: zip/components/CheckoutDrawer.tsx:58
+      usage_pattern: Type-safe form state model produced from the Zod schema and consumed by react-hook-form.
+    - interface: CheckoutDrawerProps
+      location: zip/components/CheckoutDrawer.tsx:66
+      usage_pattern: External contract for opening, closing, and driving cart changes inside the drawer.
+  data_flow_involving_domain: User taps custom controls inside the scrollable drawer, react-hook-form updates watched state, derived booleans compute checkout readiness, and the submit section enables or disables order confirmation based on those values.
+  key_relationships_to_domain:
+    - from: CheckoutDrawer
+      to: react-hook-form useForm
+      relationship: calls
+    - from: CheckoutDrawer
+      to: Zod checkoutSchema
+      relationship: uses
+    - from: consent label block
+      to: salesRegulationsAccepted field
+      relationship: updates
+    - from: drawer shell
+      to: body scroll lock
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Component rendering, local state, effects, and derived UI state for the checkout drawer.
+    - name: react-hook-form
+      usage_in_domain: Registration, watch-based state derivation, field reset, and submit handling.
+    - name: Zod
+      usage_in_domain: Schema validation for checkout fields including mandatory consent.
+    - name: Framer Motion via motion/react
+      usage_in_domain: Bottom-drawer enter and exit transform animation.
+    - name: Tailwind CSS
+      usage_in_domain: Utility classes for drawer layout, scroll container, and sr-only hidden control styling.
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: Visual icons for drawer controls and confirmation state.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Form values and derived booleans use descriptive camelCase names such as salesRegulationsAccepted, isCheckoutReady, and canSubmit.
+  structure_of_domain: A single large drawer component manages validation schema, form state, derived UI state, network calls, and render output in one file.
+  error_handling_in_domain: Validation errors are surfaced inline under fields and submission is disabled based on watched state rather than imperative checks in event handlers.
+  testing_in_domain: No test coverage for this file was identified during the inspected scope.
+  documentation_in_domain: No inline documentation explains the accessibility or mobile-browser behavior assumptions behind the custom hidden-input controls.
+
+related_dependencies:
+  internal:
+    - component: @/components/ui/button
+      relationship_to_domain: Styled submit button component used in the final submit area.
+      direction: outbound
+    - component: @/lib/utils cn
+      relationship_to_domain: Conditional class construction for visual state changes.
+      direction: outbound
+    - component: @/src/lib/cateringCart
+      relationship_to_domain: Provides cart line types used in checkout rendering and payload submission.
+      direction: outbound
+  external:
+    - name: react-hook-form
+      purpose_for_domain: Form registration and field state management.
+    - name: zod
+      purpose_for_domain: Validation schema and error messages.
+    - name: motion/react
+      purpose_for_domain: Drawer transform animation.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Customer personal data entry
+      location: zip/components/CheckoutDrawer.tsx:938
+      concern: Stores contact data in client-side form state before submission.
+  authentication_patterns_in_domain: None in the inspected scope.
+  authorization_patterns_in_domain: None in the inspected scope.
+  data_validation_in_domain: Zod schema validation enforces personal data shape, delivery requirements, and mandatory sales regulations acceptance.
+
+testing_patterns:
+  framework: not identified in inspected scope
+  coverage_areas:
+    - No checkbox focus or mobile drawer interaction tests were found in the inspected scope.
+  test_organization: not identified in inspected scope
+  mock_patterns:
+    - not identified
+
+open_questions:
+  - question: Has the jump or white flash been reproduced specifically on iOS Safari, Android Chrome, or both?
+    context: The root cause is strongly consistent with mobile focus and scroll behavior, but browser-specific reproduction would determine how much the transform plus overflow combination contributes.
+  - question: Are the radio controls inside the same drawer showing similar scroll movement when tapped?
+    context: The same label plus sr-only pattern is reused elsewhere; if only the consent checkbox fails, its location near the bottom of the nested scroll region is likely the differentiator.
+
+gaps:
+  - area: Runtime reproduction
+    description: The analysis is static and does not include live browser reproduction on physical mobile browsers.
+    impact: Confidence is high on the likely cause, but exact browser rendering symptoms remain inferred from the implementation pattern.
+  - area: Tailwind sr-only compiled CSS
+    description: The project-level generated CSS for sr-only was not inspected directly, though Tailwind's standard behavior is assumed.
+    impact: Low impact because the standard sr-only pattern is already sufficient to explain the focus target issue.

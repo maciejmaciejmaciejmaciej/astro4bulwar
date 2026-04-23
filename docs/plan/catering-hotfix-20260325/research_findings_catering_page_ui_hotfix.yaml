@@ -1,0 +1,355 @@
+plan_id: catering-hotfix-20260325
+objective: research the current BULWAR APP catering page implementation for a UI hotfix
+focus_area: catering_page_ui_hotfix
+created_at: 2026-03-25
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Active catering route is wired directly in zip/src/App.tsx to zip/src/pages/CateringWielkanocnyPage.tsx, and the homepage CTA also points to /catering-wielkanocny.
+  - The catering page renders shared chrome components directly: Navbar, Footer, StickyCartControls, and CheckoutDrawer; the header area also includes a page-local breadcrumb strip below the navbar.
+  - Sticky cart UI lives in a shared component with separate desktop and mobile variants: a fixed bottom desktop bar and a floating mobile FAB, both driven by page-level cart state.
+  - Visible placeholder branding on the catering page is concentrated in shared chrome, especially Navbar and Footer; Footer still exposes the ANDÉ identity, New York address, placeholder contact data, and # links.
+
+research_metadata:
+  methodology: hybrid retrieval using semantic_search plus grep_search, followed by targeted read_file examination of route, page, and shared UI components; relationship discovery used exact import and JSX usage searches
+  scope: focused on the active catering route, header/top navigation composition, sticky cart controls, shared chrome visible on the catering page, and placeholder branding text in directly rendered components
+  confidence: high
+  coverage: 95
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: top-level React route map for the currently active app entry
+    key_elements:
+      - element: /catering-wielkanocny route
+        type: pattern
+        location: zip/src/App.tsx:11
+        description: maps the active catering URL directly to CateringWielkanocnyPage with no shared layout wrapper
+    language: TypeScript
+    lines: 11
+
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: active catering page implementation including cart state, page composition, and checkout drawer wiring
+    key_elements:
+      - element: Navbar usage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:149
+        description: renders shared Navbar with logoSrc set to the Bulwar logo asset
+      - element: breadcrumb strip
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:151
+        description: page-local light breadcrumb/header band shown directly under the navbar
+      - element: main content composition
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:161
+        description: composes CateringWielkanocnyHero, FeatureGridSection, CateringProductSpecialMenuFor2, and repeated CateringProductListAlt sections
+      - element: Footer usage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:183
+        description: renders shared Footer directly on the page
+      - element: StickyCartControls usage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:185
+        description: passes itemCount and subtotal from page cart state into the shared sticky cart controls
+      - element: CheckoutDrawer usage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:190
+        description: drawer visibility is controlled locally by isCartOpen and opened from sticky cart controls
+      - element: localStorage cart persistence
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:80
+        description: cart state persists in localStorage using CATERING_CART_STORAGE_KEY
+    language: TypeScript
+    lines: 199
+
+  - file: Navbar.tsx
+    path: zip/src/components/sections/Navbar.tsx
+    purpose: shared top navigation component rendered by the catering page and other pages
+    key_elements:
+      - element: reserve button
+        type: pattern
+        location: zip/src/components/sections/Navbar.tsx:15
+        description: static RESERVE CTA with no navigation target
+      - element: primary navigation links
+        type: pattern
+        location: zip/src/components/sections/Navbar.tsx:22
+        description: visible nav labels include Home, Pages, Portfolio, Blog, Shop, and Elements, mostly using href="#"
+      - element: dropdown placeholder links
+        type: pattern
+        location: zip/src/components/sections/Navbar.tsx:32
+        description: dropdown contains generic English placeholder labels including About Us, Book A Table, Our Menu, Our Team, Pricing Plan, and Gallery
+      - element: routing test label
+        type: pattern
+        location: zip/src/components/sections/Navbar.tsx:35
+        description: one dropdown item is labeled Contact Us (Routing test)
+      - element: fallback logo text
+        type: pattern
+        location: zip/src/components/sections/Navbar.tsx:53
+        description: dormant ANDÉ fallback branding appears when logoSrc is not provided; not rendered on the current catering page because logoSrc is passed
+    language: TypeScript
+    lines: 78
+
+  - file: StickyCartControls.tsx
+    path: zip/src/components/sections/StickyCartControls.tsx
+    purpose: shared sticky cart trigger and summary UI used by the catering page and other pages
+    key_elements:
+      - element: cartSummaryLabel
+        type: variable
+        location: zip/src/components/sections/StickyCartControls.tsx:13
+        description: computes either item count summary or the empty state label Koszyk pusty
+      - element: desktop sticky bar
+        type: pattern
+        location: zip/src/components/sections/StickyCartControls.tsx:18
+        description: md+ fixed bottom bar with order label, dotted divider, cart summary, formatted total, and Rozwiń koszyk button
+      - element: desktop heading
+        type: pattern
+        location: zip/src/components/sections/StickyCartControls.tsx:22
+        description: desktop bar title is Twoje zamówienie
+      - element: mobile floating cart button
+        type: pattern
+        location: zip/src/components/sections/StickyCartControls.tsx:48
+        description: mobile-only fixed bottom-right circular FAB with badge shown only when itemCount is greater than zero
+    language: TypeScript
+    lines: 58
+
+  - file: Footer.tsx
+    path: zip/src/components/sections/Footer.tsx
+    purpose: shared footer rendered on the catering page and other page implementations
+    key_elements:
+      - element: brand lockup
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:4
+        description: visible footer branding still spells ANDÉ rather than BulwaR
+      - element: placeholder location block
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:12
+        description: shows 787 5th Avenue, NY and New York, 10022
+      - element: placeholder contact block
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:17
+        description: shows +1 212 555 0198 and hello@andecurator.com
+      - element: placeholder hours block
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:22
+        description: shows generic Mon - Sat and Sun closed hours
+      - element: copyright line
+        type: pattern
+        location: zip/src/components/sections/Footer.tsx:33
+        description: visible copyright still reads ANDÉ CULINARY CURATOR
+    language: TypeScript
+    lines: 35
+
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: homepage entry point that links into the active catering route and also shares the same chrome components
+    key_elements:
+      - element: catering CTA
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:45
+        description: homepage CTA buttonHref points to /catering-wielkanocny
+      - element: shared Navbar usage
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:19
+        description: homepage also renders Navbar with the Bulwar logo asset
+      - element: shared Footer usage
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:67
+        description: homepage shares the same Footer component visible on catering
+      - element: shared StickyCartControls usage
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:69
+        description: homepage also renders StickyCartControls, making it a shared edit surface
+    language: TypeScript
+    lines: 72
+
+  - file: RootLayout.tsx
+    path: zip/src/layouts/RootLayout.tsx
+    purpose: alternate shared layout that also composes Navbar, Footer, StickyCartControls, and CheckoutDrawer
+    key_elements:
+      - element: shared layout composition
+        type: pattern
+        location: zip/src/layouts/RootLayout.tsx:11
+        description: wraps Outlet with Navbar, Footer, StickyCartControls, and CheckoutDrawer, but is not used by the current App.tsx route tree
+    language: TypeScript
+    lines: 22
+
+patterns_found:
+  - category: structure
+    pattern: active catering page is a self-composed page rather than a route nested under RootLayout
+    description: the live catering route points straight to CateringWielkanocnyPage, which directly renders shared chrome and its own page-local breadcrumb section
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:11
+        snippet: <Route path="/catering-wielkanocny" element={<CateringWielkanocnyPage />} />
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:149
+        snippet: <Navbar logoSrc="/react/images/logo.png" />
+    prevalence: common
+
+  - category: architecture
+    pattern: cart UI state is page-owned while sticky controls are presentational triggers
+    description: the page calculates itemCount and subtotal from cartState, passes them into StickyCartControls, and controls CheckoutDrawer open state locally
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:141
+        snippet: const itemCount = getCateringCartItemCount(cartState); const subtotal = getCateringCartSubtotal(cartState);
+      - file: zip/src/components/sections/StickyCartControls.tsx
+        location: zip/src/components/sections/StickyCartControls.tsx:11
+        snippet: export function StickyCartControls({ onOpenCart, itemCount = 0, totalPrice = 0 }: StickyCartControlsProps)
+    prevalence: common
+
+  - category: structure
+    pattern: sticky cart has split responsive implementations
+    description: desktop uses a full-width fixed bottom bar and mobile uses a floating action button positioned at bottom-right
+    examples:
+      - file: zip/src/components/sections/StickyCartControls.tsx
+        location: zip/src/components/sections/StickyCartControls.tsx:18
+        snippet: <div className="hidden md:flex fixed bottom-0 left-0 right-0 h-[50px] ...">
+      - file: zip/src/components/sections/StickyCartControls.tsx
+        location: zip/src/components/sections/StickyCartControls.tsx:50
+        snippet: className="md:hidden fixed bottom-6 right-6 z-40 w-14 h-14 ..."
+    prevalence: common
+
+  - category: naming
+    pattern: shared chrome still contains template or placeholder restaurant identity
+    description: Navbar and Footer include English placeholder copy, dead href="#" targets, routing-test text, and ANDÉ branding unrelated to BulwaR
+    examples:
+      - file: zip/src/components/sections/Navbar.tsx
+        location: zip/src/components/sections/Navbar.tsx:35
+        snippet: Contact Us (Routing test)
+      - file: zip/src/components/sections/Footer.tsx
+        location: zip/src/components/sections/Footer.tsx:33
+        snippet: © 2024 ANDÉ CULINARY CURATOR. ALL RIGHTS RESERVED.
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: owns the active catering page composition, page-local header band, cart state, and drawer wiring
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: core page implementation
+    - component: Navbar
+      responsibility: shared top navigation/header chrome
+      location: zip/src/components/sections/Navbar.tsx
+      relationship_to_domain: domain depends on this
+    - component: StickyCartControls
+      responsibility: responsive cart summary and cart-open trigger
+      location: zip/src/components/sections/StickyCartControls.tsx
+      relationship_to_domain: domain depends on this
+    - component: CheckoutDrawer
+      responsibility: cart drawer opened from sticky cart controls
+      location: zip/src/components/CheckoutDrawer.tsx
+      relationship_to_domain: domain depends on this
+    - component: Footer
+      responsibility: shared footer chrome and restaurant identity block
+      location: zip/src/components/sections/Footer.tsx
+      relationship_to_domain: domain depends on this
+    - component: RootLayout
+      responsibility: alternative shared shell composition
+      location: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: architectural parallel not currently used by the active route
+  interfaces_used_by_domain:
+    - interface: StickyCartControlsProps
+      location: zip/src/components/sections/StickyCartControls.tsx
+      usage_pattern: catering page provides onOpenCart, itemCount, and totalPrice
+  data_flow_involving_domain: CateringWielkanocnyPage loads and persists cartState via localStorage, derives itemCount and subtotal from cart helpers, passes those values into StickyCartControls, and opens CheckoutDrawer through page-local isCartOpen state when the sticky controls are activated.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/Navbar.tsx
+      relationship: composes
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/StickyCartControls.tsx
+      relationship: composes
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/CheckoutDrawer.tsx
+      relationship: composes
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/Footer.tsx
+      relationship: composes
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: links to route output
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: page composition, state ownership, and responsive UI rendering
+    - name: React Router
+      usage_in_domain: route mapping and breadcrumb navigation links
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: header and sticky cart iconography on the page and cart controls
+    - name: shadcn/ui Button
+      purpose_in_domain: navbar CTA and sticky cart action button rendering
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: page components use PascalCase names ending in Page; shared section components live under zip/src/components/sections
+  structure_of_domain: page files directly import shared sections and data modules; the active catering page owns its cart logic rather than delegating to a layout
+  error_handling_in_domain: defensive guards are lightweight and local, mainly checking for browser availability, valid productId types, missing products, and empty lineId values
+  testing_in_domain: no direct UI test files were identified for the active catering page or shared chrome in this focused pass
+  documentation_in_domain: no page-local documentation was found for the active catering UI implementation
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: supplies categories and products rendered by the active catering page
+      direction: outbound
+    - component: zip/src/data/cateringWielkanocnyHero.ts
+      relationship_to_domain: supplies hero content to the active catering page
+      direction: outbound
+    - component: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship_to_domain: supplies special-set seed/config and line type constants
+      direction: outbound
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: provides cart state initialization, persistence, derivation, and payload builders for sticky controls and checkout
+      direction: outbound
+    - component: zip/src/pages/HomePage.tsx
+      relationship_to_domain: links users into the active catering route and shares Navbar, Footer, StickyCartControls, and CheckoutDrawer
+      direction: inbound
+    - component: zip/src/layouts/RootLayout.tsx
+      relationship_to_domain: composes the same shared chrome components in an alternate layout shell
+      direction: bidirectional
+  external:
+    - name: react-router-dom
+      purpose_for_domain: routing and internal links
+    - name: lucide-react
+      purpose_for_domain: icons in header and cart-related UI
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: cart persistence key
+      location: zip/src/pages/CateringWielkanocnyPage.tsx:80
+      concern: sticky cart UI reflects a persisted localStorage cart keyed globally as bulwar-catering-cart
+  authentication_patterns_in_domain: no authentication patterns were present in the examined UI files
+  authorization_patterns_in_domain: no authorization patterns were present in the examined UI files
+  data_validation_in_domain: page-level handlers perform basic guards before mutating cart state, but the researched scope was primarily presentational
+
+testing_patterns:
+  framework: not identified in the focused UI slice
+  coverage_areas:
+    - no dedicated tests were found for the active catering page shared header/footer/cart chrome in this pass
+  test_organization: no UI test files were examined for this domain
+  mock_patterns: []
+
+open_questions:
+  - question: Is the intended hotfix scope limited to the active catering route, or should shared chrome placeholders be corrected across HomePage and any future RootLayout-based pages at the same time?
+    context: Navbar, StickyCartControls, and Footer are shared components, so visible placeholder fixes in those files affect more than the catering page
+  - question: Should the page-local breadcrumb strip under the navbar be treated as part of the header hotfix?
+    context: The catering page has two stacked top sections: shared Navbar plus a separate breadcrumb band defined inside CateringWielkanocnyPage
+
+gaps:
+  - area: runtime route selection outside local React entry
+    description: this pass verified the active route inside zip/src/App.tsx, but did not inspect deployment-time rewrites or WordPress embedding that may influence which page shell is shown in production
+    impact: low
+  - area: visual regression behavior on actual mobile viewport
+    description: sticky cart findings are code-based and were not validated in a running browser session during this read-only research pass
+    impact: medium

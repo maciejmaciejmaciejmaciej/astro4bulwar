@@ -1,0 +1,658 @@
+plan_id: adhoc-shadcn-block-normalization-20260422
+objective: Assess whether a script or codemod is feasible in zip/ to normalize raw shadcn TSX/JSX blocks so typography and theme usage follow the global theme file instead of manual cleanup.
+focus_area: zip-frontend
+created_at: '2026-04-22T00:00:00Z'
+created_by: gem-researcher
+status: completed
+
+tldr: |
+  - Verdict: partially feasible. The repo already has a deterministic token layer in zip/src/index.css and explicit raw-import typography rules in the checked-in design docs, which gives a codemod a stable rewrite target.
+  - Deterministic automation is strongest for literal className strings on semantic text elements, banned typography utility removal, project token substitution, and report generation for unresolved classes or non-literal expressions.
+  - Full automatic normalization is unsafe for layout-shell choices, geometry changes, width strategy, component-specific visual intent, and mixed semantic/non-semantic markup where text role must be inferred.
+  - The existing zip toolchain favors a repo-local TypeScript or tsx CLI with dry-run and report modes over another broad regex script; current regex refactors in zip/ show precedent but also demonstrate the risk of text-only mutation.
+  - Reviewable HTML-string tests already exist in zip/src via node:test plus renderToStaticMarkup, so script output can be checked with lightweight snapshot-style assertions on targeted sections.
+
+research_metadata:
+  methodology: hybrid retrieval using targeted read_file, grep_search, file_search, memory lookups, instruction-file reads, and one narrow PowerShell line-count command for metadata
+  scope: focused on zip/ theme source-of-truth, representative raw-import section files, frontend package/config files, existing refactor scripts, and nearby frontend testing patterns
+  confidence: high
+  coverage: 82
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: index.css
+    path: zip/src/index.css
+    purpose: Defines the frontend global theme tokens, Tailwind theme variables, and shared theme-block utilities.
+    key_elements:
+      - element: '@theme token block'
+        type: pattern
+        location: zip/src/index.css:7
+        description: Maps semantic project colors and fonts such as --color-primary and --font-headline onto the CSS variable theme layer.
+      - element: '--font-headline'
+        type: variable
+        location: zip/src/index.css:34
+        description: Establishes a project font role that raw blocks can be normalized toward.
+      - element: theme-block-shell
+        type: pattern
+        location: zip/src/index.css:48
+        description: Encodes a reusable shell pattern with page-margin and vertical rhythm.
+      - element: theme-block-heading
+        type: pattern
+        location: zip/src/index.css:53
+        description: Provides a shared heading utility for project-style blocks.
+      - element: theme-block-copy
+        type: pattern
+        location: zip/src/index.css:57
+        description: Provides shared body-copy styling for project-style blocks.
+      - element: page-margin
+        type: pattern
+        location: zip/src/index.css:93
+        description: Encodes the page-side padding rhythm used across frontend sections.
+    language: CSS
+    lines: 274
+
+  - file: TemplatePage.tsx
+    path: zip/src/pages/TemplatePage.tsx
+    purpose: Canonical reference page showing how frontend sections consume the project typography and spacing vocabulary.
+    key_elements:
+      - element: section preview labels
+        type: pattern
+        location: zip/src/pages/TemplatePage.tsx:417
+        description: Uses font-label, text-[11px], uppercase, and tracking for section reference labels.
+      - element: source error copy
+        type: pattern
+        location: zip/src/pages/TemplatePage.tsx:467
+        description: Uses font-body and text-sm for body-scale fallback copy.
+    language: TSX
+    lines: 449
+
+  - file: components.json
+    path: zip/components.json
+    purpose: Declares shadcn registry settings and ties generated UI styling to the frontend CSS entrypoint.
+    key_elements:
+      - element: style
+        type: variable
+        location: zip/components.json:3
+        description: Uses the base-nova shadcn preset.
+      - element: css
+        type: variable
+        location: zip/components.json:8
+        description: Points shadcn styling at src/index.css.
+      - element: cssVariables
+        type: variable
+        location: zip/components.json:10
+        description: Confirms CSS variable mode is enabled for generated shadcn components.
+      - element: aliases
+        type: pattern
+        location: zip/components.json:15
+        description: Defines the alias structure used by imported components and UI primitives.
+    language: JSON
+    lines: 32
+
+  - file: package.json
+    path: zip/package.json
+    purpose: Describes the frontend runtime, build, and available script/tooling surface.
+    key_elements:
+      - element: build script
+        type: variable
+        location: zip/package.json:8
+        description: Uses vite build for frontend compilation.
+      - element: lint script
+        type: variable
+        location: zip/package.json:11
+        description: Uses tsc --noEmit as the local typecheck gate.
+      - element: react dependency
+        type: variable
+        location: zip/package.json:29
+        description: Frontend runs on React 19.
+      - element: shadcn dependency
+        type: variable
+        location: zip/package.json:33
+        description: The repo already depends on the shadcn package.
+      - element: tsx dependency
+        type: variable
+        location: zip/package.json:46
+        description: A local CLI script can run as TypeScript without a build step.
+      - element: typescript dependency
+        type: variable
+        location: zip/package.json:47
+        description: TypeScript is available for a typed transform implementation.
+    language: JSON
+    lines: 50
+
+  - file: About1.tsx
+    path: zip/src/components/sections/About1.tsx
+    purpose: Representative raw-import-style section with stock shadcn typography utilities and container layout.
+    key_elements:
+      - element: main heading
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:14
+        description: Uses literal size and weight utilities on a semantic h2.
+      - element: mission label
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:33
+        description: Uses font-semibold on a semantic p tag.
+      - element: mission copy
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:34
+        description: Uses font-medium on a semantic p tag.
+      - element: subheading
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:44
+        description: Uses tracking-tight and font-semibold on a semantic h3.
+      - element: card title
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:88
+        description: Uses font-semibold on another semantic h3.
+    language: TSX
+    lines: 83
+
+  - file: Feature20.tsx
+    path: zip/src/components/sections/Feature20.tsx
+    purpose: Representative section that mixes project-compatible surface tokens with raw imported heading typography.
+    key_elements:
+      - element: section heading
+        type: pattern
+        location: zip/src/components/sections/Feature20.tsx:66
+        description: Uses font-semibold and tracking-tight on a semantic h2.
+      - element: card title copy
+        type: pattern
+        location: zip/src/components/sections/Feature20.tsx:85
+        description: Uses font-medium on a semantic p element.
+      - element: card shell
+        type: pattern
+        location: zip/src/components/sections/Feature20.tsx:103
+        description: Already uses project-compatible border, card, and shadow tokens.
+    language: TSX
+    lines: 115
+
+  - file: Feature285.tsx
+    path: zip/src/components/sections/Feature285.tsx
+    purpose: Representative section that combines raw imported typography with shadcn token-driven surfaces and motion.
+    key_elements:
+      - element: outer shell
+        type: pattern
+        location: zip/src/components/sections/Feature285.tsx:44
+        description: Uses rounded-4xl and bg-muted in a large imported shell.
+      - element: brand title
+        type: pattern
+        location: zip/src/components/sections/Feature285.tsx:53
+        description: Uses font-semibold and tracking-tight on a span.
+      - element: section heading
+        type: pattern
+        location: zip/src/components/sections/Feature285.tsx:59
+        description: Uses font-semibold and tracking-tight on a semantic h2.
+      - element: lead paragraph
+        type: pattern
+        location: zip/src/components/sections/Feature285.tsx:62
+        description: Uses an oversized text-2xl paragraph with muted token coloring.
+    language: TSX
+    lines: 136
+
+  - file: Hero214.tsx
+    path: zip/src/components/sections/Hero214.tsx
+    purpose: Representative imported hero with nontrivial layout and typography classes attached to call-to-action and headline.
+    key_elements:
+      - element: hero heading
+        type: pattern
+        location: zip/src/components/sections/Hero214.tsx:47
+        description: Uses tracking-tighter on a semantic h1.
+      - element: CTA button classes
+        type: pattern
+        location: zip/src/components/sections/Hero214.tsx:143
+        description: Uses tracking-tight within a Button className string while preserving layout-sensitive positioning.
+    language: TSX
+    lines: 211
+
+  - file: Feature314.tsx
+    path: zip/src/components/sections/Feature314.tsx
+    purpose: Representative imported section with mixed heading roles, labels, and card overlays that need differentiated handling.
+    key_elements:
+      - element: section heading
+        type: pattern
+        location: zip/src/components/sections/Feature314.tsx:70
+        description: Uses font-semibold and tracking-tight on a semantic h2.
+      - element: top-right note
+        type: pattern
+        location: zip/src/components/sections/Feature314.tsx:97
+        description: Uses text-sm font-bold inside a nonsemantic wrapper.
+      - element: small-card title
+        type: pattern
+        location: zip/src/components/sections/Feature314.tsx:106
+        description: Uses font-medium on a semantic h3.
+      - element: big-card label
+        type: pattern
+        location: zip/src/components/sections/Feature314.tsx:123
+        description: Uses text-lg font-bold on a nonsemantic div.
+      - element: big-card overlay title
+        type: pattern
+        location: zip/src/components/sections/Feature314.tsx:127
+        description: Uses font-semibold on a semantic h3 with responsive sizes.
+    language: TSX
+    lines: 133
+
+  - file: OurServices.test.tsx
+    path: zip/src/components/sections/OurServices.test.tsx
+    purpose: Demonstrates the frontend test style available for verifying rendered markup after a transform.
+    key_elements:
+      - element: node:test usage
+        type: pattern
+        location: zip/src/components/sections/OurServices.test.tsx:2
+        description: Uses the built-in node:test runner.
+      - element: renderToStaticMarkup
+        type: function
+        location: zip/src/components/sections/OurServices.test.tsx:3
+        description: Renders TSX to markup strings for assertions.
+      - element: markup assertions
+        type: pattern
+        location: zip/src/components/sections/OurServices.test.tsx:14
+        description: Verifies text and repeated class patterns via regex.
+    language: TSX
+    lines: 64
+
+  - file: PageBuilderMenuSection.test.tsx
+    path: zip/src/components/sections/PageBuilderMenuSection.test.tsx
+    purpose: Shows that layout-sensitive class invariants are already tested through markup assertions.
+    key_elements:
+      - element: renderToStaticMarkup
+        type: function
+        location: zip/src/components/sections/PageBuilderMenuSection.test.tsx:3
+        description: Renders the section to a static HTML string.
+      - element: variant assertion
+        type: pattern
+        location: zip/src/components/sections/PageBuilderMenuSection.test.tsx:31
+        description: Checks for a data-section-variant attribute in rendered markup.
+      - element: menu-leader assertion
+        type: pattern
+        location: zip/src/components/sections/PageBuilderMenuSection.test.tsx:36
+        description: Checks a specific class stack for shared menu row layout.
+      - element: doesNotMatch guards
+        type: pattern
+        location: zip/src/components/sections/PageBuilderMenuSection.test.tsx:43
+        description: Guards against specific bad class combinations after render.
+    language: TSX
+    lines: 44
+
+  - file: refactor_fonts.cjs
+    path: zip/refactor_fonts.cjs
+    purpose: Existing broad regex refactor that rewrites text-[Npx] classes across zip/src.
+    key_elements:
+      - element: global text-size replacement
+        type: pattern
+        location: zip/refactor_fonts.cjs:1
+        description: Walks all TS and TSX files and replaces arbitrary pixel text classes with coarse Tailwind sizes using regex.
+    language: JavaScript
+    lines: 1
+
+  - file: refactor_scaleup.cjs
+    path: zip/refactor_scaleup.cjs
+    purpose: Existing broad regex refactor that scales text utilities upward without JSX awareness.
+    key_elements:
+      - element: text-size escalation
+        type: pattern
+        location: zip/refactor_scaleup.cjs:1
+        description: Replaces text-xs, text-sm, and text-base globally by string substitution.
+    language: JavaScript
+    lines: 1
+
+  - file: refactor_scaledown.cjs
+    path: zip/refactor_scaledown.cjs
+    purpose: Existing broad regex refactor that scales text utilities downward without JSX awareness.
+    key_elements:
+      - element: text-size reduction
+        type: pattern
+        location: zip/refactor_scaledown.cjs:1
+        description: Replaces text-lg, text-base, and text-sm globally by string substitution.
+    language: JavaScript
+    lines: 1
+
+  - file: global-css-adaptation-contract.md
+    path: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+    purpose: Documents the formal adaptation contract for raw imports against the frontend CSS system.
+    key_elements:
+      - element: source of style truth
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:20
+        description: Names zip/src/index.css and zip/src/pages/TemplatePage.tsx as the styling and visual references.
+      - element: raw import typography cleanup rule
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:64
+        description: Defines banned typography utilities and the approved semantic size mapping for raw imports.
+      - element: geometry preservation rule
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:84
+        description: Explicitly forbids width, max-width, and major composition changes during adaptation.
+    language: Markdown
+    lines: 139
+
+  - file: design-token-and-layout-whitelist.md
+    path: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+    purpose: Lists the preferred token and utility vocabulary for imported blocks.
+    key_elements:
+      - element: preferred global tokens
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:26
+        description: Enumerates semantic colors and font roles used by the project.
+      - element: preferred utility classes
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:43
+        description: Establishes the approved shell, typography, and surface class vocabulary.
+      - element: raw import typography cleanup vocabulary
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:65
+        description: Repeats the semantic text-size mapping and banned typography stance for fresh raw imports.
+      - element: forbidden adaptation moves
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:180
+        description: Keeps layout, width, and composition changes out of bounds.
+    language: Markdown
+    lines: 202
+
+  - file: design-system.instructions.md
+    path: .github/instructions/design-system.instructions.md
+    purpose: Repo instruction layer that defines how raw shadcn blocks are translated into the project design system.
+    key_elements:
+      - element: global style source of truth
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:15
+        description: Declares zip/src/index.css and zip/src/pages/TemplatePage.tsx as the sources of truth.
+      - element: translation-only rule
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:33
+        description: Treats imported shadcn adaptation as translation rather than redesign.
+      - element: fresh shadcn typography protocol
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:41
+        description: Lists the banned typography classes and semantic text-size mapping for imported blocks.
+    language: Markdown
+    lines: 110
+
+patterns_found:
+  - category: architecture
+    pattern: Theme normalization targets are explicit and centralized.
+    description: The frontend exposes semantic color and font roles plus shared block utilities in one CSS entrypoint, and the design docs explicitly bind raw-import cleanup to that file and TemplatePage.
+    examples:
+      - file: zip/src/index.css
+        location: zip/src/index.css:7
+        snippet: '@theme { --color-primary: var(--primary); --font-headline: var(--font-sans); }'
+      - file: zip/src/index.css
+        location: zip/src/index.css:53
+        snippet: '.theme-block-heading { @apply font-headline text-3xl uppercase tracking-tight text-foreground lg:text-6xl; }'
+      - file: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:20
+        snippet: 'The primary global style source for the React frontend is zip/src/index.css.'
+    prevalence: common
+
+  - category: structure
+    pattern: Imported sections often keep literal className strings on semantic text tags.
+    description: Many representative imported sections still use literal Tailwind class stacks on h1-h3 and p elements, which makes AST-based class rewriting mechanically approachable when className is a static string.
+    examples:
+      - file: zip/src/components/sections/About1.tsx
+        location: zip/src/components/sections/About1.tsx:44
+        snippet: '<h3 className="mb-4 text-4xl font-semibold tracking-tight md:text-5xl">'
+      - file: zip/src/components/sections/Feature20.tsx
+        location: zip/src/components/sections/Feature20.tsx:66
+        snippet: '<h2 className="text-4xl font-semibold tracking-tight md:w-1/2 md:text-5xl">'
+      - file: zip/src/components/sections/Feature314.tsx
+        location: zip/src/components/sections/Feature314.tsx:106
+        snippet: '<h3 className="mt-0.5 text-xl font-medium md:text-xl">'
+    prevalence: common
+
+  - category: typography
+    pattern: Raw imported typography utilities conflict with the checked-in cleanup protocol.
+    description: Representative imported sections still contain font-weight and tracking utilities that the instruction layer bans for fresh raw imports.
+    examples:
+      - file: zip/src/components/sections/Hero214.tsx
+        location: zip/src/components/sections/Hero214.tsx:47
+        snippet: '<h1 className="font-headline text-left text-5xl tracking-tighter lg:text-6xl">'
+      - file: zip/src/components/sections/Feature285.tsx
+        location: zip/src/components/sections/Feature285.tsx:53
+        snippet: '<span className="text-xl font-semibold tracking-tight">'
+      - file: .github/instructions/design-system.instructions.md
+        location: .github/instructions/design-system.instructions.md:41
+        snippet: 'Never keep or emit these classes on fresh raw imports: leading-*, tracking-*, font-semibold, font-medium, font-bold...'
+    prevalence: common
+
+  - category: structure
+    pattern: Some imported sections already use compatible tokenized surfaces and borders.
+    description: Several imported sections already rely on bg-card, bg-muted, border-border, shadow-sm, and project aliases, so theme normalization does not need to rewrite every class in each block.
+    examples:
+      - file: zip/src/components/sections/Feature20.tsx
+        location: zip/src/components/sections/Feature20.tsx:103
+        snippet: '"overflow-hidden rounded-xl border border-border bg-card shadow-sm"'
+      - file: zip/src/components/sections/Feature285.tsx
+        location: zip/src/components/sections/Feature285.tsx:44
+        snippet: '"... overflow-hidden rounded-4xl bg-muted lg:grid-cols-2"'
+      - file: zip/components.json
+        location: zip/components.json:10
+        snippet: '"cssVariables": true'
+    prevalence: common
+
+  - category: architecture
+    pattern: Existing frontend refactors are regex-driven and mutate broadly.
+    description: The current helper scripts traverse zip/src and replace text classes through plain string substitution, without JSX awareness or any safe review mode.
+    examples:
+      - file: zip/refactor_fonts.cjs
+        location: zip/refactor_fonts.cjs:1
+        snippet: 'content.replace(/text-\[(\d+|\d+\.\d+)px\]/g, ...)'
+      - file: zip/refactor_scaleup.cjs
+        location: zip/refactor_scaleup.cjs:1
+        snippet: 'content = content.replace(/\btext-xs\b/g, "text-sm")'
+      - file: zip/refactor_scaledown.cjs
+        location: zip/refactor_scaledown.cjs:1
+        snippet: 'content = content.replace(/\btext-lg\b/g, "text-base")'
+    prevalence: occasional
+
+  - category: testing
+    pattern: Frontend tests validate rendered markup and class invariants with node:test.
+    description: Section tests already render TSX to static markup and assert for exact class fragments or the absence of regressions, which fits a codemod verification workflow.
+    examples:
+      - file: zip/src/components/sections/OurServices.test.tsx
+        location: zip/src/components/sections/OurServices.test.tsx:3
+        snippet: 'import { renderToStaticMarkup } from "react-dom/server";'
+      - file: zip/src/components/sections/OurServices.test.tsx
+        location: zip/src/components/sections/OurServices.test.tsx:14
+        snippet: 'assert.match(markup, /Our Services/);'
+      - file: zip/src/components/sections/PageBuilderMenuSection.test.tsx
+        location: zip/src/components/sections/PageBuilderMenuSection.test.tsx:43
+        snippet: 'assert.doesNotMatch(markup, /...leading-snug tracking-wider.../);'
+    prevalence: common
+
+  - category: naming
+    pattern: Imported sections coexist with curated Bulwar sections in the same directory.
+    description: The sections directory contains both native project sections and raw-import-style components without a dedicated source marker, so file-level targeting cannot rely on directory alone.
+    examples:
+      - file: zip/src/components/sections/AboutSection.tsx
+        location: zip/src/components/sections/AboutSection.tsx:105
+        snippet: 'Native Bulwar heading stack with font-headline and uppercase tracking.'
+      - file: zip/src/components/sections/About1.tsx
+        location: zip/src/components/sections/About1.tsx:14
+        snippet: 'Imported section keeps stock utility stacks and container mx-auto.'
+      - file: zip/src/components/sections/Feature285.tsx
+        location: zip/src/components/sections/Feature285.tsx:44
+        snippet: 'Imported shell uses large rounded-4xl muted surface composition.'
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: zip/src/index.css
+      responsibility: Defines the frontend token layer and shared theme-block utilities.
+      location: zip/src/index.css
+      relationship_to_domain: domain depends on this
+    - component: zip/src/pages/TemplatePage.tsx
+      responsibility: Shows the canonical visual vocabulary that imported blocks are expected to match.
+      location: zip/src/pages/TemplatePage.tsx
+      relationship_to_domain: domain depends on this
+    - component: zip/src/components/sections
+      responsibility: Contains both raw-import-style TSX blocks and curated project sections.
+      location: zip/src/components/sections
+      relationship_to_domain: domain is applied here
+    - component: zip/components.json
+      responsibility: Connects shadcn generation to the frontend CSS entrypoint and aliases.
+      location: zip/components.json
+      relationship_to_domain: domain depends on this
+    - component: zip/refactor_*.cjs
+      responsibility: Existing automation precedent for source-wide typography rewrites.
+      location: zip/
+      relationship_to_domain: this informs transform risk
+    - component: zip/src/components/sections/*.test.tsx
+      responsibility: Provides executable markup assertions for layout and class invariants.
+      location: zip/src/components/sections
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: className string literals on JSX elements
+      location: zip/src/components/sections/*.tsx
+      usage_pattern: Most candidate rewrites operate on static Tailwind class stacks attached to semantic elements.
+    - interface: cn helper
+      location: zip/lib/utils.ts
+      usage_pattern: Sections frequently pass static class strings through cn, which preserves string-level rewrite opportunities.
+    - interface: Button component className prop
+      location: zip/components/ui/button.tsx
+      usage_pattern: Imported sections also place typography and tracking utilities on Button className strings.
+  data_flow_involving_domain: Raw shadcn blocks enter zip/src/components/sections as TSX with literal Tailwind classes, derive their allowed theme vocabulary from zip/src/index.css plus the checked-in adaptation docs, and can be rendered through existing node:test markup tests to verify post-transform class stacks.
+  key_relationships_to_domain:
+    - from: zip/components.json
+      to: zip/src/index.css
+      relationship: imports
+    - from: .github/instructions/design-system.instructions.md
+      to: zip/src/index.css
+      relationship: references
+    - from: .github/instructions/design-system.instructions.md
+      to: zip/src/pages/TemplatePage.tsx
+      relationship: references
+    - from: zip/src/components/sections/About1.tsx
+      to: zip/lib/utils.ts
+      relationship: imports
+    - from: zip/src/components/sections/Feature285.tsx
+      to: zip/components/ui/button.tsx
+      relationship: imports
+    - from: zip/src/components/sections/OurServices.test.tsx
+      to: zip/src/components/sections/OurServices.tsx
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - CSS
+    - Markdown
+    - JavaScript
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: All candidate blocks are TSX React components.
+    - name: Vite 6
+      usage_in_domain: Frontend build pipeline and compile gate for transformed files.
+    - name: Tailwind CSS 4
+      usage_in_domain: Utility styling and @theme token layer in src/index.css.
+  libraries_used_in_domain:
+    - name: shadcn 4.1.0
+      purpose_in_domain: Imported UI baseline and registry configuration for frontend blocks.
+    - name: clsx
+      purpose_in_domain: Used with tailwind-merge through cn to compose className values.
+    - name: tailwind-merge
+      purpose_in_domain: Merges class strings in the shared cn helper.
+    - name: lucide-react
+      purpose_in_domain: Common icon dependency across imported blocks.
+    - name: framer-motion
+      purpose_in_domain: Some imported blocks include animation wrappers that a transform should not structurally alter.
+    - name: tsx
+      purpose_in_domain: Allows a repo-local TypeScript CLI to execute without a build step.
+    - name: typescript
+      purpose_in_domain: Typed parsing and compile validation for transformed code.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Section components use PascalCase filenames under zip/src/components/sections, while design-contract documents live under docs/plan/... and instruction files under .github/instructions/.
+  structure_of_domain: Global theme tokens live in zip/src/index.css, canonical usage lives in TemplatePage, imported and native sections share one sections directory, and lightweight utility scripts sit at zip/ root.
+  error_handling_in_domain: Existing frontend refactor scripts mutate files directly and log touched files, while the instruction docs require stopping when cleanup would force geometry changes or ad hoc typography invention.
+  testing_in_domain: Frontend tests use node:test, react-dom/server renderToStaticMarkup, and regex assertions for exact class fragments and regression guards.
+  documentation_in_domain: The adaptation contract and whitelist explicitly define allowed token roles, banned typography utilities, and geometry-preservation rules for raw imports.
+
+related_dependencies:
+  internal:
+    - component: zip/src/index.css
+      relationship_to_domain: supplies token and utility targets for rewrites
+      direction: outbound
+    - component: zip/src/pages/TemplatePage.tsx
+      relationship_to_domain: supplies canonical usage examples for project typography and spacing
+      direction: outbound
+    - component: zip/lib/utils.ts
+      relationship_to_domain: wraps className composition through cn
+      direction: outbound
+    - component: zip/src/components/sections/*.test.tsx
+      relationship_to_domain: verifies transformed markup and layout invariants
+      direction: inbound
+    - component: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+      relationship_to_domain: defines cleanup and geometry rules for raw imports
+      direction: outbound
+    - component: .github/instructions/design-system.instructions.md
+      relationship_to_domain: defines the instruction-layer contract for imported block cleanup
+      direction: outbound
+  external:
+    - name: react
+      purpose_for_domain: component runtime for TSX blocks
+    - name: tailwindcss
+      purpose_for_domain: utility vocabulary and theme variable system
+    - name: shadcn
+      purpose_for_domain: raw import source ecosystem and registry config
+    - name: tsx
+      purpose_for_domain: direct execution of a repo-local transform script
+    - name: typescript
+      purpose_for_domain: typed parsing and compile validation for transformed code
+
+testing_patterns:
+  framework: node:test with react-dom/server string rendering assertions
+  coverage_areas:
+    - section text content
+    - repeated class-stack invariants
+    - absence of known-bad class combinations
+    - data-section and variant markers
+  test_organization: colocated *.test.tsx files near sections and layout helpers under zip/src
+  mock_patterns:
+    - render TSX to static HTML with renderToStaticMarkup
+    - assert exact regex class fragments with assert.match and assert.doesNotMatch
+
+open_questions:
+  - question: How will the repo identify which section files are still raw imports versus already-curated Bulwar components?
+    context: Imported and native sections coexist under zip/src/components/sections, and a broad directory-level transform would hit both.
+    type: decision_blocker
+    affects:
+      - frontend-research
+  - question: Should nonsemantic text wrappers like div or span be normalized only when they match an explicit allowlist, or always be left for review?
+    context: Feature314 and Feature285 place text roles on nonsemantic wrappers, which prevents deterministic size remapping by tag name alone.
+    type: decision_blocker
+    affects:
+      - frontend-research
+  - question: Should layout-shell normalization be entirely out of scope for the first script pass?
+    context: The checked-in docs forbid width and geometry changes, but imported sections still use container, rounded-4xl, and other shell choices that are visually meaningful.
+    type: decision_blocker
+    affects:
+      - frontend-research
+  - question: Should Button className typography be governed by the same semantic text-role mapping as native text tags?
+    context: Hero214 and other sections carry tracking utilities inside Button className strings where semantic element role is indirect.
+    type: research
+    affects:
+      - frontend-research
+
+gaps:
+  - area: raw-import targeting
+    description: No checked-in manifest, file suffix, or metadata flag distinguishes freshly imported shadcn blocks from curated project sections inside zip/src/components/sections.
+    impact: decision_blocker
+    affects:
+      - frontend-research
+  - area: codemod package surface
+    description: zip/package.json exposes tsx and TypeScript but does not declare a direct AST codemod dependency such as ts-morph, jscodeshift, or recast as a first-class dev dependency.
+    impact: research_blocker
+    affects:
+      - frontend-research
+  - area: non-literal class expressions
+    description: This research pass confirmed many static className strings, but it did not inventory every interpolated or computed class expression across zip/src/components/sections.
+    impact: research_blocker
+    affects:
+      - frontend-research
+  - area: canonical token replacement table
+    description: The docs define approved vocabulary and banned typography utilities, but they do not provide a machine-readable mapping table from common raw shadcn utility stacks to exact project replacements.
+    impact: research_blocker
+    affects:
+      - frontend-research

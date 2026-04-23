@@ -1,0 +1,363 @@
+plan_id: react-template-live-deploy-20260415
+objective: |
+  Prepare a concise execution plan for a production push-live deployment of the existing React app from zip to dhosting, with the runtime change limited to TemplatePage rendering the added AboutSection under the /react/template route.
+created_at: 2026-04-15T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 3
+  risk_score: medium
+
+tldr: |
+  Build or confirm the current zip release artifact, making sure it still targets /react and includes the SPA fallback files needed by BrowserRouter. Upload the validated archive to dhosting, run the existing deploy-react.sh flow that swaps public_html/react, then enforce and verify the required 755/644 permissions. Finish with a live smoke check on /react/template to confirm TemplatePage and the added AboutSection render correctly after a direct open and refresh.
+open_questions:
+  - Confirm whether the live push will use a freshly rebuilt archive from zip or an already prepared react-deploy.zip whose freshness has been verified.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: A stale or wrong archive is deployed, so live does not include the TemplatePage runtime change with AboutSection.
+      likelihood: medium
+      impact: critical
+      mitigation: Validate the exact release candidate before upload and rebuild/package from zip if artifact freshness is not provable.
+    - scenario: The deployed bundle is missing the /react SPA rewrite fallback, so opening or refreshing /react/template returns 404 despite the app booting from /react/.
+      likelihood: medium
+      impact: critical
+      mitigation: Treat the rewrite file as a release gate and verify direct navigation plus refresh on the live /react/template route.
+    - scenario: Deployment completes but file permissions are not normalized to 755 for directories and 644 for files, causing white screen or 403 behavior on dhosting.
+      likelihood: medium
+      impact: critical
+      mitigation: Execute the permission repair as an explicit post-deploy step and verify it against the deployed react directory.
+  assumptions:
+    - The user explicitly requested a live push and the deploy scope is limited to the existing React app in zip.
+    - The runtime code change is already implemented locally in TemplatePage and no new code changes are required for this plan.
+    - The live React app is served from /home/client-user/domains/client.example/public_html/react and is exposed under /react on https://client.example.
+
+implementation_specification:
+  code_structure: |
+    This is an operational deployment plan only. Reuse the existing Vite build for zip, the existing BrowserRouter basename of /react, the existing route mapping for /template, and the established server-side deploy-react.sh script that rotates the live react directory and unpacks ~/react-deploy.zip.
+  affected_areas:
+    - zip build and deployment archive generation
+    - deploy-react.sh deployment flow and the live react directory on dhosting
+    - live route /react/template served from the client.example domain
+  component_details:
+    - component: Release artifact validation
+      responsibility: Confirm the deployable archive contains the current TemplatePage runtime change and still targets the /react subpath.
+      interfaces:
+        - zip/package.json build command
+        - zip/vite.config.ts base '/react/'
+        - react.htaccess or equivalent SPA fallback file packaged into the archive
+    - component: Live publication
+      responsibility: Upload the validated archive and execute the existing server-side replacement flow into public_html/react.
+      interfaces:
+        - SCP upload of react-deploy.zip
+        - SSH execution of deploy-react.sh
+    - component: Permission normalization
+      responsibility: Ensure deployed directories are 755 and files are 644 immediately after publication.
+      interfaces:
+        - find /home/client-user/domains/client.example/public_html/react -type d -exec chmod 755 {} \;
+        - find /home/client-user/domains/client.example/public_html/react -type f -exec chmod 644 {} \;
+    - component: Live verification
+      responsibility: Confirm the released app works from the exact production URL and route shape expected by BrowserRouter.
+      interfaces:
+        - https://client.example/react/
+        - https://client.example/react/template
+  dependencies:
+    - component: Release artifact validation
+      relationship: Must complete before any upload or deploy action.
+    - component: Live publication
+      relationship: Produces the deployed files that permissions and smoke verification depend on.
+    - component: Permission normalization
+      relationship: Must execute immediately after publication before live acceptance checks.
+    - component: Live verification
+      relationship: Depends on the final deployed files and corrected permissions.
+  integration_points:
+    - zip/package.json build script
+    - zip/src/main.tsx BrowserRouter basename '/react'
+    - zip/src/App.tsx route '/template'
+    - react.htaccess SPA rewrite fallback
+    - deploy-react.sh target path /home/client-user/domains/client.example/public_html/react
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: Validated release archive and confirmed target path.
+    format: Fresh or freshness-verified react-deploy.zip ready for dhosting upload.
+  - from_task: T2
+    to_task: T3
+    interface: Newly deployed live react directory contents.
+    format: public_html/react replaced from ~/react-deploy.zip with backup directory created when applicable.
+  - from_task: T3
+    to_task: T4
+    interface: Live app served from corrected permissions.
+    format: Directories 755 and files 644 across the deployed react tree.
+
+tasks:
+  - id: T1
+    title: Validate the release candidate for /react deployment
+    description: |
+      Confirm the exact artifact to push live from zip. The selected archive must reflect the current TemplatePage change with AboutSection, preserve Vite base '/react/', and include the SPA fallback required for BrowserRouter deep links such as /react/template.
+    wave: 1
+    agent: gem-devops
+    prototype: false
+    covers:
+      - step-1
+    priority: high
+    status: pending
+    flags:
+      flaky: false
+      retries_used: 0
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/package.json
+        description: Build command source for the React artifact.
+      - path: zip/vite.config.ts
+        description: Confirms the asset base path is /react/.
+      - path: react.htaccess
+        description: Defines the SPA fallback required for direct access to /react/template.
+      - path: zip/src/pages/TemplatePage.tsx
+        description: Confirms the runtime change includes AboutSection on TemplatePage.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Initial planning for a simple live React deploy request.
+        timestamp: 2026-04-15T00:00:00Z
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 0
+        focus_area: release gating
+        verification:
+          - Confirm the chosen archive is current.
+          - Confirm the archive preserves /react routing and rewrite needs.
+        acceptance_criteria:
+          - One explicit release artifact is approved for upload.
+          - The artifact contains the runtime change and routing prerequisites.
+        failure_modes:
+          - scenario: The archive is assumed current without validating its contents.
+            likelihood: medium
+            impact: high
+            mitigation: Inspect or rebuild the artifact before deployment.
+    verification:
+      - The chosen archive is explicitly identified and freshness is proven.
+      - The release payload still supports /react/template deep linking.
+    acceptance_criteria:
+      - A single deployable archive is selected.
+      - The archive is suitable for live publication under /react.
+    failure_modes:
+      - scenario: A stale archive is selected as the release candidate.
+        likelihood: medium
+        impact: high
+        mitigation: Rebuild from zip when timestamp or contents are uncertain.
+    tech_stack:
+      - React 19
+      - Vite 6
+      - dhosting SSH/SCP deployment
+    test_coverage: null
+    environment: production
+    requires_approval: true
+    devops_security_sensitive: false
+
+  - id: T2
+    title: Publish the validated React archive to dhosting
+    description: |
+      Upload the approved react-deploy.zip to the dhosting account and run the existing deploy-react.sh flow so the current live public_html/react directory is rotated to a timestamped backup and replaced with the new bundle.
+    wave: 2
+    agent: gem-devops
+    prototype: false
+    covers:
+      - step-2
+    priority: high
+    status: pending
+    flags:
+      flaky: false
+      retries_used: 0
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: deploy-react.sh
+        description: Existing live deployment script with backup, unzip, and cleanup behavior.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Reuse the existing live publication flow instead of inventing a new deploy path.
+        timestamp: 2026-04-15T00:00:00Z
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 0
+        focus_area: live publication
+        verification:
+          - Confirm upload succeeds.
+          - Confirm the live react directory is replaced via the approved script.
+        acceptance_criteria:
+          - The archive is uploaded to the correct account.
+          - The live react directory is replaced with the new bundle.
+        failure_modes:
+          - scenario: The archive is unpacked into the wrong server location.
+            likelihood: low
+            impact: critical
+            mitigation: Use only the BASE path encoded in deploy-react.sh.
+    verification:
+      - The release archive reaches the expected dhosting account.
+      - The script completes and the live react directory is replaced.
+      - A timestamped backup of the previous live react directory exists if the directory was present.
+    acceptance_criteria:
+      - public_html/react contains the new release.
+      - The previous live version remains recoverable via the created backup.
+    failure_modes:
+      - scenario: The deploy uses a different remote path than the script expects.
+        likelihood: low
+        impact: critical
+        mitigation: Reuse the exact path from deploy-react.sh without manual variation.
+    tech_stack:
+      - Bash deployment script
+      - SSH/SCP
+      - dhosting
+    test_coverage: null
+    environment: production
+    requires_approval: true
+    devops_security_sensitive: true
+
+  - id: T3
+    title: Run and verify the mandatory permission normalization
+    description: |
+      Treat permissions as an explicit post-deploy gate. Ensure the deployed react tree uses 755 for directories and 644 for files, even if deploy-react.sh already performed the chmod pass, because dhosting permission drift can break the live app.
+    wave: 3
+    agent: gem-devops
+    prototype: false
+    covers:
+      - step-3
+    priority: high
+    status: pending
+    flags:
+      flaky: false
+      retries_used: 0
+    dependencies:
+      - T2
+    conflicts_with: []
+    context_files:
+      - path: deploy-react.sh
+        description: Encodes the required chmod pattern for the live react directory.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: dhosting permissions are a non-negotiable live gate.
+        timestamp: 2026-04-15T00:00:00Z
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 0
+        focus_area: permissions
+        verification:
+          - Apply or re-apply chmod 755/644.
+          - Verify the live route is not blocked by permission issues.
+        acceptance_criteria:
+          - All deployed directories are 755.
+          - All deployed files are 644.
+        failure_modes:
+          - scenario: Permissions are assumed correct because the unzip succeeded.
+            likelihood: medium
+            impact: critical
+            mitigation: Verify permissions explicitly after deploy.
+    verification:
+      - The permission repair step is executed against the live react directory.
+      - The live app is accessible without 403 or white-screen symptoms caused by permissions.
+    acceptance_criteria:
+      - Deployed directories use 755.
+      - Deployed files use 644.
+    failure_modes:
+      - scenario: Permission normalization is skipped as redundant.
+        likelihood: medium
+        impact: critical
+        mitigation: Keep it as a required release gate.
+    tech_stack:
+      - SSH
+      - POSIX file permissions
+      - dhosting
+    test_coverage: null
+    environment: production
+    requires_approval: true
+    devops_security_sensitive: false
+
+  - id: T4
+    title: Verify the live TemplatePage route after push live
+    description: |
+      Run focused production smoke checks on the deployed app. Open /react/template from the live domain, confirm TemplatePage renders with the added AboutSection, verify assets load from /react/assets, and confirm a direct refresh on /react/template still resolves correctly through the SPA fallback.
+    wave: 4
+    agent: gem-browser-tester
+    prototype: false
+    covers:
+      - step-4
+    priority: high
+    status: pending
+    flags:
+      flaky: false
+      retries_used: 0
+    dependencies:
+      - T3
+    conflicts_with: []
+    context_files:
+      - path: zip/src/main.tsx
+        description: Confirms BrowserRouter basename is /react.
+      - path: zip/src/App.tsx
+        description: Confirms the /template route is registered.
+      - path: zip/src/pages/TemplatePage.tsx
+        description: Confirms AboutSection is rendered on TemplatePage.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Production validation must cover both initial load and deep-link refresh for BrowserRouter.
+        timestamp: 2026-04-15T00:00:00Z
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 0
+        focus_area: smoke verification
+        verification:
+          - Open the live /react/template route.
+          - Refresh the same route directly.
+          - Confirm AboutSection is visible and assets load under /react.
+        acceptance_criteria:
+          - The live route renders TemplatePage with AboutSection.
+          - Direct refresh on /react/template works.
+        failure_modes:
+          - scenario: Root route works but deep-link refresh fails because the SPA fallback file was omitted.
+            likelihood: medium
+            impact: critical
+            mitigation: Verify direct access and refresh on /react/template before closing the deploy.
+    verification:
+      - https://client.example/react/ opens successfully.
+      - https://client.example/react/template opens successfully.
+      - Refreshing /react/template does not return 404.
+      - TemplatePage visibly includes the AboutSection content.
+      - Static assets are served from /react/assets without 404 errors.
+    acceptance_criteria:
+      - Live TemplatePage is reachable under /react/template.
+      - The runtime change with AboutSection is visible on live.
+      - The route survives a direct browser refresh.
+    failure_modes:
+      - scenario: Cached assets mask an incomplete rollout.
+        likelihood: low
+        impact: high
+        mitigation: Use hard refresh and confirm the current asset URLs resolve correctly.
+    validation_matrix:
+      - scenario: Live root availability
+        steps:
+          - Open https://client.example/react/.
+        expected_result: The React app boots normally under the /react subpath.
+      - scenario: TemplatePage route render
+        steps:
+          - Open https://client.example/react/template.
+          - Inspect the page for the AboutSection block.
+        expected_result: TemplatePage renders and includes AboutSection on live.
+      - scenario: Deep-link refresh
+        steps:
+          - Refresh the browser while staying on /react/template.
+        expected_result: The route still resolves and does not fall through to a server 404.
+      - scenario: Static asset resolution
+        steps:
+          - Inspect asset requests triggered by the live TemplatePage.
+        expected_result: CSS, JS, and images resolve from /react assets without 404.
+

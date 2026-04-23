@@ -1,0 +1,239 @@
+plan_id: catering-special-menu-wording-live-20260325
+objective: Verify the active BULWAR APP catering frontend source and build outputs for the special product 'Obiad Wielkanocny dla 2 osób', remove any remaining active per-2-person portion wording from authoring sources, deploy the current correct frontend to live v2, and verify the live bundle contains per-1-person wording for option labels and weights.
+created_at: "2026-03-25T00:00:00Z"
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Current authoring sources in zip/src already use per-1-person option weights, while an older packaged artifact still contains stale per-2-person wording.
+  The minimal path is to audit the active source-of-truth and generated dist bundle, align any remaining bundled copy in the special-menu source module/component to per-1-person semantics, then redeploy the current frontend package to v2 and confirm the live JS bundle exposes only per-1-person wording for the special menu option text.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: A stale string remains in an unused but bundled source field, so the live bundle still contains per-2-person wording even after redeploy.
+      likelihood: medium
+      impact: high
+      mitigation: Audit both the visible JSX copy and the seed data module, then verify the built asset text before deployment.
+    - scenario: Deployment publishes an older package snapshot instead of the freshly built dist output.
+      likelihood: medium
+      impact: critical
+      mitigation: Build from current zip/src, package from the new dist directory only, and verify the deployed asset fingerprint/content after publish.
+    - scenario: Live caching masks the new asset and the browser keeps serving a previous hotfix bundle.
+      likelihood: medium
+      impact: high
+      mitigation: Validate the live asset URL directly and confirm the new bundle contains per-1-person strings before relying on page-level visual checks.
+  assumptions:
+    - The active live catering frontend is the React app mounted under the v2 WordPress host.
+    - zip/src/data/cateringSpecialMenuFor2.ts and zip/src/components/sections/CateringProductSpecialMenuFor2.tsx remain the only authoring sources for this product's wording.
+    - zip/dist and zip/deploy-live-hotfix-* are generated artifacts, not sources of truth.
+    - The existing SCP plus deploy-react.sh workflow remains the correct deployment path for the live React overlay.
+
+implementation_specification:
+  code_structure: Keep the scope limited to the special-menu authoring sources and the existing frontend deployment workflow. Treat the seed data module and the special-menu section component as the only places where wording should be authored; dist and deploy snapshots must be regenerated rather than edited manually.
+  affected_areas:
+    - zip/src/data/cateringSpecialMenuFor2.ts
+    - zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+    - zip/dist
+    - zip/deploy-live-hotfix-*
+    - deploy-react.sh
+  component_details:
+    - component: special-menu source audit
+      responsibility: Identify whether any active or bundled authoring strings for the special product still imply per-2-person portions.
+      interfaces:
+        - Produces a list of authoritative source locations and stale-copy findings for the special-menu wording.
+    - component: special-menu wording source
+      responsibility: Keep visible intro copy, seed data text, and option weight strings aligned to per-1-person semantics.
+      interfaces:
+        - Exposes the final source strings consumed by the build for the special-menu component and option cards.
+    - component: live deployment package
+      responsibility: Build and publish the current React frontend bundle to the v2 environment using the existing deployment script path.
+      interfaces:
+        - Produces a deployed asset set whose special-menu bundle text matches the corrected source.
+  dependencies:
+    - component: special-menu wording source
+      relationship: depends on the source audit to identify any remaining stale strings before rebuild.
+    - component: live deployment package
+      relationship: depends on a fresh build generated from the audited or corrected authoring sources.
+  integration_points:
+    - Vite build output under zip/dist/assets
+    - Existing packaging and SCP deployment flow using deploy-react.sh
+    - Live route under the v2 React frontend for the catering page
+    - Direct live bundle verification against deployed asset text
+
+contracts:
+  - from_task: audit_special_menu_wording_sources
+    to_task: align_special_menu_wording_sources
+    interface: Definitive list of active source locations and any stale per-2-person strings that are still bundled or rendered.
+    format: File-path plus string-inventory findings for zip/src and zip/dist
+  - from_task: align_special_menu_wording_sources
+    to_task: build_and_deploy_current_frontend_to_v2
+    interface: Clean authoring sources and fresh build output containing only per-1-person wording for the special-menu option copy.
+    format: Updated source files and regenerated dist assets
+  - from_task: build_and_deploy_current_frontend_to_v2
+    to_task: verify_live_bundle_per_person_wording
+    interface: Deployed live asset path or fingerprint for the newly published frontend bundle.
+    format: Live asset reference and deployment timestamp
+
+tasks:
+  - id: audit_special_menu_wording_sources
+    title: Verify active source and current build state for special-menu wording
+    description: |
+      Audit the active authoring sources and current generated bundle for the special product. Confirm that zip/src keeps per-1-person option weights and labels, identify any remaining active or bundled copy that still implies per-2-person portions, and explicitly distinguish stale historical deploy snapshots from the current deploy candidate.
+    wave: 1
+    agent: gem-researcher
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/data/cateringSpecialMenuFor2.ts: Source-of-truth for product shell text and option weight labels.
+      - zip/src/components/sections/CateringProductSpecialMenuFor2.tsx: Visible JSX copy for the special-menu section.
+      - zip/dist/assets: Current generated bundle that should match the source-of-truth.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 80
+    focus_area: source-of-truth verification
+    verification:
+      - Confirm source option weights remain per-1-person values such as 0,25 l and 1 szt. / 2 szt. / 100 ml.
+      - Confirm whether any seed or component copy still references portions for two people.
+      - Confirm stale per-2-person wording exists only in older packaged artifacts, not in the current dist candidate.
+    acceptance_criteria:
+      - A definitive inventory exists for source, dist, and historical hotfix artifacts.
+      - The task identifies every remaining string that must be corrected or explicitly ignored as historical.
+    failure_modes:
+      - scenario: The audit misses an unused source field that is still embedded in the bundle.
+        likelihood: medium
+        impact: high
+        mitigation: Search both TS/TSX authoring files and the built JS asset for known per-2-person markers.
+    tech_stack:
+      - TypeScript
+      - Vite bundle output
+    test_coverage: null
+
+  - id: align_special_menu_wording_sources
+    title: Correct any remaining active or bundled per-2-person copy at the source
+    description: |
+      Apply the smallest possible source change set so every authoritative string for the special menu aligns with per-1-person semantics. This includes visible UI copy and any still-bundled seed text that could survive into the live asset even if it is not currently rendered.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - audit_special_menu_wording_sources
+    context_files:
+      - zip/src/data/cateringSpecialMenuFor2.ts: Update stale bundled seed wording if present.
+      - zip/src/components/sections/CateringProductSpecialMenuFor2.tsx: Update visible intro copy if any per-2-person portion text remains.
+      - zip/src/data/cateringSpecialMenuFor2.test.ts: Extend or adjust assertions for the expected per-1-person wording.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 60
+    focus_area: wording correction
+    verification:
+      - Confirm no authoritative special-menu source string implies doubled portions per person.
+      - Confirm tests or string assertions cover the intended per-1-person weights and wording.
+      - Confirm a fresh build candidate will no longer embed stale per-2-person strings.
+    acceptance_criteria:
+      - Source files contain only the approved per-1-person wording for the special-menu copy that reaches the bundle.
+      - Any test covering the seed data or wording passes against the corrected source.
+    failure_modes:
+      - scenario: A partial fix updates visible JSX but leaves stale seed text in the bundle.
+        likelihood: medium
+        impact: high
+        mitigation: Treat bundled seed text as in-scope even when not currently rendered.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Vitest or existing test runner
+    test_coverage: Update the existing special-menu data test or equivalent wording assertion.
+
+  - id: build_and_deploy_current_frontend_to_v2
+    title: Rebuild the frontend and deploy the current correct package to live v2
+    description: |
+      Generate a fresh production bundle from the corrected or verified source, package the output with the existing deployment flow, and publish it to the live v2 environment. The deployment should use the established SCP plus deploy-react.sh process, and the post-deploy permissions fix required by dhosting must remain part of the runbook.
+    wave: 3
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies:
+      - align_special_menu_wording_sources
+    context_files:
+      - zip/package.json: Build command for the React frontend.
+      - deploy-react.sh: Existing remote deployment script.
+      - react.htaccess: Included in the deployed React package.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 40
+    focus_area: production deployment
+    verification:
+      - Confirm the build output under zip/dist contains the expected per-1-person strings before deployment.
+      - Confirm the deployed package is created from the fresh dist directory rather than from an older snapshot.
+      - Confirm the dhosting permissions step is applied after upload and unpack.
+    acceptance_criteria:
+      - Live v2 receives the newly built React package.
+      - The deployment record identifies the new package timestamp or asset fingerprint.
+    failure_modes:
+      - scenario: The deploy script succeeds but publishes stale files due to packaging the wrong folder.
+        likelihood: medium
+        impact: critical
+        mitigation: Package only the newly built dist output and record the deployed asset name.
+    tech_stack:
+      - Vite
+      - SCP
+      - SSH
+      - dhosting
+    test_coverage: null
+    environment: production
+    requires_approval: true
+    security_sensitive: true
+
+  - id: verify_live_bundle_per_person_wording
+    title: Validate the live bundle and page output after deployment
+    description: |
+      Verify the live v2 frontend after deployment by checking the deployed asset text directly and by validating the catering route output. The validation must prove that the live bundle now contains per-1-person wording for the special-menu option weights and no lingering stale per-2-person portion strings for that feature.
+    wave: 4
+    agent: gem-browser-tester
+    priority: high
+    status: pending
+    dependencies:
+      - build_and_deploy_current_frontend_to_v2
+    context_files:
+      - zip/dist/assets: Local reference for expected deployed bundle text.
+      - zip/src/data/cateringSpecialMenuFor2.ts: Expected source strings for verification.
+      - zip/src/components/sections/CateringProductSpecialMenuFor2.tsx: Expected visible wording on the live page.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 30
+    focus_area: live verification
+    verification:
+      - Confirm the live JS bundle contains per-1-person markers such as 0,25 l and 1 szt. / 2 szt. / 100 ml.
+      - Confirm the live JS bundle does not contain stale per-2-person markers such as 0,5 l or doubled special-menu weights.
+      - Confirm the live catering page renders the special-menu wording consistent with the verified bundle.
+    acceptance_criteria:
+      - Live bundle inspection passes for both positive and negative string checks.
+      - Live page output matches the corrected per-1-person wording.
+    failure_modes:
+      - scenario: The browser page looks correct but the live asset URL still serves an older cached bundle in some requests.
+        likelihood: medium
+        impact: high
+        mitigation: Validate the deployed asset response directly, not only the rendered page.
+    tech_stack:
+      - Browser validation
+      - HTTP asset inspection
+    test_coverage: null
+    validation_matrix:
+      - scenario: Positive live-bundle verification
+        steps:
+          - Load the live deployed JS asset for the catering frontend.
+          - Search for the special-menu product title and expected per-1-person weight strings.
+        expected_result: The asset contains the special-menu title plus only per-1-person wording for weights and option copy.
+      - scenario: Negative live-bundle verification
+        steps:
+          - Search the same live asset for known stale per-2-person markers from the older hotfix artifact.
+        expected_result: No stale special-menu per-2-person markers are present in the live asset.
+      - scenario: Route rendering verification
+        steps:
+          - Open the live v2 catering route and inspect the special-menu section.
+          - Check the visible intro and option labels shown for the special product.
+        expected_result: The rendered special-menu section presents per-1-person wording consistently with the deployed bundle.

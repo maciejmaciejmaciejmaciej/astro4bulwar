@@ -1,0 +1,240 @@
+plan_id: catering-wielkanocny-live-deploy-20260326
+objective: |
+  Publish the already-implemented catering-wielkanocny frontend changes from the zip React app to the live BULWAR APP environment, then verify the live page behavior for the Easter catalog update, the new breakfast-for-two category, and the checkout naming fallback.
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Reuse the repo's existing React deployment flow: confirm the current zip build/package inputs, publish the prepared frontend bundle to the live react directory, run the mandatory dhosting permission repair over the deployed files, and execute targeted live smoke checks against the catering-wielkanocny flow. Keep the release frontend-only and validate the page rendering plus checkout display naming on the live environment.
+open_questions:
+  - Confirm whether the deploy should publish the current zip/react-deploy.zip artifact as-is or rebuild a fresh production bundle from zip before upload.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: An outdated or wrong deployment artifact is uploaded, so live does not match the currently implemented local changes.
+      likelihood: medium
+      impact: critical
+      mitigation: Inspect the current zip package/build inputs first, verify timestamps or regenerate the production bundle from zip, and deploy only the validated artifact.
+    - scenario: Files are deployed successfully but dhosting permissions are not repaired, causing white screen or 403 errors on the live React app.
+      likelihood: medium
+      impact: critical
+      mitigation: Treat the SSH chmod pass as a non-optional deployment step and verify it against the live react directory immediately after upload.
+    - scenario: The page loads, but the new category order or checkout display name regresses on live because the wrong frontend bundle or cached assets are served.
+      likelihood: medium
+      impact: high
+      mitigation: Verify the live catering-wielkanocny page content and exercise add-to-cart/drawer flows against the released assets rather than relying on build success alone.
+  assumptions:
+    - The requested changes are already implemented locally in the zip frontend and do not require new code changes.
+    - The live frontend is served from the react directory under the path used by deploy-react.sh.
+    - Backend and bridge behavior remain unchanged; this plan only publishes frontend assets and verifies the UI against the existing live WordPress backend at https://client.example.
+
+implementation_specification:
+  code_structure: |
+    This is an operational deployment plan, not a code-change plan. Reuse the repository's existing zip build/package flow and the existing server-side deployment script pattern in deploy-react.sh. Keep the deployment limited to the built React assets and avoid backend or plugin changes.
+  affected_areas:
+    - zip production build and packaged deployment artifact
+    - deploy-react.sh deployment flow and its target live react directory
+    - live catering-wielkanocny frontend route connected to the existing WordPress backend
+  component_details:
+    - component: Local release artifact validation
+      responsibility: Identify and validate the exact production artifact to deploy from the zip app.
+      interfaces:
+        - zip/package.json build scripts
+        - zip/react-deploy.zip or a freshly built replacement archive
+        - existing packaged deploy folders under zip for timestamp comparison if needed
+    - component: Live asset publication
+      responsibility: Upload the validated React artifact and expand it into the live react directory using the established deployment script pattern.
+      interfaces:
+        - SCP upload of the release archive to the dhosting account
+        - SSH execution of deploy-react.sh logic on the target server path
+    - component: Permission normalization
+      responsibility: Enforce dhosting-required directory and file permissions immediately after deployment.
+      interfaces:
+        - find <path> -type d -exec chmod 755 {} \;
+        - find <path> -type f -exec chmod 644 {} \;
+    - component: Live smoke verification
+      responsibility: Confirm the released frontend behaves correctly on the catering-wielkanocny page and in cart/checkout display paths.
+      interfaces:
+        - live page URL for catering-wielkanocny
+        - cart drawer and checkout-success naming surfaces fed by the frontend state
+  dependencies:
+    - component: Local release artifact validation
+      relationship: Must complete before any upload or server-side deployment step.
+    - component: Live asset publication
+      relationship: Produces the deployed live files that permission normalization and verification depend on.
+    - component: Permission normalization
+      relationship: Must run immediately after publication so the live app can be served correctly.
+    - component: Live smoke verification
+      relationship: Depends on the completed deployment and permission fix using the final live assets.
+  integration_points:
+    - zip/package.json and any existing release packaging workflow in the zip app
+    - deploy-react.sh target path /home/client-user/domains/client.example/public_html/react
+    - live backend/base domain https://client.example
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: Validated release artifact and deployment path inputs.
+    format: Confirmed zip archive or freshly built dist package plus target live path.
+  - from_task: T2
+    to_task: T3
+    interface: Newly deployed live react directory contents.
+    format: Uploaded archive expanded into /public_html/react with deployment timestamp or backup marker.
+  - from_task: T3
+    to_task: T4
+    interface: Live frontend served with corrected permissions.
+    format: Directory permissions 755 and file permissions 644 under the deployed react path.
+
+tasks:
+  - id: T1
+    title: Validate the exact frontend artifact and deployment inputs
+    description: |
+      Inspect the zip app deployment workflow and confirm which bundle should be published to live. Prefer the smallest safe path: either validate the current zip/react-deploy.zip artifact and its freshness against the implemented changes, or rebuild/package a new production artifact from zip if freshness is unclear.
+    wave: 1
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - deploy-react.sh: Defines the live target directory structure and the expected uploaded archive name.
+      - zip/package.json: Provides the build/package commands for the React app.
+      - zip/react-deploy.zip: Existing ready-to-publish artifact candidate.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 0
+    focus_area: release artifact selection
+    verification:
+      - Confirm which build/package command produces the live artifact.
+      - Confirm the artifact to upload corresponds to the current catering-wielkanocny implementation.
+    acceptance_criteria:
+      - One release artifact is explicitly selected for deployment.
+      - The target live path and upload/deploy method are confirmed before publication.
+    failure_modes:
+      - scenario: A stale archive is mistaken for the release candidate.
+        likelihood: medium
+        impact: high
+        mitigation: Compare artifact timestamps and regenerate the package if freshness cannot be proven.
+    environment: production
+    requires_approval: true
+    security_sensitive: false
+
+  - id: T2
+    title: Publish the React bundle to the live dhosting react directory
+    description: |
+      Upload the validated release archive to the dhosting host and apply the established deploy-react.sh pattern so the existing live react directory is rotated to a timestamped backup and replaced with the new bundle contents. Keep the scope to frontend assets only.
+    wave: 2
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    context_files:
+      - deploy-react.sh: Existing remote deployment logic with backup and unzip behavior.
+      - zip/react-deploy.zip: Release archive to upload or replace.
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 0
+    focus_area: live frontend publication
+    verification:
+      - Confirm upload succeeded to the expected dhosting account.
+      - Confirm the live react directory contains the newly deployed bundle.
+      - Confirm a backup of the previous live react directory exists when applicable.
+    acceptance_criteria:
+      - The live react directory is updated with the new bundle.
+      - The previous live frontend is preserved in a timestamped backup if one existed.
+    failure_modes:
+      - scenario: The archive is uploaded correctly but expanded into the wrong server path.
+        likelihood: low
+        impact: critical
+        mitigation: Reuse the exact BASE path defined in deploy-react.sh and do not improvise alternate locations.
+    environment: production
+    requires_approval: true
+    security_sensitive: false
+
+  - id: T3
+    title: Run the mandatory dhosting permission fix and basic live availability check
+    description: |
+      Immediately after deployment, normalize permissions on the deployed react files so directories are 755 and files are 644, matching the repository instruction for dhosting. Then perform a basic live availability check to ensure the released frontend is being served.
+    wave: 3
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies:
+      - T2
+    context_files:
+      - deploy-react.sh: Already encodes the required chmod pattern for the react directory.
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 0
+    focus_area: live permissions and availability
+    verification:
+      - Run the chmod pass across the deployed react directory.
+      - Confirm the live route responds without permission-related failures.
+    acceptance_criteria:
+      - All deployed directories use 755 and files use 644.
+      - The live frontend is accessible after the permission fix.
+    failure_modes:
+      - scenario: The permission fix is skipped because the deploy script appeared to complete successfully.
+        likelihood: medium
+        impact: critical
+        mitigation: Treat permissions as an explicit post-deploy gate, not an optional cleanup step.
+    environment: production
+    requires_approval: true
+    security_sensitive: false
+
+  - id: T4
+    title: Execute targeted live verification for catering-wielkanocny, breakfast-for-two, and checkout naming
+    description: |
+      Run focused smoke checks against the live release. Validate that the catering-wielkanocny page opens correctly, the new breakfast-for-two category appears in the expected position under the standalone special-menu section, and the checkout/cart naming fallback surfaces the correct item name instead of a blank or undefined label.
+    wave: 4
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - T3
+    context_files:
+      - docs/plan/catering-wielkanocny-breakfast-20260326/research_findings_catering_wielkanocny_page_data.yaml: Confirms category order and placement behavior.
+      - docs/plan/catering-wielkanocny-breakfast-20260326/research_findings_catering_checkout_naming.yaml: Confirms the naming fallback surfaces in cart, drawer, and success views.
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 0
+    focus_area: post-release smoke verification
+    verification:
+      - Open the live catering-wielkanocny page and verify it loads the new frontend.
+      - Confirm the new breakfast-for-two category is the first JSON-backed section below the special-menu block.
+      - Add the breakfast-for-two item to cart and verify the drawer line name is correct.
+      - Verify checkout naming continuity in the success summary or persisted snapshot path if a full checkout is executed.
+    acceptance_criteria:
+      - The catering-wielkanocny page renders correctly on live.
+      - The breakfast-for-two category is present in the expected order.
+      - Checkout/cart display naming uses the expected fallback and shows the correct product name.
+    failure_modes:
+      - scenario: Browser checks pass on the catalog page but the cart or success naming path still shows stale cached UI.
+        likelihood: medium
+        impact: medium
+        mitigation: Verify add-to-cart and post-submit display paths directly on the live release, and hard-refresh if cached assets are suspected.
+    validation_matrix:
+      - scenario: Live page rendering
+        steps:
+          - Open the live catering-wielkanocny route under the BULWAR APP frontend.
+          - Confirm the page loads without missing assets or permission errors.
+        expected_result: The live Easter catering page is accessible and visually intact.
+      - scenario: Breakfast-for-two category order
+        steps:
+          - Locate the standalone special-menu-for-2 block.
+          - Inspect the next category section rendered below it.
+        expected_result: The new breakfast-for-two category is the first JSON-backed section beneath the standalone block.
+      - scenario: Cart drawer naming fallback
+        steps:
+          - Add the breakfast-for-two product to the cart.
+          - Open the checkout drawer.
+        expected_result: The cart line shows the correct product name and not a blank or undefined value.
+      - scenario: Checkout success naming continuity
+        steps:
+          - Complete the checkout flow or inspect the success snapshot generated from the released frontend.
+          - Review the ordered item summary.
+        expected_result: The success confirmation uses the same correct fallback-derived item name.
+

@@ -1,0 +1,392 @@
+plan_id: "page-builder-runtime-workflow"
+objective: >
+  Domknac minimalny, bezpieczny runtime workflow page builder draft -> Firebase
+  draft store -> compile -> WordPress publish/readback bez czekania na pelne
+  live SDK Firebase i bez zmian rozszerzajacych surface backendu ponad to, co
+  jest potrzebne do wdrozenia teraz.
+created_at: "2026-04-19T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 2
+  total_dependencies: 4
+  risk_score: "medium"
+
+tldr: |
+  Najmniejszy bezpieczny zakres, ktory realnie domyka agentowy workflow, to:
+  1) dodac store draftu z adapterem in-memory i kontraktem FirestoreLike,
+  2) dodac serwerowy klient WordPress, ktory najpierw zapewnia istnienie strony
+  przez core REST /wp/v2/pages, a dopiero potem publikuje oba meta payloady do
+  istniejacego bridge POST,
+  3) dodac runtime orchestrator reuse'ujacy istniejacy compile gate zamiast
+  dublowac logike,
+  4) odpalic kontrakty store/client/workflow oraz istniejace testy bootstrapu i
+  compile gate. Sources: zip/src/blocks/registry/firebasePageDraft.ts,
+  zip/src/blocks/registry/createPageDraftFromScrape.ts,
+  zip/src/blocks/registry/firebasePageDraftStore.test.ts,
+  zip/src/blocks/registry/wordpressPageBuilderClient.test.ts,
+  zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts,
+  SCRIPTS/make-page-draft-compile-gate.js,
+  wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+
+open_questions:
+  - >
+    Czy runtime ma byc uruchamiany tylko w Node/agent host, czy ktos planuje
+    podpinac go bezposrednio do bundla React? Dla wdrozenia teraz plan zaklada
+    tylko wykonanie poza przegladarka, bo workflow wymaga sekretow WordPress.
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: >
+        WordPress application password albo przyszle credentiale Firebase trafią
+        do bundla frontendu, bo runtime zostanie potraktowany jak kod browserowy.
+      likelihood: "medium"
+      impact: "critical"
+      mitigation: >
+        Trzymac klienta WordPress i ewentualna konfiguracje live Firebase za
+        interfejsami wykonywanymi tylko w Node/agent runtime; testy maja
+        korzystac z in-memory store i mock fetch zamiast z prawdziwych sekretow.
+    - scenario: >
+        Compile zostanie zaimplementowany drugi raz w runtime i zacznie emitowac
+        payloady rozne od SCRIPTS/make-page-draft-compile-gate.js.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Reuse jedynej istniejacej funkcji compilePageDraft jako wspolnego gate;
+        nie kopiowac translacji page_builder_schema i aiSchema do nowego modulu.
+    - scenario: >
+        Publish bedzie probowal uzyc update-only bridge bez zapewnienia strony,
+        przez co nowe slugi beda konczyly sie PAGE_NOT_FOUND.
+      likelihood: "high"
+      impact: "high"
+      mitigation: >
+        Wymusic krok ensurePageExists przed publish i realizowac go przez core
+        WordPress REST pages endpoint, bez zmian w aktualnym bridge na start.
+  assumptions:
+    - >
+      Obecny bridge POST pozostaje update-only i nie jest rozszerzany w tym
+      minimalnym wdrozeniu. Sources:
+      wordpress-plugin/bulwar-bridge/src/Http/Routes.php,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+    - >
+      compilePageDraft z SCRIPTS/make-page-draft-compile-gate.js jest juz
+      kanonicznym gate dla obu payloadow i powinien pozostac single source of
+      truth. Sources: SCRIPTS/make-page-draft-compile-gate.js,
+      SCRIPTS/make-page-draft-compile-gate.test.js.
+    - >
+      Na wdrozenie teraz wystarcza store oparte o FirestoreLike plus adapter
+      in-memory; pelna inicjalizacja live SDK Firebase moze pozostac poza tym
+      zakresem. Sources: zip/src/blocks/registry/firebasePageDraftStore.test.ts,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md.
+
+implementation_specification:
+  code_structure: |
+    Runtime ma byc zlozony z trzech waskich modulow w registry:
+    firebasePageDraftStore.ts odpowiada tylko za save/load/upsert draftu,
+    wordpressPageBuilderClient.ts odpowiada tylko za ensure/create-update page i
+    publish/readback payloadow, a pageBuilderRuntimeWorkflow.ts skleja store,
+    compile gate i publikacje. Logika compile nie moze byc powielona; runtime
+    ma konsumowac wynik istniejacego compile gate. Live Firebase SDK nie jest
+    wymagany do domkniecia workflow i powinien pozostac opcjonalnym adapterem,
+    nie warunkiem uruchomienia testow.
+  affected_areas:
+    - "zip/src/blocks/registry/firebasePageDraftStore.ts"
+    - "zip/src/blocks/registry/wordpressPageBuilderClient.ts"
+    - "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+  component_details:
+    - component: "firebasePageDraftStore"
+      responsibility: >
+        Persistowac i odczytywac FirebasePageDraft przez prosty kontrakt store,
+        domyslnie po pageSlug jako doc id, z adapterem in-memory do testow i
+        FirestoreLike do integracji runtime.
+      interfaces:
+        - "createInMemoryFirebasePageDraftStore()"
+        - "createFirestoreFirebasePageDraftStore({ firestore, collectionName? })"
+        - "saveDraft(draft, { docId? })"
+        - "loadDraft(docIdOrPageSlug)"
+        - "upsertDraft(draft, { docId? })"
+    - component: "wordpressPageBuilderClient"
+      responsibility: >
+        Zapewniac istnienie strony WordPress po slugu przez core REST API oraz
+        publikowac oba meta payloady do istniejacego bridge POST, a potem
+        odczytywac je przez bridge GET do weryfikacji.
+      interfaces:
+        - "createWordPressPageBuilderClient({ baseUrl, username, applicationPassword, fetch? })"
+        - "ensurePageExists({ slug, title, status })"
+        - "publishPageBuilderPayloads({ slug, schema, aiSchema })"
+        - "readPageBuilderPayloads(slug)"
+    - component: "pageBuilderRuntimeWorkflow"
+      responsibility: >
+        Orkiestrowac save draftu, apply approved source mappings, compile,
+        ensure page, publish, opcjonalny readback verify i zapis finalnego
+        wordpressPostId oraz compiled payloads do draftu.
+      interfaces:
+        - "runPageBuilderRuntimeWorkflow({ draft, approvedSourceMappings, draftStore, wordpressClient, verifyReadback? })"
+  dependencies:
+    - component: "pageBuilderRuntimeWorkflow"
+      relationship: "Konsumuje firebasePageDraftStore do save/upsert oraz wordpressPageBuilderClient do ensure/publish/readback."
+    - component: "pageBuilderRuntimeWorkflow"
+      relationship: "Reuse'uje compilePageDraft z SCRIPTS/make-page-draft-compile-gate.js jako jedyny compiler."
+    - component: "wordpressPageBuilderClient"
+      relationship: "Uzywa core WordPress REST /wp-json/wp/v2/pages do ensure create-update i bridge bulwar/v1 do meta publish/readback."
+  integration_points:
+    - "zip/src/blocks/registry/firebasePageDraftStore.test.ts"
+    - "zip/src/blocks/registry/wordpressPageBuilderClient.test.ts"
+    - "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts"
+    - "SCRIPTS/make-page-draft-compile-gate.js"
+    - "wordpress-plugin/bulwar-bridge/src/Http/Routes.php"
+
+contracts:
+  - from_task: "implement_firebase_draft_store"
+    to_task: "implement_runtime_workflow"
+    interface: "Store contract for save/load/upsert of validated FirebasePageDraft documents."
+    format: "Typed TypeScript store interface with in-memory and FirestoreLike adapters"
+  - from_task: "implement_wordpress_page_builder_client"
+    to_task: "implement_runtime_workflow"
+    interface: "ensure/publish/readback contract for WordPress page-builder pages by slug."
+    format: "Typed TypeScript client methods returning normalized pageId/schema/aiSchema payloads"
+  - from_task: "implement_runtime_workflow"
+    to_task: "document_and_validate_runtime_flow"
+    interface: "End-to-end runtime sequence and required operator test matrix."
+    format: "Documented workflow plus named verification commands/tests"
+
+tasks:
+  - id: "implement_firebase_draft_store"
+    title: "Dodac store draftu z adapterem in-memory i FirestoreLike"
+    description: |
+      Zaimplementowac brakujacy plik firebasePageDraftStore.ts tak, aby spelniac
+      test kontraktowy i jednoczesnie nie wiazac runtime z pelnym live SDK
+      Firebase. Minimalny zakres to in-memory store dla testow i FirestoreLike
+      adapter oparty na wstrzykiwanym obiekcie firestore. To domyka bezpieczny,
+      testowalny persistence layer bez inicjalizacji prawdziwego SDK. Sources:
+      zip/src/blocks/registry/firebasePageDraftStore.test.ts,
+      zip/src/blocks/registry/firebasePageDraft.ts.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Minimalny bezpieczny store draftu"
+      - "Obejscie braku live Firebase SDK"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/firebasePageDraftStore.test.ts"
+        description: "Kontrakt wymaganych factory functions i zachowan save/load/upsert."
+      - path: "zip/src/blocks/registry/firebasePageDraft.ts"
+        description: "Schema i parser draftu, ktore store ma utrzymywac jako source of truth."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          To najnizsza warstwa potrzebna do wdrozenia workflow i zarazem miejsce,
+          gdzie mozna bezpiecznie odciac brak pelnego Firebase SDK od logiki aplikacyjnej.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 1
+        estimated_lines: 180
+        focus_area: "draft persistence"
+        verification:
+          - "firebasePageDraftStore.test.ts przechodzi bez live Firebase SDK."
+          - "Store zapisuje i odczytuje draft z workflow wyliczonym przez parser."
+        acceptance_criteria:
+          - "Istnieje createInMemoryFirebasePageDraftStore()."
+          - "Istnieje createFirestoreFirebasePageDraftStore() na bazie FirestoreLike."
+          - "Domyslny doc id pozostaje rowny pageSlug, chyba ze przekazano explicit docId."
+        failure_modes:
+          - scenario: "Store zapisze niewalidowany draft i workflow bedzie pracowal na rozjechanych danych."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Kazdy save/upsert ma przechodzic przez parseFirebasePageDraft."
+    tech_stack:
+      - "TypeScript"
+      - "Zod"
+      - "node:test"
+    test_coverage: "Contract tests for in-memory and FirestoreLike adapters"
+
+  - id: "implement_wordpress_page_builder_client"
+    title: "Dodac serwerowy klient WordPress z ensure-page poza update-only bridge"
+    description: |
+      Zaimplementowac wordpressPageBuilderClient.ts tak, aby nie zmieniac bridge
+      na start: ensurePageExists ma najpierw odpytac core REST /wp-json/wp/v2/pages?slug=...
+      i potem stworzyc lub zaktualizowac strone po id, a publish/readback ma dalej
+      korzystac z istniejacego bridge page-builder. Ten krok domyka brakujaca
+      czesc create page przy obecnym update-only backendzie. Sources:
+      zip/src/blocks/registry/wordpressPageBuilderClient.test.ts,
+      wordpress-plugin/bulwar-bridge/src/Http/Routes.php,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Rozwiazanie tworzenia strony WordPress"
+      - "Bezpieczny publish client"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/wordpressPageBuilderClient.test.ts"
+        description: "Kontrakt ensure create/update i Basic Auth."
+      - path: "wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php"
+        description: "Aktualny update-only bridge dla schema i aiSchema."
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Aktualne ograniczenie: POST nie tworzy brakujacej strony."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          To najkrotsza bezpieczna droga do wdrozenia teraz: strone tworzymy lub
+          aktualizujemy przez standardowy REST WordPress, a meta payloady zostaja
+          na istniejacym bridge bez poszerzania backend surface.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 1
+        estimated_lines: 220
+        focus_area: "WordPress ensure and publish client"
+        verification:
+          - "wordpressPageBuilderClient.test.ts przechodzi dla create i update flow."
+          - "Klient mapuje status published -> publish zgodnie z kontraktem testu."
+        acceptance_criteria:
+          - "ensurePageExists tworzy brakujaca strone po slugu bez duplikatow."
+          - "publishPageBuilderPayloads wysyla schema i aiSchema razem do bridge POST."
+          - "readPageBuilderPayloads czyta dane z bridge GET do weryfikacji."
+        failure_modes:
+          - scenario: "Kod zacznie wykonywac authenticated fetch w bundlu React."
+            likelihood: "medium"
+            impact: "critical"
+            mitigation: "Utrzymac modul jako runtime server-side only i nie wpinac go do browser route."
+    tech_stack:
+      - "TypeScript"
+      - "Fetch API"
+      - "WordPress REST API"
+    test_coverage: "Contract tests for page ensure and authenticated publish/readback"
+
+  - id: "implement_runtime_workflow"
+    title: "Dodac orchestrator runtime reuse'ujacy compile gate"
+    description: |
+      Zaimplementowac pageBuilderRuntimeWorkflow.ts jako cienka orkiestracje:
+      save draft, apply approved source mappings w compile gate, upsert draft z
+      compiled payloads, ensure page exists, publish oba payloady, opcjonalnie
+      wykonac readback verify i zapisac wordpressPostId oraz finalne flagi draftu.
+      Ten modul ma reuse'owac compilePageDraft zamiast pisac drugi compiler.
+      Sources: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts,
+      SCRIPTS/make-page-draft-compile-gate.js,
+      SCRIPTS/make-page-draft-compile-gate.test.js.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Domkniecie agentowego workflow draft -> schema -> publish"
+      - "Minimalny runtime do wdrozenia teraz"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "implement_firebase_draft_store"
+      - "implement_wordpress_page_builder_client"
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts"
+        description: "Kontrakt kolejnosci save/upsert/ensure/publish/readback."
+      - path: "SCRIPTS/make-page-draft-compile-gate.js"
+        description: "Kanoniczny compiler draftu do obu payloadow."
+      - path: "zip/src/blocks/registry/firebasePageDraft.ts"
+        description: "Lifecycle flags i shape draftu aktualizowanego przez workflow."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Orchestrator jest najwyzsza warstwa i powinien powstac dopiero po
+          ustabilizowaniu store oraz klienta WordPress, bo tylko wtedy zostanie
+          cienki i testowalny.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 1
+        estimated_lines: 220
+        focus_area: "workflow orchestration"
+        verification:
+          - "pageBuilderRuntimeWorkflow.test.ts przechodzi z verifyReadback=true."
+          - "Workflow zapisuje wordpressPostId i compiled payloads do draftu."
+          - "needsPublish po publish/readback jest false."
+        acceptance_criteria:
+          - "Workflow zachowuje oczekiwana kolejnosc save -> upsert -> ensure -> publish -> readback."
+          - "Compile blokuje sie dalej na unresolved source mappings."
+          - "Workflow nie zna szczegolow live Firebase SDK ani WordPress HTTP poza wstrzyknietymi adapterami."
+        failure_modes:
+          - scenario: "Orchestrator sklei compile, publish i persistence w jeden nietestowalny blok z efektami ubocznymi."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Wstrzykiwac store i client jako zaleznosci, a compile pozostawic jako czysta funkcje."
+    tech_stack:
+      - "TypeScript"
+      - "node:test"
+      - "Existing compile gate from SCRIPTS"
+    test_coverage: "Contract test for local happy path with mocked publish/readback"
+
+  - id: "document_and_validate_runtime_flow"
+    title: "Zaktualizowac workflow operacyjny i odpalic koncowa macierz testow"
+    description: |
+      Po implementacji zaktualizowac dokument workflow tak, aby repo-first nie
+      bylo juz jedyna sciezka dla tego konkretnego runtime, oraz uruchomic caly
+      zestaw testow kontraktowych i compile/bootstrap gates. To zadanie domyka
+      wdrozenie operacyjnie i dokumentacyjnie. Sources:
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      zip/src/blocks/registry/firebasePageDraftStore.test.ts,
+      zip/src/blocks/registry/wordpressPageBuilderClient.test.ts,
+      zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts,
+      SCRIPTS/generate-page-draft-from-scrape.test.js,
+      SCRIPTS/make-page-draft-compile-gate.test.js.
+    wave: 3
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers:
+      - "Koncowa walidacja"
+      - "Dokumentacja wdrozeniowa"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "implement_runtime_workflow"
+    conflicts_with: []
+    context_files:
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Kanoniczny workflow, ktory trzeba skrocic i doprecyzowac po wdrozeniu runtime."
+      - path: "SCRIPTS/generate-page-draft-from-scrape.test.js"
+        description: "Bootstrap draftu ze scrape, ktory nie moze sie cofnac przy wdrozeniu runtime."
+      - path: "SCRIPTS/make-page-draft-compile-gate.test.js"
+        description: "Compile gate dla obu payloadow, jedyne kanoniczne tlumaczenie draft -> schema."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Nowa sciezka runtime musi byc opisana i zweryfikowana natychmiast po
+          implementacji, bo bez tego operatorzy nadal beda korzystac z repo-first
+          jako jedynej sciezki.
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 2
+        estimated_lines: 140
+        focus_area: "docs and verification"
+        verification:
+          - "Uruchomiono wszystkie trzy nowe kontrakty runtime oraz dwa istniejace testy bootstrap/compile."
+          - "Dokument opisuje kiedy uzywac in-memory, kiedy FirestoreLike i ze create page odbywa sie poza bridge."
+        acceptance_criteria:
+          - "Zaktualizowany workflow nie twierdzi juz, ze repo-first to jedyna wspierana sciezka dla tego zakresu runtime."
+          - "Lista testow koncowych jest jawnie zapisana i odtwarzalna."
+          - "Opisane jest ograniczenie: runtime z sekretami uruchamiamy poza browser bundle."
+        failure_modes:
+          - scenario: "Zespol wdrozy runtime, ale nadal bedzie operowal wedlug starej instrukcji repo-first."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Zaktualizowac kanoniczny workflow w tym samym wdrozeniu, nie pozniej."
+    task_type: "update"
+    audience: "developers"
+    coverage_matrix:
+      - "Runtime draft persistence"
+      - "WordPress page ensure and publish"
+      - "Compile gate reuse"
+      - "Final test matrix"

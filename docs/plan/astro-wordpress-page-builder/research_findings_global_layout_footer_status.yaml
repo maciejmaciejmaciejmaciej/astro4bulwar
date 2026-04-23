@@ -1,0 +1,317 @@
+plan_id: astro-wordpress-page-builder
+objective: Determine whether the Astro build error footer_status=fallback_missing_footer_page_id means the WordPress global layout/footer is not configured, and map the exact resolver cause.
+focus_area: global_layout_footer_status
+created_at: 2026-04-21
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Astro fails because it rejects any global-layout payload whose meta statuses are not both resolved, including footer_status=fallback_missing_footer_page_id. Source: astro-site/src/lib/wordpress.ts:270-274.
+  - In the bridge resolver, fallback_missing_footer_page_id is emitted only when bulwar_bridge_global_layout resolves but footerPageId is absent or casts to <= 0; page lookup and shared_footer block validation are not reached in that branch. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75-78.
+  - footerPageId is an internal pointer to a shared WordPress page whose page_builder_schema must contain an enabled shared_footer block with blockVersion 1 and source null. Sources: astro-site/src/lib/globalLayoutContract.ts:81, 88-89; docs/plan/navbar-footer-global-layout-v1/operator-reference.md:11-22.
+  - Clean endpoint resolution requires both a parseable global-layout option and a valid referenced footer page/schema; different fallback codes distinguish missing reference vs missing page vs missing/invalid block. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:42-136.
+
+research_metadata:
+  methodology: Hybrid retrieval using grep_search for exact status strings and contract markers, targeted read_file inspection of resolver/controller/config/docs/tests, and repo memory review for previously recorded live endpoint observations.
+  scope: Focused on the WordPress bridge global-layout resolver path, the Astro consumer gate, the shared contract, and the operator docs for footer storage semantics.
+  confidence: high
+  coverage: 92
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: GlobalLayoutResolver.php
+    path: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+    purpose: Reads the global-layout option, resolves the internal footer reference, validates footer page schema, and emits footer_status.
+    key_elements:
+      - element: readSettings
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:40-72
+        description: Reads Constants::globalLayoutOptionName() and reports layout_option_status fallback states.
+      - element: resolveFooter
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75-136
+        description: Casts footerPageId, branches on missing reference, page lookup, schema parsing, and shared_footer block validation.
+    language: PHP
+    lines: 337
+  - file: GlobalLayoutController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+    purpose: Public REST controller that returns the resolver output in a success envelope.
+    key_elements:
+      - element: GlobalLayoutController::show
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php:13-21
+        description: Calls GlobalLayoutResolver::resolve() and returns globalLayout plus meta via Response::success.
+    language: PHP
+    lines: 21
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Registers the public global layout endpoint.
+    key_elements:
+      - element: /layout/global route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44
+        description: Exposes GET /wp-json/bulwar/v1/layout/global to GlobalLayoutController::show with public permission.
+    language: PHP
+    lines: 60
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: Defines the bridge option name used for global layout storage.
+    key_elements:
+      - element: BULWAR_BRIDGE_GLOBAL_LAYOUT_OPTION
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20
+        description: Defaults the option name to bulwar_bridge_global_layout.
+      - element: globalLayoutOptionName
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:79-83
+        description: Returns the configured WordPress option name for global layout settings.
+    language: PHP
+    lines: 89
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Astro runtime fetch helper for page-builder and global-layout endpoints.
+    key_elements:
+      - element: fetchWordPressGlobalLayout
+        type: function
+        location: astro-site/src/lib/wordpress.ts:251-279
+        description: Fetches the public endpoint and throws when either meta status is not resolved.
+    language: TypeScript
+    lines: 279
+  - file: globalLayoutContract.ts
+    path: astro-site/src/lib/globalLayoutContract.ts
+    purpose: Locks the public contract and the internal storage/block schemas used by Astro.
+    key_elements:
+      - element: globalLayoutStorageSettingsSchema
+        type: variable
+        location: astro-site/src/lib/globalLayoutContract.ts:79-82
+        description: Internal storage schema requires footerPageId to be a positive integer.
+      - element: sharedFooterSectionBlockSchema
+        type: variable
+        location: astro-site/src/lib/globalLayoutContract.ts:86-95
+        description: Shared footer block contract requires blockKey shared_footer, blockVersion 1, and source null.
+    language: TypeScript
+    lines: 107
+  - file: GlobalLayoutControllerTest.php
+    path: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+    purpose: Verifies resolved and fallback response behavior for the public global layout endpoint.
+    key_elements:
+      - element: testGlobalLayoutControllerResolvesSharedFooterBlock
+        type: function
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:245-279
+        description: Confirms footerPageId can resolve a valid shared footer page and that footerPageId stays out of the public payload.
+      - element: testGlobalLayoutControllerFallsBackWhenFooterReferenceIsMissing
+        type: function
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:282-296
+        description: Confirms missing footerPageId produces footer_status=fallback_missing_footer_page_id.
+    language: PHP
+    lines: 323
+  - file: operator-reference.md
+    path: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+    purpose: Documents the storage model, authoring rule, and verification workflow for the shared navbar/footer system.
+    key_elements:
+      - element: Source of truth
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:6-12
+        description: States that footerPageId is the internal pointer stored in the bridge option.
+      - element: Footer authoring rule
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:16-22
+        description: Requires an enabled shared_footer block with blockVersion 1 and source null on the referenced page.
+      - element: Verification workflow
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:125-127
+        description: Declares that clean resolution requires both meta statuses to be resolved.
+    language: Markdown
+    lines: 194
+  - file: how-navbar-footer-work.md
+    path: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+    purpose: End-to-end explanation of the storage model and resolver behavior.
+    key_elements:
+      - element: Storage model
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:8-12
+        description: Explains that footerPageId is the internal reference and footer content itself lives in the referenced page schema.
+      - element: Bridge resolution
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:42-48
+        description: Describes resolving footerPageId to a page, then scanning page_builder_schema.sections for shared_footer.
+      - element: Failure behavior
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:132-139
+        description: Lists missing footerPageId and missing/disabled/invalid shared_footer blocks as distinct visible cases.
+    language: Markdown
+    lines: 163
+
+patterns_found:
+  - category: architecture
+    pattern: Public route delegates all footer resolution to one bridge resolver.
+    description: GET /layout/global is intentionally thin: controller forwards to GlobalLayoutResolver and returns a normalized envelope with meta statuses.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44
+        snippet: register_rest_route('bulwar/v1', '/layout/global', ['methods' => 'GET', 'callback' => [GlobalLayoutController::class, 'show']
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php:15-20
+        snippet: $resolved = GlobalLayoutResolver::resolve(); return Response::success(['globalLayout' => $resolved['globalLayout']], 200, $resolved['meta']);
+    prevalence: common
+  - category: structure
+    pattern: Footer data is stored indirectly through an internal page reference rather than directly in the public layout payload.
+    description: The bridge option stores footerPageId, and the actual footer content lives in a referenced page's page_builder_schema.sections.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75-90
+        snippet: $footerPageId = isset($settings['footerPageId']) ? (int) $settings['footerPageId'] : 0; ... $rawSchema = get_post_meta($footerPage->ID, 'page_builder_schema', true);
+      - file: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:8-12
+        snippet: The option stores navbar and footerPageId, while footer content itself is not stored in the option.
+    prevalence: common
+  - category: error_handling
+    pattern: Resolver emits precise fallback footer statuses for each resolution phase.
+    description: Missing footer reference, missing page, missing schema, invalid schema, invalid block, disabled block, and missing block each map to a distinct footer_status string.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:77-78
+        snippet: if ($footerPageId <= 0) { return [self::defaultFooter(), 'fallback_missing_footer_page_id']; }
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:84-136
+        snippet: return [self::defaultFooter(), 'fallback_footer_page_not_found'|'fallback_footer_schema_missing'|'fallback_footer_schema_invalid'|'fallback_footer_block_invalid'|'fallback_footer_block_disabled'|'fallback_footer_block_missing'];
+    prevalence: common
+  - category: public_contract
+    pattern: Astro treats any non-resolved meta status as a hard failure.
+    description: Even with a success envelope and normalized fallback footer payload, Astro rejects unresolved meta and aborts the build unless an override enables fallback.
+    examples:
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:270-274
+        snippet: if (parsedPayload.meta.layout_option_status !== RESOLVED_GLOBAL_LAYOUT_STATUS || parsedPayload.meta.footer_status !== RESOLVED_GLOBAL_LAYOUT_STATUS) { throw new Error(...); }
+      - file: astro-site/src/lib/globalLayout.test.ts
+        location: astro-site/src/lib/globalLayout.test.ts:124-136
+        snippet: footer_status: 'fallback_missing_footer_page_id' ... assert.rejects(... /layout_option_status=resolved, footer_status=fallback_missing_footer_page_id/)
+    prevalence: common
+  - category: testing
+    pattern: Tests cover the resolved path and the missing-footer-reference path explicitly.
+    description: The PHP bridge test harness verifies both the valid shared footer page case and the missing footerPageId case.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:245-279
+        snippet: setGlobalLayoutOption(['navbar' => buildNavbarFixture(), 'footerPageId' => 37]);
+      - file: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:282-296
+        snippet: setGlobalLayoutOption(['navbar' => buildNavbarFixture()]); ... assertSameValue('fallback_missing_footer_page_id', $data['meta']['footer_status']);
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: WordPress global layout option
+      responsibility: Stores navbar data and the internal footerPageId pointer.
+      location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      relationship_to_domain: domain depends on this
+    - component: GlobalLayoutResolver
+      responsibility: Converts internal option plus footer page schema into public navbar/footer payload and meta statuses.
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship_to_domain: domain owns resolution logic
+    - component: GlobalLayoutController and route
+      responsibility: Expose the public endpoint GET /wp-json/bulwar/v1/layout/global.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php and wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship_to_domain: this uses domain outputs
+    - component: Astro global layout fetch helper
+      responsibility: Consumes the public endpoint and rejects unresolved meta statuses during build/render.
+      location: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: GET /wp-json/bulwar/v1/layout/global
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44
+      usage_pattern: Public runtime fetch for shared navbar/footer data.
+    - interface: page_builder_schema post meta
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:87-100
+      usage_pattern: JSON payload scanned for shared_footer blocks on the referenced page.
+  data_flow_involving_domain: The bridge reads bulwar_bridge_global_layout, normalizes navbar directly, casts footerPageId, optionally loads the referenced page and its page_builder_schema, extracts the first valid enabled shared_footer block, returns globalLayout plus meta, and Astro accepts the payload only if both meta statuses are resolved.
+  key_relationships_to_domain:
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+      to: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      to: WordPress option bulwar_bridge_global_layout and footer page_builder_schema meta
+      relationship: reads
+    - from: astro-site/src/lib/wordpress.ts
+      to: GET /wp-json/bulwar/v1/layout/global
+      relationship: calls
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - TypeScript
+    - Markdown
+  frameworks_used_in_domain:
+    - name: WordPress REST API
+      usage_in_domain: Hosts the public /wp-json/bulwar/v1/layout/global endpoint and stores page meta/options consumed by the bridge.
+    - name: Astro 5.14.2
+      usage_in_domain: Runs the build-time/runtime fetch that rejects unresolved global-layout meta.
+  libraries_used_in_domain:
+    - name: zod 4.3.6
+      purpose_in_domain: Defines the shared public contract and the internal footer storage/block schemas in Astro.
+    - name: TypeScript 5.9.3
+      purpose_in_domain: Types and validates the Astro-side fetch/parsing layer.
+  external_apis_used_in_domain:
+    - name: WordPress JSON API
+      integration_point: astro-site/src/lib/wordpress.ts
+
+related_conventions:
+  naming_patterns_in_domain: Footer resolution states use stable snake_case fallback strings prefixed with fallback_, while the internal pointer key is camelCase footerPageId.
+  structure_of_domain: One bridge option stores navbar plus footerPageId; the actual footer content is authored in one shared WordPress page_builder_schema block and resolved server-side.
+  error_handling_in_domain: The bridge returns success envelopes with fallback meta instead of HTTP failure for footer resolution problems, and Astro upgrades any non-resolved meta into a thrown build/runtime error.
+  testing_in_domain: Bridge behavior is covered by a small PHP harness file; Astro meta-status gating is covered by TypeScript tests that mock fetch responses.
+  documentation_in_domain: Operator and explainer docs explicitly separate internal storage details from the public runtime contract and document the exact shared_footer authoring rule.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      relationship_to_domain: Supplies the option name used by the resolver.
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Support/Response.php
+      relationship_to_domain: Wraps resolver output into the public REST envelope.
+      direction: outbound
+    - component: astro-site/src/lib/globalLayoutContract.ts
+      relationship_to_domain: Parses the public response and mirrors internal storage assumptions for tooling/docs.
+      direction: bidirectional
+  external:
+    - name: WordPress option and post-meta storage
+      purpose_for_domain: Stores the internal global-layout option and the referenced footer page schema.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Public endpoint exposure
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44
+      concern: The route is intentionally public, so footerPageId stays internal and is excluded from the public payload.
+    - area: Internal storage detail isolation
+      location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:278
+      concern: Tests assert footerPageId must not leak into public runtime responses.
+  authentication_patterns_in_domain: The global layout route uses __return_true and is publicly readable.
+  authorization_patterns_in_domain: No authorization gate is applied to GET /layout/global; protection relies on limiting the payload to normalized public layout data.
+  data_validation_in_domain: The bridge validates only the shared_footer structural rules needed for resolution, and Astro validates the returned contract plus meta status using zod.
+
+testing_patterns:
+  framework: PHP custom test harness plus TypeScript tests using mocked fetch responses
+  coverage_areas:
+    - Resolver/controller success path with a valid referenced footer page
+    - Explicit missing footerPageId fallback meta
+    - Astro rejection of unresolved footer_status values
+  test_organization: One bridge test file focused on endpoint behavior and one Astro test file focused on contract/error handling.
+  mock_patterns:
+    - Stub WordPress functions get_option, get_post, get_post_meta, and register_rest_route in the bridge PHP test harness.
+    - Replace globalThis.fetch in Astro tests to return controlled JSON envelopes.
+
+open_questions:
+  - question: What is the current live value of bulwar_bridge_global_layout.footerPageId in WordPress right now?
+    context: The repo proves the meaning of the status code, but the actual live option value requires endpoint or WordPress inspection outside this read-only repo pass.
+    type: nice_to_know
+    affects: []
+
+gaps:
+  - area: Live environment verification
+    description: This investigation did not call the live endpoint or inspect the live WordPress database directly; it relied on repo code, docs, tests, and recorded repo memory.
+    impact: nice_to_know
+    affects: []

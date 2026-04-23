@@ -1,0 +1,251 @@
+plan_id: none
+objective: Identify the exact component and data source for the section immediately below the Catering Wielkanocny hero, currently the 4-box info/table style section, and determine the safest way to distribute pickup/delivery/pricing text into that existing component.
+focus_area: zip/src FeatureGridSection usage on CateringWielkanocnyPage
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The section directly below the Catering Wielkanocny hero is FeatureGridSection, rendered in CateringWielkanocnyPage immediately after CateringWielkanocnyHero.
+  - Its current data source is not an external file; the page uses bare <FeatureGridSection />, so content comes from the in-file defaultItems array inside FeatureGridSection.tsx.
+  - The component contract already supports any number of cards because it maps over items; four cards are the current default, but eight cards would render without changing the public API.
+  - Existing pickup/delivery/payment metadata already lives in cateringWielkanocnyHero.tsx, which means operational text is currently split between hero data and the section below it.
+  - The safest low-risk content strategy depends on whether the supplied text can be editorially condensed: 4 cards is the smallest change, while 8 cards in the same section is the safest way to preserve fuller copy without changing layout semantics.
+
+research_metadata:
+  methodology: Hybrid retrieval using grep_search and file_search to identify the active section and earlier Hero24 references, followed by targeted read_file inspection of the active page, section component, hero data module, and related planning artifacts.
+  scope: Focused analysis of the active catering-wielkanocny route, the section immediately below the hero, its current data source, and layout/content constraints relevant to distributing operational pickup/delivery/pricing copy.
+  confidence: high
+  coverage: 93
+
+files_analyzed:
+  - file: FeatureGridSection.tsx
+    path: zip/src/components/sections/FeatureGridSection.tsx
+    purpose: Presentational 4-card informational grid rendered below the hero.
+    key_elements:
+      - element: FeatureGridItem
+        type: interface
+        location: zip/src/components/sections/FeatureGridSection.tsx:4
+        description: Defines each card as icon, title, and description.
+      - element: FeatureGridSectionProps
+        type: interface
+        location: zip/src/components/sections/FeatureGridSection.tsx:10
+        description: Accepts optional items and className.
+      - element: defaultItems
+        type: variable
+        location: zip/src/components/sections/FeatureGridSection.tsx:15
+        description: In-file fallback content used when the page passes no items prop.
+      - element: FeatureGridSection
+        type: function
+        location: zip/src/components/sections/FeatureGridSection.tsx:38
+        description: Maps items into a responsive card grid with md:grid-cols-2 and lg:grid-cols-4.
+    language: TSX
+    lines: 66
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active route page for /catering-wielkanocny.
+    key_elements:
+      - element: FeatureGridSection usage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:135
+        description: Renders the section directly below CateringWielkanocnyHero with no props, so FeatureGridSection defaultItems are currently active.
+      - element: CateringWielkanocnyHero usage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:134
+        description: Establishes the immediate section ordering on the page.
+    language: TSX
+    lines: 166
+  - file: cateringWielkanocnyHero.tsx
+    path: zip/src/data/cateringWielkanocnyHero.tsx
+    purpose: Current structured data source for the hero section above FeatureGridSection.
+    key_elements:
+      - element: infoItems
+        type: variable
+        location: zip/src/data/cateringWielkanocnyHero.tsx:6
+        description: Stores existing Odbiór, Zamówienia do, and Płatność information shown in the hero.
+      - element: cateringWielkanocnyHeroData
+        type: variable
+        location: zip/src/data/cateringWielkanocnyHero.tsx:48
+        description: Bundles hero copy and structured metadata used by CateringWielkanocnyHero.
+    language: TSX
+    lines: 58
+  - file: hero24-reusable/plan.yaml
+    path: docs/plan/hero24-reusable/plan.yaml
+    purpose: Historical planning artifact that documents FeatureGridSection as the renamed, data-driven successor of Hero24.
+    key_elements:
+      - element: Hero24 reusable contract
+        type: pattern
+        location: docs/plan/hero24-reusable/plan.yaml:9
+        description: Confirms the intended pattern was typed item data plus mapped card rendering without redesign.
+    language: YAML
+    lines: 140
+
+patterns_found:
+  - category: structure
+    pattern: Bare page usage delegates content responsibility to the section component.
+    description: The active page renders FeatureGridSection without props, so the component owns its current copy through a local defaultItems constant.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:135
+        snippet: <FeatureGridSection />
+      - file: zip/src/components/sections/FeatureGridSection.tsx
+        location: zip/src/components/sections/FeatureGridSection.tsx:38
+        snippet: const FeatureGridSection = ({ items = defaultItems, className }: FeatureGridSectionProps) => {
+    prevalence: common
+  - category: architecture
+    pattern: Reusable presentational sections use typed item arrays and mapped rendering.
+    description: FeatureGridSection follows the repo pattern of typed props plus a defaultItems fallback instead of fetching content from a CMS or central data store.
+    examples:
+      - file: zip/src/components/sections/FeatureGridSection.tsx
+        location: zip/src/components/sections/FeatureGridSection.tsx:4
+        snippet: interface FeatureGridItem { icon: LucideIcon; title: string; description: string; }
+    prevalence: occasional
+  - category: content_model
+    pattern: Card descriptions are single text blocks, not rich structured content.
+    description: Each card exposes only one title and one description rendered inside a single paragraph element.
+    examples:
+      - file: zip/src/components/sections/FeatureGridSection.tsx
+        location: zip/src/components/sections/FeatureGridSection.tsx:53
+        snippet: <p className="text-sm text-zinc-500 font-body leading-relaxed">{item.description}</p>
+    prevalence: common
+  - category: layout
+    pattern: Card count is driven by array length, while column count is responsive CSS.
+    description: The component does not enforce four cards in logic; four is only the current default data size.
+    examples:
+      - file: zip/src/components/sections/FeatureGridSection.tsx
+        location: zip/src/components/sections/FeatureGridSection.tsx:42
+        snippet: <div className="grid gap-px overflow-hidden rounded-[4px] border border-zinc-200 bg-zinc-200 md:grid-cols-2 lg:grid-cols-4">
+      - file: zip/src/components/sections/FeatureGridSection.tsx
+        location: zip/src/components/sections/FeatureGridSection.tsx:43
+        snippet: {items.map((item, index) => {
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Composes the page sections in order.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain contains the only active usage of FeatureGridSection
+    - component: FeatureGridSection
+      responsibility: Renders the info-card grid below the hero.
+      location: zip/src/components/sections/FeatureGridSection.tsx
+      relationship_to_domain: core researched component
+    - component: CateringWielkanocnyHero
+      responsibility: Renders hero copy and operational metadata above the grid.
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx and zip/src/data/cateringWielkanocnyHero.tsx
+      relationship_to_domain: this already owns overlapping pickup/delivery/payment content
+  interfaces_used_by_domain:
+    - interface: FeatureGridItem
+      location: zip/src/components/sections/FeatureGridSection.tsx
+      usage_pattern: one item per card with required icon, title, and description fields
+    - interface: FeatureGridSectionProps
+      location: zip/src/components/sections/FeatureGridSection.tsx
+      usage_pattern: optional items array plus optional wrapper className
+  data_flow_involving_domain: CateringWielkanocnyPage renders CateringWielkanocnyHero using structured hero data from zip/src/data/cateringWielkanocnyHero.tsx, then renders FeatureGridSection with no props, causing FeatureGridSection to fall back to its internal defaultItems array for the card content.
+  key_relationships_to_domain:
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/FeatureGridSection.tsx
+      relationship: imports and renders
+    - from: zip/src/components/sections/FeatureGridSection.tsx
+      to: lucide-react
+      relationship: imports icons used by each card
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship: imports hero data for the section above
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Functional presentational component rendering a mapped card array.
+    - name: Tailwind CSS
+      usage_in_domain: Controls section spacing, grid columns, typography, borders, and colors.
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: Supplies the required icon component for each FeatureGrid item.
+    - name: clsx/tailwind-merge via cn utility
+      purpose_in_domain: Merges optional className into the section wrapper.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Section components use PascalCase names, typed props interfaces, and in-file defaultItems for fallback content.
+  structure_of_domain: The page composes hero, info-grid, and product-list sections sequentially; structured page-level data lives under zip/src/data, while some section fallback content still lives locally inside section files.
+  error_handling_in_domain: This presentational domain has no explicit runtime error handling; safety comes from optional props with strongly typed fallback defaults.
+  testing_in_domain: No dedicated tests were found for this section.
+  documentation_in_domain: Historical plan files document the Hero24 to reusable-card-grid refactor pattern and confirm that preserving visual output was a key constraint.
+
+related_dependencies:
+  internal:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: sole active caller of FeatureGridSection
+      direction: inbound
+    - component: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship_to_domain: parallel structured content source for adjacent hero metadata
+      direction: bidirectional
+  external:
+    - name: lucide-react
+      purpose_for_domain: required icon type and concrete icons for each card
+
+domain_security_considerations:
+  sensitive_areas: []
+  authentication_patterns_in_domain: none
+  authorization_patterns_in_domain: none
+  data_validation_in_domain: compile-time validation only through TypeScript item interfaces
+
+testing_patterns:
+  framework: none found
+  coverage_areas:
+    - manual visual verification implied by historical plan artifacts
+  test_organization: no local automated tests for this component were found
+  mock_patterns: []
+
+open_questions:
+  - question: What is the exact final pickup/delivery/pricing copy that must be preserved verbatim versus condensed editorially?
+    context: The repository shows the container contract and some current hero metadata, but the user-provided replacement text is not present in the workspace.
+  - question: Should operational metadata remain split between the hero and FeatureGridSection, or should the lower section become the single source for those details?
+    context: Odbiór, termin, and płatność already appear in cateringWielkanocnyHero.tsx, which may overlap with the intended new grid content.
+
+gaps:
+  - area: exact replacement copy
+    description: The provided pickup/delivery/pricing text to be distributed was not available in the repository.
+    impact: The final 4-card versus 8-card fit decision can only be assessed at strategy level, not line-by-line content fitting.
+  - area: visual tolerance for taller cards
+    description: No browser verification was requested or performed, so the analysis is based on markup and layout classes rather than rendered screenshots.
+    impact: Long descriptions may still cause visually uneven card heights, especially if preserving detailed operational wording in only four cards.
+
+content_strategy_assessment:
+  status: completed
+  relevant_files:
+    - zip/src/components/sections/FeatureGridSection.tsx
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+    - zip/src/data/cateringWielkanocnyHero.tsx
+    - docs/plan/hero24-reusable/plan.yaml
+  current_props_data_shape:
+    component: FeatureGridSection
+    props:
+      items: Array<{ icon: LucideIcon; title: string; description: string }> | undefined
+      className: string | undefined
+    current_runtime_source: in-file defaultItems fallback because the page renders bare <FeatureGridSection />
+    adjacent_overlapping_source: cateringWielkanocnyHero.tsx infoItems contains current pickup/delivery/payment metadata above the grid
+  exact_constraints:
+    - Each card requires an icon component, a single title string, and a single description string.
+    - Description is rendered as one paragraph, so there is no native multi-field layout for bullets, labels, or per-line metadata.
+    - The wrapper uses max-w-4xl with md:grid-cols-2 and lg:grid-cols-4, so 8 cards naturally become 2 rows on large screens.
+    - Rendering two separate FeatureGridSection blocks would duplicate section-level vertical spacing because the section wrapper includes py-32.
+    - No current prop supports per-card accent styling, secondary text, CTA links, or highlighted pricing rows.
+  option_evaluation:
+    four_boxes:
+      fit: viable only if the text is condensed into four short thematic summaries
+      risk: content compression may hide detail or force overly dense paragraphs
+      change_level: lowest
+    two_sections_of_four:
+      fit: technically possible at page-composition level
+      risk: introduces duplicated section spacing and a stronger visual break than the current single-block design
+      change_level: medium
+    single_section_eight_boxes:
+      fit: structurally supported by the existing component because card count is data-driven
+      risk: taller page and more visual scanning, but no new section semantics or API needed
+      change_level: low
+  recommended_minimal_change_content_strategy: Use one FeatureGridSection data set and choose the card count based on editorial compression tolerance: if the text can be responsibly collapsed into four concise themes, keep four cards because it is closest to the live design; if the text needs to remain substantially intact, keep the same component and expand the items array to eight cards rather than duplicating the section, because the current grid already supports more cards without altering the component contract or page rhythm as heavily as two separate sections.

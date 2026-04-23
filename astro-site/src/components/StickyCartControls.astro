@@ -1,0 +1,60 @@
+---
+import { getReactBasePath } from '../lib/config';
+
+interface Props {
+  itemCount?: number;
+  totalPrice?: number;
+}
+
+const { itemCount = 0, totalPrice = 0 } = Astro.props;
+
+const cartSummaryLabel = itemCount > 0 ? `${itemCount} szt.` : 'Koszyk pusty';
+const totalPriceLabel = `${totalPrice.toFixed(2)} zł`;
+const reactCheckoutHref = getReactBasePath();
+---
+
+<div class="sticky-cart">
+  <div class="sticky-cart__bar">
+    <div class="sticky-cart__inner">
+      <div class="sticky-cart__title">Twoje zamówienie</div>
+      <div class="sticky-cart__leader"></div>
+      <div class="sticky-cart__summary">
+        <svg class="sticky-cart__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="20" r="1"></circle>
+          <circle cx="18" cy="20" r="1"></circle>
+          <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h9.7a1 1 0 0 0 1-.8L21 7H7"></path>
+        </svg>
+        <div class="sticky-cart__copy">
+          <div class="sticky-cart__copy-label">{cartSummaryLabel}</div>
+          <div class="sticky-cart__copy-value">{totalPriceLabel}</div>
+        </div>
+        <a class="sticky-cart__button" href="#cart-drawer">Rozwiń koszyk</a>
+      </div>
+    </div>
+  </div>
+
+  <a class="sticky-cart__fab" href="#cart-drawer" aria-label="Rozwiń koszyk">
+    <svg class="sticky-cart__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="9" cy="20" r="1"></circle>
+      <circle cx="18" cy="20" r="1"></circle>
+      <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h9.7a1 1 0 0 0 1-.8L21 7H7"></path>
+    </svg>
+    {itemCount > 0 ? <span class="sticky-cart__fab-badge">{itemCount}</span> : null}
+  </a>
+</div>
+
+<div id="cart-drawer" class="cart-drawer">
+  <a class="cart-drawer__overlay" href="#" aria-label="Zamknij koszyk"></a>
+  <aside class="cart-drawer__panel" aria-labelledby="cart-drawer-title">
+    <div class="cart-drawer__header">
+      <h2 id="cart-drawer-title" class="cart-drawer__title">Koszyk</h2>
+      <a class="cart-drawer__close" href="#" aria-label="Zamknij koszyk">×</a>
+    </div>
+
+    <div class="cart-drawer__content">
+      <h3 class="cart-drawer__empty-title">Koszyk pusty</h3>
+      <p class="cart-drawer__empty-copy">Ta wersja Astro renderuje statyczną stronę z tym samym shellem wizualnym. Logika checkoutu nadal pozostaje po stronie aplikacji React.</p>
+      <a class="cart-drawer__action" href={reactCheckoutHref}>Otwórz checkout React</a>
+    </div>
+  </aside>
+</div>

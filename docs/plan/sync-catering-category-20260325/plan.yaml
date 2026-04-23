@@ -1,0 +1,232 @@
+plan_id: sync-catering-category-20260325
+objective: >-
+  Create one practical script for BULWAR APP that synchronizes a single catering
+  category payload into both zip/src/data/cateringWielkanocny.json and the WooCommerce
+  catalog on the v2 WordPress instance, while preserving the current frontend contract
+  where category image lives at category level and product/category ids remain canonical
+  Woo ids.
+created_at: 2026-03-25
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Build one local Node entrypoint at SCRIPTS/sync_catering_category.js.
+  Feed it one source-of-truth category payload matching the current raw frontend JSON shape, with optional id fields for create flows and preserved category-level image_url.
+  The script should validate the payload, upsert the matching Woo product_cat term and simple products on v2, then write the canonical returned ids back into zip/src/data/cateringWielkanocny.json.
+  Recommendation: use SSH plus a WordPress-bootstrap PHP worker for Woo writes, not WP-CLI, because the repo already relies on that execution model, Woo API access is direct in PHP, and WP-CLI availability/path on dhosting is still unverified.
+
+open_questions:
+  - Confirm the exact v2 WordPress root path and PHP executable to be used by the remote worker so the implementation can avoid hardcoded drift.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The sync path creates new Woo products instead of updating existing ones because payload ids are missing or fallback matching is weak.
+      likelihood: medium
+      impact: high
+      mitigation: Treat existing numeric ids as the primary match key, use category name plus deterministic content signature only as a fallback, and write new ids back immediately to the frontend JSON source.
+    - scenario: The frontend JSON is updated locally but Woo upsert fails remotely, leaving the repo source ahead of production.
+      likelihood: medium
+      impact: high
+      mitigation: Only persist the final canonical category object to zip/src/data/cateringWielkanocny.json after the remote worker returns success with canonical term and product ids.
+  assumptions:
+    - zip/src/data/cateringWielkanocny.json remains the active frontend source of truth for regular catering categories.
+    - Product and category id fields must continue to store canonical Woo ids because checkout and bridge logic depend on them.
+    - V1 scope is upsert-only for one category; deletion or archival of missing Woo products is out of scope.
+    - The current category-level image_url contract must remain unchanged.
+
+implementation_specification:
+  code_structure: >-
+    Add one local orchestration script at SCRIPTS/sync_catering_category.js. The script accepts a path to one single-category payload file, validates that payload against the current raw frontend contract, sends it over SSH to a small PHP worker running in WordPress context on v2, receives the canonical Woo ids for the category and products, merges that canonical category back into zip/src/data/cateringWielkanocny.json, and preserves all untouched categories. Keep the remote PHP worker minimal and focused on Woo term/product upsert plus JSON response output.
+  affected_areas:
+    - SCRIPTS/sync_catering_category.js
+    - SCRIPTS remote Woo upsert worker script or generated temporary PHP worker
+    - zip/src/data/cateringWielkanocny.json
+    - Optional operator payload file for one category sync
+  component_details:
+    - component: Single-category payload contract
+      responsibility: Define the one source-of-truth input shape used for both frontend JSON persistence and Woo upsert.
+      interfaces:
+        - "Input file shape: { id?: number, nazwa_kategorii: string, opis_kategorii: string, image_url: string, pozycje: Array<{ id?: number, gramatura: string, cena: number, vegan: boolean, vegetarian: boolean } & ({ zespolona_nazwa_z_opisem: string } | { nazwa_produktu: string, opis_produktu: string })> }"
+    - component: Local sync orchestrator at SCRIPTS/sync_catering_category.js
+      responsibility: Validate input, load zip/src/data/cateringWielkanocny.json, call the remote Woo upsert worker, and write back the canonical category object with returned ids.
+      interfaces:
+        - "CLI: node SCRIPTS/sync_catering_category.js --input <path-to-category-payload.json>"
+        - "Output: updated zip/src/data/cateringWielkanocny.json plus a concise execution summary"
+    - component: Remote Woo upsert worker
+      responsibility: Bootstrap WordPress and WooCommerce on v2, upsert one product_cat term, create or update simple Woo products inside that term, and return canonical ids in the same raw category shape.
+      interfaces:
+        - "Request: one raw category object serialized from the local script"
+        - "Response: one canonical raw category object with Woo term/product ids populated"
+  dependencies:
+    - component: Local sync orchestrator at SCRIPTS/sync_catering_category.js
+      relationship: depends on the single-category payload contract and remote worker response contract
+    - component: Remote Woo upsert worker
+      relationship: depends on WordPress bootstrap, WooCommerce APIs, and the canonical raw category contract
+  integration_points:
+    - zip/src/data/cateringWielkanocny.json as the only frontend source-of-truth file for regular categories
+    - v2 WordPress instance over SSH with a PHP worker bootstrapping WordPress and WooCommerce
+    - Existing frontend normalizer in zip/src/data/cateringWielkanocny.ts, which must not require contract changes
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: Single-category input payload schema, upsert-only scope, id matching rules, and recommended script path
+    format: JSON file plus implementation notes
+  - from_task: T1
+    to_task: T3
+    interface: Remote Woo write strategy and canonical response shape for one synced category
+    format: SSH-executed PHP worker returning JSON
+  - from_task: T2
+    to_task: T4
+    interface: Local execution flow, validation behavior, and JSON write-back rules
+    format: CLI workflow and updated JSON file
+  - from_task: T3
+    to_task: T4
+    interface: Canonical Woo term/product ids returned in the raw category payload
+    format: JSON object matching the frontend raw category contract
+
+tasks:
+  - id: T1
+    title: Lock The Single-Category Sync Contract And Write Strategy
+    description: |
+      Freeze the minimal implementation contract before coding. Confirm that the script path is SCRIPTS/sync_catering_category.js, the single input payload is one raw category object, category image_url remains at category level, and v1 scope is create-or-update only for one category and its products. Lock the Woo write recommendation to SSH plus a WordPress-bootstrap PHP worker rather than WP-CLI.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - docs/plan/sync-catering-category-20260325/research_findings_catering_category_sync.yaml: domain constraints, source-of-truth findings, and Woo write tradeoffs
+      - zip/src/data/cateringWielkanocny.ts: active raw contract and validation rules
+      - SCRIPTS/run_upload.js: existing SSH plus PHP execution pattern to reuse selectively
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 180
+    focus_area: sync contract
+    verification:
+      - Script path, payload shape, match keys, and v1 upsert-only scope are explicitly documented.
+      - The plan states why WP-CLI is not the preferred first implementation path.
+    acceptance_criteria:
+      - The implementation team can start without guessing the input shape or the Woo write mechanism.
+      - The contract preserves the current frontend category-level image_url field and canonical id behavior.
+    failure_modes:
+      - scenario: The implementation introduces a second payload shape that diverges from the active frontend raw contract.
+        likelihood: medium
+        impact: high
+        mitigation: Reuse the current raw JSON field names exactly and keep optional ids as the only create-flow relaxation.
+    tech_stack:
+      - JavaScript
+      - JSON
+      - PHP
+      - WooCommerce
+    test_coverage: Contract examples for one combined-text product and one split-text product.
+
+  - id: T2
+    title: Build The Local Sync Orchestrator And Payload Validation
+    description: |
+      Implement the local script at SCRIPTS/sync_catering_category.js. It should read one input file, validate that it matches the raw category contract, load zip/src/data/cateringWielkanocny.json, and prepare an in-memory replace-or-insert operation for exactly one category without touching the rest of the catalog.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    context_files:
+      - zip/src/data/cateringWielkanocny.json: active frontend data target
+      - zip/src/data/cateringWielkanocny.ts: raw contract and validation logic to mirror
+      - docs/plan/sync-catering-category-20260325/research_findings_catering_category_sync.yaml: recommended input shape and match rules
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 260
+    focus_area: local orchestration
+    verification:
+      - Invalid image_url, missing required booleans, and malformed split-product payloads fail fast locally.
+      - Untouched categories remain byte-for-byte stable aside from formatter differences.
+    acceptance_criteria:
+      - The script accepts one category payload and resolves whether to replace or insert it in memory.
+      - The script does not write zip/src/data/cateringWielkanocny.json before the remote Woo upsert succeeds.
+    failure_modes:
+      - scenario: Local validation is weaker than the frontend normalizer and allows payloads that break the page build later.
+        likelihood: medium
+        impact: high
+        mitigation: Mirror the same required field and image_url rules already enforced by zip/src/data/cateringWielkanocny.ts.
+    tech_stack:
+      - Node.js
+      - JavaScript
+      - JSON
+    test_coverage: Local unit coverage for payload validation and replace-or-insert category merge behavior.
+
+  - id: T3
+    title: Implement Remote Woo Upsert For One Category And Its Products
+    description: |
+      Implement the remote PHP worker used by the local script. It should bootstrap WordPress on v2, find or create the matching product_cat term, then create or update simple Woo products for that category. Matching rules should be existing id first, then fallback to category name for the term and a deterministic product signature within the category only when id is absent.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    context_files:
+      - SCRIPTS/run_upload.js: existing remote execution pattern and Woo object usage
+      - wordpress-plugin/bulwar-bridge/docs/contracts.md: canonical product id requirement
+      - docs/plan/sync-catering-category-20260325/research_findings_catering_category_sync.yaml: practical upsert rules and limitations of current scripts
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 320
+    focus_area: Woo upsert
+    verification:
+      - Existing category and product ids are updated in place instead of recreated.
+      - Newly created term and product ids are returned in the raw category response.
+      - Split-name products are preserved without flattening into one text field.
+    acceptance_criteria:
+      - One remote execution returns a canonical category object that the local script can write back directly.
+      - Woo writes work without requiring WP-CLI.
+    failure_modes:
+      - scenario: Product fallback matching updates the wrong Woo product when ids are absent.
+        likelihood: medium
+        impact: high
+        mitigation: Restrict fallback matching to a deterministic signature based on content fields plus gramatura within the current category and recommend ids for all steady-state records.
+    tech_stack:
+      - PHP
+      - WordPress bootstrap
+      - WooCommerce
+      - SSH
+    test_coverage: Manual verification on one existing category with at least one update and one new product.
+
+  - id: T4
+    title: Validate End-To-End Sync And Capture Operator Steps
+    description: |
+      Run the script against one practical category payload and confirm the full flow: local validation, remote Woo upsert, id write-back into zip/src/data/cateringWielkanocny.json, and frontend compatibility. Capture the minimal operator workflow so future category updates reuse the same path instead of ad hoc scripts.
+    wave: 3
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - T2
+      - T3
+    context_files:
+      - zip/src/data/cateringWielkanocny.json: final write-back target to inspect
+      - zip/src/data/cateringWielkanocny.ts: frontend compatibility reference
+      - docs/plan/sync-catering-category-20260325/research_findings_catering_category_sync.yaml: expected source-of-truth behavior
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 120
+    focus_area: end-to-end validation
+    verification:
+      - Validation step 1: run the script in a dry-run or no-write mode to confirm payload parsing and matching decisions.
+      - Validation step 2: run against one existing category and confirm Woo term id and existing product ids are preserved.
+      - Validation step 3: add one new product in that payload and confirm a new Woo product id is returned and written back into zip/src/data/cateringWielkanocny.json.
+      - Validation step 4: confirm the updated JSON still loads through the existing frontend normalizer without contract changes.
+    acceptance_criteria:
+      - The repo has one repeatable sync path for a single catering category.
+      - The validation record proves the script can both update existing Woo records and create new ones in the same category.
+    failure_modes:
+      - scenario: The live validation passes in Woo but the written JSON breaks the frontend loader.
+        likelihood: medium
+        impact: medium
+        mitigation: Re-run the existing normalizer or build path immediately after write-back and treat that as a release gate.
+    requires_review: true
+    review_depth: standard
+    security_sensitive: true

@@ -1,0 +1,98 @@
+plan_id: deploy-router
+objective: Deploy the zip/dist directory to dhosting via scp and configure file permissions.
+created_at: "2026-03-22T00:00:00Z"
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Deploy the built frontend from zip/dist to the dhosting server using scp and set appropriate permissions (755 for directories, 644 for files) via SSH.
+open_questions:
+  - Does the public_html directory already exist and need to be cleaned before upload?
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: SSH/SCP connection times out or fails authentication.
+      likelihood: low
+      impact: high
+      mitigation: Verify connectivity and SSH key paths before running commands.
+  assumptions:
+    - The zip/dist directory is already built and contains the latest code.
+    - The SSH key id_rsa has access to client@client.ssh.host.
+
+implementation_specification:
+  code_structure: Deployment commands execution via SCP and SSH
+  affected_areas:
+    - Remote server: ~/legacy-client-alias/public_html/
+  component_details:
+    - component: Deployment
+      responsibility: Transfer files securely and enforce correct web server permissions.
+      interfaces: []
+  dependencies: []
+  integration_points:
+    - dhosting SSH server
+
+contracts: []
+
+tasks:
+  - id: upload-dist
+    title: Upload zip/dist to server
+    description: |
+      Use SCP to upload all contents of the zip/dist directory to the remote server.
+      It should use the id_rsa key from the workspace root.
+    wave: 1
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies: []
+    context_files: []
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: deployment
+    verification:
+      - Check if files exist on the remote server.
+    acceptance_criteria:
+      - SCP command completes without errors.
+    failure_modes:
+      - scenario: Network interruption during transfer.
+        likelihood: low
+        impact: high
+        mitigation: Retry the SCP command.
+    environment: production
+    requires_approval: true
+    security_sensitive: true
+
+  - id: set-permissions
+    title: Set remote file and directory permissions
+    description: |
+      SSH into the remote server and set standard web permissions in the public_html folder.
+      Directories: 755
+      Files: 644
+      Use the id_rsa key from the workspace root.
+      Execute the find commands to applychmod 755 on directories and chmod 644 on files.
+    wave: 2
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies:
+      - upload-dist
+    context_files: []
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: deployment
+    verification:
+      - Verify permissions via a test SSH command.
+    acceptance_criteria:
+      - Commands execute successfully without errors.
+    failure_modes:
+      - scenario: SSH command fails due to path errors.
+        likelihood: low
+        impact: medium
+        mitigation: Verify the path on the remote server before executing chmod.
+    environment: production
+    requires_approval: true
+    security_sensitive: true
+

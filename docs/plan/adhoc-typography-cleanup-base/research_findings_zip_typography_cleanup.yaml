@@ -1,0 +1,344 @@
+plan_id: adhoc-typography-cleanup-base
+objective: Assess whether the current regex-based typography cleanup scripts are a viable base for a real raw shadcn block normalization script in the zip frontend.
+focus_area: zip_typography_cleanup
+created_at: 2026-04-22
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The inspected scripts in zip/refactor_fonts.cjs, zip/refactor_scaleup.cjs, and zip/refactor_scaledown.cjs perform global string replacement across zip/src and do not distinguish fresh raw imports from native project components.
+  - Repo instructions for raw imports require semantic cleanup by element role and removal of specific leading, tracking, and font-weight utilities, while preserving block geometry.
+  - zip/src/index.css and native sections such as AboutSection and TemplatePage2 show repo-specific typography classes that are intentional and not reducible to a single global text-size replacement pass.
+  - About1.tsx is a fresh-import style component with banned typography utilities that matches the instruction-defined cleanup surface more closely than long-lived native sections.
+  - The current scripts are useful as a source of replacement tables and filesystem traversal, but not as the control plane for the real normalization workflow.
+
+research_metadata:
+  methodology: Hybrid retrieval using targeted file reads and grep searches across scripts, CSS, section components, design instructions, and repo memory.
+  scope: Focused on zip typography normalization scripts, theme CSS vocabulary, one fresh-import style component, and the design-system instruction layer governing raw import cleanup.
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: refactor_fonts.cjs
+    path: zip/refactor_fonts.cjs
+    purpose: Global script that converts arbitrary text-[Npx] utilities to Tailwind text size tokens across zip/src.
+    key_elements:
+      - element: getSizeClass
+        type: function
+        location: zip/refactor_fonts.cjs:1
+        description: Maps numeric px values to Tailwind text size classes using fixed thresholds.
+      - element: walk(path.join(__dirname, 'src'))
+        type: pattern
+        location: zip/refactor_fonts.cjs:1
+        description: Recursively scans all .ts and .tsx files under zip/src and rewrites files in place.
+    language: JavaScript
+    lines: 1
+  - file: refactor_scaleup.cjs
+    path: zip/refactor_scaleup.cjs
+    purpose: Global script that increases text-xs, text-sm, and text-base classes one step upward.
+    key_elements:
+      - element: chained content.replace calls
+        type: pattern
+        location: zip/refactor_scaleup.cjs:1
+        description: Performs ordered textual replacement of text size tokens without parsing JSX structure.
+    language: JavaScript
+    lines: 1
+  - file: refactor_scaledown.cjs
+    path: zip/refactor_scaledown.cjs
+    purpose: Global script that decreases text-lg, text-base, and text-sm classes one step downward.
+    key_elements:
+      - element: chained content.replace calls
+        type: pattern
+        location: zip/refactor_scaledown.cjs:1
+        description: Performs ordered textual replacement of text size tokens without parsing JSX structure.
+    language: JavaScript
+    lines: 1
+  - file: index.css
+    path: zip/src/index.css
+    purpose: Global theme source of truth for semantic color, font, spacing, and utility classes.
+    key_elements:
+      - element: .theme-block-heading
+        type: pattern
+        location: zip/src/index.css:61
+        description: Defines an approved heading utility using font-headline, uppercase, tracking-tight, and responsive sizing.
+      - element: .theme-block-copy
+        type: pattern
+        location: zip/src/index.css:65
+        description: Defines approved body copy rhythm with font-body and responsive text sizing.
+      - element: .lead-copy
+        type: pattern
+        location: zip/src/index.css:84
+        description: Shows a repo-owned intentional utility that still uses banned raw-import modifiers like font-medium and leading-snug.
+      - element: .page-margin
+        type: pattern
+        location: zip/src/index.css:101
+        description: Encodes the standard page side-padding rhythm referenced by design docs.
+    language: CSS
+    lines: 260
+  - file: About1.tsx
+    path: zip/src/components/sections/About1.tsx
+    purpose: Fresh-import style section component currently carrying foreign shadcn typography utilities.
+    key_elements:
+      - element: section shell
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:11
+        description: Uses repo page-margin shell but otherwise retains imported typography conventions.
+      - element: h2 main title
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:14
+        description: Uses text-6xl font-bold lg:text-7xl rather than the raw-import semantic cleanup mapping.
+      - element: mission/title typography
+        type: pattern
+        location: zip/src/components/sections/About1.tsx:33
+        description: Uses font-semibold, font-medium, and tracking-tight patterns listed as banned for fresh imports.
+    language: TypeScript
+    lines: 92
+  - file: AboutSection.tsx
+    path: zip/src/components/sections/AboutSection.tsx
+    purpose: Native project section showing established Bulwar typography conventions.
+    key_elements:
+      - element: native heading pattern
+        type: pattern
+        location: zip/src/components/sections/AboutSection.tsx:105
+        description: Uses font-headline text-4xl tracking-[0.3rem] uppercase leading-tight as an intentional house style.
+      - element: native body copy pattern
+        type: pattern
+        location: zip/src/components/sections/AboutSection.tsx:109
+        description: Uses font-body text-sm leading-relaxed text-zinc-500 in a container-level pattern.
+    language: TypeScript
+    lines: 160
+  - file: TemplatePage2.tsx
+    path: zip/src/pages/TemplatePage2.tsx
+    purpose: Preview canvas for newly adapted blocks.
+    key_elements:
+      - element: preview header label
+        type: pattern
+        location: zip/src/pages/TemplatePage2.tsx:17
+        description: Uses font-label text-[11px] uppercase tracking-[0.12em] as a repo preview convention.
+      - element: preview heading/copy
+        type: pattern
+        location: zip/src/pages/TemplatePage2.tsx:20
+        description: Demonstrates native preview typography using font-headline and font-body with responsive sizes.
+    language: TypeScript
+    lines: 80
+  - file: design-system.instructions.md
+    path: .github/instructions/design-system.instructions.md
+    purpose: Governs raw import adaptation, semantic cleanup, and geometry preservation.
+    key_elements:
+      - element: Fresh Shadcn Typography Protocol
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:59
+        description: Requires semantic role mapping and removal of listed leading, tracking, and font-weight classes on fresh raw imports.
+      - element: Adaptation Boundary
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:117
+        description: States that geometry must be preserved while style is normalized.
+    language: Markdown
+    lines: 157
+  - file: global-css-adaptation-contract.md
+    path: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+    purpose: Concrete repo contract for styling adaptation of imported blocks.
+    key_elements:
+      - element: Raw Import Typography Cleanup Rule
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:71
+        description: Defines approved semantic text-size targets by element role and states cleanup overrides source typography preservation.
+      - element: Geometry Preservation Rule
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:90
+        description: Separates safe styling adaptation from structural redesign.
+    language: Markdown
+    lines: 126
+  - file: design-token-and-layout-whitelist.md
+    path: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+    purpose: Concrete whitelist of approved tokens, utility classes, and layout patterns.
+    key_elements:
+      - element: approved typography cleanup vocabulary
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:61
+        description: Repeats semantic cleanup mapping and restricts raw imported leading/tracking/font-weight utilities.
+      - element: preferred shell and typography vocabulary
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:45
+        description: Establishes repo-preferred classes such as page-margin, font-headline, and font-body.
+    language: Markdown
+    lines: 175
+
+patterns_found:
+  - category: architecture
+    pattern: Global search-and-replace scripts operate over every TypeScript source file under zip/src.
+    description: The current scripts use recursive filesystem traversal and string replacement without scoping to imported blocks, semantic tags, or className boundaries.
+    examples:
+      - file: zip/refactor_fonts.cjs
+        location: zip/refactor_fonts.cjs:1
+        snippet: walk(path.join(__dirname, 'src')) ... content.replace(/text-\[(\d+|\d+\.\d+)px\]/g, ...)
+      - file: zip/refactor_scaleup.cjs
+        location: zip/refactor_scaleup.cjs:1
+        snippet: content = content.replace(/\btext-xs\b/g, 'text-sm')
+    prevalence: common
+  - category: structure
+    pattern: Raw import cleanup rules are explicitly scoped to fresh imported shadcn or external snippets.
+    description: The design instruction layer distinguishes raw imports from approved native components and requires cleanup before preview or reuse.
+    examples:
+      - file: .github/instructions/design-system.instructions.md
+        location: .github/instructions/design-system.instructions.md:59
+        snippet: Freshly imported shadcn, v0, or external snippet components must go through mandatory typography cleanup.
+      - file: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+        location: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md:71
+        snippet: For freshly imported shadcn, v0, or external UI snippets, typography cleanup is mandatory and overrides source typography preservation.
+    prevalence: common
+  - category: naming
+    pattern: Native Bulwar sections use semantic font roles and house tracking patterns not intended for blanket removal.
+    description: Established components use font-headline, font-body, uppercase, tracking-[...], and leading-tight as part of the project visual language.
+    examples:
+      - file: zip/src/components/sections/AboutSection.tsx
+        location: zip/src/components/sections/AboutSection.tsx:105
+        snippet: className="font-headline text-4xl tracking-[0.3rem] uppercase leading-tight"
+      - file: zip/src/pages/TemplatePage2.tsx
+        location: zip/src/pages/TemplatePage2.tsx:20
+        snippet: className="mt-4 font-headline text-4xl uppercase tracking-tight md:text-6xl"
+    prevalence: common
+  - category: architecture
+    pattern: index.css exposes repo-owned semantic utilities alongside ad hoc utilities.
+    description: The CSS layer contains both semantically named utilities and utilities with explicit typography modifiers, so cleanup logic must distinguish raw imported classes from house utilities.
+    examples:
+      - file: zip/src/index.css
+        location: zip/src/index.css:61
+        snippet: .theme-block-heading { @apply font-headline text-3xl uppercase tracking-tight text-foreground lg:text-6xl; }
+      - file: zip/src/index.css
+        location: zip/src/index.css:84
+        snippet: .lead-copy { @apply font-body text-xl font-medium leading-snug lg:text-2xl; }
+    prevalence: occasional
+  - category: structure
+    pattern: About1.tsx is a mixed-state adaptation surface.
+    description: It already uses repo shell classes like page-margin, but its text classes remain close to raw shadcn defaults and include banned modifiers for fresh-import cleanup.
+    examples:
+      - file: zip/src/components/sections/About1.tsx
+        location: zip/src/components/sections/About1.tsx:11
+        snippet: className={cn("bg-white py-32 page-margin", className)}
+      - file: zip/src/components/sections/About1.tsx
+        location: zip/src/components/sections/About1.tsx:44
+        snippet: className="mb-4 text-4xl font-semibold tracking-tight md:text-5xl"
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: raw import section components
+      responsibility: Hold imported block JSX that needs normalization before reuse.
+      location: zip/src/components/sections
+      relationship_to_domain: domain is applied to these files when they are fresh imports
+    - component: global theme CSS
+      responsibility: Defines project tokens, utilities, and semantic typography roles.
+      location: zip/src/index.css
+      relationship_to_domain: domain depends on this as the source of allowed styling vocabulary
+    - component: TemplatePage2 preview surface
+      responsibility: Renders newly adapted blocks for visual checking.
+      location: zip/src/pages/TemplatePage2.tsx
+      relationship_to_domain: this uses domain outputs after normalization
+  interfaces_used_by_domain:
+    - interface: className string literals in JSX
+      location: zip/src/components/sections/*.tsx
+      usage_pattern: Typography utilities are encoded inside JSX className attributes and must be interpreted at element level.
+    - interface: global utility classes
+      location: zip/src/index.css
+      usage_pattern: Semantic classes such as page-margin and font-headline define the target vocabulary.
+  data_flow_involving_domain: Imported block JSX enters zip/src/components/sections, is visually adapted to the vocabulary defined by index.css and design docs, then is previewed on TemplatePage2 before reuse or registration.
+  key_relationships_to_domain:
+    - from: zip/refactor_fonts.cjs
+      to: zip/src/**/*.{ts,tsx}
+      relationship: rewrites
+    - from: .github/instructions/design-system.instructions.md
+      to: zip/src/components/sections/About1.tsx
+      relationship: governs cleanup expectations for this type of file
+    - from: zip/src/pages/TemplatePage2.tsx
+      to: zip/src/components/sections/About1.tsx
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - JavaScript
+    - TypeScript
+    - CSS
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Section components are React TSX files whose className strings are the normalization target.
+    - name: Vite 6
+      usage_in_domain: Build and preview environment for the zip frontend.
+    - name: Tailwind CSS 4
+      usage_in_domain: Typography and design tokens are encoded as Tailwind utility classes and custom theme utilities.
+  libraries_used_in_domain:
+    - name: typescript
+      purpose_in_domain: Available compiler/runtime dependency that could parse TSX if a structured transform is required.
+    - name: tsx
+      purpose_in_domain: Available script runner for TypeScript-based tooling in the zip workspace.
+    - name: clsx
+      purpose_in_domain: Indicates some className values may be composed rather than plain static strings.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Native typography uses semantic font roles such as font-headline, font-body, and font-label, while fresh imports often arrive with generic Tailwind font-weight and tracking utilities.
+  structure_of_domain: Imported blocks live under zip/src/components/sections and are previewed on TemplatePage2 after adaptation.
+  error_handling_in_domain: The current scripts have minimal error handling beyond filesystem traversal failure and no dry-run or change classification layer.
+  testing_in_domain: Tests exist for some typography-sensitive sections, indicating markup-level assertions can lock class behavior.
+  documentation_in_domain: Typography cleanup rules are documented in design-system.instructions.md, global-css-adaptation-contract.md, design-token-and-layout-whitelist.md, and repository memory notes.
+
+related_dependencies:
+  internal:
+    - component: zip/src/index.css
+      relationship_to_domain: source of approved typography and utility vocabulary
+      direction: outbound
+    - component: zip/src/pages/TemplatePage2.tsx
+      relationship_to_domain: preview consumer of adapted blocks
+      direction: outbound
+    - component: .github/instructions/design-system.instructions.md
+      relationship_to_domain: policy layer defining cleanup behavior
+      direction: outbound
+  external:
+    - name: tailwindcss
+      purpose_for_domain: Utility-class system being normalized
+    - name: react
+      purpose_for_domain: JSX tree structure around className values
+    - name: typescript
+      purpose_for_domain: Available parser/tooling dependency for TSX-aware transforms
+
+domain_security_considerations:
+  sensitive_areas: []
+  authentication_patterns_in_domain: none observed in this focus area
+  authorization_patterns_in_domain: none observed in this focus area
+  data_validation_in_domain: The primary validation surface is design-contract compliance rather than user input validation.
+
+testing_patterns:
+  framework: Mixed repo-level assertions around rendered markup and TypeScript compile checks.
+  coverage_areas:
+    - markup class assertions for section components
+    - compile integrity of the zip frontend
+  test_organization: Tests sit next to affected section components and assert rendered class strings for some typography-sensitive slices.
+  mock_patterns:
+    - string-based rendered markup assertions
+
+open_questions:
+  - question: Should automated typography normalization run only on explicitly designated fresh-import files, or also on existing native sections under zip/src/components/sections?
+    context: Repo instructions scope the strict cleanup protocol to fresh raw imports, while the current scripts rewrite the entire src tree.
+    type: decision_blocker
+    affects:
+      - typography-normalizer-scope
+  - question: Should repo-owned custom utilities such as .lead-copy and .theme-block-heading be treated as approved outputs even when they include classes banned for raw imported markup?
+    context: index.css contains intentional house utilities using tracking-tight, font-medium, and leading-snug.
+    type: research
+    affects:
+      - typography-normalizer-rules
+  - question: Is the user's described typographyMap/bannedClasses draft currently unsaved or located outside the inspected files?
+    context: The named files do not contain those identifiers.
+    type: research
+    affects:
+      - typography-normalizer-assessment
+
+gaps:
+  - area: current draft script implementation
+    description: The described typographyMap and bannedClasses approach was not present in the inspected files, so assessment is based on the named scripts plus the stated approach rather than a direct read of that exact draft.
+    impact: research_blocker
+    affects:
+      - typography-normalizer-assessment

@@ -1,0 +1,407 @@
+plan_id: astro-wordpress-page-builder
+objective: Sprawdzić, jak dziś można utworzyć page w WordPress dla page buildera i czy istnieje generyczny mechanizm tworzenia strony po slug.
+focus_area: wordpress-page-creation
+created_at: 2026-04-18
+created_by: GitHub Copilot GPT-5.4
+status: completed
+historical_snapshot: true
+current_state_reference: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+historical_note: >-
+  This research snapshot reflects the repo state inspected on 2026-04-18.
+  Statements about TEST_PAGE_SLUGS-only Astro generation and the absence of a
+  generic repo-side create-or-update flow are now outdated. Treat this file as
+  audit evidence, not as the current operator workflow.
+
+tldr: |
+  - Wtyczka bridge ma publiczny odczyt i autoryzowany zapis page buildera po slugu, ale zapis działa tylko dla istniejącej strony, bo kontroler zawsze rozwiązuje stronę przez `get_page_by_path(...)` i zwraca `PAGE_NOT_FOUND`, gdy jej brak [wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-53, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:56-99, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:130-141].
+  - Dziś istnieją tylko testowe helpery create-or-update dla jednego sluga `testowa-blueprint`: PHP seed i shell seed zapisujące `page_builder_schema` oraz opcjonalnie `page_builder_schema_for_ai` [SCRIPTS/seed-testowa-blueprint-schema.php:51-80, SCRIPTS/seed-testowa-blueprint-schema.sh:9-20].
+  - Repo-side generator AI payloadu już istnieje i generuje `page_builder_schema_for_ai` z `page_builder_schema`, ale nie tworzy strony WordPress [SCRIPTS/generate-page-builder-ai-schema.js:5-9, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:68-92].
+  - Dokument workflow wprost stwierdza, że obecny `POST` endpoint tylko aktualizuje istniejącą stronę i że dziś nie ma generycznego repo-side skryptu tworzącego dowolną stronę po slugu wraz z obiema metami [docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:152-168].
+  - Nawet po zapisaniu meta pełny proof pozostaje częściowo testowy: Astro buduje tylko slugi z `TEST_PAGE_SLUGS = ['testowa-blueprint']`, a React proof route jest przypięty do `testowa-blueprint` [astro-site/src/lib/config.ts:3, astro-site/src/pages/[slug].astro:15-16, zip/src/App.tsx:24, zip/src/pages/TestowaBlueprintPage.tsx:8].
+
+research_metadata:
+  methodology: Hybrid retrieval with `grep_search` for exact code and docs patterns, targeted `read_file` on implementation and workflow files, repository memory review, and terminal line counts for file metadata.
+  scope: Focused on WordPress page-builder page creation and write flow across bridge plugin, seed scripts, authoring documentation, and the Astro/React proof paths directly coupled to slug-based publishing.
+  confidence: high
+  coverage: 92
+  decision_blockers: 1
+  research_blockers: 0
+
+files_analyzed:
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Implements page-builder read/write REST handlers and meta registration helpers.
+    key_elements:
+      - element: registerMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:13
+        description: Registers both page-builder meta keys on `page` posts [source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:13-16].
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:56
+        description: Accepts authenticated write payloads for `schema` and `aiSchema`, then updates both meta keys on the resolved page [source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:56-99].
+      - element: resolvePage
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:130
+        description: Resolves only an existing WordPress page by slug via `get_page_by_path(...)`; missing slug returns 404 [source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:130-141].
+    language: PHP
+    lines: 179
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Registers bridge REST routes.
+    key_elements:
+      - element: page-builder GET route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+        description: Exposes `GET /wp-json/bulwar/v1/page-builder/pages/{slug}` [source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-50].
+      - element: page-builder POST route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+        description: Exposes authenticated `POST /wp-json/bulwar/v1/page-builder/pages/{slug}` guarded by `current_user_can('edit_pages')` [source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52-58].
+    language: PHP
+    lines: 50
+
+  - file: Plugin.php
+    path: wordpress-plugin/bulwar-bridge/src/Plugin.php
+    purpose: Boots bridge hooks and route registration.
+    key_elements:
+      - element: bootstrap hooks
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:16
+        description: Hooks page-builder meta registration on `init` and REST route registration on `rest_api_init` [source: wordpress-plugin/bulwar-bridge/src/Plugin.php:16-17].
+    language: PHP
+    lines: 63
+
+  - file: seed-testowa-blueprint-schema.php
+    path: SCRIPTS/seed-testowa-blueprint-schema.php
+    purpose: Test-only create-or-update seeding script for the `testowa-blueprint` page.
+    key_elements:
+      - element: existing page lookup
+        type: function
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:51
+        description: Looks up `testowa-blueprint` with `get_page_by_path(...)` [source: SCRIPTS/seed-testowa-blueprint-schema.php:51].
+      - element: wp_insert_post branch
+        type: function
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:64
+        description: Creates the page when it does not exist, but hardcodes title and slug to `Testowa Blueprint` / `testowa-blueprint` [source: SCRIPTS/seed-testowa-blueprint-schema.php:64-69].
+      - element: dual meta write
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:77
+        description: Writes `page_builder_schema` and, when present, `page_builder_schema_for_ai` [source: SCRIPTS/seed-testowa-blueprint-schema.php:77-80].
+    language: PHP
+    lines: 66
+
+  - file: seed-testowa-blueprint-schema.sh
+    path: SCRIPTS/seed-testowa-blueprint-schema.sh
+    purpose: Shell/WP-CLI variant of the test-only page seeding flow.
+    key_elements:
+      - element: wp-cli create branch
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:12
+        description: Creates `testowa-blueprint` with `wp post create` if absent [source: SCRIPTS/seed-testowa-blueprint-schema.sh:9-15].
+      - element: meta writes
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:17
+        description: Writes the two page-builder meta payloads with `wp eval` against the resolved page ID [source: SCRIPTS/seed-testowa-blueprint-schema.sh:17-20].
+    language: Bash
+    lines: 21
+
+  - file: generate-page-builder-ai-schema.js
+    path: SCRIPTS/generate-page-builder-ai-schema.js
+    purpose: Generates the AI-editing payload from a render schema file.
+    key_elements:
+      - element: CLI interface
+        type: pattern
+        location: SCRIPTS/generate-page-builder-ai-schema.js:5
+        description: Declares CLI usage based on `--input`, optional `--output`, and optional `--post-id` [source: SCRIPTS/generate-page-builder-ai-schema.js:5-7].
+      - element: generator purpose banner
+        type: pattern
+        location: SCRIPTS/generate-page-builder-ai-schema.js:9
+        description: States that the script creates `page_builder_schema_for_ai` from `page_builder_schema` [source: SCRIPTS/generate-page-builder-ai-schema.js:9-10].
+    language: JavaScript
+    lines: 257
+
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Documents the canonical authoring and publish workflow for page-builder pages.
+    key_elements:
+      - element: current truths and limits
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37
+        description: States that the WordPress POST endpoint updates an existing page and does not create a missing one [source: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37].
+      - element: ensure WordPress page exists step
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:150
+        description: Explicitly requires ensuring the page exists before posting metas and notes that no generic repo-side create-by-slug script exists today [source: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:150-168].
+      - element: dual-meta write step
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:164
+        description: Defines the authenticated POST body containing both `schema` and `aiSchema` [source: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:164-193].
+    language: Markdown
+    lines: 201
+
+  - file: react-wordpress-poc-status.md
+    path: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md
+    purpose: Records the current POC status of the WordPress and page-builder integration.
+    key_elements:
+      - element: endpoint status note
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:82
+        description: States that the route accepts authenticated POST requests updating both page-builder metas in one request [source: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:82].
+      - element: seed script status note
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:99
+        description: Documents the seed script as creating or updating only `testowa-blueprint` [source: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:99-101].
+    language: Markdown
+    lines: 170
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Holds the Astro proof slug allowlist and WordPress base URL.
+    key_elements:
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Restricts the current Astro proof build to `testowa-blueprint` [source: astro-site/src/lib/config.ts:3].
+    language: TypeScript
+    lines: 2
+
+  - file: [slug].astro
+    path: astro-site/src/pages/[slug].astro
+    purpose: Builds static Astro pages for slugs listed in config.
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:15
+        description: Generates static paths exclusively from `TEST_PAGE_SLUGS` [source: astro-site/src/pages/[slug].astro:15-16].
+    language: Astro
+    lines: 184
+
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Fetches page-builder schema and global layout data from WordPress.
+    key_elements:
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:201
+        description: Reads page-builder data from `GET /wp-json/bulwar/v1/page-builder/pages/{slug}` [source: astro-site/src/lib/wordpress.ts:201-208].
+    language: TypeScript
+    lines: 213
+
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: React proof app routing.
+    key_elements:
+      - element: Testowa Blueprint route
+        type: pattern
+        location: zip/src/App.tsx:24
+        description: Registers only `/testowa-blueprint` for the page-builder proof route [source: zip/src/App.tsx:24].
+    language: TypeScript
+    lines: 30
+
+  - file: TestowaBlueprintPage.tsx
+    path: zip/src/pages/TestowaBlueprintPage.tsx
+    purpose: React proof page hardwired to the test slug.
+    key_elements:
+      - element: PAGE_BUILDER_SLUG
+        type: variable
+        location: zip/src/pages/TestowaBlueprintPage.tsx:8
+        description: Hardcodes the page-builder source slug to `testowa-blueprint` [source: zip/src/pages/TestowaBlueprintPage.tsx:8].
+    language: TypeScript
+    lines: 50
+
+patterns_found:
+  - category: architecture
+    pattern: Slug-based page-builder REST access is update-only for existing pages.
+    description: The bridge exposes GET and POST by slug, but the POST path delegates to a resolver that only fetches an existing page and does not create one when absent.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-53
+        snippet: register_rest_route('bulwar/v1', '/page-builder/pages/(?P<slug>[a-zA-Z0-9\-_]+)', ...)
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:130-141
+        snippet: $page = get_page_by_path(sanitize_title_for_query($slug), OBJECT, 'page'); if (! $page instanceof WP_Post) { return Response::error('PAGE_NOT_FOUND', ...); }
+    prevalence: common
+
+  - category: structure
+    pattern: Dual-meta write is the canonical page-builder persistence model.
+    description: The workflow and controller always treat `page_builder_schema` and `page_builder_schema_for_ai` as a pair for normal writes.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:86-97
+        snippet: update_post_meta(... 'page_builder_schema' ...); update_post_meta(... 'page_builder_schema_for_ai' ...);
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:164-193
+        snippet: Required request body shape contains both `schema` and `aiSchema`.
+    prevalence: common
+
+  - category: workflow
+    pattern: Repo-side creation support is test-page specific, not generic.
+    description: The only create-or-update helpers in repo hardcode `testowa-blueprint` and do not accept an arbitrary slug/title pair.
+    examples:
+      - file: SCRIPTS/seed-testowa-blueprint-schema.php
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:51-69
+        snippet: get_page_by_path('testowa-blueprint' ...); wp_insert_post(['post_title' => 'Testowa Blueprint', 'post_name' => 'testowa-blueprint', ...])
+      - file: SCRIPTS/seed-testowa-blueprint-schema.sh
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:9-15
+        snippet: post list --name=testowa-blueprint ... post create ... --post_name=testowa-blueprint
+    prevalence: occasional
+
+  - category: workflow
+    pattern: Schema generation is generic, WordPress page creation is not.
+    description: There is already a generic generator for the AI schema from a render schema, but page existence must be handled separately.
+    examples:
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:5-9
+        snippet: node SCRIPTS/generate-page-builder-ai-schema.js --input path/to/page_builder_schema.json --output path/to/page_builder_schema_for_ai.json
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:152-162
+        snippet: The current generic POST endpoint updates an existing page by slug... Today there is no generic repo-side script...
+    prevalence: common
+
+  - category: architecture
+    pattern: Verification routes remain proof-specific.
+    description: The post-write verification surface in Astro and React is still wired around the single test slug rather than generic slug discovery.
+    examples:
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:3
+        snippet: export const TEST_PAGE_SLUGS = ['testowa-blueprint'] as const;
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:24
+        snippet: <Route path="/testowa-blueprint" element={<TestowaBlueprintPage />} />
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: PageBuilderController
+      responsibility: Registers page-builder meta keys and serves slug-based read/write handlers.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: domain depends on this
+    - component: Routes
+      responsibility: Publishes the GET/POST page-builder endpoints under `bulwar/v1`.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship_to_domain: domain depends on this
+    - component: seed-testowa-blueprint-schema.php
+      responsibility: Creates or updates the single proof page and writes page-builder metas directly through WordPress functions.
+      location: SCRIPTS/seed-testowa-blueprint-schema.php
+      relationship_to_domain: domain depends on this for proof seeding
+    - component: generate-page-builder-ai-schema.js
+      responsibility: Produces AI-editing payloads from render payloads before WordPress write.
+      location: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: domain produces inputs for this
+    - component: astro-site slug proof
+      responsibility: Builds static pages only for explicitly allowed test slugs.
+      location: astro-site/src/lib/config.ts and astro-site/src/pages/[slug].astro
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-50
+      usage_pattern: Public read of normalized `schema` plus optional `aiSchema` by slug.
+    - interface: POST /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52-58
+      usage_pattern: Authenticated dual-meta update for an existing page resolved by slug.
+  data_flow_involving_domain: Repo-side authoring creates `<slug>.page_builder_schema.json`, the generator derives `<slug>.page_builder_schema_for_ai.json`, WordPress page existence is ensured separately, the authenticated POST writes both metas to the existing page, then Astro or React proof reads the GET endpoint by slug [sources: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:52-92, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:150-203, astro-site/src/lib/wordpress.ts:201-208].
+  key_relationships_to_domain:
+    - from: wordpress-plugin/bulwar-bridge/src/Plugin.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Plugin.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: astro-site/src/lib/wordpress.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship: depends on
+    - from: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+      to: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship: documents
+    - from: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+      to: SCRIPTS/seed-testowa-blueprint-schema.php
+      relationship: documents
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - JavaScript
+    - TypeScript
+    - Bash
+    - Markdown
+    - Astro
+  frameworks_used_in_domain:
+    - name: WordPress REST API
+      usage_in_domain: Bridge routes expose slug-based page-builder reads and authenticated writes.
+    - name: Astro
+      usage_in_domain: Static proof consumes the WordPress page-builder endpoint for configured slugs only.
+    - name: React Router
+      usage_in_domain: React proof exposes a single hardwired preview route for `testowa-blueprint`.
+  libraries_used_in_domain:
+    - name: WP core post/meta APIs
+      purpose_in_domain: Resolve pages by slug, create posts in seed scripts, and persist page-builder metas.
+  external_apis_used_in_domain:
+    - name: WordPress site REST endpoint on client.example
+      integration_point: Astro fetches page-builder schemas from `/wp-json/bulwar/v1/page-builder/pages/{slug}`.
+
+related_conventions:
+  naming_patterns_in_domain: Slug-oriented artifacts are named as `<slug>.page_builder_schema.json` and `<slug>.page_builder_schema_for_ai.json`; proof-specific code uses the literal `testowa-blueprint` in script names and route wiring [sources: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:52-62, SCRIPTS/seed-testowa-blueprint-schema.php:51-69, zip/src/pages/TestowaBlueprintPage.tsx:8].
+  structure_of_domain: Repo-side JSON artifacts are prepared first, then WordPress meta is updated via bridge endpoint or proof-specific seed helper, then Astro/React proof reads back by slug [sources: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:68-203].
+  error_handling_in_domain: REST handlers return structured `Response::error(...)` codes such as `PAGE_SLUG_REQUIRED`, `PAGE_NOT_FOUND`, and `VALIDATION_ERROR`; permission checks use `edit_post` and `edit_pages` [sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:29-42, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:62-84, wordpress-plugin/bulwar-bridge/src/Http/Routes.php:55-57].
+  testing_in_domain: Current visible tests in `wordpress-plugin/bulwar-bridge/tests` cover global layout and other bridge areas; no dedicated page-builder controller test file was found in the examined scope.
+  documentation_in_domain: The canonical workflow and current limitations are documented in `page-builder-authoring-workflow.md` and the POC status document [sources: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:20-203, docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:70-117].
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Plugin.php
+      relationship_to_domain: bootstraps page-builder meta registration and routes
+      direction: inbound
+    - component: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: consumes render schema artifacts before WordPress write
+      direction: bidirectional
+    - component: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: consumes slug-based read endpoint
+      direction: outbound
+    - component: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+      relationship_to_domain: defines the expected manual/operator flow around page creation and dual-meta write
+      direction: inbound
+  external:
+    - name: WordPress core
+      purpose_for_domain: Post lookup, post creation/update, post meta persistence, and user capability checks.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: page-builder write endpoint permissions
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52-58
+      concern: POST writes are protected by `current_user_can('edit_pages')` at route level.
+    - area: per-page authorization on updates
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:62-65
+      concern: Controller additionally requires `current_user_can('edit_post', $page->ID)` before meta updates.
+  authentication_patterns_in_domain: Public GET is open; POST requires an authenticated WordPress user with page editing capability [sources: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:47-58, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:168-182].
+  authorization_patterns_in_domain: Authorization is enforced twice, once at route registration and once per resolved page in the controller [sources: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:55-57, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:62-65].
+  data_validation_in_domain: The controller coerces both `schema` and `aiSchema` from object or JSON string input and rejects empty or invalid payloads with `VALIDATION_ERROR` [source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:72-84, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:146-160].
+
+open_questions:
+  - question: Which surface is intended to own creation of a missing WordPress page for future agent flows: the bridge REST API, a repo-side script, or an external operator step?
+    context: The current workflow explicitly requires ensuring page existence first, but the repo contains only the proof-specific `testowa-blueprint` create-or-update helpers and an update-only generic POST endpoint.
+    type: decision_blocker
+    affects:
+      - standalone
+  - question: Should the generic future flow also update route discovery for Astro and React, or is WordPress page creation the only required scope?
+    context: Astro and React proof layers are both still pinned to `testowa-blueprint`, so a created page may still not appear in proof surfaces without extra wiring.
+    type: research
+    affects:
+      - standalone
+
+gaps:
+  - area: Generic create-page-by-slug helper
+    description: No examined file provides a reusable helper or API that accepts an arbitrary slug/title and creates the missing WordPress page before writing both page-builder metas; only the testowa-blueprint seed scripts do this.
+    impact: decision_blocker
+    affects:
+      - standalone
+  - area: Generic proof discovery
+    description: Astro static generation and the React proof route are not driven by discovered page-builder pages; both are still bound to `testowa-blueprint`.
+    impact: research_blocker
+    affects:
+      - standalone
+

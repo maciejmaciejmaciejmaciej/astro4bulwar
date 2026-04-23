@@ -1,0 +1,414 @@
+plan_id: "astro-wordpress-page-builder"
+objective: >
+  Wdrozyc faze 1 SEO w astro-site przez typowany kontrakt SEO, normalizacje
+  payloadu WordPress, przekazanie rozwiazanego SEO z [slug].astro i pelny
+  rendering head w BaseLayout.astro.
+created_at: "2026-04-18T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 4
+  risk_score: "medium"
+
+tldr: |
+  Najmniejszy spojny zakres dla fazy 1 SEO to zamkniecie calego przeplywu
+  danych w czterech krokach: zdefiniowac jawny kontrakt seo w
+  astro-site/src/lib/types.ts, znormalizowac surowy payload WordPress do tego
+  kontraktu w astro-site/src/lib/wordpress.ts, zlozyc jeden rozwiazany obiekt
+  SEO w astro-site/src/pages/[slug].astro i wyrenderowac komplet tagow head w
+  astro-site/src/layouts/BaseLayout.astro.
+  To odpowiada obecnym lukom repo: seo jest nadal luznym recordem,
+  [slug].astro sklada tylko title, a BaseLayout renderuje tylko podstawowy
+  head. Sources: astro-site/src/lib/types.ts, astro-site/src/lib/wordpress.ts,
+  astro-site/src/pages/[slug].astro, astro-site/src/layouts/BaseLayout.astro.
+
+open_questions:
+  - >
+    Czy fallback canonical ma respektowac aktualne base /astro/, czy ma juz
+    wskazywac docelowy publiczny URL bez prefiksu stagingowego? To wplywa na
+    logike resolvera w [slug].astro i walidacje finalnego HTML. Sources:
+    astro-site/astro.config.mjs,
+    docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md.
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: >
+        Typed seoSchema okaze sie zbyt restrykcyjny wobec obecnych payloadow
+        WordPress i build zacznie padac na danych, ktore dzis przechodza jako
+        luźny record.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Najpierw utrzymac normalizacje przed pageBuilderSchema.parse(), a
+        dopiero potem zaostrzyc typy. Pola opcjonalne zostawic opcjonalne w
+        fazie 1 i walidowac tylko shape potrzebny do head.
+    - scenario: >
+        Canonical i og url zostana wyliczone z nieprawidlowego hosta lub z
+        prefiksem /astro/, co da zle URL-e w wygenerowanym HTML.
+      likelihood: "medium"
+      impact: "critical"
+      mitigation: >
+        Zrobic jeden resolver URL-i w [slug].astro z jasna kolejnoscia
+        canonicalUrl, canonicalPath, fallback z configu i sprawdzic wynik na
+        build output. Sources: astro-site/astro.config.mjs,
+        astro-site/src/pages/[slug].astro.
+    - scenario: >
+        Head bedzie skladany czesciowo w [slug].astro, a czesciowo w
+        BaseLayout.astro, przez co pojawia sie duplikaty lub niespojne
+        fallbacki dla title i description.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Wymusic jeden rozwiazany obiekt SEO przekazywany do BaseLayout i usunac
+        sciezke title only jako osobny kontrakt. Sources:
+        astro-site/src/pages/[slug].astro,
+        astro-site/src/layouts/BaseLayout.astro.
+  assumptions:
+    - >
+      page_builder_schema.seo pozostaje opcjonalne w fazie 1, ale gdy
+      wystepuje, powinno byc walidowane przez jawny schema zamiast przez luzny
+      record. Sources: astro-site/src/lib/types.ts,
+      astro-site/src/lib/wordpress.ts.
+    - >
+      Wspolny layout jest poprawnym miejscem do renderowania head, bo Astro
+      rekomenduje wspolny layout lub komponent Head dla metadanych stron.
+      Source: Astro docs search result stored in workspaceStorage content.json.
+    - >
+      Ladowanie globalnego layoutu i fallbacki navbar oraz footer pozostaja
+      poza zakresem tego planu i nie powinny byc modyfikowane przez prace SEO.
+      Sources: astro-site/src/pages/[slug].astro,
+      astro-site/src/lib/wordpress.ts,
+      /memories/repo/global-layout-endpoint-notes.md.
+
+implementation_specification:
+  code_structure: |
+    Zachowac pojedynczy pipeline SEO wewnatrz astro-site: surowy payload
+    WordPress, normalizacja w wordpress.ts, walidacja w types.ts,
+    rozwiazanie fallbackow i URL-i w [slug].astro, a na koniec render tagow w
+    BaseLayout.astro. Nie rozpraszac logiki meta-tagow po komponentach sekcji
+    ani nie utrzymywac rownolegle dwoch kontraktow, czyli title i seo.
+  affected_areas:
+    - "astro-site/src/lib/types.ts"
+    - "astro-site/src/lib/wordpress.ts"
+    - "astro-site/src/pages/[slug].astro"
+    - "astro-site/src/layouts/BaseLayout.astro"
+    - "docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md"
+  component_details:
+    - component: "seoSchema i typ layoutowego SEO"
+      responsibility: >
+        Zdefiniowac stabilny kontrakt danych SEO dla page_builder_schema oraz
+        typ obiektu wejsciowego do renderowania head.
+      interfaces:
+        - "seoSchema waliduje co najmniej title, description, canonicalUrl albo canonicalPath, robots, og i twitter."
+        - "Typ layoutowy opisuje komplet juz rozwiazanych wartosci przekazywanych do BaseLayout.astro."
+    - component: "normalizacja SEO z WordPress"
+      responsibility: >
+        Przeksztalcic rozne warianty surowego payloadu seo do ksztaltu
+        akceptowanego przez seoSchema bez zmiany innych obszarow
+        page_builder_schema.
+      interfaces:
+        - "normalizeSchema() albo pomocniczy normalizeSeo() zwraca shape zgodny z pageBuilderSchema.parse()."
+    - component: "page-level SEO resolver"
+      responsibility: >
+        Zlozyc finalny obiekt SEO dla konkretnego sluga z priorytetem dla
+        danych z payloadu i bezpiecznymi fallbackami z danych strony oraz
+        configu Astro.
+      interfaces:
+        - "[slug].astro przekazuje jeden obiekt seo do BaseLayout.astro zamiast samego title."
+    - component: "renderer head w BaseLayout"
+      responsibility: >
+        Wyrenderowac komplet tagow HTML head wymaganych w fazie 1 bez zmiany
+        istniejacego shella strony, fontow i layoutu globalnego.
+      interfaces:
+        - "BaseLayout.astro renderuje title, meta description, canonical, robots, podstawowe Open Graph i podstawowe Twitter tags."
+  dependencies:
+    - component: "pageBuilderSchema"
+      relationship: >
+        Jest kontraktem wejsciowym dla danych pobieranych z WordPress i musi
+        zaczac konsumowac typed seoSchema.
+    - component: "fetchWordPressPageBuilderSchema"
+      relationship: >
+        To miejsce, w ktorym normalizacja musi przygotowac dane do parse bez
+        rozbijania istniejacego przeplywu pobierania strony.
+    - component: "BaseLayout props"
+      relationship: >
+        To finalny konsument rozwiazanego obiektu SEO z [slug].astro.
+  integration_points:
+    - "astro-site/src/lib/types.ts"
+    - "astro-site/src/lib/wordpress.ts"
+    - "astro-site/src/pages/[slug].astro"
+    - "astro-site/src/layouts/BaseLayout.astro"
+
+contracts:
+  - from_task: "define_typed_seo_contract"
+    to_task: "normalize_wordpress_seo"
+    interface: >
+      Jawny schema i typy SEO dla page_builder_schema oraz layoutowego obiektu
+      head.
+    format: "Zod schema plus inferred TypeScript types"
+  - from_task: "normalize_wordpress_seo"
+    to_task: "wire_slug_page_seo"
+    interface: >
+      fetchWordPressPageBuilderSchema() zwraca page.seo zgodne z typed
+      kontraktem albo undefined.
+    format: "Znormalizowany obiekt parsed przez pageBuilderSchema"
+  - from_task: "wire_slug_page_seo"
+    to_task: "render_base_layout_head"
+    interface: >
+      Jeden rozwiazany obiekt SEO z absolutnymi URL-ami i fallbackami dla
+      brakujacych pol.
+    format: "Layout props object"
+
+tasks:
+  - id: "define_typed_seo_contract"
+    title: "Zdefiniowac typowany kontrakt SEO w types.ts"
+    description: |
+      Zastapic luzne pole seo w pageBuilderSchema jawnym seoSchema oraz
+      wyeksportowac typ, ktory bedzie pozniej konsumowany przez [slug].astro i
+      BaseLayout.astro. W fazie 1 kontrakt ma byc pragmatyczny i obejmowac
+      tylko pola potrzebne do kompletnego head, bez wchodzenia w sitemap czy
+      JSON-LD. Sources: astro-site/src/lib/types.ts,
+      docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "typed SEO contract"
+      - "stable layout SEO props"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/lib/types.ts"
+        description: "Obecny pageBuilderSchema z luznym polem seo."
+      - path: "astro-site/src/layouts/BaseLayout.astro"
+        description: "Docelowy konsument typed SEO props."
+      - path: "docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md"
+        description: "Repo-level kierunek dla fazy 1 SEO."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          To najwczesniejszy punkt stabilizacji, bez ktorego kolejne zadania
+          beda dalej operowaly na unknown.
+        timestamp: "2026-04-18T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 1
+        estimated_lines: 90
+        focus_area: "schema i typy SEO"
+        verification:
+          - "pageBuilderSchema przyjmuje poprawny payload SEO i odrzuca nieprawidlowe ksztalty krytycznych pol."
+          - "Typed SEO mozna importowac bez uzycia Record<string, unknown>."
+        acceptance_criteria:
+          - "astro-site/src/lib/types.ts eksportuje seoSchema i odpowiadajace typy."
+          - "pageBuilderSchema.seo korzysta z seoSchema zamiast z luznego rekordu."
+          - "Kontrakt obejmuje minimalny zestaw pol potrzebny do pelnego head w fazie 1."
+        failure_modes:
+          - scenario: >
+              Kontrakt bedzie zbyt szeroki i wymusi pola, ktorych obecny
+              payload jeszcze nie dostarcza.
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: >
+              Ograniczyc schema do pol faktycznie renderowanych w BaseLayout i
+              zostawic reszte opcjonalna.
+    tech_stack:
+      - "Astro"
+      - "TypeScript"
+      - "Zod"
+    test_coverage: null
+
+  - id: "normalize_wordpress_seo"
+    title: "Znormalizowac payload SEO z WordPress przed walidacja"
+    description: |
+      Rozszerzyc normalizeSchema() w astro-site/src/lib/wordpress.ts albo
+      wydzielic pomocniczy normalizeSeo(), tak aby surowe schema.seo bylo
+      mapowane do typed kontraktu przed pageBuilderSchema.parse(). Celem nie
+      jest rozbudowa fetch layer, tylko usuniecie rozjazdu miedzy realnym
+      payloadem a nowym schema. Sources: astro-site/src/lib/wordpress.ts,
+      astro-site/src/lib/types.ts.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "WordPress SEO normalization"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "define_typed_seo_contract"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/lib/wordpress.ts"
+        description: "Obecna normalizacja meta, seo, build i sekcji."
+      - path: "astro-site/src/lib/types.ts"
+        description: "Nowy typed kontrakt SEO konsumowany przez parser."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Root cause lezy w tym, ze fetch layer dopuszcza dowolny ksztalt SEO i
+          oddaje go parserowi bez semantycznej normalizacji.
+        timestamp: "2026-04-18T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 1
+        estimated_lines: 70
+        focus_area: "pre-parse SEO normalization"
+        verification:
+          - "fetchWordPressPageBuilderSchema() zwraca typed seo dla reprezentatywnego payloadu wejsciowego."
+          - "Normalizacja nie zmienia zachowania meta, build ani sections."
+        acceptance_criteria:
+          - "astro-site/src/lib/wordpress.ts mapuje surowe seo do shape zgodnego z seoSchema."
+          - "Bledny payload daje przewidywalny blad walidacji, a nie cichy luzny rekord."
+          - "Zmiana nie narusza fetch i walidacji global layoutu."
+        failure_modes:
+          - scenario: >
+              Normalizacja zacznie zgadywac zbyt wiele i ukryje realne bledy
+              danych.
+            likelihood: "medium"
+            impact: "high"
+            mitigation: >
+              Ograniczyc normalizacje do prostych mapowan i fallbackow pustych
+              obiektow, bez dopowiadania brakujacych wartosci biznesowych.
+    tech_stack:
+      - "Astro"
+      - "TypeScript"
+      - "Zod"
+    test_coverage: null
+
+  - id: "wire_slug_page_seo"
+    title: "Zlozyc rozwiazane SEO w [slug].astro i przekazac jeden obiekt do layoutu"
+    description: |
+      Zmienic [slug].astro, aby nie skladal juz tylko const title, lecz
+      budowal jeden rozwiazany obiekt SEO z priorytetem dla danych z payloadu,
+      fallbackiem do page.page.title oraz z rozwiazaniem absolutnych URL-i dla
+      canonical i obrazow OG albo Twitter. To powinno byc jedyne miejsce, w
+      ktorym laczone sa dane strony, slug i config Astro przed renderem
+      layoutu. Sources: astro-site/src/pages/[slug].astro,
+      astro-site/astro.config.mjs, astro-site/src/lib/config.ts.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "page-level SEO resolution"
+      - "canonical and OG URL strategy"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "define_typed_seo_contract"
+      - "normalize_wordpress_seo"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/pages/[slug].astro"
+        description: "Obecna strona, ktora sklada tylko title i renderuje sekcje."
+      - path: "astro-site/astro.config.mjs"
+        description: "Konfiguracja site i base istotna dla canonical fallback."
+      - path: "astro-site/src/lib/wordpress.ts"
+        description: "Zrodlo typed payloadu strony po normalizacji."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Resolver strony powinien byc jedynym miejscem skladania fallbackow i
+          absolutnych URL-i zanim dane trafia do layoutu.
+        timestamp: "2026-04-18T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 1
+        estimated_lines: 110
+        focus_area: "resolved SEO object for page"
+        verification:
+          - "[slug].astro przekazuje do layoutu jeden obiekt seo, a nie osobne pola ad hoc."
+          - "Resolver poprawnie wybiera canonical wedlug ustalonej kolejnosci priorytetow."
+          - "Fallback title i description jest przewidywalny dla strony bez pelnego payloadu SEO."
+        acceptance_criteria:
+          - "[slug].astro przestaje byc sciezka title only."
+          - "Rozwiazany obiekt SEO obejmuje co najmniej title, description, canonical, robots i podstawowe pola OG oraz Twitter."
+          - "Rozwiazywanie URL-i nie korzysta z rozproszonej logiki w kilku komponentach."
+        failure_modes:
+          - scenario: >
+              Resolver polaczy fallbacki tak, ze canonical i og url beda rozne
+              dla tej samej strony.
+            likelihood: "medium"
+            impact: "high"
+            mitigation: >
+              Trzymac jeden wyliczony canonical URL i reuzywac go dla og url
+              oraz innych zaleznych pol.
+    tech_stack:
+      - "Astro"
+      - "TypeScript"
+    test_coverage: null
+
+  - id: "render_base_layout_head"
+    title: "Wyrenderowac pelny head metadata w BaseLayout i dopiac smoke walidacje"
+    description: |
+      Rozszerzyc BaseLayout.astro, aby przyjmowal typed prop seo i renderowal
+      caly head dla fazy 1: title, meta description, canonical, meta robots,
+      podstawowe og oraz podstawowe twitter. Zachowac bez zmian istniejacy
+      shell strony, fonty i global layout, a na koniec zapisac krotka notatke
+      operatorska z walidacja w roadmapie SEO. Sources:
+      astro-site/src/layouts/BaseLayout.astro,
+      astro-site/src/pages/[slug].astro,
+      docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md.
+    wave: 4
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "full head metadata rendering"
+      - "phase-1 validation"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "wire_slug_page_seo"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/layouts/BaseLayout.astro"
+        description: "Obecny layout z minimalnym head."
+      - path: "astro-site/src/pages/[slug].astro"
+        description: "Zrodlo rozwiazanego obiektu seo przekazywanego do layoutu."
+      - path: "docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md"
+        description: "Miejsce do dopisania finalnych zasad walidacji fazy 1."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Finalny renderer head powinien powstac dopiero po ustabilizowaniu
+          kontraktu i resolvera, zeby nie utrwalic duplikatow lub zlych
+          fallbackow.
+        timestamp: "2026-04-18T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 2
+        estimated_lines: 140
+        focus_area: "layout head rendering and smoke validation"
+        verification:
+          - "npm run build w astro-site konczy sie powodzeniem po zmianach."
+          - "W wygenerowanym HTML dla testowa-blueprint widac title, description, canonical, robots, og title, og description, og url i twitter card."
+          - "Zmiana nie narusza renderingu navbar, footer i fontow."
+        acceptance_criteria:
+          - "BaseLayout.astro przyjmuje typed seo prop i renderuje komplet tagow fazy 1."
+          - "docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md zawiera finalne kroki smoke walidacji po buildzie."
+          - "Finalny head nie duplikuje title ani description."
+        failure_modes:
+          - scenario: >
+              Layout wyrenderuje tagi warunkowo w niespojny sposob i niektore
+              strony beda miec tylko czesc metadanych.
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: >
+              Trzymac jeden typed prop i renderowac brakujace pola wedlug z
+              gory ustalonych fallbackow z resolvera strony.
+    tech_stack:
+      - "Astro"
+      - "TypeScript"
+      - "HTML metadata tags"
+    test_coverage: null
+
+planning_history:
+  - pass: 2
+    reason: >
+      Replan, bo poprzedni plan dotyczyl runtime page buildera w zip, a
+      aktualny cel dotyczy fazy 1 SEO w astro-site.
+    timestamp: "2026-04-18T00:00:00Z"

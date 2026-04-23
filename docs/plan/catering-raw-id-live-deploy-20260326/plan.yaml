@@ -1,0 +1,179 @@
+plan_id: catering-raw-id-live-deploy-20260326
+objective: |
+	Deploy the already-implemented Easter catering raw-key refactor to production by publishing the zip frontend only. Preserve the runtime/public id contract while releasing the raw boundary rename from id to category_id/product_id.
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending_approval
+research_confidence: high
+
+tldr: |
+	This release stays inside the zip React overlay. The production runtime consumes normalized cateringWielkanocnyCategories, while the raw rename is confined to zip/src/data/cateringWielkanocny.json and zip/src/data/cateringWielkanocny.ts, so no wordpress-plugin or bridge deploy is required. Reuse the existing zip build and deploy-react.sh path, then enforce the mandatory dhosting permission fix: directories 755 and files 644.
+open_questions: []
+
+pre_mortem:
+	overall_risk_level: low
+	critical_failure_modes:
+		- scenario: A stale frontend artifact is deployed, so production does not actually contain the raw-key refactor.
+			likelihood: medium
+			impact: high
+			mitigation: Build or confirm a fresh zip/react-deploy.zip from the current zip sources before upload.
+		- scenario: The upload succeeds but dhosting permissions are not normalized, producing white screen or 403 behavior.
+			likelihood: medium
+			impact: critical
+			mitigation: Treat the chmod pass as a required deployment gate immediately after remote unzip.
+	assumptions:
+		- The raw-key refactor is already implemented and validated in the zip frontend.
+		- Production serves the React overlay from /home/client-user/domains/client.example/public_html/react.
+		- Backend checkout payload contracts remain unchanged because the normalizer still emits public id fields.
+
+implementation_specification:
+	code_structure: |
+		This is an operational deployment plan only. Release the zip React bundle through the existing archive upload plus deploy-react.sh flow and do not modify or publish wordpress-plugin, bridge, or sync scripts as part of this release.
+	affected_areas:
+		- zip/src/data/cateringWielkanocny.json
+		- zip/src/data/cateringWielkanocny.ts
+		- zip production build artifact and zip/react-deploy.zip
+		- deploy-react.sh
+	component_details:
+		- component: Frontend scope validation
+			responsibility: Confirm the refactor remains confined to the zip runtime boundary and does not require backend publication.
+			interfaces:
+				- Runtime page consumes cateringWielkanocnyCategories with unchanged public id fields.
+				- Raw source uses category_id and product_id only inside the frontend data boundary.
+		- component: Frontend artifact publication
+			responsibility: Build or confirm the release archive, upload it, and publish it into the live react directory.
+			interfaces:
+				- zip/react-deploy.zip
+				- deploy-react.sh backup and unzip flow
+		- component: Post-deploy permission normalization
+			responsibility: Enforce dhosting-required permissions on the deployed frontend files.
+			interfaces:
+				- find <react-path> -type d -exec chmod 755 {} \;
+				- find <react-path> -type f -exec chmod 644 {} \;
+	dependencies:
+		- component: Frontend scope validation
+			relationship: Must confirm frontend-only release before any production deployment action.
+		- component: Frontend artifact publication
+			relationship: Produces the live files that permission normalization and smoke verification depend on.
+		- component: Post-deploy permission normalization
+			relationship: Must complete before live verification is considered valid.
+	integration_points:
+		- zip/package.json build script
+		- deploy-react.sh
+		- /home/client-user/domains/client.example/public_html/react
+
+contracts:
+	- from_task: T1
+		to_task: T2
+		interface: Confirmed frontend-only scope and selected release artifact.
+		format: zip source validation plus zip/react-deploy.zip ready for upload.
+	- from_task: T2
+		to_task: T3
+		interface: Deployed live react directory and timestamped backup.
+		format: Remote /public_html/react contents plus optional react_backup_<timestamp> directory.
+
+tasks:
+	- id: T1
+		title: Confirm frontend-only release scope and release artifact
+		description: |
+			Verify that the raw-key refactor is limited to the zip frontend runtime boundary: raw JSON and raw interfaces use category_id/product_id, while normalized/public consumers still receive id. Exclude wordpress-plugin, bridge, and sync tooling from this production release, then build or confirm the current zip/react-deploy.zip archive from the live-ready zip sources.
+		wave: 1
+		agent: gem-devops
+		priority: high
+		status: pending
+		dependencies: []
+		context_files:
+			- zip/src/data/cateringWielkanocny.json: Raw boundary renamed to category_id/product_id.
+			- zip/src/data/cateringWielkanocny.ts: Normalizer preserves public id contract.
+			- deploy-react.sh: Defines live target path and backup behavior.
+		estimated_effort: small
+		estimated_files: 3
+		estimated_lines: 0
+		focus_area: release scope containment
+		verification:
+			- Confirm production runtime pages consume cateringWielkanocnyCategories, not raw id keys.
+			- Confirm no wordpress-plugin or bridge deployment is needed for this refactor.
+			- Confirm a fresh or verified zip/react-deploy.zip exists for publication.
+		acceptance_criteria:
+			- Deployment scope remains frontend only.
+			- One explicit frontend archive is selected for production.
+		failure_modes:
+			- scenario: A maintenance script dependency is mistaken for a runtime dependency, unnecessarily widening scope.
+				likelihood: low
+				impact: medium
+				mitigation: Limit scope to production runtime and document that SCRIPTS/sync_catering_category.js is operational tooling, not a live runtime dependency.
+		environment: production
+		requires_approval: true
+		security_sensitive: false
+
+	- id: T2
+		title: Publish the React archive to the live react directory
+		description: |
+			Upload the selected zip/react-deploy.zip archive to the dhosting host, run the existing deploy-react.sh flow, and let it rotate the previous /public_html/react directory to a timestamped backup before unpacking the new bundle.
+		wave: 2
+		agent: gem-devops
+		priority: high
+		status: pending
+		dependencies:
+			- T1
+		context_files:
+			- deploy-react.sh: Existing backup and unzip flow for the live React overlay.
+			- zip/react-deploy.zip: Release archive to publish.
+		estimated_effort: small
+		estimated_files: 2
+		estimated_lines: 0
+		focus_area: production publication
+		verification:
+			- Confirm upload reaches the expected dhosting account.
+			- Confirm deploy-react.sh reports a successful deployment marker.
+			- Confirm the previous live frontend is preserved as react_backup_<timestamp> when applicable.
+		acceptance_criteria:
+			- Live /public_html/react is replaced with the new frontend bundle.
+			- A rollback directory exists if a previous release was present.
+		failure_modes:
+			- scenario: The archive is unpacked into the wrong remote path.
+				likelihood: low
+				impact: critical
+				mitigation: Reuse the exact BASE path from deploy-react.sh without substituting another directory.
+		environment: production
+		requires_approval: true
+		security_sensitive: false
+
+	- id: T3
+		title: Normalize permissions and run focused live smoke checks
+		description: |
+			Execute the mandatory dhosting permission repair over the deployed react directory so directories are 755 and files are 644. Then run the narrowest live verification needed for this refactor: open the Easter catering page, confirm it renders, and confirm the category/product data still resolves correctly through the normalized frontend UI.
+		wave: 3
+		agent: gem-browser-tester
+		priority: medium
+		status: pending
+		dependencies:
+			- T2
+		context_files:
+			- deploy-react.sh: Encodes the required chmod pattern.
+			- zip/src/pages/CateringWielkanocnyPage.test.tsx: Confirms raw-to-normalized expectations for the frontend.
+		estimated_effort: small
+		estimated_files: 2
+		estimated_lines: 0
+		focus_area: release validation
+		verification:
+			- Run find <react-path> -type d -exec chmod 755 {} \;.
+			- Run find <react-path> -type f -exec chmod 644 {} \;.
+			- Load the live Easter catering route and confirm it serves without permission or data regression.
+		acceptance_criteria:
+			- Live frontend is accessible after deployment.
+			- Permission normalization is completed explicitly.
+			- No regression is observed in the rendered Easter catering page.
+		failure_modes:
+			- scenario: The page loads but cached or stale assets obscure whether the new bundle is active.
+				likelihood: medium
+				impact: medium
+				mitigation: Hard-refresh or fetch the deployed asset references to confirm the new bundle is being served.
+		validation_matrix:
+			- scenario: Live Easter catalog render
+				steps:
+					- Open the production Easter catering page.
+					- Confirm the page renders category content without runtime errors.
+					- Confirm a product can still be resolved in the visible UI.
+				expected_result: The live page renders successfully with unchanged public-facing category and product behavior.
+

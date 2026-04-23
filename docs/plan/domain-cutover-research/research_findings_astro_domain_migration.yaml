@@ -1,0 +1,581 @@
+plan_id: domain-cutover-research
+objective: >-
+  Research whether switching the public domain from client.example to
+  bulwarrestauracja.pl requires an Astro redeploy, and identify which
+  links/meta/build outputs are host-dependent versus host-safe.
+focus_area: astro-domain-migration
+created_at: '2026-04-18T00:00:00Z'
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Host/domain assumptions are encoded in Astro config and runtime config: `site: 'https://client.example'` and `WORDPRESS_BASE_URL = 'https://client.example'` (astro-site/astro.config.mjs:4-6, astro-site/src/lib/config.ts:1).
+  - Internal chrome links are mostly root-relative or data-driven and will still resolve after a hostname alias change, but generated SEO tags and asset URLs are absolute and currently bake in `https://client.example` (astro-site/src/pages/[slug].astro:52-60, 159-174; astro-site/src/layouts/BaseLayout.astro:23-33; astro-site/dist/testowa-blueprint/index.html:1).
+  - No Astro sitemap integration or `robots.txt` generator was found in `astro-site/`; SEO host dependence currently comes from canonical/Open Graph/Twitter output, while Astro docs state any sitemap generation would also depend on the configured `site` value (astro-site/package.json:1-20; Astro docs search result `@astrojs/sitemap|Usage`).
+  - For a real public cutover to `bulwarrestauracja.pl`, a rebuild/redeploy is required to regenerate canonical/OG URLs and any absolute asset origins, and the current deploy scripts also still target the v2 server path (SCRIPTS/deploy-astro-static.ps1:10-12, SCRIPTS/rollback-astro-static.ps1:12-13).
+  - Repo docs consistently document the safe temporary model as WordPress on `/`, React on `/react`, Astro on `/astro`, with `base: '/astro/'` left unchanged during domain changes and a manual Astro deploy after updating domain config (docs/setup/sekwencyjny-przewodnik-klonowania.md:125-143, 241-249; docs/setup/klonowanie-astro-wordpress-woocommerce.md:113-129).
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval using file discovery, regex search, targeted source reads,
+    repository memory review, and Astro docs lookup for `site`/sitemap behavior.
+    Sources examined: docs/prd.yaml, Astro source/config files, deploy scripts,
+    setup docs, generated dist HTML, and Astro docs search results.
+  scope: >-
+    Focused on `astro-site/` host assumptions, generated SEO output, obvious
+    deployment docs/scripts, and `zip/src/main.tsx` only where host migration
+    assumptions intersect with `/react` routing.
+  confidence: high
+  coverage: 92
+  decision_blockers: 1
+  research_blockers: 0
+
+files_analyzed:
+  - file: astro.config.mjs
+    path: astro-site/astro.config.mjs
+    purpose: Defines Astro static build output, base path, and site origin.
+    key_elements:
+      - element: base
+        type: variable
+        location: astro-site/astro.config.mjs:4
+        description: Static asset/public path prefix is fixed to `/astro/`.
+      - element: site
+        type: variable
+        location: astro-site/astro.config.mjs:6
+        description: Public site origin is fixed to `https://client.example`.
+    language: javascript
+    lines: 7
+
+  - file: BaseLayout.astro
+    path: astro-site/src/layouts/BaseLayout.astro
+    purpose: Renders the HTML shell and page-level SEO meta tags.
+    key_elements:
+      - element: canonical link
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:23
+        description: Outputs `seo.canonical` into `<link rel="canonical">`.
+      - element: og:url meta
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:28
+        description: Outputs resolved Open Graph URL into page head.
+      - element: twitter meta block
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:30-33
+        description: Outputs Twitter card/title/description/image tags from resolved SEO data.
+    language: astro
+    lines: 48
+
+  - file: [slug].astro
+    path: astro-site/src/pages/[slug].astro
+    purpose: Builds static pages, resolves canonical/OG/image URLs, and renders sections.
+    key_elements:
+      - element: siteUrl fallback
+        type: function
+        location: astro-site/src/pages/[slug].astro:52
+        description: Uses `Astro.site` first, otherwise falls back to `new URL(WORDPRESS_BASE_URL)`.
+      - element: toAbsoluteAssetUrl
+        type: function
+        location: astro-site/src/pages/[slug].astro:55-60
+        description: Converts relative asset paths into absolute URLs rooted at `WORDPRESS_BASE_URL`.
+      - element: resolveAbsoluteUrl
+        type: function
+        location: astro-site/src/pages/[slug].astro:63-85
+        description: Resolves and constrains canonical values to the configured site origin.
+      - element: seoCanonical
+        type: variable
+        location: astro-site/src/pages/[slug].astro:159
+        description: Final canonical URL used for canonical and `og:url`.
+      - element: seo object
+        type: variable
+        location: astro-site/src/pages/[slug].astro:166-182
+        description: Final resolved SEO payload passed to layout.
+      - element: image mapping
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:199-211
+        description: Gallery/menu images are emitted as absolute URLs.
+    language: astro
+    lines: 223
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Stores runtime constants for build-time WordPress access and test slugs.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: Build-time content source and asset origin are fixed to the v2 host.
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Static paths are limited to the `testowa-blueprint` slug.
+    language: typescript
+    lines: 3
+
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Defines the page-builder schema and resolved SEO contract.
+    key_elements:
+      - element: pageSeoSchema.canonical
+        type: variable
+        location: astro-site/src/lib/types.ts:99
+        description: Canonical can be supplied by WordPress payload and is normalized upstream.
+      - element: ResolvedPageSeo.canonical
+        type: type
+        location: astro-site/src/lib/types.ts:130
+        description: Layout requires a fully resolved canonical string.
+      - element: ResolvedPageSeo.twitter
+        type: type
+        location: astro-site/src/lib/types.ts:139-144
+        description: Layout expects resolved Twitter card metadata.
+    language: typescript
+    lines: 147
+
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Fetches page-builder and global layout data and contains default layout fallback data.
+    key_elements:
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA navbar brand href
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:41
+        description: Default navbar brand points to root-relative `/`.
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA navbar logoSrc
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:42
+        description: Default logo source is root-relative `/react/images/logo.png`.
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA footer brand href
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:114
+        description: Default footer brand points to root-relative `/`.
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA footer legal links
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:139-140
+        description: Default legal links are absolute `https://bulwarrestauracja.pl/...` URLs.
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:201-208
+        description: Fetches page-builder schema from `WORDPRESS_BASE_URL`.
+      - element: fetchWordPressGlobalLayout
+        type: function
+        location: astro-site/src/lib/wordpress.ts:210-238
+        description: Fetches global layout from `WORDPRESS_BASE_URL`.
+    language: typescript
+    lines: 238
+
+  - file: Navbar.astro
+    path: astro-site/src/components/Navbar.astro
+    purpose: Renders nav links using href values from global layout data.
+    key_elements:
+      - element: reserveLink anchor
+        type: pattern
+        location: astro-site/src/components/Navbar.astro:18
+        description: Uses dynamic `reserveLink.href` without host rewriting.
+      - element: primary item anchor
+        type: pattern
+        location: astro-site/src/components/Navbar.astro:25
+        description: Uses dynamic `item.href` values as provided.
+      - element: child item anchor
+        type: pattern
+        location: astro-site/src/components/Navbar.astro:31
+        description: Uses dynamic child `href` values as provided.
+      - element: brand logo image
+        type: pattern
+        location: astro-site/src/components/Navbar.astro:42-43
+        description: Uses `navbar.brand.logoSrc` directly; current fallback data is root-relative.
+    language: astro
+    lines: 76
+
+  - file: Footer.astro
+    path: astro-site/src/components/Footer.astro
+    purpose: Renders footer links and decides whether HTTP links open externally.
+    key_elements:
+      - element: brand anchor
+        type: pattern
+        location: astro-site/src/components/Footer.astro:16
+        description: Uses `footer.brand.href` directly.
+      - element: contact anchors
+        type: pattern
+        location: astro-site/src/components/Footer.astro:31
+        description: Uses provided contact/link href values directly.
+      - element: external footer links
+        type: pattern
+        location: astro-site/src/components/Footer.astro:45-46
+        description: Opens HTTP links in a new tab but does not rewrite domains.
+    language: astro
+    lines: 56
+
+  - file: README.md
+    path: astro-site/README.md
+    purpose: Documents Astro POC scope and build command expectations.
+    key_elements:
+      - element: static HTML output description
+        type: pattern
+        location: astro-site/README.md:3-10
+        description: README states Astro fetches WordPress/Woo data during build and outputs static HTML pages.
+      - element: build command
+        type: pattern
+        location: astro-site/README.md:15-19
+        description: Build is expected to be run manually with `npm run build`.
+    language: markdown
+    lines: 19
+
+  - file: package.json
+    path: astro-site/package.json
+    purpose: Declares Astro app dependencies and scripts.
+    key_elements:
+      - element: build script
+        type: variable
+        location: astro-site/package.json:7
+        description: Build output is generated by `astro build`.
+      - element: astro dependency
+        type: variable
+        location: astro-site/package.json:12
+        description: Astro is declared at `^5.14.2`.
+    language: json
+    lines: 20
+
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Configures React router base for the companion app.
+    key_elements:
+      - element: BrowserRouter
+        type: pattern
+        location: zip/src/main.tsx:3
+        description: React uses client-side browser routing.
+      - element: basename
+        type: variable
+        location: zip/src/main.tsx:9
+        description: React routing is explicitly mounted under `/react`.
+    language: typescript
+    lines: 13
+
+  - file: deploy-astro-static.ps1
+    path: SCRIPTS/deploy-astro-static.ps1
+    purpose: Manually deploys built Astro static files to the server.
+    key_elements:
+      - element: remotePublicRoot
+        type: variable
+        location: SCRIPTS/deploy-astro-static.ps1:11
+        description: Deploy target points to the v2 domain's `public_html/astro` path.
+      - element: chmod post-deploy
+        type: pattern
+        location: SCRIPTS/deploy-astro-static.ps1:49-50
+        description: Dhosting permission fix runs after upload/extract.
+    language: powershell
+    lines: 55
+
+  - file: rollback-astro-static.ps1
+    path: SCRIPTS/rollback-astro-static.ps1
+    purpose: Restores a previous Astro deploy to the current live directory.
+    key_elements:
+      - element: remotePublicRoot
+        type: variable
+        location: SCRIPTS/rollback-astro-static.ps1:12
+        description: Rollback target points to the v2 domain's `public_html/astro` path.
+      - element: chmod post-rollback
+        type: pattern
+        location: SCRIPTS/rollback-astro-static.ps1:43-44
+        description: Permission fix also runs during rollback.
+    language: powershell
+    lines: 50
+
+  - file: klonowanie-astro-wordpress-woocommerce.md
+    path: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+    purpose: Documents expected domain-clone workflow and files to update.
+    key_elements:
+      - element: must-change Astro files
+        type: pattern
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:113-129
+        description: Explicitly lists Astro config/runtime config and chrome components as domain-sensitive.
+      - element: leave base unchanged
+        type: pattern
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:117
+        description: Says `base: '/astro/'` should remain unchanged for the fastest path.
+    language: markdown
+    lines: 273
+
+  - file: checklista-migracji-seo-wordpress-do-astro.md
+    path: docs/setup/checklista-migracji-seo-wordpress-do-astro.md
+    purpose: Defines SEO cutover rules for WordPress-to-Astro migration.
+    key_elements:
+      - element: staging and /astro must not be indexed
+        type: pattern
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:15
+        description: Temporary `/astro` surfaces are explicitly called out as non-final URLs.
+      - element: final canonical rule
+        type: pattern
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:29
+        description: Canonical must point to the final production URL, not `/astro` or the old domain.
+      - element: final sitemap requirement
+        type: pattern
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:17-18,31
+        description: Final sitemap/robots must reference only public production URLs.
+    language: markdown
+    lines: 68
+
+  - file: sekwencyjny-przewodnik-klonowania.md
+    path: docs/setup/sekwencyjny-przewodnik-klonowania.md
+    purpose: Documents ordered clone/cutover steps for WordPress, React, and Astro.
+    key_elements:
+      - element: update site and keep base
+        type: pattern
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:125-130
+        description: Directs operators to change `site` and keep `base: '/astro/'`.
+      - element: Astro should build from the new WordPress
+        type: pattern
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:143
+        description: States Astro must build from the new WordPress, not the old domain.
+      - element: manual deploy Astro under /astro
+        type: pattern
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:241-249
+        description: Documents manual deploy under `/astro` after config changes.
+    language: markdown
+    lines: 301
+
+patterns_found:
+  - category: architecture
+    pattern: Static build uses separate public-origin and content-origin constants
+    description: >-
+      The Astro page route resolves public SEO URLs from `Astro.site` while also
+      using `WORDPRESS_BASE_URL` as the content fetch and relative-asset origin.
+      When both point at v2, generated HTML bakes in v2 URLs.
+    examples:
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:52-60
+        snippet: "const siteUrl = Astro.site ?? new URL(WORDPRESS_BASE_URL); ... return `${WORDPRESS_BASE_URL}${src.startsWith('/') ? '' : '/'}${src}`;"
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:1
+        snippet: "export const WORDPRESS_BASE_URL = 'https://client.example';"
+      - file: astro-site/astro.config.mjs
+        location: astro-site/astro.config.mjs:6
+        snippet: "site: 'https://client.example'"
+    prevalence: common
+
+  - category: structure
+    pattern: Layout emits resolved absolute SEO values supplied by the page route
+    description: >-
+      SEO is centralized: `[slug].astro` computes canonical/OG/Twitter fields,
+      and `BaseLayout.astro` renders them directly into `<head>`.
+    examples:
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:159-174
+        snippet: "const seoCanonical = resolveAbsoluteUrl(...); ... canonical: seoCanonical ... url: seoCanonical"
+      - file: astro-site/src/layouts/BaseLayout.astro
+        location: astro-site/src/layouts/BaseLayout.astro:23-33
+        snippet: "<link rel=\"canonical\" href={seo.canonical} /> ... <meta property=\"og:url\" content={seo.og.url} />"
+    prevalence: common
+
+  - category: naming
+    pattern: Root-relative internal chrome links, absolute external legal/social links
+    description: >-
+      Internal navigation/brand links use `/`-style or data-provided hrefs,
+      while footer legal/social links are absolute URLs when authored that way.
+    examples:
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:41-42,114,139-140
+        snippet: "href: '/', logoSrc: '/react/images/logo.png' ... legalLinks: https://bulwarrestauracja.pl/..."
+      - file: astro-site/src/components/Navbar.astro
+        location: astro-site/src/components/Navbar.astro:18,25,31
+        snippet: "href={reserveLink.href} ... href={item.href} ... href={childItem.href}"
+      - file: astro-site/src/components/Footer.astro
+        location: astro-site/src/components/Footer.astro:16,31,45-46
+        snippet: "href={footer.brand.href} ... href={item.href} ... target={isExternalHttpHref(item.href) ? '_blank' : undefined}"
+    prevalence: common
+
+  - category: deployment
+    pattern: Deployment targets are domain-path specific even when app topology stays `/astro`
+    description: >-
+      Manual deploy and rollback scripts point at a filesystem path whose name
+      includes the v2 domain, so infrastructure cutover is not only a DNS concern.
+    examples:
+      - file: SCRIPTS/deploy-astro-static.ps1
+        location: SCRIPTS/deploy-astro-static.ps1:11
+        snippet: "$remotePublicRoot = '/home/client-user/domains/client.example/public_html/astro'"
+      - file: SCRIPTS/rollback-astro-static.ps1
+        location: SCRIPTS/rollback-astro-static.ps1:12
+        snippet: "$remotePublicRoot = '/home/client-user/domains/client.example/public_html/astro'"
+      - file: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:117
+        snippet: "`base: '/astro/'` zostaw bez zmian, jesli chcesz najszybsza droge"
+    prevalence: common
+
+  - category: testing
+    pattern: Tests encode the current v2 content endpoint assumption
+    description: >-
+      Existing tests assert that global layout fetches hit the v2 host, so a
+      domain cutover also changes expected test fixtures.
+    examples:
+      - file: astro-site/src/lib/globalLayout.test.ts
+        location: astro-site/src/lib/globalLayout.test.ts:85
+        snippet: "assert.equal(String(fetchCalls[0]?.input), 'https://client.example/wp-json/bulwar/v1/layout/global');"
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Astro static config
+      responsibility: Defines public origin and mount path for generated pages/assets.
+      location: astro-site/astro.config.mjs
+      relationship_to_domain: domain migration changes this public-origin source of truth
+    - component: SEO resolver route
+      responsibility: Resolves canonical/OG/Twitter/image URLs for each page.
+      location: astro-site/src/pages/[slug].astro
+      relationship_to_domain: domain migration changes emitted absolute URLs
+    - component: Build-time WordPress bridge client
+      responsibility: Fetches page builder, layout, and Woo data from WordPress.
+      location: astro-site/src/lib/wordpress.ts and astro-site/src/lib/woo.ts
+      relationship_to_domain: domain migration changes content API origin unless backend remains on v2
+    - component: Layout chrome
+      responsibility: Renders nav/footer links as provided by normalized layout data.
+      location: astro-site/src/components/Navbar.astro and astro-site/src/components/Footer.astro
+      relationship_to_domain: domain migration is safe for root-relative hrefs but not for hard-coded absolute external links
+    - component: Manual Astro deploy scripts
+      responsibility: Publish built static output to the live `/astro` directory.
+      location: SCRIPTS/deploy-astro-static.ps1 and SCRIPTS/rollback-astro-static.ps1
+      relationship_to_domain: domain migration changes deploy target path when hosting path changes
+  interfaces_used_by_domain:
+    - interface: ResolvedPageSeo
+      location: astro-site/src/lib/types.ts:130-144
+      usage_pattern: `[slug].astro` composes this object and `BaseLayout.astro` renders it into head tags
+    - interface: GlobalLayoutData
+      location: astro-site/src/lib/wordpress.ts:4-5 and astro-site/src/layouts/BaseLayout.astro:5-9
+      usage_pattern: WordPress bridge returns nav/footer hrefs that chrome components render without host rewriting
+  data_flow_involving_domain: >-
+    `astro build` reads `site` from Astro config and `WORDPRESS_BASE_URL` from
+    runtime config, fetches WordPress page-builder/global-layout/Woo data,
+    resolves canonical and absolute asset URLs inside `[slug].astro`, then writes
+    static HTML into `dist/` and deploy scripts copy that output to the live
+    `/astro` directory.
+  key_relationships_to_domain:
+    - from: astro-site/astro.config.mjs
+      to: astro-site/src/pages/[slug].astro
+      relationship: supplies public origin through `Astro.site`
+    - from: astro-site/src/lib/config.ts
+      to: astro-site/src/lib/wordpress.ts
+      relationship: imports
+    - from: astro-site/src/lib/config.ts
+      to: astro-site/src/lib/woo.ts
+      relationship: imports
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/layouts/BaseLayout.astro
+      relationship: passes resolved SEO object
+    - from: astro-site/src/lib/wordpress.ts
+      to: astro-site/src/components/Navbar.astro
+      relationship: provides root-relative and absolute href data via global layout
+    - from: SCRIPTS/deploy-astro-static.ps1
+      to: astro-site/dist
+      relationship: deploys generated static output
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - Astro
+    - JavaScript
+    - PowerShell
+    - Markdown
+  frameworks_used_in_domain:
+    - name: Astro 5
+      usage_in_domain: >-
+        Static site generation, route rendering, and config-driven `site`/`base`
+        behavior. Declared as `^5.14.2` in astro-site/package.json:12; package lock
+        resolves Astro 5.18.1 in astro-site/package-lock.json:1961.
+    - name: React Router
+      usage_in_domain: Companion React app remains mounted at `/react` via `BrowserRouter basename="/react"` in zip/src/main.tsx:9.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Validates page-builder and SEO payload shapes before rendering.
+  external_apis_used_in_domain:
+    - name: WordPress Bulwar bridge API
+      integration_point: astro-site/src/lib/wordpress.ts:202-213
+    - name: WooCommerce Store API
+      integration_point: astro-site/src/lib/woo.ts:75-115
+    - name: Astro docs sitemap/config reference
+      integration_point: Astro docs search result `@astrojs/sitemap|Usage` stating sitemap generation depends on configured `site`
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Host-sensitive constants are centralized (`WORDPRESS_BASE_URL`, `TEST_PAGE_SLUGS`,
+    `site`, `base`), while SEO output uses a typed `ResolvedPageSeo` contract.
+  structure_of_domain: >-
+    Build-time config lives in `astro-site/astro.config.mjs`, runtime/build fetch
+    helpers live under `astro-site/src/lib/`, and presentation components render
+    already-resolved values without host transformations.
+  error_handling_in_domain: >-
+    Build-time fetches fail closed in production for missing global layout unless an
+    explicit fallback override is enabled; repository memory notes this behavior on
+    2026-04-18 (/memories/repo/global-layout-endpoint-notes.md:8).
+  testing_in_domain: >-
+    Tests are node:test/assert based and include endpoint-string assertions for the
+    current host in `astro-site/src/lib/globalLayout.test.ts`.
+  documentation_in_domain: >-
+    Setup docs consistently describe the stable topology as WordPress on `/`, React
+    on `/react`, Astro on `/astro`, and treat domain changes as config-plus-deploy work.
+
+related_dependencies:
+  internal:
+    - component: astro-site/src/lib/config.ts
+      relationship_to_domain: provides build-time host constants to page, WordPress, and Woo modules
+      direction: outbound
+    - component: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: fetches layout and page-builder data from the configured host
+      direction: outbound
+    - component: astro-site/src/lib/woo.ts
+      relationship_to_domain: fetches product/category data from the configured host
+      direction: outbound
+    - component: astro-site/src/layouts/BaseLayout.astro
+      relationship_to_domain: consumes resolved SEO object and renders host-sensitive head tags
+      direction: inbound
+    - component: SCRIPTS/deploy-astro-static.ps1
+      relationship_to_domain: publishes build output to domain-specific live directory
+      direction: inbound
+  external:
+    - name: WordPress host at WORDPRESS_BASE_URL
+      purpose_for_domain: source of page-builder/layout/Woo data and fallback absolute asset origin
+    - name: Dhosting filesystem/public_html path
+      purpose_for_domain: destination for the static Astro deploy under `/astro`
+
+testing_patterns:
+  framework: node:test with node:assert/strict
+  coverage_areas:
+    - Global layout fetch success/failure behavior
+    - Production fallback gating for global layout
+    - Source-level assertions that production-facing components do not ship placeholder defaults
+    - Current host expectation for the global layout endpoint
+  test_organization: Tests live next to Astro lib modules under `astro-site/src/lib/*.test.ts`.
+  mock_patterns:
+    - `globalThis.fetch` replacement for API calls
+    - direct source reads via `readFile(new URL(...), 'utf8')` for component/layout assertions
+
+open_questions:
+  - question: Will the public cutover keep Astro mounted at `/astro`, or is `/astro` only a temporary preview surface before moving Astro to `/`?
+    context: >-
+      Current code and docs assume `/astro` remains the live mount point; SEO docs,
+      however, treat `/astro` as a temporary/non-final surface for public migration.
+      This affects whether `base: '/astro/'` stays valid after cutover.
+    type: decision_blocker
+    affects:
+      - astro-domain-migration
+  - question: Will WordPress/build-time APIs also move from `client.example` to `bulwarrestauracja.pl`, or will v2 remain the hidden content origin during the public cutover?
+    context: >-
+      `WORDPRESS_BASE_URL` drives both content fetching and absolute asset URLs. If
+      the backend host differs from the public host, public canonical URLs and asset
+      origins may need to diverge intentionally.
+    type: research
+    affects:
+      - astro-domain-migration
+
+gaps:
+  - area: Sitemap and robots implementation inside astro-site
+    description: >-
+      No Astro sitemap integration package, sitemap config, or `src/pages/robots.txt.ts`
+      / `public/robots.txt` was found in `astro-site/`; only setup docs describe the
+      intended final-state sitemap/robots requirements.
+    impact: nice_to_know
+    affects:
+      - astro-domain-migration
+  - area: Live server mapping details for bulwarrestauracja.pl
+    description: >-
+      Repository code shows the current v2 deploy path, but does not include the final
+      root-domain filesystem target or web-server vhost rules for `bulwarrestauracja.pl`.
+    impact: decision_blocker
+    affects:
+      - astro-domain-migration
+

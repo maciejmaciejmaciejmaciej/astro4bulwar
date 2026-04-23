@@ -1,0 +1,514 @@
+plan_id: astro-wordpress-page-builder
+objective: >-
+  Sprawdzic aktualny stan implementacji agentowego flow tworzenia draftu strony
+  w Firebase oraz powiazanych krokow WordPress page creation, runtime workflow,
+  compile i publish na podstawie aktualnego kodu i testow repo.
+focus_area: firebase_draft_runtime_state
+created_at: 2026-04-19T00:00:00Z
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - Repo ma dzis realny kontrakt draftu Firebase i realny bootstrap draftu ze scrape, ale nie ma runtime plikow `firebasePageDraftStore.ts`, `wordpressPageBuilderClient.ts` ani `pageBuilderRuntimeWorkflow.ts`; istnieja tylko testy oczekujace tych modulow.
+  - Compile/publish preparation jest czesciowo zaimplementowane jako lokalny skrypt `SCRIPTS/make-page-draft-compile-gate.js`, ktory po zatwierdzonych mapowaniach Woo generuje jednoczesnie `page_builder_schema` i `page_builder_schema_for_ai`.
+  - WordPress plugin ma prawdziwy endpoint GET/POST dla page buildera i zapisuje oba meta pola razem, ale POST dziala tylko dla istniejacej strony rozwiazanej po slugu; nie tworzy brakujacej strony.
+  - Ostatnio uruchomione testy runtime nie przechodza dlatego, ze importuja nieistniejace moduly runtime, co wyglada na nieukonczona implementacje, a nie brak fixture ani konfiguracji tych konkretnych testow.
+  - Niezaleznie od tego osobny test kontraktu draftu (`firebasePageDraft.test.ts`) wpada obecnie w blad aliasu `@/components`, co wyglada na problem rezolucji aliasow w runnerze `tsx`, a nie na blad samej logiki draftu.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval: memory review, file_search, grep_search, targeted read_file,
+    exact test execution via run_in_terminal, and targeted line-count collection
+    for examined files.
+  scope: >-
+    Focused on `zip/src/blocks/registry`, related `SCRIPTS`, and WordPress page-builder
+    transport in `wordpress-plugin/bulwar-bridge`, with emphasis on the files named
+    in the request and direct dependencies they use.
+  confidence: high
+  coverage: 90
+  decision_blockers: 2
+  research_blockers: 1
+
+files_analyzed:
+  - file: firebasePageDraft.ts
+    path: zip/src/blocks/registry/firebasePageDraft.ts
+    purpose: Kontrakt i walidacja dokumentu draftu Firebase.
+    key_elements:
+      - element: firebasePageDraftSchema
+        type: variable
+        location: zip/src/blocks/registry/firebasePageDraft.ts:40
+        description: Definiuje shape draftu z `blocksOrder`, `blocks`, `compiled`, `workflow`, `needsCompile`, `needsPublish`, `needsDeploy`.
+      - element: computeSourceMappingWorkflow
+        type: function
+        location: zip/src/blocks/registry/firebasePageDraft.ts:220
+        description: Wylicza `requiresSourceMapping`, `unresolvedSourceBlockIds` i `sourceMappingNotes` na podstawie placeholderow zrodel.
+      - element: parseFirebasePageDraft
+        type: function
+        location: zip/src/blocks/registry/firebasePageDraft.ts:239
+        description: Waliduje kazdy blok przez registry i zwraca draft z dolaczonym `workflow`.
+    language: TypeScript
+    lines: 230
+
+  - file: createPageDraftFromScrape.ts
+    path: zip/src/blocks/registry/createPageDraftFromScrape.ts
+    purpose: Bootstrap pierwszego draftu z normalizowanego wyniku scrape.
+    key_elements:
+      - element: buildRestaurantMenuDraft
+        type: function
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:70
+        description: Buduje structure-only draft menu: heading plus Woo-backed bloki z placeholderami `TODO_WOO_CATEGORY_SLUG`.
+      - element: createPageDraftFromScrape
+        type: function
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:118
+        description: Rozdziela `restaurant_menu` od fallback `generic_page`.
+    language: TypeScript
+    lines: 125
+
+  - file: firebasePageDraftStore.test.ts
+    path: zip/src/blocks/registry/firebasePageDraftStore.test.ts
+    purpose: Test oczekiwanej implementacji store dla draftu Firebase.
+    key_elements:
+      - element: createFirestoreFirebasePageDraftStore
+        type: pattern
+        location: zip/src/blocks/registry/firebasePageDraftStore.test.ts:5
+        description: Test importuje runtime, ktorego plik zrodlowy nie istnieje w workspace.
+      - element: save and load draft by pageSlug
+        type: pattern
+        location: zip/src/blocks/registry/firebasePageDraftStore.test.ts:82
+        description: Oczekuje zapisu i odczytu draftu pod domyslnym `docId = pageSlug`.
+    language: TypeScript
+    lines: 122
+
+  - file: wordpressPageBuilderClient.test.ts
+    path: zip/src/blocks/registry/wordpressPageBuilderClient.test.ts
+    purpose: Test oczekiwanej implementacji klienta WordPress create-or-update page.
+    key_elements:
+      - element: createWordPressPageBuilderClient
+        type: pattern
+        location: zip/src/blocks/registry/wordpressPageBuilderClient.test.ts:4
+        description: Test importuje runtime, ktorego plik zrodlowy nie istnieje w workspace.
+      - element: ensurePageExists creates missing page
+        type: pattern
+        location: zip/src/blocks/registry/wordpressPageBuilderClient.test.ts:17
+        description: Oczekuje create path przez `wp/v2/pages` po braku strony o danym slugu.
+    language: TypeScript
+    lines: 102
+
+  - file: pageBuilderRuntimeWorkflow.test.ts
+    path: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts
+    purpose: Test oczekiwanej orkiestracji draft -> ensure page -> compile -> publish -> readback.
+    key_elements:
+      - element: runPageBuilderRuntimeWorkflow
+        type: pattern
+        location: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts:5
+        description: Test importuje runtime workflow, ktorego plik zrodlowy nie istnieje w workspace.
+      - element: local happy path call order
+        type: pattern
+        location: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts:60
+        description: Oczekuje kolejnosci `save -> upsert -> ensure -> publish -> readback` oraz zapisu `wordpressPostId` do draftu.
+    language: TypeScript
+    lines: 148
+
+  - file: generate-page-draft-from-scrape.ts
+    path: SCRIPTS/generate-page-draft-from-scrape.ts
+    purpose: CLI generujace artefakt draftu Firebase z `content.md` i `seo-data.json`.
+    key_elements:
+      - element: normalizeScrapeDocument
+        type: function
+        location: SCRIPTS/generate-page-draft-from-scrape.ts:213
+        description: Wyprowadza `pageSlug`, `pageKind`, `title`, `sourcePath`, `sourceUrl`, `seo` i `structureHints`.
+      - element: createPageDraftFromScrape call
+        type: pattern
+        location: SCRIPTS/generate-page-draft-from-scrape.ts:351
+        description: Realnie produkuje draft artifact na podstawie registry bootstrapu.
+    language: TypeScript
+    lines: 293
+
+  - file: generate-page-draft-from-scrape.test.js
+    path: SCRIPTS/generate-page-draft-from-scrape.test.js
+    purpose: Test bootstrapu scrape -> draft.
+    key_elements:
+      - element: structure-only Woo-backed menu draft
+        type: pattern
+        location: SCRIPTS/generate-page-draft-from-scrape.test.js:21
+        description: Potwierdza puste `menuColumns`, placeholdery Woo i `workflow.requiresSourceMapping = true`.
+    language: JavaScript
+    lines: 64
+
+  - file: make-page-draft-compile-gate.js
+    path: SCRIPTS/make-page-draft-compile-gate.js
+    purpose: Lokalny compile gate z draftu do obu payloadow WordPress.
+    key_elements:
+      - element: buildPageBuilderSchemaFromDraft
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:132
+        description: Translacja `blocksOrder` i `blocks` draftu do `sections` render schema.
+      - element: compilePageDraft
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:178
+        description: Naklada `approvedSourceMappings`, blokuje placeholdery i emituje oba payloady jednoczesnie.
+    language: JavaScript
+    lines: 252
+
+  - file: make-page-draft-compile-gate.test.js
+    path: SCRIPTS/make-page-draft-compile-gate.test.js
+    purpose: Test compile flow z mapowaniem Woo source.
+    key_elements:
+      - element: compile blocked when placeholders remain
+        type: pattern
+        location: SCRIPTS/make-page-draft-compile-gate.test.js:60
+        description: Potwierdza twarda blokade compile bez rozwiazania placeholderow Woo.
+      - element: emits both schemas together
+        type: pattern
+        location: SCRIPTS/make-page-draft-compile-gate.test.js:76
+        description: Potwierdza generacje `page_builder_schema` i `page_builder_schema_for_ai` po zatwierdzonych mappingach.
+    language: JavaScript
+    lines: 117
+
+  - file: fetchWordPressPageBuilderSchema.ts
+    path: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+    purpose: Istniejacy frontendowy klient odczytu page buildera z WordPress.
+    key_elements:
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:54
+        description: Pobiera `schema` z `GET /wp-json/bulwar/v1/page-builder/pages/{slug}` i parsuje ja przez `parsePageBuilderSchema`.
+    language: TypeScript
+    lines: 74
+
+  - file: wordpressApi.ts
+    path: zip/src/blocks/registry/wordpressApi.ts
+    purpose: Istniejacy klient frontendowy dla source-backed WordPress posts blockow.
+    key_elements:
+      - element: resolveOfertaPostsSectionSource
+        type: function
+        location: zip/src/blocks/registry/wordpressApi.ts:96
+        description: Pokazuje, ze sa juz helpery GET do WordPress API, ale nie klient create/update page-builder page.
+    language: TypeScript
+    lines: 121
+
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Prawdziwy backend read/write dla page-builder meta w WordPress.
+    key_elements:
+      - element: show
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:14
+        description: Zwraca `schema` i opcjonalne `aiSchema` dla slugu istniejacej strony.
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:46
+        description: Wymaga obu payloadow i zapisuje oba meta pola razem.
+      - element: resolvePage
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:100
+        description: Rozwiazuje tylko istniejaca strone po slugu; brak create path w kontrolerze.
+    language: PHP
+    lines: 179
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Rejestruje page-builder endpointy REST.
+    key_elements:
+      - element: GET page-builder route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+        description: Publiczny odczyt page buildera po slugu.
+      - element: POST page-builder route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+        description: Autoryzowany zapis obu meta pol dla istniejacej strony.
+    language: PHP
+    lines: 50
+
+  - file: package.json
+    path: zip/package.json
+    purpose: Zaleznosci i tooling dla warstwy `zip`.
+    key_elements:
+      - element: dependencies
+        type: pattern
+        location: zip/package.json:11
+        description: Brak pakietow Firebase SDK lub `firebase-admin`.
+      - element: tsx
+        type: pattern
+        location: zip/package.json:42
+        description: Testy TypeScript sa uruchamiane przez `tsx`.
+    language: JSON
+    lines: 48
+
+  - file: tsconfig.json
+    path: zip/tsconfig.json
+    purpose: Konfiguracja TypeScript dla `zip`.
+    key_elements:
+      - element: paths alias
+        type: pattern
+        location: zip/tsconfig.json:19
+        description: Alias `@/* -> ./*` istnieje w tsconfig.
+      - element: moduleResolution bundler
+        type: pattern
+        location: zip/tsconfig.json:12
+        description: Alias dziala w buildzie Vite/TS, ale obecne uruchomienie `tsx --test` nie rozpoznalo go w jednym z testow.
+    language: JSON
+    lines: 36
+
+  - file: firebasePageDraft.test.ts
+    path: zip/src/blocks/registry/firebasePageDraft.test.ts
+    purpose: Test kontraktu draftu i workflow placeholderow.
+    key_elements:
+      - element: restaurant_menu drafts bootstrap Woo placeholders
+        type: pattern
+        location: zip/src/blocks/registry/firebasePageDraft.test.ts:7
+        description: Sprawdza structure-only draft i placeholdery Woo.
+      - element: parseFirebasePageDraft rejects broken blocksOrder
+        type: pattern
+        location: zip/src/blocks/registry/firebasePageDraft.test.ts:52
+        description: Sprawdza walidacje kontraktu draftu.
+    language: TypeScript
+    lines: 72
+
+patterns_found:
+  - category: architecture
+    pattern: Kontrakt draftu Firebase istnieje w TypeScript, ale store/runtime workflow nie istnieja jako wykonywalne moduly.
+    description: Repo ma realny draft schema i bootstrap, ale oczekiwane store/client/workflow sa widoczne tylko w testach.
+    examples:
+      - file: zip/src/blocks/registry/firebasePageDraft.ts
+        location: zip/src/blocks/registry/firebasePageDraft.ts:40
+        snippet: export const firebasePageDraftSchema = z.object({
+      - file: zip/src/blocks/registry/firebasePageDraftStore.test.ts
+        location: zip/src/blocks/registry/firebasePageDraftStore.test.ts:5
+        snippet: createFirestoreFirebasePageDraftStore,
+      - file: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts
+        location: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts:5
+        snippet: import { runPageBuilderRuntimeWorkflow } from "./pageBuilderRuntimeWorkflow";
+    prevalence: common
+
+  - category: architecture
+    pattern: Bootstrap draftu ze scrape jest juz realny i structure-only dla menu Woo-backed.
+    description: Kod i test potwierdzaja, ze agent moze wygenerowac draft artifact z placeholderami Woo zamiast bezposredniego kopiowania menu ze scrape.
+    examples:
+      - file: zip/src/blocks/registry/createPageDraftFromScrape.ts
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:70
+        snippet: const buildRestaurantMenuDraft = (document: NormalizedScrapeDocument): FirebasePageDraft => {
+      - file: SCRIPTS/generate-page-draft-from-scrape.test.js
+        location: SCRIPTS/generate-page-draft-from-scrape.test.js:21
+        snippet: test('generate-page-draft-from-scrape creates a structure-only Woo-backed menu draft', () => {
+    prevalence: common
+
+  - category: architecture
+    pattern: Compile gate istnieje jako repo-side skrypt, a nie jako pageBuilderRuntimeWorkflow runtime.
+    description: Jest gotowy krok `draft -> oba payloady`, ale nie jest on jeszcze opakowany w wykonywalny workflow z persystencja Firebase i publikacja do WordPress.
+    examples:
+      - file: SCRIPTS/make-page-draft-compile-gate.js
+        location: SCRIPTS/make-page-draft-compile-gate.js:178
+        snippet: function compilePageDraft(input) {
+      - file: SCRIPTS/make-page-draft-compile-gate.test.js
+        location: SCRIPTS/make-page-draft-compile-gate.test.js:76
+        snippet: test('compile gate emits both schemas together after approved source mappings are applied', () => {
+    prevalence: common
+
+  - category: architecture
+    pattern: Backend WordPress ma gotowy dual-meta read/write API, ale bez create-page path.
+    description: Plugin umie pobrac i zapisac oba meta pola, lecz dziala tylko dla strony juz istniejacej po slugu.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+        snippet: register_rest_route('bulwar/v1', '/page-builder/pages/(?P<slug>[a-zA-Z0-9\-_]+)', [
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:112
+        snippet: $page = get_page_by_path(sanitize_title_for_query($slug), OBJECT, 'page');
+    prevalence: common
+
+  - category: testing
+    pattern: Ostatnie nieprzechodzace testy runtime padaja na `ERR_MODULE_NOT_FOUND`, a nie na asercjach biznesowych.
+    description: Uruchomiona paczka trzech testow nie weszla nawet do logiki testowej, bo importer nie znalazl trzech brakujacych modułów.
+    examples:
+      - file: zip/src/blocks/registry/firebasePageDraftStore.test.ts
+        location: zip/src/blocks/registry/firebasePageDraftStore.test.ts:7
+        snippet: } from "./firebasePageDraftStore";
+      - file: zip/src/blocks/registry/wordpressPageBuilderClient.test.ts
+        location: zip/src/blocks/registry/wordpressPageBuilderClient.test.ts:4
+        snippet: import { createWordPressPageBuilderClient } from "./wordpressPageBuilderClient";
+      - file: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts
+        location: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.test.ts:5
+        snippet: import { runPageBuilderRuntimeWorkflow } from "./pageBuilderRuntimeWorkflow";
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: firebase draft contract layer
+      responsibility: Walidacja dokumentu draftu, blokow i workflow source-mapping.
+      location: zip/src/blocks/registry/firebasePageDraft.ts
+      relationship_to_domain: domain depends on this
+    - component: scrape bootstrap CLI
+      responsibility: Normalizuje scrape i zapisuje artefakt draftu Firebase.
+      location: SCRIPTS/generate-page-draft-from-scrape.ts
+      relationship_to_domain: domain depends on this
+    - component: compile gate CLI
+      responsibility: Translacja draftu do `page_builder_schema` i `page_builder_schema_for_ai`.
+      location: SCRIPTS/make-page-draft-compile-gate.js
+      relationship_to_domain: domain depends on this
+    - component: WordPress page-builder transport
+      responsibility: Odczyt i zapis obu meta pol w WordPress.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: this uses domain outputs
+    - component: expected runtime tests
+      responsibility: Opisuja zamierzony store/client/workflow runtime, ale bez odpowiadajacej implementacji.
+      location: zip/src/blocks/registry/*.test.ts
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: FirebasePageDraft
+      location: zip/src/blocks/registry/firebasePageDraft.ts:107
+      usage_pattern: Working-state dokument z `blocksOrder`, `blocks`, `compiled` i lifecycle flags.
+    - interface: NormalizedScrapeDocument
+      location: zip/src/blocks/registry/createPageDraftFromScrape.ts:20
+      usage_pattern: Wejscie bootstrapu structure-only.
+    - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+      usage_pattern: Publiczny readback `schema` i `aiSchema`.
+    - interface: POST /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+      usage_pattern: Autoryzowany zapis obu payloadow dla strony juz istniejacej.
+  data_flow_involving_domain: >-
+    Dzisiejszy wykonujacy sie flow to `content.md + seo-data.json -> normalizeScrapeDocument
+    -> createPageDraftFromScrape -> FirebasePageDraft artifact -> compilePageDraft
+    -> page_builder_schema + page_builder_schema_for_ai -> POST do WordPress dla istniejacego slugu`.
+    Brakuje warstwy persystencji draftu w Firebase, create-or-ensure page klienta
+    i jednej funkcji runtime spinajacej te kroki end-to-end.
+  key_relationships_to_domain:
+    - from: SCRIPTS/generate-page-draft-from-scrape.ts
+      to: zip/src/blocks/registry/createPageDraftFromScrape.ts
+      relationship: calls
+    - from: zip/src/blocks/registry/createPageDraftFromScrape.ts
+      to: zip/src/blocks/registry/firebasePageDraft.ts
+      relationship: calls
+    - from: SCRIPTS/make-page-draft-compile-gate.js
+      to: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship: depends on
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JavaScript
+    - PHP
+    - JSON
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Frontend registry i proof pages w `zip`.
+    - name: Vite 6
+      usage_in_domain: Build/runtime dla `zip`.
+    - name: WordPress REST API
+      usage_in_domain: Odczyt i zapis page-builder payloadow.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Walidacja kontraktu draftu i zrodla.
+    - name: tsx
+      purpose_in_domain: Uruchamianie testow i TypeScript CLI scripts.
+  external_apis_used_in_domain:
+    - name: Bulwar page-builder REST endpoint
+      integration_point: GET/POST `bulwar/v1/page-builder/pages/{slug}`.
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Moduly runtime i helpery uzywaja nazw verb-led: `createPageDraftFromScrape`,
+    `fetchWordPressPageBuilderSchema`, `compilePageDraft`, `parseFirebasePageDraft`.
+    Brakujace runtime pliki sa juz nazwane spójnie przez testy: `firebasePageDraftStore`,
+    `wordpressPageBuilderClient`, `pageBuilderRuntimeWorkflow`.
+  structure_of_domain: >-
+    Warstwa kontraktow i helperow zyje w `zip/src/blocks/registry`, skrypty CLI w `SCRIPTS`,
+    a backend transport w `wordpress-plugin/bulwar-bridge`.
+  error_handling_in_domain: >-
+    Draft i compile rzucaja twarde bledy dla niepoprawnych blokow lub niezamknietych placeholderow.
+    WordPress REST kontroler zwraca `Response::error` dla `PAGE_NOT_FOUND`, `VALIDATION_ERROR` i podobnych przypadkow.
+  testing_in_domain: >-
+    Testy sa pisane w `node:test`. Dzialaja testy CLI skryptow, ale testy oczekiwanych runtime modulow nie przechodza bez implementacji. Dodatkowo jeden test kontraktu draftu aktualnie wpada na rezolucji aliasu.
+  documentation_in_domain: >-
+    W badaniu priorytet mial aktualny kod i testy; dokumentacja target-state istnieje, ale nie byla traktowana jako dowod wykonujacej sie implementacji.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/index.ts
+      relationship_to_domain: Zrodlo registry walidacji dla `parseFirebasePageDraft`.
+      direction: outbound
+    - component: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: Compile gate buduje z jego pomoca `page_builder_schema_for_ai`.
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: Backend read/write dla koncowych payloadow.
+      direction: outbound
+  external:
+    - name: WordPress capabilities system
+      purpose_for_domain: POST wymaga `edit_pages` lub `edit_post`.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: page-builder write endpoint
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+      concern: Publish do WordPress jest autoryzowany i nie zadziala bez praw `edit_pages`.
+    - area: draft pages visibility
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:22
+      concern: Nieopublikowana strona nie jest publicznie zwracana anonimowemu uzytkownikowi.
+    - area: unresolved Woo source mappings
+      location: SCRIPTS/make-page-draft-compile-gate.js:188
+      concern: Compile celowo blokuje publish, gdy placeholdery Woo nie zostaly rozwiazane.
+  authentication_patterns_in_domain: >-
+    GET endpoint jest publiczny, ale draft pages sa filtrowane przez `current_user_can('edit_post', $page->ID)`.
+    POST endpoint i meta registration wymagaja `current_user_can('edit_pages')`.
+  authorization_patterns_in_domain: >-
+    Backend autoryzuje zapis na poziomie WordPress capabilities; nie ma w aktualnym repo klienta przechowujacego te credentiale dla agentowego publish runtime.
+  data_validation_in_domain: >-
+    Draft data jest rygorystycznie walidowane po stronie TypeScript przez registry i Zod.
+    WordPress REST update waliduje oba pola jako non-empty object albo valid JSON string.
+
+testing_patterns:
+  framework: node:test
+  coverage_areas:
+    - bootstrap scrape -> draft
+    - workflow placeholder detection in draft contract
+    - compile gate success/failure around approved Woo mappings
+    - expected runtime tests for store/client/workflow APIs
+  test_organization: >-
+    Testy TypeScript leza obok plikow registry w `zip/src/blocks/registry`, a testy CLI obok skryptow w `SCRIPTS`.
+  mock_patterns:
+    - in-memory Firestore shape in `firebasePageDraftStore.test.ts`
+    - fake fetch responses in `wordpressPageBuilderClient.test.ts`
+    - in-memory draft store and fake publish/readback client in `pageBuilderRuntimeWorkflow.test.ts`
+
+open_questions:
+  - question: Czy brakujace runtime pliki `firebasePageDraftStore.ts`, `wordpressPageBuilderClient.ts` i `pageBuilderRuntimeWorkflow.ts` istnieja poza aktualnym workspace lub poza commitem?
+    context: Testy sa juz przygotowane i spójne, ale implementacji nie ma w repo widocznym dla tego badania.
+    type: decision_blocker
+    affects:
+      - firebase_draft_runtime_state
+  - question: Czy alias `@/*` ma byc obslugiwany przez obecne uruchomienia `tsx --test`, czy tylko przez build Vite/TS?
+    context: `firebasePageDraft.test.ts` nie przeszedl z powodu `ERR_MODULE_NOT_FOUND` dla `@/components`, mimo ze alias jest wpisany w `zip/tsconfig.json`.
+    type: research
+    affects:
+      - firebase_draft_runtime_state
+
+gaps:
+  - area: Firebase draft persistence runtime
+    description: Brak pliku `zip/src/blocks/registry/firebasePageDraftStore.ts` oraz brak Firebase SDK w `zip/package.json`.
+    impact: decision_blocker
+    affects:
+      - firebase_draft_runtime_state
+  - area: Generic WordPress page ensure/create runtime
+    description: Brak pliku `zip/src/blocks/registry/wordpressPageBuilderClient.ts`, a backend POST dziala tylko dla strony juz istniejacej po slugu.
+    impact: decision_blocker
+    affects:
+      - firebase_draft_runtime_state
+  - area: End-to-end runtime orchestration
+    description: Brak pliku `zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts`; istnieje tylko test opisujacy oczekiwane zachowanie i osobny skrypt compile gate.
+    impact: research_blocker
+    affects:
+      - firebase_draft_runtime_state
+  - area: Test runner alias resolution
+    description: Osobny test `firebasePageDraft.test.ts` obecnie pada na rezolucji aliasu `@/components` przy uruchamianiu `tsx --test`.
+    impact: research_blocker
+    affects:
+      - firebase_draft_runtime_state

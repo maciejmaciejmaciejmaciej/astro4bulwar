@@ -1,0 +1,60 @@
+
+SRIPTS/wp-seo-scraper/output/
+SCRIPTS/node_modules/
+
+astro-site/node_modules/
+astro-site/dist/
+astro-site/.astro/
+
+.env
+.env.*
+!.env.example
+!.env.client.example
+!.env.page-builder.local.example
+.client.generated.env
+
+# Sensitive root artifacts
+
+# SSH keys
+/id_rsa
+/id_rsa.pub
+
+# WordPress / PHP sensitive exports
+/temp_wp_config.php
+
+# Customer / exported data files
+/bulwarrestauracja-*.csv
+/bulwarrestauracja-*.tsv
+/bulwarrestauracja-delivery-addresses.txt
+
+# SQL dumps
+/temp_*.sql
+
+# Local settings dumps
+/result_with_ids.json
+/source_data.json
+/wc-settings.json
+/wc-settings.txt
+
+# Local deploy archives / generated artifacts
+/*.zip
+/*.tar.gz
+/zip/*.zip
+/zip/*.tar.gz
+/astro-deploy-stage/
+/react-deploy-stage-live-blueprint/
+/zip/deploy-*/
+/zip/react-deploy-*/
+/zip/SRIPTS/wp-seo-scraper/output/
+
+# Local session memory
+/memories/
+/memories/session/
+
+# Local editor settings
+/.vscode/
+
+*.webp
+*.jpg
+*.png
+*.gif

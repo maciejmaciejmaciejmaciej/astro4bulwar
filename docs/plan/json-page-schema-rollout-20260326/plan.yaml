@@ -1,0 +1,288 @@
+plan_id: json-page-schema-rollout-20260326
+objective: Introduce a JSON-driven page schema in the React frontend so JSON defines page content and which existing blocks render, without introducing a CMS editor.
+created_at: '2026-03-26T00:00:00Z'
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Introduce a schema-driven rendering layer above the existing React sections, but start with one low-risk marketing page and a deliberately small block registry. The pragmatic path is not a big-bang CMS replacement; it is a typed page definition, runtime validation, and a controlled renderer that only maps JSON to already-approved components and props.
+open_questions:
+  - Which page should be the pilot: homepage, a campaign landing page, or a simpler evergreen content page?
+  - Should JSON stay bundled in the frontend repository, or be fetched later from WordPress or a bridge endpoint after the pilot proves stable?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The schema is made too generic too early, so authoring becomes confusing and every block needs custom exceptions.
+      likelihood: high
+      impact: high
+      mitigation: Limit the pilot to 4-6 approved block types with explicit prop contracts and no arbitrary nesting.
+    - scenario: JSON starts bypassing the current design system, producing invalid class combinations or layouts that diverge from TemplatePage patterns.
+      likelihood: medium
+      impact: critical
+      mitigation: Allow JSON to select only existing components and only a whitelisted subset of content props; styling stays in components.
+    - scenario: Full rollout is attempted before content validation and preview tooling exist, causing fragile pages and high QA cost.
+      likelihood: medium
+      impact: high
+      mitigation: Make runtime plus build-time validation a required gate before any multi-page migration.
+  assumptions:
+    - Existing section components in zip/src/components/sections are the only visual building blocks allowed for the pilot.
+    - JSON is intended to control content and composition, not arbitrary styling or business logic.
+    - The first target pages are mostly marketing or content pages, not complex checkout flows.
+    - Repository-managed JSON is acceptable for the pilot.
+
+implementation_specification:
+  code_structure: Create a small schema layer under zip/src/page-schema with four parts: schema types and validators, a block registry mapping schema block names to existing React sections, page loaders for local JSON files, and a page renderer that composes validated blocks into an existing page shell. Keep page-specific business logic out of the generic renderer.
+  affected_areas:
+    - zip/src/pages/
+    - zip/src/components/sections/
+    - zip/src/data/
+    - zip/src/lib/
+    - zip/src/page-schema/
+  component_details:
+    - component: page schema contract
+      responsibility: Define typed page, section, and block payloads with required and optional fields for approved block types.
+      interfaces:
+        - Exposes page-level metadata contract such as slug, seo, layout variant, and ordered blocks.
+        - Exposes per-block discriminated unions keyed by block type.
+    - component: block registry
+      responsibility: Map schema block types to existing React components and normalize schema props into component props.
+      interfaces:
+        - Accepts a validated block payload and returns the matching React element.
+        - Rejects unknown block types at validation time.
+    - component: page renderer
+      responsibility: Render a validated page definition through the existing shared shell and ordered block list.
+      interfaces:
+        - Accepts a validated page document and optional route params.
+        - Emits a page composed only from registered blocks.
+    - component: authoring and validation layer
+      responsibility: Provide static validation for local JSON documents and surface schema errors before deployment.
+      interfaces:
+        - Validates JSON documents against the page schema.
+        - Produces editor-friendly errors for missing fields or invalid block payloads.
+  dependencies:
+    - component: page renderer
+      relationship: depends on the block registry to transform validated schema blocks into components
+    - component: block registry
+      relationship: depends on the page schema contract to guarantee safe prop mapping
+    - component: authoring and validation layer
+      relationship: validates page JSON before it reaches the page renderer
+  integration_points:
+    - Existing route components under zip/src/pages
+    - Existing approved section components under zip/src/components/sections
+    - Existing local data module pattern under zip/src/data
+    - Frontend build and typecheck flow in the Vite app
+
+contracts:
+  - from_task: define_page_schema_contract
+    to_task: build_block_registry_and_renderer
+    interface: A discriminated-union schema describing allowed page metadata and block payloads.
+    format: TypeScript types plus JSON validation contract
+  - from_task: build_block_registry_and_renderer
+    to_task: migrate_pilot_page_to_schema
+    interface: A renderer API that accepts one validated page definition and a finite set of supported block types.
+    format: React renderer and block-registry contract
+  - from_task: define_page_schema_contract
+    to_task: add_authoring_validation_and_guardrails
+    interface: Stable schema fields and required validation rules for page and block payloads.
+    format: Schema rules and validation expectations
+  - from_task: migrate_pilot_page_to_schema
+    to_task: rollout_playbook_and_review
+    interface: A working pilot page that demonstrates authoring flow, validation, rendering, and QA expectations.
+    format: One migrated route plus sample JSON document
+
+tasks:
+  - id: define_page_schema_contract
+    title: Define the smallest viable page schema and approved block set
+    description: |
+      Define a narrow JSON contract for one pilot page. Include page metadata, ordered blocks, and only the block variants needed by the pilot. Reuse existing component prop concepts where possible instead of inventing a new content model.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/pages/TemplatePage.tsx: Current visual baseline and approved layout rhythm.
+      - zip/src/pages/HomePage.tsx: Example of current page composition through existing sections.
+      - zip/src/data/cateringWielkanocny.ts: Existing typed JSON normalization pattern already present in the repo.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 220
+    focus_area: schema contract
+    verification:
+      - Confirm the pilot schema covers one page without fallback escape hatches.
+      - Confirm each block type maps to an existing component and an explicit prop contract.
+      - Confirm styling remains component-owned, not JSON-owned.
+    acceptance_criteria:
+      - A typed page schema exists for one pilot page.
+      - Supported block types are finite and explicit.
+      - No arbitrary HTML, Tailwind classes, or freeform layout primitives are allowed in JSON.
+    failure_modes:
+      - scenario: Schema fields mirror component props too literally and become noisy for authors.
+        likelihood: medium
+        impact: medium
+        mitigation: Normalize author-facing content fields while keeping component adapters thin.
+      - scenario: Too many blocks are included in v1.
+        likelihood: high
+        impact: high
+        mitigation: Restrict v1 to the exact blocks needed for the pilot route.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Vite
+    test_coverage: null
+
+  - id: build_block_registry_and_renderer
+    title: Build a controlled renderer over the existing section components
+    description: |
+      Introduce a page renderer and block registry that can render validated JSON documents into existing page sections. Keep the renderer dumb: composition only, with page-specific logic still owned by page adapters when needed.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - define_page_schema_contract
+    context_files:
+      - zip/src/components/sections/: Existing approved render blocks.
+      - zip/src/pages/HomePage.tsx: Current hand-written composition to compare against renderer output.
+      - zip/src/pages/TemplatePage.tsx: Design constraints that must remain untouched.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 260
+    focus_area: renderer
+    verification:
+      - Confirm unknown block types fail fast.
+      - Confirm the renderer composes blocks in order without introducing styling decisions.
+      - Confirm the page shell remains identical to current patterns.
+    acceptance_criteria:
+      - A registry maps approved block names to existing components.
+      - One renderer can compose a validated page document into the existing shell.
+      - The renderer does not allow arbitrary component imports or styling from JSON.
+    failure_modes:
+      - scenario: Renderer becomes a second application framework with nested conditions and page-specific hacks.
+        likelihood: medium
+        impact: high
+        mitigation: Keep page-specific transforms outside the core renderer and enforce a thin registry abstraction.
+      - scenario: Registry grows around components that are not reusable enough.
+        likelihood: medium
+        impact: medium
+        mitigation: Refactor only the pilot blocks to be prop-driven before adding them to the registry.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: null
+
+  - id: add_authoring_validation_and_guardrails
+    title: Add JSON validation and authoring guardrails before wider use
+    description: |
+      Add schema validation and a strict failure mode for invalid JSON documents so broken content does not silently render in production. Include a sample authoring pattern and error reporting approach suitable for non-CMS editing in-repo.
+    wave: 2
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies:
+      - define_page_schema_contract
+    context_files:
+      - zip/src/data/cateringWielkanocny.ts: Example of defensive normalization and runtime validation.
+      - zip/package.json: Frontend scripts that may host validation commands later.
+      - docs/prd.yaml: Existing repo-level feature decisions to avoid conflicting rollout assumptions.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 180
+    focus_area: validation
+    verification:
+      - Confirm invalid page JSON cannot pass silently.
+      - Confirm validation errors are readable enough for content editing workflows.
+      - Confirm supported block payloads are documented by the schema itself.
+    acceptance_criteria:
+      - JSON documents are validated before rendering.
+      - Unknown or incomplete blocks fail with clear errors.
+      - The pilot authoring flow is explicit and reproducible.
+    failure_modes:
+      - scenario: Validation is too weak and runtime crashes move to production pages.
+        likelihood: medium
+        impact: high
+        mitigation: Validate page root, block discriminators, and block-required fields at the loader boundary.
+    tech_stack:
+      - TypeScript
+      - Vite
+    test_coverage: null
+
+  - id: migrate_pilot_page_to_schema
+    title: Migrate one low-risk content page as the pilot
+    description: |
+      Replace one hand-written content page with a schema-driven route while keeping the existing visual output effectively identical. Prefer a simpler marketing page over checkout or mixed business-logic pages.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - build_block_registry_and_renderer
+      - add_authoring_validation_and_guardrails
+    context_files:
+      - zip/src/pages/HomePage.tsx: Candidate if the user wants a higher-value but higher-effort pilot.
+      - zip/src/pages/TemplatePage.tsx: Lower-risk structural baseline for a dry-run migration.
+      - zip/src/data/: Location for local pilot JSON documents.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 280
+    focus_area: pilot migration
+    verification:
+      - Confirm the pilot page renders from JSON instead of hardcoded JSX composition.
+      - Confirm the visual result stays within the existing design language.
+      - Confirm the route remains easy to debug when block data is wrong.
+    acceptance_criteria:
+      - One page is fully schema-driven.
+      - The route uses only existing approved blocks.
+      - No business-critical checkout flow depends on the v1 schema.
+    failure_modes:
+      - scenario: The selected pilot is too complex and forces schema exceptions immediately.
+        likelihood: medium
+        impact: high
+        mitigation: Choose a page with low interactive logic and high content repetition.
+      - scenario: The migration exposes that some sections are not actually reusable.
+        likelihood: medium
+        impact: medium
+        mitigation: Allow limited prop-driven refactors to the pilot blocks before expanding the registry.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: null
+
+  - id: rollout_playbook_and_review
+    title: Review pilot outcomes and define the full-rollout playbook
+    description: |
+      Review the pilot against maintainability, authoring speed, validation quality, and visual stability. Use those findings to define which pages are eligible for migration, which blocks need refactoring first, and which routes should remain hand-coded.
+    wave: 4
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - migrate_pilot_page_to_schema
+    context_files:
+      - docs/plan/json-page-schema-rollout-20260326/plan.yaml: Pilot scope and constraints.
+      - zip/src/pages/: Candidate routes for future migrations.
+      - zip/src/components/sections/: Registry surface area for later expansion.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 120
+    focus_area: rollout decision
+    verification:
+      - Confirm the pilot reduced page-maintenance cost without increasing fragility.
+      - Confirm which page categories are safe for migration.
+      - Confirm which component refactors are prerequisites for broader adoption.
+    acceptance_criteria:
+      - A go or no-go decision exists for broader rollout.
+      - Eligible and ineligible page types are clearly separated.
+      - The next migration order is based on pilot evidence, not assumptions.
+    failure_modes:
+      - scenario: The team extrapolates pilot success to all routes, including interactive flows.
+        likelihood: medium
+        impact: high
+        mitigation: Explicitly classify pages by content-heavy versus logic-heavy migration suitability.
+    requires_review: true
+    review_depth: standard
+    security_sensitive: false

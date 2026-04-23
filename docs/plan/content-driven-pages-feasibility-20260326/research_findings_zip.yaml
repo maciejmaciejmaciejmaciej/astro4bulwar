@@ -1,0 +1,467 @@
+plan_id: content-driven-pages-feasibility-20260326
+objective: Assess feasibility of making pages in the React app content-driven from JSON without adding an editor UI.
+focus_area: zip
+created_at: 2026-03-26T00:00:00Z
+created_by: gem-researcher
+status: completed
+
+tldr: |
+  - The current React app already mixes hardcoded page composition with data-fed sections; the strongest existing precedent is the catering flow, which imports JSON, normalizes it, and renders repeated blocks from structured data.
+  - Home page composition is still manual in JSX, so a block-config JSON layer is feasible but would require an explicit block registry and page-schema loader rather than just moving strings to data files.
+  - Many section components already accept props, which lowers implementation cost for selected pages; some key sections remain hardcoded internally and would need refactoring before they can be driven by JSON safely.
+  - The app currently exposes only a small active route surface in App.tsx, while many additional page files are generated placeholders, so a selective rollout fits the present state of the project better than an app-wide migration.
+  - Existing scripts already generate routes, placeholder pages, and TS data files from external sources, which means the repository already tolerates content generation workflows outside the UI.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic_search and grep_search, followed by targeted read_file inspection of routing, page, section, data, and generation-script files.
+  scope: Focused on zip/ React app structure, active routes, page composition, content/data separation, and existing JSON/data ingestion patterns.
+  confidence: high
+  coverage: 85
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Defines the active route surface of the Vite React app.
+    key_elements:
+      - element: App
+        type: function
+        location: zip/src/App.tsx:10
+        description: Registers only home, catering, catering test, and catering thank-you routes.
+    language: TypeScript
+    lines: 18
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Boots the application and applies the router basename.
+    key_elements:
+      - element: BrowserRouter basename
+        type: variable
+        location: zip/src/main.tsx:9
+        description: Wraps the app in BrowserRouter with basename /react, which matters for any JSON-driven route definitions.
+    language: TypeScript
+    lines: 12
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: Main manually composed marketing page built from imported section components.
+    key_elements:
+      - element: HomePage
+        type: function
+        location: zip/src/pages/HomePage.tsx:14
+        description: Composes page sections directly in JSX and passes section props inline.
+      - element: section composition
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:22
+        description: Renders HeroSection, ModernInterior, CateringSection, RegionalCuisine, GallerySection, and OfertaSection in a fixed order.
+    language: TypeScript
+    lines: 72
+  - file: TemplatePage.tsx
+    path: zip/src/pages/TemplatePage.tsx
+    purpose: Legacy/template page showing an earlier composition style based on direct section stacking.
+    key_elements:
+      - element: TemplatePage
+        type: function
+        location: zip/src/pages/TemplatePage.tsx:34
+        description: Stacks many sections directly, showing the repo's baseline page assembly approach.
+    language: TypeScript
+    lines: 64
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Best existing example of a page assembled from structured content and repeated block rendering.
+    key_elements:
+      - element: cateringWielkanocnyFeatureGridItems
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:30
+        description: Local structured data used to feed FeatureGridSection.
+      - element: CateringWielkanocnyPage
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:104
+        description: Composes page chrome plus hero, features, special menu, and category-driven product lists.
+      - element: category map render
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:225
+        description: Maps normalized category data into repeated CateringProductListAlt blocks.
+    language: TypeScript
+    lines: 248
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Imports raw JSON and validates/transforms it into UI-facing typed contracts.
+    key_elements:
+      - element: cateringWielkanocnyJson import
+        type: variable
+        location: zip/src/data/cateringWielkanocny.ts:1
+        description: Uses TypeScript JSON module import directly.
+      - element: normalizeProduct
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:128
+        description: Validates and converts raw product shape into UI contract.
+      - element: normalizeCategory
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:186
+        description: Validates each raw category and maps nested products.
+      - element: cateringWielkanocnyCategories
+        type: variable
+        location: zip/src/data/cateringWielkanocny.ts:218
+        description: Exports the normalized dataset consumed by the page.
+    language: TypeScript
+    lines: 220
+  - file: cateringWielkanocnyHero.tsx
+    path: zip/src/data/cateringWielkanocnyHero.tsx
+    purpose: Stores structured hero content separately from the rendering component.
+    key_elements:
+      - element: cateringWielkanocnyHeroData
+        type: variable
+        location: zip/src/data/cateringWielkanocnyHero.tsx:48
+        description: Exports a typed content object spread into the hero component.
+    language: TypeScript
+    lines: 66
+  - file: ofertaData.ts
+    path: zip/src/data/ofertaData.ts
+    purpose: Stores offer-card content separately from OfertaSection.
+    key_elements:
+      - element: portfolioItems
+        type: variable
+        location: zip/src/data/ofertaData.ts:3
+        description: Exports array data used by HomePage for OfertaSection.
+    language: TypeScript
+    lines: 58
+  - file: HeroSection.tsx
+    path: zip/src/components/sections/HeroSection.tsx
+    purpose: Example of a section component that is already prop-driven.
+    key_elements:
+      - element: HeroSectionProps
+        type: interface
+        location: zip/src/components/sections/HeroSection.tsx:1
+        description: Supports title and imageSrc inputs.
+      - element: HeroSection
+        type: function
+        location: zip/src/components/sections/HeroSection.tsx:6
+        description: Accepts content props with defaults.
+    language: TypeScript
+    lines: 23
+  - file: ModernInterior.tsx
+    path: zip/src/components/sections/ModernInterior.tsx
+    purpose: Example of a section component with meaningful content props.
+    key_elements:
+      - element: ModernInteriorProps
+        type: interface
+        location: zip/src/components/sections/ModernInterior.tsx:5
+        description: Supports title, paragraphs, CTA text/link, and image fields.
+    language: TypeScript
+    lines: 73
+  - file: CateringSection.tsx
+    path: zip/src/components/sections/CateringSection.tsx
+    purpose: Example of a reusable section that already separates content from layout.
+    key_elements:
+      - element: CateringSectionProps
+        type: interface
+        location: zip/src/components/sections/CateringSection.tsx:12
+        description: Supports heading, description, CTA, branding, and image list.
+    language: TypeScript
+    lines: 90
+  - file: OfertaSection.tsx
+    path: zip/src/components/sections/OfertaSection.tsx
+    purpose: Section rendering a list of offer cards from passed items.
+    key_elements:
+      - element: OfertaSectionProps
+        type: interface
+        location: zip/src/components/sections/OfertaSection.tsx:11
+        description: Supports a title and array of item data.
+      - element: defaultItems
+        type: variable
+        location: zip/src/components/sections/OfertaSection.tsx:16
+        description: Provides fallback content inside the component when no data is passed.
+    language: TypeScript
+    lines: 73
+  - file: GallerySection.tsx
+    path: zip/src/components/sections/GallerySection.tsx
+    purpose: Section with configurable title and image list but fixed masonry structure.
+    key_elements:
+      - element: GallerySectionProps
+        type: interface
+        location: zip/src/components/sections/GallerySection.tsx:5
+        description: Accepts title, images, and className.
+    language: TypeScript
+    lines: 67
+  - file: FeatureGridSection.tsx
+    path: zip/src/components/sections/FeatureGridSection.tsx
+    purpose: Generic repeated-grid section driven by passed item objects.
+    key_elements:
+      - element: FeatureGridSectionProps
+        type: interface
+        location: zip/src/components/sections/FeatureGridSection.tsx:11
+        description: Accepts items and className; used by catering page.
+    language: TypeScript
+    lines: 61
+  - file: RegionalCuisine.tsx
+    path: zip/src/components/sections/RegionalCuisine.tsx
+    purpose: Example of a section that is still tightly hardcoded.
+    key_elements:
+      - element: RegionalCuisine
+        type: function
+        location: zip/src/components/sections/RegionalCuisine.tsx:4
+        description: Embeds text, images, links, and layout internally with no content props.
+    language: TypeScript
+    lines: 85
+  - file: Navbar.tsx
+    path: zip/src/components/sections/Navbar.tsx
+    purpose: Shared chrome with mostly embedded labels and links.
+    key_elements:
+      - element: NavbarProps
+        type: interface
+        location: zip/src/components/sections/Navbar.tsx:4
+        description: Only supports optional logoSrc.
+      - element: Navbar
+        type: function
+        location: zip/src/components/sections/Navbar.tsx:8
+        description: Hardcodes most menu labels and targets.
+    language: TypeScript
+    lines: 78
+  - file: generate.cjs
+    path: zip/src/pages/generate.cjs
+    purpose: Generates placeholder page files from URL input.
+    key_elements:
+      - element: placeholder page code generation
+        type: pattern
+        location: zip/src/pages/generate.cjs:12
+        description: Writes page components with static placeholder markup.
+    language: JavaScript
+    lines: 18
+  - file: RouterBuilder.cjs
+    path: zip/src/RouterBuilder.cjs
+    purpose: Generates route declarations from a URL list.
+    key_elements:
+      - element: routes generation
+        type: pattern
+        location: zip/src/RouterBuilder.cjs:35
+        description: Creates Route entries from a URL array.
+      - element: App.tsx write
+        type: pattern
+        location: zip/src/RouterBuilder.cjs:57
+        description: Writes a generated App.tsx file.
+    language: JavaScript
+    lines: 57
+  - file: extract_portfolio.cjs
+    path: zip/extract_portfolio.cjs
+    purpose: Generates TS content data from scraped SEO/content files.
+    key_elements:
+      - element: ofertaData writer
+        type: pattern
+        location: zip/extract_portfolio.cjs:71
+        description: Writes src/data/ofertaData.ts from external scraped content.
+    language: JavaScript
+    lines: 72
+  - file: ORestauracjiPage.tsx
+    path: zip/src/pages/ORestauracjiPage.tsx
+    purpose: Example of generated placeholder content page.
+    key_elements:
+      - element: ORestauracjiPage
+        type: function
+        location: zip/src/pages/ORestauracjiPage.tsx:1
+        description: Placeholder-only page with no content/data abstraction.
+    language: TypeScript
+    lines: 7
+
+patterns_found:
+  - category: architecture
+    pattern: Manual page composition in JSX
+    description: Pages are primarily assembled by importing sections and writing them in a fixed JSX order inside the page component.
+    examples:
+      - file: zip/src/pages/HomePage.tsx
+        location: zip/src/pages/HomePage.tsx:22
+        snippet: <HeroSection ... /> ... <ModernInterior ... /> ... <CateringSection ... />
+      - file: zip/src/pages/TemplatePage.tsx
+        location: zip/src/pages/TemplatePage.tsx:39
+        snippet: <HeroSection /> <ReservationQuickBar /> <ModernInterior /> <TheSelection />
+    prevalence: common
+  - category: architecture
+    pattern: Data-fed sections with typed props
+    description: Several sections already accept structured props for titles, paragraphs, images, lists, and links.
+    examples:
+      - file: zip/src/components/sections/ModernInterior.tsx
+        location: zip/src/components/sections/ModernInterior.tsx:5
+        snippet: export interface ModernInteriorProps { title?: string; paragraphs?: string[]; ... }
+      - file: zip/src/components/sections/CateringSection.tsx
+        location: zip/src/components/sections/CateringSection.tsx:12
+        snippet: export interface CateringSectionProps { heading: string; description: React.ReactNode; ... }
+      - file: zip/src/components/sections/OfertaSection.tsx
+        location: zip/src/components/sections/OfertaSection.tsx:11
+        snippet: export interface OfertaSectionProps { title?: string; items?: OfertaItem[]; }
+    prevalence: common
+  - category: architecture
+    pattern: JSON import followed by normalization layer
+    description: The catering catalog already uses a raw JSON source validated into UI contracts before rendering.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:1
+        snippet: import cateringWielkanocnyJson from "./cateringWielkanocny.json";
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:218
+        snippet: export const cateringWielkanocnyCategories = rawCategories.map(normalizeCategory)
+    prevalence: occasional
+  - category: structure
+    pattern: Mixed hardcoded and extracted content
+    description: The repo uses both inline page content and separate content modules/scripts that produce data files.
+    examples:
+      - file: zip/src/pages/HomePage.tsx
+        location: zip/src/pages/HomePage.tsx:27
+        snippet: paragraphs={["Od 2011 roku...", "Z przyjemnością..."]}
+      - file: zip/src/data/ofertaData.ts
+        location: zip/src/data/ofertaData.ts:3
+        snippet: export const portfolioItems: OfertaItem[] = [ ... ]
+      - file: zip/extract_portfolio.cjs
+        location: zip/extract_portfolio.cjs:71
+        snippet: fs.writeFileSync('src/data/ofertaData.ts', ...)
+    prevalence: common
+  - category: structure
+    pattern: Generated route and placeholder page tooling
+    description: Scripts exist to create route declarations and placeholder pages from URL sources.
+    examples:
+      - file: zip/src/RouterBuilder.cjs
+        location: zip/src/RouterBuilder.cjs:35
+        snippet: const routes = results.map(r => `<Route path="${r.path}" element={<${r.name} />} />`)
+      - file: zip/src/pages/generate.cjs
+        location: zip/src/pages/generate.cjs:12
+        snippet: const code = `export default function ${name}() { ... }`
+    prevalence: occasional
+  - category: architecture
+    pattern: Sections not yet ready for externalized content
+    description: Some shared sections still embed copy, imagery, and links internally, limiting immediate JSON configurability.
+    examples:
+      - file: zip/src/components/sections/RegionalCuisine.tsx
+        location: zip/src/components/sections/RegionalCuisine.tsx:4
+        snippet: export function RegionalCuisine() { return ( ... hardcoded text, images, links ... ) }
+      - file: zip/src/components/sections/Navbar.tsx
+        location: zip/src/components/sections/Navbar.tsx:8
+        snippet: export function Navbar({ logoSrc }: NavbarProps) { ... hardcoded nav labels ... }
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: HomePage
+      responsibility: Composes the current home screen from section components.
+      location: zip/src/pages/HomePage.tsx
+      relationship_to_domain: domain orchestrator for manually composed content blocks
+    - component: CateringWielkanocnyPage
+      responsibility: Assembles the seasonal commerce page from typed content/data modules and commerce logic.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: best current example of structured-content page assembly
+    - component: src/data
+      responsibility: Holds structured content datasets and JSON-backed adapters.
+      location: zip/src/data
+      relationship_to_domain: domain data source layer
+    - component: section components
+      responsibility: Render reusable layout blocks.
+      location: zip/src/components/sections
+      relationship_to_domain: block candidates for any content-driven page schema
+    - component: generation scripts
+      responsibility: Generate pages, routes, and content TS files from external sources.
+      location: zip/src/RouterBuilder.cjs, zip/src/pages/generate.cjs, zip/extract_portfolio.cjs
+      relationship_to_domain: existing non-UI content pipeline precedent
+  interfaces_used_by_domain:
+    - interface: ModernInteriorProps
+      location: zip/src/components/sections/ModernInterior.tsx:5
+      usage_pattern: page passes explicit content values into a reusable section
+    - interface: CateringSectionProps
+      location: zip/src/components/sections/CateringSection.tsx:12
+      usage_pattern: page passes heading, CTA, branding, and image arrays
+    - interface: OfertaSectionProps
+      location: zip/src/components/sections/OfertaSection.tsx:11
+      usage_pattern: page injects card list data generated elsewhere
+    - interface: CateringCategoryContract
+      location: zip/src/data/cateringWielkanocny.ts:36
+      usage_pattern: normalized JSON contract consumed by the catering page and cart helpers
+  data_flow_involving_domain: Raw content currently enters the app either inline inside page JSX, from TS data modules under src/data, or from raw JSON that is normalized into typed contracts. Pages then compose section components directly and pass that content as props, with the catering page additionally mapping arrays into repeated product-list blocks.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/HomePage.tsx
+      relationship: imports
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/components/sections/*
+      relationship: composes
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/data/ofertaData.ts
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/data/cateringWielkanocnyHero.tsx
+      relationship: imports
+    - from: zip/extract_portfolio.cjs
+      to: zip/src/data/ofertaData.ts
+      relationship: writes
+    - from: zip/src/RouterBuilder.cjs
+      to: zip/src/App.tsx
+      relationship: writes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - JavaScript
+    - JSON
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Page composition, state, rendering of section blocks.
+    - name: React Router
+      usage_in_domain: Static route declaration with basename /react.
+    - name: Vite
+      usage_in_domain: Bundling and JSON-module support via TypeScript/Vite setup.
+  libraries_used_in_domain:
+    - name: framer-motion
+      purpose_in_domain: Animations inside reusable sections such as ModernInterior and GallerySection.
+    - name: lucide-react
+      purpose_in_domain: Icons embedded in content sections and feature grids.
+    - name: clsx
+      purpose_in_domain: Conditional class composition in sections.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Pages use PascalCase names ending with Page; section components use PascalCase Section naming; data modules export named constants such as portfolioItems and cateringWielkanocnyHeroData.
+  structure_of_domain: Routing lives in App.tsx and main.tsx; page orchestrators live in src/pages; reusable render blocks live in src/components/sections; structured content lives in src/data; generation scripts sit beside source files or at zip root.
+  error_handling_in_domain: Strongest data validation exists in JSON-backed catering data, where normalizers throw descriptive runtime errors for invalid shape or values; most other content paths rely on TypeScript props and defaults rather than validation.
+  testing_in_domain: Tests exist around the catering flow and related state utilities; there is no visible test pattern for generic marketing-page composition.
+  documentation_in_domain: Domain knowledge is implicit in file structure and scripts rather than dedicated documentation.
+
+related_dependencies:
+  internal:
+    - component: zip/src/components/sections
+      relationship_to_domain: Provides the renderable blocks that any JSON schema would need to reference.
+      direction: outbound
+    - component: zip/src/data
+      relationship_to_domain: Supplies typed content objects and normalized datasets to page components.
+      direction: outbound
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: Couples the catering page to checkout/cart behavior beyond pure content concerns.
+      direction: outbound
+    - component: zip/src/lib/cateringThankYou.ts
+      relationship_to_domain: Supplies route constants used by the active route surface.
+      direction: outbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Defines page-level routing and internal links.
+    - name: framer-motion
+      purpose_for_domain: Powers section-level animation behavior, which a content schema would not replace.
+    - name: lucide-react
+      purpose_for_domain: Supplies icon references for some structured blocks.
+
+open_questions:
+  - question: Which pages are intended to become real content pages versus remain generated placeholders?
+    context: Many page files exist, but App.tsx currently exposes only a narrow route set, so migration scope depends on product intent rather than file count.
+  - question: Should the JSON format be restricted to plain content values or also allow choosing shared chrome variants such as header/footer/navigation behavior?
+    context: Shared chrome is partly duplicated between page types and partly hardcoded inside shared components.
+  - question: Is content expected to remain local in the repo as JSON files, or eventually come from WordPress/export scripts?
+    context: The repo already has generation scripts and scraped-content pipelines, which could affect the right schema boundary.
+
+gaps:
+  - area: Final target page inventory
+    description: The active route map does not clarify which of the many placeholder pages are scheduled for implementation.
+    impact: This limits precision when estimating full-app migration scope.
+  - area: Future authoring workflow
+    description: The repository shows content generation scripts, but no agreed long-term source of truth for non-catering page content.
+    impact: This affects whether JSON should be treated as hand-authored config, generated build artifact, or synchronized export.
+  - area: Shared schema coverage
+    description: Not all sections were inspected, and several likely remain hardcoded similarly to RegionalCuisine and Navbar.
+    impact: This may slightly understate the refactor effort for an all-pages block schema.

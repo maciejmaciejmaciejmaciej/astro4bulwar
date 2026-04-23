@@ -1,0 +1,353 @@
+plan_id: adhoc-registry-ai-instance-split
+objective: Prepare a concise implementation plan for refactoring BULWAR APP so AI registry descriptors keep only technical per-block rules, instance-level business meaning lives on page block instances, the AI schema generator merges both sources, generic fallback remains intact, and source-backed blocks keep their current safe editing behavior.
+created_at: '2026-04-18T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 5
+  risk_score: medium
+
+tldr: |
+  The safest sequence is: first lock the canonical instance-level description contract and backward-compatible output shape, then strip business wording out of the shared AI descriptors, then move description assembly into the AI schema generator while preserving the generic fallback, and only after that update the tests that currently encode the old model (sources: docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml, zip/src/blocks/registry/ai/descriptors.cjs, SCRIPTS/generate-page-builder-ai-schema.js, SCRIPTS/generate-page-builder-ai-schema.test.js, zip/src/blocks/registry/registry-invariants.test.tsx).
+  The highest-risk area is source-backed blocks because their descriptors currently combine user guidance with routing rules that protect WooCommerce and WordPress-backed content from direct AI edits; the refactor must remove business copy without weakening contentSource, editableFields, editRoute, or doNotEditDirectly semantics (sources: zip/src/blocks/registry/ai/descriptors.cjs, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml).
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Source-backed menu and posts blocks lose their current protective edit guidance when business descriptions are removed from descriptors.
+      likelihood: medium
+      impact: high
+      mitigation: Treat contentSource, editableFields, editRoute, and doNotEditDirectly as the non-negotiable technical contract and keep dedicated regression coverage for woo_category, woo_products, and wordpress_posts variants before and after the refactor (sources: zip/src/blocks/registry/ai/descriptors.cjs, SCRIPTS/generate-page-builder-ai-schema.test.js, zip/src/blocks/registry/registry-invariants.test.tsx).
+    - scenario: The generator switches description sourcing to instance data but drops backward compatibility for blocks that do not yet provide an instance-level description.
+      likelihood: medium
+      impact: high
+      mitigation: Keep the output field description in page_builder_schema_for_ai, resolve it from instance-level metadata first, and fall back to the existing generic generator path for unsupported or newly added blocks (sources: SCRIPTS/generate-page-builder-ai-schema.js, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml, .github/instructions/page-builder.instructions.md).
+    - scenario: Tests are updated too narrowly and stop guarding the id mapping and fallback guarantees required by the page-builder workflow.
+      likelihood: medium
+      impact: medium
+      mitigation: Update assertions away from registry-authored business prose, but keep invariant checks for stable ids, non-empty descriptions at output level, and safe fallback for missing descriptors (sources: .github/instructions/page-builder.instructions.md, SCRIPTS/generate-page-builder-ai-schema.test.js, zip/src/blocks/registry/registry-invariants.test.tsx).
+  assumptions:
+    - The compatibility-preserving target is to keep blocks[].description in page_builder_schema_for_ai, but change its source from registry-authored business copy to instance-level page data plus fallback when instance copy is missing (source: user request).
+    - The canonical place for instance-level business meaning can be introduced through existing open meta on draft blocks and render sections, avoiding a broad schema migration for block data contracts (sources: zip/src/blocks/registry/firebasePageDraft.ts, zip/src/blocks/registry/pageBuilderSchema.ts, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml).
+    - PageBuilderBlockDefinition.description in the main block registry type is outside the primary scope unless a nearby test must be adjusted to avoid contradictory expectations (sources: user request, zip/src/blocks/registry/types.ts).
+
+implementation_specification:
+  code_structure: |
+    Keep the change centered on three layers. Layer 1 is the shared AI descriptor registry, which should expose only technical editing rules and content builders per block type. Layer 2 is the page instance contract, which should carry the business-purpose description for a concrete block instance through existing meta-capable structures. Layer 3 is the AI schema generator, which should merge the instance description with the technical registry payload and preserve the current output field names where compatibility matters.
+    The implementation should avoid a broad rewrite of render schemas or WordPress controller logic because both the render schema section model and firebase draft model already allow instance metadata passthrough (sources: zip/src/blocks/registry/pageBuilderSchema.ts, zip/src/blocks/registry/firebasePageDraft.ts, SCRIPTS/make-page-draft-compile-gate.js).
+  affected_areas:
+    - zip/src/blocks/registry/ai/descriptors.cjs
+    - SCRIPTS/generate-page-builder-ai-schema.js
+    - SCRIPTS/generate-page-builder-ai-schema.test.js
+    - zip/src/blocks/registry/registry-invariants.test.tsx
+    - zip/src/blocks/registry/pageBuilderSchema.ts
+    - zip/src/blocks/registry/firebasePageDraft.ts
+    - SCRIPTS/make-page-draft-compile-gate.js
+  component_details:
+    - component: Instance description contract
+      responsibility: Define where the per-page business meaning of a block instance lives and how the generator reads it without breaking existing page-builder flows.
+      interfaces:
+        - A canonical instance-level metadata key for business-purpose description attached to a draft block and preserved on the render section instance.
+        - A precedence rule for generating blocks[].description in page_builder_schema_for_ai.
+    - component: Technical AI descriptor registry
+      responsibility: Provide only technical block-type editing rules and content builders shared by the generator.
+      interfaces:
+        - contentSource
+        - editableFields
+        - editRoute
+        - doNotEditDirectly
+        - build(section)
+    - component: AI schema generator merge layer
+      responsibility: Compose final AI blocks from section instance data and technical descriptor data while preserving stable ids and generic fallback behavior.
+      interfaces:
+        - buildAiBlock(section)
+        - buildGenericDescriptor(section)
+        - description resolution strategy
+    - component: Regression test suite
+      responsibility: Prove that the new contract preserves fallback behavior, stable mapping, and source-backed safety while removing the old dependency on registry-authored business descriptions.
+      interfaces:
+        - Script-level generator tests
+        - Registry invariant coverage tests
+  dependencies:
+    - component: firebase draft and render schema meta passthrough
+      relationship: Supplies the lowest-impact path for instance-level business descriptions.
+    - component: AI descriptor registry
+      relationship: Continues to define technical editing behavior consumed by the generator.
+    - component: AI schema generator
+      relationship: Becomes the canonical merge point for instance description plus descriptor rules.
+    - component: generator and invariant tests
+      relationship: Must be updated to validate the new source of description without losing contract coverage.
+  integration_points:
+    - SCRIPTS/generate-page-builder-ai-schema.js
+    - SCRIPTS/make-page-draft-compile-gate.js
+    - zip/src/blocks/registry/pageBuilderSchema.ts
+    - zip/src/blocks/registry/firebasePageDraft.ts
+
+contracts:
+  - from_task: define_instance_description_contract
+    to_task: refactor_ai_descriptor_registry_to_technical_rules
+    interface: Agreed instance-level description source and backward-compatible output rule for blocks[].description.
+    format: Short contract note describing storage key, read precedence, and compatibility constraints
+  - from_task: define_instance_description_contract
+    to_task: move_description_assembly_into_generator
+    interface: Canonical precedence order for description resolution plus the rule that generic fallback must remain available.
+    format: Ordered resolution rules
+  - from_task: refactor_ai_descriptor_registry_to_technical_rules
+    to_task: move_description_assembly_into_generator
+    interface: Registry shape without business-purpose description fields, preserving technical guidance fields and build functions.
+    format: JavaScript object contract per descriptor
+  - from_task: move_description_assembly_into_generator
+    to_task: update_regression_tests_for_new_model
+    interface: New AI schema output behavior for description, fallback, and source-backed blocks.
+    format: Testable output contract
+  - from_task: update_regression_tests_for_new_model
+    to_task: document_instance_vs_registry_ai_contract
+    interface: Verified final contract and changed expectations.
+    format: Concise documentation delta
+
+tasks:
+  - id: define_instance_description_contract
+    title: Lock the instance-level description contract and backward-compatible AI output rule
+    description: |
+      Decide and document the exact source of business-purpose text for a page block instance before any code refactor starts. The task should fix the canonical instance-level storage location, the precedence rule used by the AI generator, and the compatibility decision that blocks[].description remains in the output even though registry descriptors stop owning that text (sources: user request, .github/instructions/page-builder.instructions.md, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml, zip/src/blocks/registry/pageBuilderSchema.ts, zip/src/blocks/registry/firebasePageDraft.ts).
+    wave: 1
+    agent: gem-researcher
+    prototype: false
+    covers:
+      - plan-step-1
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: .github/instructions/page-builder.instructions.md
+        description: Requires instance-level description in AI schema and stable mapping to render sections.
+      - path: zip/src/blocks/registry/pageBuilderSchema.ts
+        description: Confirms render section instances already preserve open meta.
+      - path: zip/src/blocks/registry/firebasePageDraft.ts
+        description: Confirms draft blocks already preserve open meta before compile.
+      - path: docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml
+        description: Captures the current mixing of business and technical concerns and the open questions this task resolves.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The rest of the refactor depends on knowing exactly where business-purpose text lives and whether the output field name stays stable.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 120
+        focus_area: instance description contract
+        verification:
+          - Confirm the contract does not require changing every block data schema.
+          - Confirm the contract preserves the required id mapping and AI description availability.
+        acceptance_criteria:
+          - The instance-level source of business-purpose text is explicitly named.
+          - The generator precedence for blocks[].description is explicitly defined.
+          - The decision keeps fallback coverage for blocks that do not yet carry instance text.
+        failure_modes:
+          - scenario: The contract is left ambiguous between block data and block meta.
+            likelihood: medium
+            impact: high
+            mitigation: Choose one canonical location and document it before implementation begins.
+
+  - id: refactor_ai_descriptor_registry_to_technical_rules
+    title: Remove business-purpose wording from shared AI descriptors while preserving technical rules
+    description: |
+      Refactor the shared descriptor registry so each descriptor keeps only block-type technical editing guidance and the content builder logic. This task must preserve current source-backed behavior and should explicitly avoid weakening the rules that direct WooCommerce-backed or WordPress-backed content away from unsafe direct edits (sources: zip/src/blocks/registry/ai/descriptors.cjs, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml).
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - plan-step-2
+    priority: high
+    status: pending
+    dependencies:
+      - define_instance_description_contract
+    conflicts_with:
+      - move_description_assembly_into_generator
+    context_files:
+      - path: zip/src/blocks/registry/ai/descriptors.cjs
+        description: Current mixed descriptor source that needs to become technical-only.
+      - path: zip/src/blocks/registry/registry-invariants.test.tsx
+        description: Current invariants include assumptions about registry-level descriptions.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The registry cleanup should happen before generator merging so the data boundary becomes explicit.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 260
+        focus_area: descriptor boundary cleanup
+        verification:
+          - Confirm source-backed descriptors still expose the same technical routing fields.
+          - Confirm content build functions remain behaviorally unchanged.
+        acceptance_criteria:
+          - Registry descriptors no longer own per-page business-purpose descriptions.
+          - Source-backed descriptors keep their current safe editing semantics.
+          - The descriptor shape remains consumable by the existing generator after its follow-up refactor.
+        failure_modes:
+          - scenario: Technical edit guidance gets simplified together with business text and loses protective detail.
+            likelihood: medium
+            impact: high
+            mitigation: Remove only business-purpose prose, not routing or field-level edit constraints.
+        tech_stack:
+          - JavaScript
+          - node:test
+        test_coverage: Preserve or extend targeted coverage for source-backed descriptors in follow-up tests.
+
+  - id: move_description_assembly_into_generator
+    title: Make the AI schema generator merge instance descriptions with technical descriptor output
+    description: |
+      Update the generator so it resolves blocks[].description from the instance-level contract first and then falls back safely when the block has no dedicated descriptor or no instance-level text. This task should keep the generator as the single composition point for the final AI schema payload and should avoid breaking the compile-gate flow that already passes meta through to sections (sources: SCRIPTS/generate-page-builder-ai-schema.js, SCRIPTS/make-page-draft-compile-gate.js, zip/src/blocks/registry/pageBuilderSchema.ts, zip/src/blocks/registry/firebasePageDraft.ts, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml).
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - plan-step-3
+      - plan-step-4
+    priority: high
+    status: pending
+    dependencies:
+      - define_instance_description_contract
+      - refactor_ai_descriptor_registry_to_technical_rules
+    conflicts_with:
+      - update_regression_tests_for_new_model
+    context_files:
+      - path: SCRIPTS/generate-page-builder-ai-schema.js
+        description: Current merge point that still pulls description from descriptors.
+      - path: SCRIPTS/make-page-draft-compile-gate.js
+        description: Confirms compile flow already depends on the generator and preserves section meta.
+      - path: zip/src/blocks/registry/pageBuilderSchema.ts
+        description: Confirms section instances can carry instance-level metadata.
+      - path: zip/src/blocks/registry/firebasePageDraft.ts
+        description: Confirms draft blocks can carry instance-level metadata before compile.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The generator is the canonical place to merge instance meaning with block-type technical rules.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: generator merge logic
+        verification:
+          - Confirm the output still maps one AI block to one render section id.
+          - Confirm blocks without dedicated descriptors still get a safe description and technical guidance.
+          - Confirm source-backed blocks preserve source-aware contentSource and edit restrictions.
+        acceptance_criteria:
+          - Generator no longer depends on registry-authored business descriptions.
+          - Generator merges instance description plus technical descriptor payload.
+          - Generic fallback for new blocks remains intact.
+          - Source-backed blocks keep current safe behavior.
+        failure_modes:
+          - scenario: The new merge logic accidentally prefers fallback text over a provided instance description.
+            likelihood: medium
+            impact: medium
+            mitigation: Define and test a strict precedence order for description resolution.
+        tech_stack:
+          - JavaScript
+          - node:test
+        test_coverage: Add or update script-level tests for precedence, fallback, and source-backed flows.
+
+  - id: update_regression_tests_for_new_model
+    title: Rewrite generator and invariant tests around the new split of instance meaning and technical rules
+    description: |
+      Update the test suite so it validates the new source of description instead of the old registry-authored wording. Keep the strongest existing guarantees: stable ids, full block coverage, generic fallback for new blocks, and explicit safety around source-backed blocks. If needed, add a narrow regression assertion that source-backed blocks still direct edits to source bindings rather than runtime-resolved collections (sources: SCRIPTS/generate-page-builder-ai-schema.test.js, zip/src/blocks/registry/registry-invariants.test.tsx, .github/instructions/page-builder.instructions.md).
+    wave: 4
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - plan-step-5
+    priority: high
+    status: pending
+    dependencies:
+      - move_description_assembly_into_generator
+    conflicts_with: []
+    context_files:
+      - path: SCRIPTS/generate-page-builder-ai-schema.test.js
+        description: Holds the most explicit assumptions about description wording and fallback behavior.
+      - path: zip/src/blocks/registry/registry-invariants.test.tsx
+        description: Holds registry-level and generator-level coverage assumptions that must be updated carefully.
+      - path: .github/instructions/page-builder.instructions.md
+        description: Requires every AI block to carry an instance-level description.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Tests should be rewritten only after the runtime contract is settled and implemented.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 240
+        focus_area: regression coverage
+        verification:
+          - Confirm tests no longer assume business prose lives in registry descriptors.
+          - Confirm fallback and source-backed safety remain explicitly covered.
+        acceptance_criteria:
+          - Tests reflect the new instance-vs-registry split.
+          - Tests still enforce stable ids and non-empty output descriptions.
+          - Tests still protect new-block fallback and source-backed block behavior.
+        failure_modes:
+          - scenario: The tests become too generic and stop detecting regressions in source-backed guidance.
+            likelihood: medium
+            impact: medium
+            mitigation: Keep dedicated assertions for source-bound descriptors and generic fallback cases.
+        tech_stack:
+          - JavaScript
+          - TypeScript
+          - node:test
+        test_coverage: This task is itself the regression coverage update.
+
+  - id: document_instance_vs_registry_ai_contract
+    title: Update the local page-builder documentation for the new AI description split
+    description: |
+      Add a concise documentation update describing that business-purpose text now belongs to block instances while registry AI descriptors remain technical-only. The update should mention the generator as the merge point, the continued presence of fallback for new blocks, and the requirement that source-backed blocks keep their safe edit-routing behavior (sources: .github/instructions/page-builder.instructions.md, docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml, verified outcomes from the implementation tasks).
+    wave: 5
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - plan-step-6
+    priority: medium
+    status: pending
+    dependencies:
+      - update_regression_tests_for_new_model
+    conflicts_with: []
+    context_files:
+      - path: .github/instructions/page-builder.instructions.md
+        description: Baseline page-builder rule set that should stay aligned with the new contract.
+      - path: docs/plan/adhoc-registry-ai-instance-split/research_findings_page-builder-ai-schema.yaml
+        description: Current-state evidence that the documentation update should close.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The refactor changes a cross-cutting contract used by generator and tests, so a small documentation sync should land last.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 120
+        focus_area: contract documentation
+        verification:
+          - Confirm the documentation states the new ownership boundary clearly.
+          - Confirm fallback and source-backed guarantees are explicitly retained.
+        acceptance_criteria:
+          - Documentation names the new source of business-purpose descriptions.
+          - Documentation states that the generator merges instance meaning with technical registry rules.
+          - Documentation mentions preserved fallback and source-backed safety.
+        failure_modes:
+          - scenario: Documentation repeats the old mental model and becomes misleading immediately after implementation.
+            likelihood: low
+            impact: medium
+            mitigation: Base the documentation strictly on the verified post-test contract.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - Instance-level business-purpose ownership
+      - Technical-only registry descriptor boundary
+      - Generator merge responsibility
+      - Fallback preservation
+      - Source-backed safety expectations

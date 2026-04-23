@@ -1,0 +1,587 @@
+plan_id: adhoc-hardcoded-url-audit-20260422
+objective: >-
+	Audyt tylko-do-odczytu źródeł runtime pod zip/, astro-site/ i wordpress-plugin/
+	pod kątem zahardkodowanych URL-i lub hostname'ów, które wyglądają na klientowe,
+	historyczne albo powinny pochodzić z env/config.
+focus_area: runtime-url-hostname-audit
+created_at: 2026-04-22T00:00:00Z
+created_by: github-copilot-gpt-5.4
+status: completed
+
+tldr: |
+	- Warstwa bazowych URL-i dla React i Astro jest w większości czysta: główne endpointy WordPress/bridge/site są składane z env/config, nie z literałów domenowych.
+	- Najmocniejsze znalezisko runtime to zahardkodowany slug testowy '/react/<page-slug>' w astro-site/src/components/StickyCartControls.astro:54.
+	- Najwięcej klientowo-historycznych literałów zostało w treści runtime: footerach i stronach cateringowych React oraz w fallbackowym footerze Astro.
+	- Plugin WordPress nie ma zahardkodowanego webhooka Make ani ścieżek deploy/SSH; znalezione literały URL w QuoteService.php to akceptowalne endpointy dostawców zewnętrznych.
+
+research_metadata:
+	methodology: >-
+		Hybrydowe wyszukiwanie przez grep_search i semantic_search, następnie celowane read_file
+		na plikach z dopasowaniami oraz pomocniczy run_in_terminal do policzenia linii i
+		potwierdzenia zakresu plików. Zakres został zawężony do runtime source pod zip/src,
+		zip/components, astro-site/src i wordpress-plugin/bulwar-bridge/src.
+	scope: >-
+		Audyt obejmuje tylko źródła runtime i tylko literały URL/host/path mogące wskazywać na
+		domeny klientowe, historyczne base URL-e, bridge URL-e, webhook URL-e, hosty SSH lub
+		absolutne ścieżki deploy. Świadomie pominięto docs, workflowy, skrypty operacyjne,
+		vendor i build output.
+	confidence: high
+	coverage: 89
+	decision_blockers: 0
+	research_blockers: 0
+
+files_analyzed:
+	- file: clientRuntimeConfig.ts
+		path: zip/src/lib/clientRuntimeConfig.ts
+		purpose: Centralny resolver runtime URL-i dla frontendu React.
+		key_elements:
+			- element: getWordPressBaseUrl
+				type: function
+				location: zip/src/lib/clientRuntimeConfig.ts:49
+				description: Wymaga WordPress base URL z env/config i normalizuje trailing slash.
+			- element: getBridgeBaseUrl
+				type: function
+				location: zip/src/lib/clientRuntimeConfig.ts:52
+				description: Buduje bazę dla bridge API z env/config zamiast z literału domenowego.
+			- element: getSiteUrl
+				type: function
+				location: zip/src/lib/clientRuntimeConfig.ts:64
+				description: Wymaga site URL z env/config do canonicali i linków.
+		language: TypeScript
+		lines: 56
+
+	- file: fetchWordPressPageBuilderSchema.ts
+		path: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+		purpose: Pobiera page_builder_schema z WordPress bridge po stronie React runtime.
+		key_elements:
+			- element: fetchWordPressPageBuilderSchema
+				type: function
+				location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:58
+				description: Składa endpoint z getWordPressBaseUrl() zamiast hardcode'ować host.
+		language: TypeScript
+		lines: 70
+
+	- file: wordpressApi.ts
+		path: zip/src/blocks/registry/wordpressApi.ts
+		purpose: Runtime fetch layer dla postów/media z WordPress w sekcji oferta.
+		key_elements:
+			- element: fetchWordPressJson
+				type: function
+				location: zip/src/blocks/registry/wordpressApi.ts:30
+				description: Buduje request URL przez getWordPressBaseUrl().
+			- element: resolveOfertaPostsSectionSource
+				type: function
+				location: zip/src/blocks/registry/wordpressApi.ts:118
+				description: Rozwiązuje dane sekcji oferta bez wpisanej na sztywno domeny WordPress.
+		language: TypeScript
+		lines: 119
+
+	- file: CateringPageFooter.tsx
+		path: zip/src/components/sections/CateringPageFooter.tsx
+		purpose: Wspólny footer dla stron cateringowych React.
+		key_elements:
+			- element: homepage link
+				type: literal
+				location: zip/src/components/sections/CateringPageFooter.tsx:22
+				description: Linkuje bezpośrednio do https://bulwarrestauracja.pl.
+			- element: www homepage link
+				type: literal
+				location: zip/src/components/sections/CateringPageFooter.tsx:34
+				description: Linkuje bezpośrednio do https://www.bulwarrestauracja.pl.
+			- element: reservation email
+				type: literal
+				location: zip/src/components/sections/CateringPageFooter.tsx:61
+				description: Mailto wskazuje na rezerwacje@bulwarrestauracja.pl.
+		language: TSX
+		lines: 103
+
+	- file: CateringWielkanocnyPage.tsx
+		path: zip/src/pages/CateringWielkanocnyPage.tsx
+		purpose: Landing i checkout page dla oferty cateringowej.
+		key_elements:
+			- element: support email copy
+				type: literal
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:78
+				description: Tekst kontaktowy zawiera konkretny adres rezerwacje@bulwarrestauracja.pl.
+			- element: cateringPageSocialLinks
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:87
+				description: Tablica sociali zawiera literały do Facebooka/Instagrama konkretnej marki.
+			- element: cateringPageLegalLinks
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:96
+				description: Tablica linków prawnych wskazuje na konkretne URL-e domeny Bulwar.
+		language: TSX
+		lines: 248
+
+	- file: CateringWielkanocnyThankYouPage.tsx
+		path: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+		purpose: Strona podziękowania po złożeniu zamówienia cateringowego.
+		key_elements:
+			- element: cateringPageSocialLinks
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:19
+				description: Tablica sociali zawiera klientowy Facebook/Instagram.
+			- element: cateringPageLegalLinks
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:28
+				description: Linki prawne są wpisane na sztywno do domeny Bulwar.
+		language: TSX
+		lines: 134
+
+	- file: ofertaData.ts
+		path: zip/src/data/ofertaData.ts
+		purpose: Statyczne runtime dane kart oferty na stronie głównej React.
+		key_elements:
+			- element: offer image URLs
+				type: literal
+				location: zip/src/data/ofertaData.ts:6
+				description: Obrazy startują od literałów https://bulwarrestauracja.pl/wp-content/uploads/.
+		language: TypeScript
+		lines: 102
+
+	- file: config.ts
+		path: astro-site/src/lib/config.ts
+		purpose: Resolver WordPress base URL dla aplikacji Astro.
+		key_elements:
+			- element: getWordPressBaseUrl
+				type: function
+				location: astro-site/src/lib/config.ts:19
+				description: Wymusza PUBLIC_WORDPRESS_BASE_URL i nie ma historycznego fallbacku hosta.
+		language: TypeScript
+		lines: 23
+
+	- file: wordpress.ts
+		path: astro-site/src/lib/wordpress.ts
+		purpose: Fetch layer Astro dla stron, schema i global layout oraz fallback layout data.
+		key_elements:
+			- element: DEFAULT_GLOBAL_LAYOUT_DATA
+				type: variable
+				location: astro-site/src/lib/wordpress.ts:56
+				description: Zawiera fallbackowe dane footer/header z literałami marki Bulwar.
+			- element: fetchWordPressBuildablePages
+				type: function
+				location: astro-site/src/lib/wordpress.ts:220
+				description: Używa getWordPressBaseUrl() do pobrania listy stron.
+			- element: fetchWordPressGlobalLayout
+				type: function
+				location: astro-site/src/lib/wordpress.ts:253
+				description: Używa getWordPressBaseUrl() do pobrania global layoutu.
+		language: TypeScript
+		lines: 246
+
+	- file: [slug].astro
+		path: astro-site/src/pages/[slug].astro
+		purpose: Główna trasa Astro budująca stronę z page buildera.
+		key_elements:
+			- element: allowGlobalLayoutFallback
+				type: variable
+				location: astro-site/src/pages/[slug].astro:28
+				description: Odczytuje flagę ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK.
+			- element: fallback branch
+				type: branch
+				location: astro-site/src/pages/[slug].astro:48
+				description: W razie błędu może zwrócić DEFAULT_GLOBAL_LAYOUT_DATA z wordpress.ts.
+		language: Astro
+		lines: 82
+
+	- file: StickyCartControls.astro
+		path: astro-site/src/components/StickyCartControls.astro
+		purpose: Sticky CTA/cart controls renderowane na stronach Astro.
+		key_elements:
+			- element: checkout href
+				type: literal
+				location: astro-site/src/components/StickyCartControls.astro:54
+				description: Href jest wpisany na sztywno jako /react/<page-slug>.
+		language: Astro
+		lines: 51
+
+	- file: Constants.php
+		path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+		purpose: Rejestruje stałe i domyślne wartości konfiguracyjne pluginu.
+		key_elements:
+			- element: BULWAR_BRIDGE_MAKE_WEBHOOK_URL
+				type: constant
+				location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:19
+				description: Domyślna wartość webhook URL jest pusta, nie zahardkodowana.
+			- element: makeWebhookUrl mapping
+				type: array-entry
+				location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:52
+				description: Wystawia webhook URL wyłącznie przez konfigurację.
+		language: PHP
+		lines: 82
+
+	- file: MakeWebhookNotifier.php
+		path: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+		purpose: Wysyła opcjonalne powiadomienie do Make po utworzeniu zamówienia.
+		key_elements:
+			- element: send
+				type: method
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:51
+				description: Korzysta z URL-a dostarczonego przez konfigurację pluginu.
+			- element: isEnabled
+				type: method
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:89
+				description: Włącza webhook tylko gdy skonfigurowany URL zaczyna się od https://.
+		language: PHP
+		lines: 199
+
+	- file: QuoteService.php
+		path: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+		purpose: Liczy odległość i geokoduje adresy dla wycen dostawy.
+		key_elements:
+			- element: routeDistanceKm
+				type: method
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:139
+				description: Zawiera literały URL do Google Distance Matrix i OSRM jako endpointy usług.
+			- element: googleGeocode
+				type: method
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:186
+				description: Używa endpointu Google Geocoding API.
+			- element: nominatimGeocode
+				type: method
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:205
+				description: Używa endpointu Nominatim jako fallback geocodingu.
+		language: PHP
+		lines: 258
+
+patterns_found:
+	- category: architecture
+		pattern: Bazowe URL-e runtime są centralizowane w helperach config/env.
+		description: >-
+			Główne ścieżki komunikacji z WordPress i bridge nie zawierają wpisanych domen;
+			frontend React i Astro pobierają base URL z env/config i doklejają ścieżki REST.
+		examples:
+			- file: zip/src/lib/clientRuntimeConfig.ts
+				location: zip/src/lib/clientRuntimeConfig.ts:49
+				snippet: getWordPressBaseUrl() / getBridgeBaseUrl() / getSiteUrl()
+			- file: astro-site/src/lib/config.ts
+				location: astro-site/src/lib/config.ts:19
+				snippet: getWordPressBaseUrl() wymaga PUBLIC_WORDPRESS_BASE_URL
+			- file: astro-site/src/lib/wordpress.ts
+				location: astro-site/src/lib/wordpress.ts:220
+				snippet: fetchWordPressBuildablePages() korzysta z getWordPressBaseUrl()
+		prevalence: common
+
+	- category: content
+		pattern: Klientowe linki marketingowe i prawne są wpisane bezpośrednio w komponentach stron.
+		description: >-
+			Część runtime UI nadal zawiera konkretne domeny, adres e-mail i social links Bulwar,
+			zamiast pobierać je z layoutu globalnego albo osobnej konfiguracji treści.
+		examples:
+			- file: zip/src/components/sections/CateringPageFooter.tsx
+				location: zip/src/components/sections/CateringPageFooter.tsx:22
+				snippet: href="https://bulwarrestauracja.pl"
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:87
+				snippet: const cateringPageSocialLinks = [{ href: "https://facebook.com/..." }, ...]
+			- file: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+				location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:28
+				snippet: const cateringPageLegalLinks = [{ href: "https://bulwarrestauracja.pl/regulamin/" }, ...]
+		prevalence: occasional
+
+	- category: fallback
+		pattern: Astro ma fallback layout z zahardkodowanymi danymi marki.
+		description: >-
+			Normalny fetch layoutu jest config-driven, ale opcjonalna ścieżka fallbacku może
+			odtworzyć Bulwar-specyficzne kontakty, sociale i linki prawne, jeśli flaga fallbacku
+			zostanie włączona i fetch layoutu nie powiedzie się.
+		examples:
+			- file: astro-site/src/lib/wordpress.ts
+				location: astro-site/src/lib/wordpress.ts:56
+				snippet: const DEFAULT_GLOBAL_LAYOUT_DATA = { footer: { ... } }
+			- file: astro-site/src/pages/[slug].astro
+				location: astro-site/src/pages/[slug].astro:48
+				snippet: return DEFAULT_GLOBAL_LAYOUT_DATA when allowGlobalLayoutFallback
+		prevalence: rare
+
+	- category: external_integration
+		pattern: Plugin hardcode'uje tylko neutralne endpointy dostawców zewnętrznych.
+		description: >-
+			URL-e w warstwie PHP dotyczą publicznych API geokodowania/routingu i nie wskazują na
+			klientową domenę ani historyczny host aplikacji.
+		examples:
+			- file: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:145
+				snippet: https://maps.googleapis.com/maps/api/distancematrix/json
+			- file: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+				location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:163
+				snippet: https://router.project-osrm.org/route/v1/driving/
+		prevalence: occasional
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: React runtime config layer
+			responsibility: Dostarcza WordPress/bridge/site base URL do fetchy i canonicali.
+			location: zip/src/lib/clientRuntimeConfig.ts
+			relationship_to_domain: domain depends on this
+		- component: React catering pages and shared footer
+			responsibility: Renderują klientowe linki kontaktowe/social/legal widoczne użytkownikowi.
+			location: zip/src/pages and zip/src/components/sections/CateringPageFooter.tsx
+			relationship_to_domain: this contains direct findings
+		- component: Astro WordPress fetch layer
+			responsibility: Pobiera schema/layout i utrzymuje fallbackowe dane layoutu.
+			location: astro-site/src/lib/wordpress.ts
+			relationship_to_domain: this contains both clean config pattern and fallback finding
+		- component: Astro page route
+			responsibility: Decyduje czy włączyć fallback global layout przy błędzie fetchu.
+			location: astro-site/src/pages/[slug].astro
+			relationship_to_domain: this controls runtime exposure of fallback literals
+		- component: WordPress bridge config and notifier
+			responsibility: Trzyma webhook URL w konfiguracji i wysyła go tylko gdy ustawiony.
+			location: wordpress-plugin/bulwar-bridge/src/Config and src/Checkout
+			relationship_to_domain: domain shows no client-specific hardcoded webhook target
+	interfaces_used_by_domain:
+		- interface: import.meta.env / PUBLIC_* env vars
+			location: zip/src/lib/clientRuntimeConfig.ts and astro-site/src/lib/config.ts
+			usage_pattern: Runtime URL-e są pobierane z env i walidowane przed użyciem.
+		- interface: WordPress REST API under /wp-json/bulwar/v1
+			location: zip/src/blocks/registry and astro-site/src/lib/wordpress.ts
+			usage_pattern: Klient i Astro doklejają endpointy do skonfigurowanego WordPress base URL.
+	data_flow_involving_domain: >-
+		React pobiera base URL-e z clientRuntimeConfig.ts, a następnie używa ich w fetchach do
+		WordPress i bridge; osobno strony cateringowe renderują własne literały linków. Astro
+		pobiera base URL z config.ts, używa go do fetchy page-builder/global-layout, a przy
+		awarii może wrócić do DEFAULT_GLOBAL_LAYOUT_DATA. Plugin WordPress czyta URL webhooka z
+		constants/config i wywołuje zewnętrzne API tylko dla geokodowania/routingu.
+	key_relationships_to_domain:
+		- from: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+			to: zip/src/lib/clientRuntimeConfig.ts
+			relationship: imports
+		- from: zip/src/blocks/registry/wordpressApi.ts
+			to: zip/src/lib/clientRuntimeConfig.ts
+			relationship: imports
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/components/sections/CateringPageFooter.tsx
+			relationship: composes
+		- from: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+			to: zip/src/components/sections/CateringPageFooter.tsx
+			relationship: composes
+		- from: astro-site/src/pages/[slug].astro
+			to: astro-site/src/lib/wordpress.ts
+			relationship: imports
+		- from: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+			to: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+			relationship: depends_on
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+		- Astro
+		- PHP
+	frameworks_used_in_domain:
+		- name: React 19.1.0
+			usage_in_domain: Runtime frontend pod zip/ renderuje checkout i strony cateringowe.
+		- name: Vite 6.2.0
+			usage_in_domain: Dostarcza import.meta.env dla warstwy React runtime.
+		- name: Astro 5.14.2
+			usage_in_domain: Renderuje stronę statyczną i korzysta z WordPress/page-builder fetchy.
+		- name: WordPress
+			usage_in_domain: Plugin bulwar-bridge wystawia REST endpoints i logikę checkout/layout.
+	libraries_used_in_domain:
+		- name: zod
+			purpose_in_domain: Walidacja części struktur runtime w Astro/React, bez bezpośrednich findingów URL.
+	external_apis_used_in_domain:
+		- name: WordPress REST API
+			integration_point: zip/src/blocks/registry and astro-site/src/lib/wordpress.ts
+		- name: Google Distance Matrix API
+			integration_point: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:145
+		- name: Google Geocoding API
+			integration_point: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:188
+		- name: OSRM
+			integration_point: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:163
+		- name: Nominatim
+			integration_point: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:207
+
+related_conventions:
+	naming_patterns_in_domain: >-
+		Helpery runtime URL używają nazw getWordPressBaseUrl/getBridgeBaseUrl/getSiteUrl; tablice
+		linków UI są nazywane jawnie, np. cateringPageSocialLinks i cateringPageLegalLinks.
+	structure_of_domain: >-
+		Bazowe URL-e są zebrane w małych helperach config, fetchery REST żyją obok registry/lib,
+		a treści marketingowe są trzymane lokalnie w komponentach lub fallback objects.
+	error_handling_in_domain: >-
+		React/Astro rzucają błędy gdy brakuje wymaganych env URL-i; Astro ma dodatkową ścieżkę
+		fallbacku layoutu kontrolowaną flagą env; plugin włącza webhook dopiero po walidacji config.
+	testing_in_domain: >-
+		W samym badanym wycinku niewiele testów dotyczy URL-i runtime; większy nacisk w repo jest
+		na skrypty generatorów i layout bootstrap, nie na te konkretne klientowe literały.
+	documentation_in_domain: >-
+		Konwencja projektu promuje env/config i page-builder/global layout zamiast twardych domen,
+		co potwierdzają helpery config w React i Astro.
+
+related_dependencies:
+	internal:
+		- component: zip/src/lib/clientRuntimeConfig.ts
+			relationship_to_domain: Dostarcza URL-e do runtime React.
+			direction: outbound
+		- component: astro-site/src/lib/config.ts
+			relationship_to_domain: Dostarcza WordPress base URL do fetch layer Astro.
+			direction: outbound
+		- component: astro-site/src/lib/wordpress.ts
+			relationship_to_domain: Łączy fetch layer z fallbackowym layoutem.
+			direction: bidirectional
+		- component: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+			relationship_to_domain: Centralizuje konfigurację webhooka.
+			direction: outbound
+	external:
+		- name: WordPress REST API
+			purpose_for_domain: Źródło schema/layout/data dla React i Astro.
+		- name: Google Maps APIs
+			purpose_for_domain: Geokodowanie i routing w QuoteService.
+		- name: OSRM/Nominatim
+			purpose_for_domain: Fallbackowe usługi routingu i geokodowania.
+
+domain_security_considerations:
+	sensitive_areas:
+		- area: Fallback layout branding
+			location: astro-site/src/lib/wordpress.ts:56
+			concern: Włączenie fallbacku w produkcji może ujawnić nieaktualne dane kontaktowe/prawne marki Bulwar.
+		- area: Client-facing legal/social links
+			location: zip/src/pages/CateringWielkanocnyPage.tsx:87
+			concern: Przeniesienie kodu do innego klienta bez refaktoru może wysyłać użytkownika na cudze profile i regulaminy.
+	authentication_patterns_in_domain: >-
+		Plugin nie hardcode'uje webhook credential targetu; URL webhooka pochodzi z konfiguracji i
+		jest używany dopiero po prostym sprawdzeniu schematu https.
+	authorization_patterns_in_domain: >-
+		Audytowany wycinek dotyczy głównie konfiguracji URL-i i treści runtime; nie znaleziono
+		zahardkodowanych hostów SSH ani ścieżek deploy w source runtime.
+	data_validation_in_domain: >-
+		React i Astro walidują obecność base URL-i z env; główne ryzyko dotyczy treściowych literałów,
+		nie walidacji danych wejściowych.
+
+testing_patterns:
+	framework: repo-mixed (Node test runner/Jest-style scripts + PHP tests in adjacent tooling)
+	coverage_areas:
+		- Skrypty generatorów schema i bootstrap layoutu poza bezpośrednim zakresem tego audytu.
+		- Brak zauważalnych testów celujących w klientowe literały URL w runtime pages/components.
+	test_organization: Testy repo są skupione głównie w SCRIPTS/ i nie obejmują szeroko komponentów UI z findingami.
+	mock_patterns:
+		- Fetch/config helpers są projektowane pod podmianę env, ale brak widocznych testów dla tych konkretnych URL-i.
+
+concrete_findings:
+	- severity: high
+		file: astro-site/src/components/StickyCartControls.astro
+		location: astro-site/src/components/StickyCartControls.astro:54
+		literal: '"/react/<page-slug>"'
+		why: >-
+			To wygląda jak zahardkodowany slug testowo-wdrożeniowy, a nie neutralna trasa checkoutu.
+			Jest podejrzane, bo runtime CTA kieruje użytkownika na konkretną ścieżkę środowiskową,
+			która powinna raczej pochodzić z config/page data.
+		classification: runtime-critical
+
+	- severity: medium
+		file: astro-site/src/lib/wordpress.ts
+		location: astro-site/src/lib/wordpress.ts:145
+		literal: '"rezerwacje@bulwarrestauracja.pl"'
+		why: >-
+			Ten adres oraz sąsiednie linki prawne/social w DEFAULT_GLOBAL_LAYOUT_DATA są Bulwar-specyficzne.
+			Są akceptowalne tylko jako awaryjny fallback, ale włączenie fallbacku przez
+			ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK może przywrócić historyczny branding w runtime.
+		classification: test/example-only
+
+	- severity: medium
+		file: zip/src/components/sections/CateringPageFooter.tsx
+		location: zip/src/components/sections/CateringPageFooter.tsx:22
+		literal: '"https://bulwarrestauracja.pl"'
+		why: >-
+			Footer runtime zawiera klientową domenę, wariant www i mailto na sztywno. To jest podejrzane,
+			bo taki komponent wygląda na współdzielony i powinien raczej pobierać te dane z konfiguracji
+			lub global layoutu.
+		classification: runtime-critical
+
+	- severity: medium
+		file: zip/src/pages/CateringWielkanocnyPage.tsx
+		location: zip/src/pages/CateringWielkanocnyPage.tsx:78
+		literal: '"rezerwacje@bulwarrestauracja.pl"'
+		why: >-
+			Strona runtime wpisuje na sztywno adres kontaktowy oraz klientowe linki social/legal.
+			To jest podejrzane zwłaszcza wtedy, gdy strona ma być przenośna między środowiskami albo klientami.
+		classification: runtime-critical
+
+	- severity: medium
+		file: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+		location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:28
+		literal: '"https://bulwarrestauracja.pl/regulamin/"'
+		why: >-
+			Thank-you page powiela klientowe linki social/legal bez warstwy konfiguracji.
+			Podejrzane z tego samego powodu co landing: użytkownik końcowy trafia na konkretną domenę marki.
+		classification: runtime-critical
+
+	- severity: low
+		file: zip/src/data/ofertaData.ts
+		location: zip/src/data/ofertaData.ts:6
+		literal: '"https://bulwarrestauracja.pl/wp-content/uploads/..."'
+		why: >-
+			To są bezpośrednie hotlinki do mediów WordPress konkretnej domeny. Wygląda bardziej na
+			historyczne/contentowe dane niż na konfigurację aplikacyjną, ale nadal jest to klientowy
+			literal w runtime i może utrudnić przenoszenie wdrożeń.
+		classification: runtime-critical
+
+	- severity: low
+		file: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+		location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:145
+		literal: '"https://maps.googleapis.com/maps/api/distancematrix/json"'
+		why: >-
+			To nie wygląda podejrzanie: jest to neutralny endpoint dostawcy zewnętrznego, nie klientowa
+			domena. Zostawiam jako finding niskiej wagi tylko po to, żeby odróżnić akceptowalne literały
+			usługowe od problematycznych hostów aplikacyjnych.
+		classification: runtime-critical
+
+no_issue_found:
+	- area: React runtime base URL/config layer
+		note: >-
+			Nie znaleziono zahardkodowanych WordPress base URL, bridge URL ani site URL w głównej warstwie
+			runtime React. zip/src/lib/clientRuntimeConfig.ts:49-70 oraz konsumenci w
+			zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:58 i
+			zip/src/blocks/registry/wordpressApi.ts:30,118 budują endpointy z env/config.
+
+	- area: Astro WordPress base URL/fetch layer
+		note: >-
+			Nie znaleziono zahardkodowanego bazowego hosta WordPress dla normalnej ścieżki fetchy Astro.
+			astro-site/src/lib/config.ts:19 wymaga PUBLIC_WORDPRESS_BASE_URL, a fetchery w
+			astro-site/src/lib/wordpress.ts:220,242,253 używają tego resolvera.
+
+	- area: WordPress plugin webhook/deploy target layer
+		note: >-
+			Nie znaleziono zahardkodowanego webhook URL Make, hosta SSH ani absolutnej ścieżki deploy w
+			wordpress-plugin/bulwar-bridge/src. src/Config/Constants.php:19,52 zostawia webhook pusty
+			domyślnie, a src/Checkout/MakeWebhookNotifier.php:89 aktywuje go dopiero po konfiguracji.
+
+open_questions:
+	- question: Czy strony cateringowe React mają pozostać na stałe Bulwar-specyficzne, czy mają być reużywalne między wdrożeniami/klientami?
+		context: Od odpowiedzi zależy, czy hardcoded contact/social/legal links są zamierzonym contentem, czy długiem konfiguracyjnym.
+		type: decision_blocker
+		affects:
+			- runtime-url-hostname-audit
+
+	- question: Czy fallback global layout w Astro jest dozwolony w produkcji, czy powinien być wyłącznie narzędziem developerskim?
+		context: Jeśli fallback bywa włączany, Bulwar-specyficzne literały w DEFAULT_GLOBAL_LAYOUT_DATA stają się realnym runtime ryzykiem.
+		type: decision_blocker
+		affects:
+			- runtime-url-hostname-audit
+
+	- question: Czy obrazy w zip/src/data/ofertaData.ts mają pozostać hotlinkowane z WordPress media konkretnej domeny, czy powinny być rozwiązywane przez CMS/page-builder?
+		context: To określa, czy finding ma charakter tylko contentowy, czy także architektoniczny.
+		type: research
+		affects:
+			- runtime-url-hostname-audit
+
+gaps:
+	- area: Build output and generated artifacts
+		description: >-
+			Zgodnie z zakresem nie uwzględniono dist/build output ani wygenerowanych assetów, nawet jeśli
+			zawierają odziedziczone URL-e po kompilacji.
+		impact: nice_to_know
+		affects:
+			- runtime-url-hostname-audit
+
+	- area: Operational scripts and infra helpers outside runtime source
+		description: >-
+			Repo zawiera liczne skrypty deploy/verify z dodatkowymi hostami i ścieżkami, ale zostały
+			świadomie wykluczone, bo użytkownik poprosił o audit tylko pod zip/, astro-site/ i wordpress-plugin/.
+		impact: nice_to_know
+		affects:
+			- runtime-url-hostname-audit
+

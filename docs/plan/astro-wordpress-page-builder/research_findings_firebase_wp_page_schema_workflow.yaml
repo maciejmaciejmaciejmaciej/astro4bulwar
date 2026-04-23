@@ -1,0 +1,669 @@
+plan_id: astro-wordpress-page-builder
+objective: >-
+  Zbadac repo BULWAR APP pod katem wdrozenia pelnego kroku workflow,
+  w ktorym VS Code agent tworzy draft strony w Firebase, zapewnia istnienie
+  strony WordPress, a nastepnie generowana jest struktura page schema.
+focus_area: firebase_wp_page_schema_workflow
+created_at: 2026-04-18T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+historical_snapshot: true
+current_state_reference: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+historical_note: >-
+  This file is a dated workflow audit snapshot. Parts of the tldr and evidence
+  still describe the pre-runtime and pre-Astro-discovery state. For the
+  current supported flow, use the canonical authoring workflow document.
+
+tldr: |
+  - Repo ma juz kontrakt draftu Firebase, bootstrap ze scrape i lokalny compile gate do obu payloadow WordPress, ale nie ma wykonywalnej persystencji Firebase ani generycznego publish/create flow; dokument kanoniczny nadal mowi, ze repo-first jest jedyna wspierana sciezka operacyjna (zip/src/blocks/registry/firebasePageDraft.ts:40, zip/src/blocks/registry/createPageDraftFromScrape.ts:135, SCRIPTS/make-page-draft-compile-gate.js:178, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:13).
+  - WordPress plugin ma gotowe endpointy GET i POST dla page buildera oraz zapis obu meta pol razem, ale POST aktualizuje tylko istniejaca strone i nie tworzy brakujacej strony po slugu (wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46, wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52, wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:52, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37).
+  - Jedyny helper tworzacy strone WordPress jest testowy i twardo przypiety do slugu `testowa-blueprint`; React i Astro proof tez pozostaja hardcode'owane do tego slugu (SCRIPTS/seed-testowa-blueprint-schema.php:51, SCRIPTS/seed-testowa-blueprint-schema.sh:12, zip/src/pages/TestowaBlueprintPage.tsx:8, astro-site/src/lib/config.ts:3).
+  - Lokalnie bez credentiali da sie sensownie testowac bootstrap draftu, compile gate i duza czesc kontraktow registry/AI schema, ale nie da sie zamknac prawdziwego E2E z live Firebase i autoryzowanym WordPress publish bez dodatkowego runtime i sekretow; w tym srodowisku nawet test PHP pluginu nie ruszyl, bo `php` nie jest w PATH (SCRIPTS/generate-page-draft-from-scrape.test.js:21, SCRIPTS/make-page-draft-compile-gate.test.js:60, SCRIPTS/generate-page-builder-ai-schema.test.js:10, docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:51).
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval: memory review, file_search, grep_search, targeted read_file,
+    limited relationship discovery, and local test execution via run_in_terminal
+    for Node-based tests. Sources prioritized as repo code and repo docs.
+  scope: >-
+    Focused on Firebase draft contract/bootstrap, compile gate, WordPress page
+    creation helpers, WordPress page-builder endpoints, current consumer routes,
+    and tests that can validate the workflow without live credentials.
+  confidence: high
+  coverage: 88
+  decision_blockers: 2
+  research_blockers: 1
+
+files_analyzed:
+  - file: firebasePageDraft.ts
+    path: zip/src/blocks/registry/firebasePageDraft.ts
+    purpose: Zod contract i walidacja roboczego dokumentu draftu Firebase.
+    key_elements:
+      - element: firebasePageDraftSchema
+        type: variable
+        location: zip/src/blocks/registry/firebasePageDraft.ts:40
+        description: Definiuje shape draftu z blocksOrder, blocks, compiled i lifecycle flags.
+      - element: computeSourceMappingWorkflow
+        type: function
+        location: zip/src/blocks/registry/firebasePageDraft.ts:219
+        description: Wylicza workflow gates dla brakujacych source mappings.
+      - element: parseFirebasePageDraft
+        type: function
+        location: zip/src/blocks/registry/firebasePageDraft.ts:239
+        description: Waliduje blokowe data/source przeciw registry i dokleja workflow.
+    language: TypeScript
+    lines: 279
+  - file: createPageDraftFromScrape.ts
+    path: zip/src/blocks/registry/createPageDraftFromScrape.ts
+    purpose: Bootstrapuje pierwszy draft strony z znormalizowanego wyniku scrape.
+    key_elements:
+      - element: buildRestaurantMenuDraft
+        type: function
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:81
+        description: Buduje structure-only draft menu z placeholderami Woo category.
+      - element: createPageDraftFromScrape
+        type: function
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:135
+        description: Rozdziela restaurant_menu od fallback generic_page.
+    language: TypeScript
+    lines: 143
+  - file: generate-page-draft-from-scrape.ts
+    path: SCRIPTS/generate-page-draft-from-scrape.ts
+    purpose: CLI normalizujace scrape content.md plus seo-data.json do artefaktu firebase draft.
+    key_elements:
+      - element: normalizeScrapeDocument
+        type: function
+        location: SCRIPTS/generate-page-draft-from-scrape.ts:221
+        description: Wyprowadza pageSlug, pageKind, title, sourcePath, sourceUrl i structureHints.
+      - element: main
+        type: function
+        location: SCRIPTS/generate-page-draft-from-scrape.ts:342
+        description: Zapisuje draft artifact do docs/plan/astro-wordpress-page-builder/<slug>.firebase-draft.json.
+    language: TypeScript
+    lines: 365
+  - file: make-page-draft-compile-gate.js
+    path: SCRIPTS/make-page-draft-compile-gate.js
+    purpose: Lokalny compile gate z draftu do page_builder_schema i page_builder_schema_for_ai.
+    key_elements:
+      - element: buildPageBuilderSchemaFromDraft
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:132
+        description: Transluje draft blocksOrder plus blocks do render schema sections.
+      - element: compilePageDraft
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:178
+        description: Naklada approvedSourceMappings, blokuje placeholdery i emituje oba payloady naraz.
+    language: JavaScript
+    lines: 296
+  - file: seed-testowa-blueprint-schema.php
+    path: SCRIPTS/seed-testowa-blueprint-schema.php
+    purpose: Testowy helper tworzacy lub aktualizujacy jedna strone WordPress i oba meta pola.
+    key_elements:
+      - element: get_page_by_path('testowa-blueprint')
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:51
+        description: Twardo wyszukuje tylko strone testowa po stalym slugu.
+      - element: wp_insert_post
+        type: function
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:64
+        description: Tworzy strone tylko dla slugu testowa-blueprint.
+    language: PHP
+    lines: 86
+  - file: seed-testowa-blueprint-schema.sh
+    path: SCRIPTS/seed-testowa-blueprint-schema.sh
+    purpose: Bash helper dla serwera dhosting z WP-CLI i curl verify dla testowej strony.
+    key_elements:
+      - element: post create --post_name=testowa-blueprint
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:12
+        description: Tworzy tylko testowa strone po stalym slugu.
+      - element: curl GET page-builder endpoint
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:27
+        description: Weryfikuje publiczny GET endpoint dla testowej strony.
+    language: Bash
+    lines: 27
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Rejestracja endpointow REST pluginu Bulwar Bridge.
+    key_elements:
+      - element: GET /page-builder/pages/(?P<slug>...)
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+        description: Publiczny odczyt page_builder_schema po slugu.
+      - element: POST /page-builder/pages/(?P<slug>...)
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+        description: Autoryzowany zapis obu meta pol dla istniejacej strony.
+    language: PHP
+    lines: 60
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Odczyt i zapis page_builder_schema oraz page_builder_schema_for_ai w WordPress.
+    key_elements:
+      - element: show
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:20
+        description: Zwraca schema i aiSchema dla slug, ograniczajac draft pages do uprawnionego edytora.
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:52
+        description: Wymaga obu payloadow i zapisuje oba meta pola razem.
+      - element: resolvePage
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:132
+        description: Rozwiazuje strone po slugu, bez tworzenia brakujacej strony.
+    language: PHP
+    lines: 232
+  - file: fetchWordPressPageBuilderSchema.ts
+    path: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+    purpose: Frontendowy klient GET dla publicznego endpointu page-builder.
+    key_elements:
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:59
+        description: Pobiera schema z WordPress REST i parsuje wynik przez parsePageBuilderSchema.
+    language: TypeScript
+    lines: 91
+  - file: TestowaBlueprintPage.tsx
+    path: zip/src/pages/TestowaBlueprintPage.tsx
+    purpose: React proof page dla jednego slug'a page-builder.
+    key_elements:
+      - element: PAGE_BUILDER_SLUG
+        type: variable
+        location: zip/src/pages/TestowaBlueprintPage.tsx:8
+        description: Twardo ustawia slug testowa-blueprint.
+    language: TypeScript
+    lines: 60
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Astro proof config dla listy statycznie generowanych slugow testowych.
+    key_elements:
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Lista slugow ograniczona do testowa-blueprint.
+    language: TypeScript
+    lines: 3
+  - file: firebase-page-draft-mvp.md
+    path: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+    purpose: Target-state opis pelnego flow draft Firebase -> compile -> publish.
+    key_elements:
+      - element: VS Code agent creates the page draft document in Firebase
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:51
+        description: Dokument definiuje oczekiwany pierwszy krok workflow.
+      - element: compile action builds the two WordPress JSON structures
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:54
+        description: Dokument wymaga osobnego compile kroku generujacego oba payloady.
+      - element: publish action writes both JSON structures to WordPress
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:55
+        description: Dokument rozdziela publish od compile.
+    language: Markdown
+    lines: 254
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Obecny kanoniczny workflow operacyjny repo-first.
+    key_elements:
+      - element: only supported day-to-day path
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:13
+        description: Dokument stwierdza, ze Firebase runtime/compile/publish nie sa jeszcze domkniete.
+      - element: WordPress POST endpoint updates an existing page
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37
+        description: Potwierdza brak automatycznego tworzenia strony przy publish.
+      - element: no generic repo-side create+post script
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:162
+        description: Dokument potwierdza brak generycznego helpera E2E.
+    language: Markdown
+    lines: 293
+  - file: scrape-bootstrap-firebase-draft-mapping.md
+    path: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md
+    purpose: Target-state mapping bootstrapu draftu i compile rules.
+    key_elements:
+      - element: target-state design note
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:13
+        description: Dokument sam okresla sie jako notatka target-state.
+      - element: createPageDraftFromScrape
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:20
+        description: Wskazuje funkcje bootstrapujaca jako wejscie do draft workflow.
+      - element: createPageDraftFromScrape chooses approved blocks
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:243
+        description: Wymaga oparcia pierwszego draftu o registry i structure-only rules.
+    language: Markdown
+    lines: 490
+
+patterns_found:
+  - category: architecture
+    pattern: Repo-first pozostaje jedynym wspieranym workflow operacyjnym, a Firebase draft jest target-state only.
+    description: Dokumentacja rozdziela obecny wspierany flow od przyszlego runtime draftowego; kod runtime Firebase nie wystepuje w zaleznosciach ani wykonywalnych adapterach.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:13
+        snippet: Until a full Firebase runtime, compile flow, and publish flow exist, treat this repo-first workflow as the only supported day-to-day path.
+      - file: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:51
+        snippet: VS Code agent creates the page draft document in Firebase.
+      - file: zip/package.json
+        location: zip/package.json:13
+        snippet: dependencies list contains no Firebase SDK package.
+    prevalence: common
+  - category: structure
+    pattern: Draft Firebase jest modelowany jako jeden dokument z blocksOrder plus blocks map oraz computed workflow gates.
+    description: TypeScript registry przechowuje juz kontrakt draftu i walidacje source placeholders, ale bez warstwy persystencji.
+    examples:
+      - file: zip/src/blocks/registry/firebasePageDraft.ts
+        location: zip/src/blocks/registry/firebasePageDraft.ts:40
+        snippet: pageSlug, pageKind, blocksOrder, blocks, compiled, workflow, needsCompile, needsPublish, needsDeploy.
+      - file: zip/src/blocks/registry/firebasePageDraft.ts
+        location: zip/src/blocks/registry/firebasePageDraft.ts:219
+        snippet: computeSourceMappingWorkflow builds requiresSourceMapping, unresolvedSourceBlockIds, sourceMappingNotes.
+    prevalence: common
+  - category: architecture
+    pattern: Bootstrap ze scrape jest structure-only i dla menu tworzy Woo-backed placeholders zamiast kanonicznych menu rows.
+    description: Kod i testy utrzymuja WooCommerce jako source of truth dla produktow i kategorii.
+    examples:
+      - file: zip/src/blocks/registry/createPageDraftFromScrape.ts
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:81
+        snippet: buildRestaurantMenuDraft creates heading plus menu_two_columns_with_with_heading_no_img blocks with TODO_WOO_CATEGORY_SLUG placeholders.
+      - file: SCRIPTS/generate-page-draft-from-scrape.test.js
+        location: SCRIPTS/generate-page-draft-from-scrape.test.js:21
+        snippet: generate-page-draft-from-scrape creates a structure-only Woo-backed menu draft.
+    prevalence: common
+  - category: architecture
+    pattern: Compile gate generuje oba WordPress payloady razem i blokuje unresolved Woo mappings.
+    description: Lokalny JS compile step traktuje oba meta payloady jako nierozlaczna pare i podnosi needsPublish po sukcesie.
+    examples:
+      - file: SCRIPTS/make-page-draft-compile-gate.js
+        location: SCRIPTS/make-page-draft-compile-gate.js:178
+        snippet: compilePageDraft applies approvedSourceMappings, blocks unresolved placeholders, emits page_builder_schema and page_builder_schema_for_ai.
+      - file: SCRIPTS/make-page-draft-compile-gate.test.js
+        location: SCRIPTS/make-page-draft-compile-gate.test.js:60
+        snippet: compile gate blocks compilation when Woo source placeholders remain.
+      - file: SCRIPTS/make-page-draft-compile-gate.test.js
+        location: SCRIPTS/make-page-draft-compile-gate.test.js:76
+        snippet: compile gate emits both schemas together after approved source mappings are applied.
+    prevalence: occasional
+  - category: architecture
+    pattern: WordPress plugin ma dual-meta read/write API, ale tworzenie strony pozostaje poza endpointem POST.
+    description: REST controller rozwiazuje strone po slugu i zwraca 404, jezeli strona nie istnieje; helper creation jest osobny i testowy.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+        snippet: register_rest_route('bulwar/v1', '/page-builder/pages/(?P<slug>[a-zA-Z0-9\-_]+)', GET)
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+        snippet: register_rest_route('bulwar/v1', '/page-builder/pages/(?P<slug>[a-zA-Z0-9\-_]+)', POST)
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:132
+        snippet: resolvePage uses get_page_by_path and returns PAGE_NOT_FOUND when missing.
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37
+        snippet: the WordPress POST endpoint updates an existing page; it does not create a missing page.
+    prevalence: common
+  - category: testing
+    pattern: Testy lokalne pokrywaja kontrakty draftu i compile, ale nie pokrywaja PageBuilderController end-to-end.
+    description: Node testy istnieja dla bootstrapu draftu, compile gate i AI schema generatora; plugin ma wzorzec testow stubowanych, ale brak osobnego testu PageBuilderController.
+    examples:
+      - file: zip/src/blocks/registry/firebasePageDraft.test.ts
+        location: zip/src/blocks/registry/firebasePageDraft.test.ts:8
+        snippet: restaurant_menu drafts bootstrap Woo placeholders and empty menu columns.
+      - file: SCRIPTS/generate-page-builder-ai-schema.test.js
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:10
+        snippet: AI schema generator supports about-1 and our-services with stable ids.
+      - file: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:323
+        snippet: GlobalLayoutController tests passed.
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: firebase draft contract layer
+      responsibility: Waliduje shape draftu, block version, source placeholders i workflow gates.
+      location: zip/src/blocks/registry/firebasePageDraft.ts
+      relationship_to_domain: domain depends on this
+    - component: scrape bootstrap layer
+      responsibility: Normalizuje scrape i zaklada pierwszy draft jako structure-only page object.
+      location: zip/src/blocks/registry/createPageDraftFromScrape.ts and SCRIPTS/generate-page-draft-from-scrape.ts
+      relationship_to_domain: domain depends on this
+    - component: draft compile gate
+      responsibility: Translacja draft -> render schema plus AI schema.
+      location: SCRIPTS/make-page-draft-compile-gate.js
+      relationship_to_domain: domain depends on this
+    - component: WordPress page-builder REST API
+      responsibility: Czyta i zapisuje oba meta pola page buildera po slugu strony.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: this uses domain outputs
+    - component: page creation seed helper
+      responsibility: Tworzy lub aktualizuje testowa strone i seeduje oba meta pola poza REST API.
+      location: SCRIPTS/seed-testowa-blueprint-schema.php and SCRIPTS/seed-testowa-blueprint-schema.sh
+      relationship_to_domain: this uses domain outputs
+    - component: React proof route
+      responsibility: Pobiera publiczny schema endpoint i renderuje jedna strone proof.
+      location: zip/src/pages/TestowaBlueprintPage.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: Astro proof route config
+      responsibility: Ogranicza statyczny build do testowej listy slugow.
+      location: astro-site/src/lib/config.ts
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: FirebasePageDraft
+      location: zip/src/blocks/registry/firebasePageDraft.ts:40
+      usage_pattern: Working-state object with blocksOrder plus blocks map and compiled payload cache.
+    - interface: NormalizedScrapeDocument
+      location: zip/src/blocks/registry/createPageDraftFromScrape.ts:20
+      usage_pattern: Minimal input contract for structure-only bootstrap.
+    - interface: POST /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+      usage_pattern: Authenticated write path that expects both schema and aiSchema in one body.
+    - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+      usage_pattern: Public read path used by React and Astro proof consumers.
+  data_flow_involving_domain: >-
+    Scrape output content.md plus sibling seo-data.json is normalized by
+    SCRIPTS/generate-page-draft-from-scrape.ts into a NormalizedScrapeDocument,
+    passed to createPageDraftFromScrape, validated by parseFirebasePageDraft,
+    then optionally compiled by make-page-draft-compile-gate.js into
+    page_builder_schema and page_builder_schema_for_ai. Those compiled payloads
+    can then be written to WordPress through PageBuilderController::update, but
+    only after a page already exists. React and Astro currently read only the
+    published WordPress schema for testowa-blueprint.
+  key_relationships_to_domain:
+    - from: SCRIPTS/generate-page-draft-from-scrape.ts
+      to: zip/src/blocks/registry/createPageDraftFromScrape.ts
+      relationship: calls
+    - from: zip/src/blocks/registry/createPageDraftFromScrape.ts
+      to: zip/src/blocks/registry/firebasePageDraft.ts
+      relationship: calls
+    - from: SCRIPTS/make-page-draft-compile-gate.js
+      to: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: calls
+    - from: zip/src/pages/TestowaBlueprintPage.tsx
+      to: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      relationship: calls
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/lib/config.ts
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JavaScript
+    - PHP
+    - Markdown
+    - Bash
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: React proof page fetchuje page-builder schema i renderuje sekcje po stronie frontendu.
+    - name: Vite 6
+      usage_in_domain: Tooling dla zip/ i uruchamianie TS scriptow przez tsx.
+    - name: WordPress REST API
+      usage_in_domain: Publiczny odczyt i autoryzowany zapis payloadow page buildera.
+    - name: Astro
+      usage_in_domain: Statyczny consumer WordPress page-builder pages dla testowych slugow.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Walidacja draftu Firebase i block data/source contracts.
+    - name: tsx
+      purpose_in_domain: Uruchamianie TypeScript CLI scriptow bez bundlera.
+    - name: node:test
+      purpose_in_domain: Lokalne testy generatorow i compile gate.
+  external_apis_used_in_domain:
+    - name: Bulwar WordPress page-builder REST endpoint
+      integration_point: GET and POST /wp-json/bulwar/v1/page-builder/pages/{slug}
+    - name: WooCommerce-backed source resolution
+      integration_point: Menu blocks keep sourceType woo_category or woo_products instead of direct-edit rows.
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Payloady repo-side uzywaja nazw page_builder_schema i page_builder_schema_for_ai;
+    pliki per page maja suffixy .page_builder_schema.json,
+    .page_builder_schema_for_ai.json oraz .firebase-draft.json.
+  structure_of_domain: >-
+    Domain dzieli sie na registry contracts w zip/src/blocks/registry,
+    CLI/tooling w SCRIPTS, WordPress REST runtime w wordpress-plugin/bulwar-bridge,
+    oraz dokumenty workflow w docs/plan/astro-wordpress-page-builder.
+  error_handling_in_domain: >-
+    TypeScript side rzuca bledy walidacyjne przy unknown block key, version mismatch,
+    broken blocksOrder lub unresolved source placeholders; PHP side zwraca REST
+    Response::error dla invalid JSON, missing page, missing schema i forbidden update.
+  testing_in_domain: >-
+    Script i registry contracts sa testowane glownie przez node:test; plugin ma
+    izolowane testy PHP z recznymi stubami funkcji WordPress zamiast live WP.
+  documentation_in_domain: >-
+    Workflow dokumentuje target-state Firebase osobno od obecnej kanonicznej sciezki
+    repo-first; dokumenty explicitnie oznaczaja ograniczenia test-page-specific.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/index
+      relationship_to_domain: Zrodlo registry definitions dla validateBlockData, validateBlockSource i createDefaultBlockInstance.
+      direction: outbound
+    - component: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: Compile gate zalezy od generatora aiSchema.
+      direction: outbound
+    - component: zip/src/blocks/registry/pageBuilderSchema parser and render pipeline
+      relationship_to_domain: React i registry tests waliduja oraz renderuja koncowy schema output.
+      direction: bidirectional
+    - component: astro-site/src/lib/wordpress.ts and astro-site/src/pages/[slug].astro
+      relationship_to_domain: Astro czyta WordPress page-builder output jako source renderu.
+      direction: inbound
+  external:
+    - name: WordPress capability system
+      purpose_for_domain: POST endpoint i meta registration wymagaja edit_pages/edit_post.
+    - name: WP-CLI / WordPress runtime
+      purpose_for_domain: Seed helper shell/PHP zalezy od dzialajacego WordPressa i dostepu do wp-load.php lub wp-cli.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: WordPress write endpoint
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+      concern: Aktualizacja obu meta pol jest autoryzowana tylko dla uzytkownika z edit_pages; bez credentiali publish nie przejdzie.
+    - area: Draft page visibility
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:27
+      concern: Nieopublikowane strony sa ukryte dla anonimowego GET, chyba ze current user moze edit_post.
+    - area: Source mapping integrity
+      location: SCRIPTS/make-page-draft-compile-gate.js:188
+      concern: Placeholdery Woo source musza zostac zamkniete przed compile, inaczej agent moglby opublikowac niepelny schema.
+  authentication_patterns_in_domain: >-
+    Publiczny GET uzywa permission_callback __return_true, ale kontroler dodatkowo
+    filtruje draft pages po current_user_can('edit_post', pageId). POST i register_post_meta
+    wymagaja current_user_can('edit_pages').
+  authorization_patterns_in_domain: >-
+    Publish do WordPress jest mozliwy tylko dla istniejacej strony i uprawnionego
+    uzytkownika; seed scripts omijaja REST autoryzacje przez bezposredni runtime WP.
+  data_validation_in_domain: >-
+    Draft data i source sa walidowane przez Zod plus registry definitions; REST update
+    akceptuje object albo JSON string i sprawdza dekodowalnosc obu pol schema i aiSchema.
+
+testing_patterns:
+  framework: node:test plus isolated PHP script tests with WordPress function stubs
+  coverage_areas:
+    - createPageDraftFromScrape structure-only bootstrap for restaurant menu pages
+    - firebase draft workflow placeholder detection and blocksOrder integrity
+    - compile gate success/failure around approved Woo source mappings
+    - AI schema generator coverage for block descriptors and instance descriptions
+    - registry parse/render invariants for page_builder_schema consumers
+  test_organization: >-
+    Script tests live next to SCRIPTS/*.js, registry tests live under
+    zip/src/blocks/registry/*.test.ts or *.test.tsx, and plugin isolation tests
+    live under wordpress-plugin/bulwar-bridge/tests.
+  mock_patterns:
+    - spawnSync shell execution for TS CLI scripts in Node tests
+    - In-memory draft fixtures for compile gate
+    - Hand-rolled WordPress global stubs and fake WP_Post objects in PHP tests
+
+user_requested_findings:
+  minimal_end_to_end_scope:
+    - item: >-
+        Najmniejszy wykonalny zakres domykajacy opisany workflow sklada sie z
+        czterech brakujacych ogniw: persystencji draftu Firebase, generycznego
+        ensure/create helpera dla strony WordPress po slugu, publish klienta
+        zapisujacego oba meta pola przez POST endpoint, oraz orkiestracji tych krokow
+        w jednym agentowym flow. Obecne repo ma juz tylko czesci srodkowe:
+        kontrakt draftu, bootstrap draftu i compile do obu payloadow.
+      sources:
+        - zip/src/blocks/registry/firebasePageDraft.ts:40
+        - zip/src/blocks/registry/createPageDraftFromScrape.ts:135
+        - SCRIPTS/make-page-draft-compile-gate.js:178
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:162
+    - item: >-
+        Zakres minimalny nie wymaga zmiany kontraktu draftu ani compile gate jako idei;
+        wymaga raczej domkniecia runtime i publish path, bo target-state dokument juz
+        rozdziela create draft, compile i publish jako osobne kroki.
+      sources:
+        - docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:51
+        - docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:54
+        - docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:55
+  files_likely_to_change_or_add:
+    - path: zip/src/blocks/registry/firebasePageDraft.ts
+      why: Istniejacy kontrakt draftu jest naturalnym miejscem dla ewentualnych pol runtime, np. firebase document metadata lub session metadata.
+      sources:
+        - zip/src/blocks/registry/firebasePageDraft.ts:40
+    - path: zip/src/blocks/registry/createPageDraftFromScrape.ts
+      why: To jest obecne wejscie bootstrapu i pozostaje miejscem utrzymania structure-only rules oraz pageKind recipes.
+      sources:
+        - zip/src/blocks/registry/createPageDraftFromScrape.ts:135
+        - docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:20
+    - path: SCRIPTS/generate-page-draft-from-scrape.ts
+      why: To juz generuje repo artifact draftu; najblizszy kandydat na adapter do runtime create draft albo fixture export.
+      sources:
+        - SCRIPTS/generate-page-draft-from-scrape.ts:342
+    - path: SCRIPTS/make-page-draft-compile-gate.js
+      why: To jest obecny repo-side compile gate i najblizsze miejsce dla kontraktu input/output uzywanego przez agenta lub Make.
+      sources:
+        - SCRIPTS/make-page-draft-compile-gate.js:178
+    - path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      why: Tu istnieje write path dla obu meta pol; jezeli repo ma dostac generyczny create-or-update endpoint, to tu lub obok musi zajsc zmiana runtime.
+      sources:
+        - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:52
+        - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:132
+    - path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      why: Kazdy nowy create-or-ensure endpoint wymagalby nowej rejestracji REST route.
+      sources:
+        - wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+    - path: SCRIPTS/seed-testowa-blueprint-schema.php
+      why: To jest jedyny istniejacy helper create page; jego logika wskazuje najblizszy wzorzec dla generycznego helpera po slugu.
+      sources:
+        - SCRIPTS/seed-testowa-blueprint-schema.php:51
+        - SCRIPTS/seed-testowa-blueprint-schema.php:64
+    - path: SCRIPTS/seed-testowa-blueprint-schema.sh
+      why: Serwerowy odpowiednik seed helpera, rowniez test-page-specific.
+      sources:
+        - SCRIPTS/seed-testowa-blueprint-schema.sh:12
+    - path: wordpress-plugin/bulwar-bridge/tests/PageBuilderControllerTest.php
+      why: Taki plik jeszcze nie istnieje, ale brak go jako oczywistego odpowiednika do wzorca GlobalLayoutControllerTest.
+      sources:
+        - wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:323
+        - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:52
+  biggest_risks_and_external_dependencies:
+    - item: >-
+        Najwieksza blokada E2E to brak realnego runtime Firebase/Firestore w kodzie i w zaleznosciach; obecny repo ma shape draftu, ale nie ma klienta, auth ani miejsca zapisu dokumentu draftu.
+      sources:
+        - zip/package.json:13
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:13
+        - docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:13
+    - item: >-
+        Publish do WordPress zalezy od istniejącej strony i od credentiali uzytkownika z edit_pages; bez tego POST endpoint nie domknie flow, a obecny kontroler nie tworzy strony przy braku slugu.
+      sources:
+        - wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+        - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:58
+        - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:132
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:37
+    - item: >-
+        Menu pages dalej wymagaja zatwierdzonych Woo source mappings; compile gate zatrzymuje workflow, gdy placeholder TODO_WOO_CATEGORY_SLUG nie zostal rozwiazany.
+      sources:
+        - zip/src/blocks/registry/firebasePageDraft.ts:219
+        - SCRIPTS/make-page-draft-compile-gate.js:188
+        - SCRIPTS/make-page-draft-compile-gate.test.js:60
+    - item: >-
+        Nawet po publish proof consumers pozostaja test-page-specific, bo React i Astro nadal sa ograniczone do testowa-blueprint i TEST_PAGE_SLUGS.
+      sources:
+        - zip/src/pages/TestowaBlueprintPage.tsx:8
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:39
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:40
+        - astro-site/src/lib/config.ts:3
+  local_testability_without_live_credentials:
+    - item: >-
+        Czesciowo tak: lokalnie mozna juz przetestowac normalize -> bootstrap draft -> compile gate
+        bez live Firebase i WordPress credentiali, bo istnieja przechodzace testy Node oraz izolowane fixtures.
+      sources:
+        - SCRIPTS/generate-page-draft-from-scrape.test.js:21
+        - SCRIPTS/make-page-draft-compile-gate.test.js:76
+        - zip/src/blocks/registry/firebasePageDraft.test.ts:8
+    - item: >-
+        Sensownie da sie tez rozszerzac testy kontraktow page_builder_schema i AI schema,
+        bo repo ma duzy pakiet testow generatora AI schema oraz registry parse/render tests.
+      sources:
+        - SCRIPTS/generate-page-builder-ai-schema.test.js:10
+        - SCRIPTS/generate-page-builder-ai-schema.test.js:581
+        - zip/src/blocks/registry/registry-invariants.test.tsx:40
+        - zip/src/blocks/registry/resolvePageBuilderSources.test.ts:85
+    - item: >-
+        Pelnego, prawdziwego E2E bez credentiali nie da sie domknac, bo brakuje zarowno runtime Firebase,
+        jak i autoryzowanego WordPress publish do istniejacej strony; dodatkowo w tym srodowisku nie ma php w PATH,
+        wiec nawet lokalny test PHP pluginu nie mogl zostac wykonany.
+      sources:
+        - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:13
+        - wordpress-plugin/bulwar-bridge/src/Http/Routes.php:52
+        - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:132
+
+open_questions:
+  - question: Czy istnieje poza repo zatwierdzony projekt Firebase, kolekcja i model auth dla page draftow?
+    context: Kod i zaleznosci nie pokazuja zadnego SDK ani adaptera persystencji dla draftu Firebase, mimo ze dokument target-state zaklada create draft jako pierwszy krok.
+    type: decision_blocker
+    affects:
+      - firebase_wp_page_schema_workflow
+  - question: Czy preferowanym rozwiazaniem ma byc nowy WordPress endpoint create-or-ensure page, czy repo-side helper korzystajacy z wp-load.php / WP-CLI poza REST API?
+    context: Obecny POST endpoint tylko aktualizuje istniejaca strone, a jedyne helpery tworzenia strony sa testowe i specyficzne dla testowa-blueprint.
+    type: decision_blocker
+    affects:
+      - firebase_wp_page_schema_workflow
+  - question: Jak agent ma pobierac credentiale do autoryzowanego POST na WordPress i ewentualnego runtime Firebase bez przecieku sekretow do repo?
+    context: Dokument i plugin potwierdzaja wymog auth, ale w badanym zakresie nie ma repo-side klienta publish z konfiguracja sekretow.
+    type: research
+    affects:
+      - firebase_wp_page_schema_workflow
+  - question: Czy proof consumers React i Astro maja pozostac test-page-specific, czy maja zostac zgeneralizowane juz w tym samym kroku workflow?
+    context: Obecne proof routes sa hardcode'owane do jednego slugu, co ogranicza koncowa weryfikacje E2E dla nowych stron.
+    type: nice_to_know
+    affects:
+      - firebase_wp_page_schema_workflow
+
+gaps:
+  - area: Firebase runtime implementation
+    description: Brak wykonywalnego klienta Firebase/Firestore, auth, persystencji draftu i jakiegokolwiek adaptera write/read dla working draft store.
+    impact: decision_blocker
+    affects:
+      - firebase_wp_page_schema_workflow
+  - area: Generic WordPress page creation helper
+    description: Brak generycznego create-or-ensure path dla dowolnego slugu; istnieja tylko helpery dla testowa-blueprint.
+    impact: decision_blocker
+    affects:
+      - firebase_wp_page_schema_workflow
+  - area: Publish orchestration
+    description: Brak repo-side klienta laczacego compile output z autoryzowanym POST endpointem dla obu meta pol w jednym agentowym kroku.
+    impact: research_blocker
+    affects:
+      - firebase_wp_page_schema_workflow
+  - area: Plugin endpoint tests
+    description: W plugin tests brak dedykowanego testu PageBuilderController dla GET/POST path, validacji obu payloadow i 404/403 cases.
+    impact: research_blocker
+    affects:
+      - firebase_wp_page_schema_workflow
+  - area: Full local E2E environment
+    description: W tym srodowisku nie ma php w PATH, nie ma lokalnego WordPress runtime i nie ma credentiali ani runtime Firebase, wiec prawdziwe live-like E2E nie jest mozliwe.
+    impact: research_blocker
+    affects:
+      - firebase_wp_page_schema_workflow

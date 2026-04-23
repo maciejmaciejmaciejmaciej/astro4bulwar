@@ -1,0 +1,538 @@
+plan_id: none
+objective: Research a pragmatic architecture for hosting a React app and WooCommerce on the same domain and using a PHP bridge on the same hosting. Focus on same-domain deployment patterns, secure storage of API keys in PHP/WordPress, Google Maps distance/cost calculation through backend, WooCommerce order creation with order item meta for special products, and slot availability driven by CPT or JSON config.
+focus_area: same_domain_react_woo_php_bridge_architecture
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The current workspace already matches a pragmatic same-domain pattern where WordPress/WooCommerce stays on the main domain and the React SPA is deployed under /react/ with rewrite fallback to /react/index.html.
+  - The repo and official docs both point toward a server-authoritative PHP bridge: React gathers cart and checkout intent, but PHP/WordPress owns secrets, validates fulfillment rules, calculates delivery cost, and writes the final Woo order.
+  - For custom special products, direct Woo REST order creation is the simplest same-hosting path when line item meta must be written predictably; Store API remains viable but requires extra cart and checkout hooks to propagate custom line data.
+  - Google Maps distance or route cost should be computed only on the backend with a server-side key and then translated into a Woo shipping fee or order meta; the frontend should receive only the calculated result and any user-display explanation.
+  - Slot availability is not implemented yet in code: the current drawer hardcodes dates, slots, and a flat delivery fee, while project instructions say delivery day/time validation should come from Custom Post Types. A JSON fallback is operationally simpler but less editor-friendly than CPT-backed schedules.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic_search and grep_search across the BULWAR APP workspace, targeted read_file inspection of deployment, checkout, cart, and prior research files, terminal decoding of the UTF-16 htaccess template, and external documentation review via fetch_webpage plus WooCommerce source inspection via github_repo.
+  scope: Focused analysis of same-domain hosting shape, WordPress/PHP secret boundaries, Google Maps backend usage, Woo order and line-item metadata persistence, and delivery-slot source-of-truth options as they relate to the current repository.
+  confidence: high
+  coverage: 91
+
+files_analyzed:
+  - file: vite.config.ts
+    path: zip/vite.config.ts
+    purpose: Defines the current frontend deployment base path for the React bundle.
+    key_elements:
+      - element: base
+        type: variable
+        location: zip/vite.config.ts:7
+        description: Sets the Vite asset and router base to /react/, indicating subpath deployment on the same domain.
+      - element: define process.env.GEMINI_API_KEY
+        type: pattern
+        location: zip/vite.config.ts:10
+        description: Shows an existing env injection pattern and also highlights why secrets must not be exposed into the browser bundle.
+    language: typescript
+    lines: 24
+  - file: temp_htaccess.txt
+    path: zip/temp_htaccess.txt
+    purpose: Captures the SPA rewrite strategy used for the /react deployment.
+    key_elements:
+      - element: RewriteBase /react/
+        type: pattern
+        location: zip/temp_htaccess.txt:3
+        description: Confirms the React app is intended to live below the main site rather than replacing the WordPress root.
+      - element: RewriteRule . /react/index.html [L]
+        type: pattern
+        location: zip/temp_htaccess.txt:7
+        description: Provides browser-refresh fallback for client-side routes under /react.
+    language: apacheconf
+    lines: 8
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Shows the current React Router topology mounted inside the SPA.
+    key_elements:
+      - element: Routes
+        type: pattern
+        location: zip/src/App.tsx:6
+        description: Defines BrowserRouter-managed routes such as / and /catering-wielkanocny inside the React application.
+    language: tsx
+    lines: 13
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Current client checkout boundary for customer, payment, delivery, slots, and summary totals.
+    key_elements:
+      - element: checkoutSchema
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:13
+        description: Uses Zod to validate customer and fulfillment input before submission.
+      - element: AVAILABLE_DATES
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:64
+        description: Hardcoded dates show that slot availability is currently frontend-owned rather than server-driven.
+      - element: TIME_SLOTS
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:70
+        description: Hardcoded slot windows are the current placeholder fulfillment model.
+      - element: delivery total calculation
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:369
+        description: Applies a flat 15 zł delivery fee locally, indicating delivery pricing is not yet driven by backend distance logic.
+      - element: onSubmit
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:307
+        description: Current submit flow is local-only and does not yet call any bridge.
+    language: tsx
+    lines: 558
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Shows the active catering page composition and cart ownership model.
+    key_elements:
+      - element: cateringWielkanocnyFeatureGridItems
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:32
+        description: Embeds operational pickup, delivery, pricing, and payment text directly in React content today.
+      - element: localStorage cart persistence
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:79
+        description: Confirms cart state is currently client-local and not synchronized with Woo.
+      - element: handleAddConfiguredSet
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:109
+        description: Adds special-menu configurations to a line-based cart state that is bridge-ready in shape.
+    language: tsx
+    lines: 179
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Defines the line-based cart model that would cross the future PHP bridge.
+    key_elements:
+      - element: SimpleCartLine
+        type: interface
+        location: zip/src/lib/cateringCart.ts:16
+        description: Represents normal product lines keyed by predictable lineId.
+      - element: SpecialMenuFor2CartLine
+        type: interface
+        location: zip/src/lib/cateringCart.ts:29
+        description: Represents a special configurable product with nested config and summary metadata.
+      - element: buildSpecialMenuFor2CartLine
+        type: function
+        location: zip/src/lib/cateringCart.ts:210
+        description: Produces a unique lineId, baseProductId, computed unit price, and human-readable metadata summary.
+      - element: buildCheckoutDrawerItems
+        type: function
+        location: zip/src/lib/cateringCart.ts:360
+        description: Converts cart lines into display rows while preserving special-item summary lines.
+    language: typescript
+    lines: 334
+  - file: research_findings_woo_special_product_bridge.yaml
+    path: docs/plan/none/research_findings_woo_special_product_bridge.yaml
+    purpose: Existing repository research focused on Woo order metadata and special product bridge behavior.
+    key_elements:
+      - element: Store API cart_item_data finding
+        type: pattern
+        location: docs/plan/none/research_findings_woo_special_product_bridge.yaml:10
+        description: Documents that Store API does not offer arbitrary client-passed line-item-meta passthrough during checkout.
+      - element: direct order creation simplification finding
+        type: pattern
+        location: docs/plan/none/research_findings_woo_special_product_bridge.yaml:12
+        description: Documents that bridge-created orders are simpler when line item metadata must be preserved predictably.
+    language: yaml
+    lines: 420
+  - file: copilot-instructions.md
+    path: .github/copilot-instructions.md
+    purpose: Repository-level architecture intent and security constraints.
+    key_elements:
+      - element: backend bridge intent
+        type: pattern
+        location: .github/copilot-instructions.md:7
+        description: States that a middleware bridge should translate React orders to WooCommerce while hiding sensitive keys.
+      - element: CPT-based availability intent
+        type: pattern
+        location: .github/copilot-instructions.md:10
+        description: States that delivery day and time availability should be validated using Custom Post Types.
+      - element: Google Maps delivery-cost intent
+        type: pattern
+        location: .github/copilot-instructions.md:11
+        description: States that delivery cost should be calculated dynamically via Google Maps API.
+    language: markdown
+    lines: 42
+  - file: temp_wp_config.php
+    path: temp_wp_config.php
+    purpose: Confirms the current WordPress installation is configured through wp-config.php on the same hosting.
+    key_elements:
+      - element: wp-config constants
+        type: pattern
+        location: temp_wp_config.php:20
+        description: Demonstrates that sensitive configuration already lives in PHP constants loaded before WordPress bootstraps.
+    language: php
+    lines: 73
+  - file: wc-settings.txt
+    path: wc-settings.txt
+    purpose: Provides current WooCommerce store address data relevant to route origin and delivery calculations.
+    key_elements:
+      - element: woocommerce_store_address
+        type: variable
+        location: wc-settings.txt:5
+        description: Confirms the merchant address used as the delivery origin is stored in Woo settings.
+      - element: woocommerce_store_postcode
+        type: variable
+        location: wc-settings.txt:8
+        description: Provides part of the canonical origin address for backend route computation.
+    language: text
+    lines: 8
+  - file: WordPress wp-config.php docs
+    path: https://developer.wordpress.org/apis/wp-config-php/
+    purpose: Official reference for WordPress root configuration and environment constants.
+    key_elements:
+      - element: wp-config root configuration
+        type: pattern
+        location: wp-config.php:article summary
+        description: States that wp-config.php is a core root-level configuration file for WordPress.
+      - element: WP_HOME and WP_SITEURL
+        type: pattern
+        location: wp-config.php:Advanced Options
+        description: Shows WordPress can override site URL and home URL at config level for domain and directory setups.
+      - element: WP_ENVIRONMENT_TYPE
+        type: pattern
+        location: wp-config.php:Advanced Options
+        description: Shows environment-specific configuration can be expressed as a PHP environment variable or constant.
+    language: markdown
+    lines: 0
+  - file: Woo Store API Checkout docs
+    path: https://developer.woocommerce.com/docs/apis/store-api/resources-endpoints/checkout/
+    purpose: Official behavior for cart-derived draft orders and checkout processing.
+    key_elements:
+      - element: GET /wc/store/v1/checkout
+        type: endpoint
+        location: checkout docs:Get Checkout Data
+        description: Creates or exposes a cart-derived draft order for checkout.
+      - element: PUT /wc/store/v1/checkout
+        type: endpoint
+        location: checkout docs:Update checkout data
+        description: Persists additional_fields and can recalculate totals.
+      - element: POST /wc/store/v1/checkout
+        type: endpoint
+        location: checkout docs:Process Order and Payment
+        description: Processes addresses and payment for the current cart-based order.
+    language: markdown
+    lines: 0
+  - file: WooCommerce REST orders controller
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/includes/rest-api/Controllers/Version2/class-wc-rest-orders-v2-controller.php
+    purpose: Confirms direct REST order creation and line_items.meta_data support.
+    key_elements:
+      - element: prepare_line_items
+        type: function
+        location: class-wc-rest-orders-v2-controller.php:926
+        description: Builds order product items from posted line item data.
+      - element: maybe_set_item_meta_data
+        type: function
+        location: class-wc-rest-orders-v2-controller.php:882
+        description: Applies posted meta_data entries to order items during REST creation or update.
+      - element: line_items schema meta_data
+        type: pattern
+        location: class-wc-rest-orders-v2-controller.php:1676
+        description: Exposes meta_data as a first-class field on line item payloads and responses.
+    language: php
+    lines: 0
+  - file: Google Maps Routes docs
+    path: https://developers.google.com/maps/documentation/routes
+    purpose: Current Google Maps route and matrix capability reference.
+    key_elements:
+      - element: Compute Routes
+        type: endpoint
+        location: Routes API:Get started
+        description: Provides route distance and travel-time computation for a single origin-destination flow.
+      - element: Compute Route Matrix
+        type: endpoint
+        location: Routes API:Get started
+        description: Provides multi-destination distance and duration calculations and is the modern replacement direction for matrix-style logic.
+    language: markdown
+    lines: 0
+  - file: Google Maps security guidance
+    path: https://developers.google.com/maps/api-security-best-practices
+    purpose: Official security guidance for client and server Google Maps API usage.
+    key_elements:
+      - element: Protect web service API keys
+        type: pattern
+        location: security guidance:Protect web service API keys
+        description: States that web service keys are not expected to be public and should be stored outside source code with API and IP restrictions.
+      - element: Use a proxy server
+        type: pattern
+        location: security guidance:Secure client-side web service calls
+        description: Recommends a secure proxy server that constructs requests server-side and does not relay arbitrary client calls.
+      - element: Split client-side and server-side usage into separate projects
+        type: pattern
+        location: security guidance:Split client-side and server-side usage into separate projects
+        description: Recommends separate projects or keys when both browser and server traffic exist.
+    language: markdown
+    lines: 0
+
+patterns_found:
+  - category: architecture
+    pattern: Same-domain coexistence via WordPress at root and React under /react/
+    description: The current repo is already configured for a subpath SPA so WooCommerce and WordPress can stay authoritative at the domain root while React handles a dedicated app experience below /react/.
+    examples:
+      - file: zip/vite.config.ts
+        location: zip/vite.config.ts:7
+        snippet: base: '/react/'
+      - file: zip/temp_htaccess.txt
+        location: zip/temp_htaccess.txt:3
+        snippet: RewriteBase /react/
+      - file: zip/temp_htaccess.txt
+        location: zip/temp_htaccess.txt:7
+        snippet: RewriteRule . /react/index.html [L]
+    prevalence: common
+  - category: architecture
+    pattern: Frontend is a headless-style order composer and not the system of record
+    description: The React app assembles cart lines and checkout input locally, but the repo intent and data model both assume a future server bridge will own validation and Woo writes.
+    examples:
+      - file: .github/copilot-instructions.md
+        location: .github/copilot-instructions.md:7
+        snippet: middleware bridge should receive orders from React and translate them to WooCommerce securely
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:307
+        snippet: submit currently logs locally instead of creating an order
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:29
+        snippet: special lines already carry baseProductId plus config and summary metadata
+    prevalence: common
+  - category: security
+    pattern: Sensitive credentials belong in PHP or environment-backed WordPress config, not in the browser bundle
+    description: The workspace already has wp-config-driven PHP configuration, while Google Maps and Woo docs both require server-side protection for privileged web service credentials.
+    examples:
+      - file: temp_wp_config.php
+        location: temp_wp_config.php:20
+        snippet: WordPress bootstrap is configured through PHP constants before runtime
+      - file: Google Maps security guidance
+        location: security guidance:Protect web service API keys
+        snippet: web service keys should remain a shared secret between developer servers and Google
+      - file: WordPress wp-config.php docs
+        location: wp-config.php:article summary
+        snippet: wp-config.php is the root configuration file for WordPress
+    prevalence: common
+  - category: architecture
+    pattern: Direct Woo REST order creation is the cleanest metadata path for custom configured products
+    description: When the bridge must persist human-readable and machine-readable line item metadata, REST order creation is simpler than carrying custom state through Store API cart and checkout hooks.
+    examples:
+      - file: docs/plan/none/research_findings_woo_special_product_bridge.yaml
+        location: docs/plan/none/research_findings_woo_special_product_bridge.yaml:12
+        snippet: bridge-created orders are simpler and more predictable for custom metadata
+      - file: WooCommerce REST orders controller
+        location: class-wc-rest-orders-v2-controller.php:882
+        snippet: maybe_set_item_meta_data writes line item meta_data from the payload
+      - file: WooCommerce REST orders controller
+        location: class-wc-rest-orders-v2-controller.php:1676
+        snippet: line_items expose meta_data in schema
+    prevalence: common
+  - category: structure
+    pattern: Fulfillment logic is currently hardcoded in React and should move behind a server-owned source of truth
+    description: Dates, times, delivery fee, and operational copy are embedded in frontend files today, while repo instructions specify CPT-driven validation.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:64
+        snippet: AVAILABLE_DATES is hardcoded in the drawer
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:70
+        snippet: TIME_SLOTS is hardcoded in the drawer
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:369
+        snippet: delivery total is a local flat fee
+      - file: .github/copilot-instructions.md
+        location: .github/copilot-instructions.md:10
+        snippet: delivery day and time availability should be validated using Custom Post Types
+    prevalence: common
+  - category: architecture
+    pattern: Google Maps web service usage should be proxied and reduced to business outputs
+    description: The client should not call route-matrix or distance web services directly. The backend should construct requests, apply constraints, and return a narrowed result such as eligibility, distance_km, delivery_fee, and diagnostics.
+    examples:
+      - file: Google Maps security guidance
+        location: security guidance:Secure client-side web service calls
+        snippet: use a proxy server and do not let clients relay arbitrary API calls
+      - file: Google Maps Routes docs
+        location: Routes API:Get started
+        snippet: Compute Routes and Compute Route Matrix provide the backend distance primitives
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: WordPress root site
+      responsibility: Owns the main domain, authentication cookies, plugin runtime, and WooCommerce admin/store configuration.
+      location: WordPress installation on same hosting
+      relationship_to_domain: domain anchor
+    - component: React SPA under /react/
+      responsibility: Owns product browsing, configurator UX, local cart state, and checkout form UX.
+      location: zip/dist deployed to /react/
+      relationship_to_domain: frontend entrypoint for the app experience
+    - component: PHP bridge endpoint or WordPress plugin route
+      responsibility: Accepts checkout payloads from React, validates them, calculates totals, and writes into Woo.
+      location: same hosting, preferably inside WordPress/plugin runtime or an adjacent PHP endpoint bootstrapping wp-load.php
+      relationship_to_domain: server authority between React and WooCommerce
+    - component: WooCommerce order writer
+      responsibility: Creates final orders, fees, shipping lines, and line item metadata.
+      location: WooCommerce REST API or WordPress-side WC_Order logic
+      relationship_to_domain: persistence target for commerce records
+    - component: Availability provider
+      responsibility: Returns valid fulfillment dates, time slots, blackout rules, and lead times.
+      location: WordPress CPT-backed data or versioned JSON config on the server
+      relationship_to_domain: fulfillment rules source of truth
+    - component: Maps service adapter
+      responsibility: Resolves store-to-destination route distance or duration and converts that into delivery fee logic.
+      location: backend PHP bridge using Google Maps web services
+      relationship_to_domain: cost and eligibility calculator
+  interfaces_used_by_domain:
+    - interface: Bridge checkout payload
+      location: React to PHP bridge
+      usage_pattern: carries customer data, fulfillment choice, cart lines, base product ids, client line ids, and nested special configuration ids for server revalidation
+    - interface: WooCommerce REST Orders API
+      location: /wp-json/wc/v3/orders
+      usage_pattern: direct server-side order creation with line_items and line_items.meta_data when custom configured products must be preserved verbatim
+    - interface: WooCommerce Store API checkout
+      location: /wp-json/wc/store/v1/checkout
+      usage_pattern: optional cart-first flow for payment-gateway compatibility, but requires hook-based metadata propagation
+    - interface: Google Maps Routes API
+      location: server-side web service call
+      usage_pattern: store origin plus destination address or place id returns route distance and duration for fee calculation
+    - interface: Availability endpoint
+      location: PHP bridge endpoint or WordPress REST endpoint
+      usage_pattern: frontend requests current valid dates and slots before checkout submission and server rechecks again at order time
+  data_flow_involving_domain: The browser loads the React SPA from /react/ on the same domain while WordPress and WooCommerce remain at the root. React assembles a typed cart and checkout payload containing customer fields, fulfillment intent, simple product ids, and special-product configuration ids. The PHP bridge receives that payload on the same host, looks up canonical product and availability data from WordPress or server-side JSON, optionally calls Google Maps Routes to compute delivery eligibility and cost from the Woo store address, recalculates authoritative totals, and then writes the order into WooCommerce. If the bridge uses direct Woo REST or WC_Order APIs, it writes human-readable and machine-readable line item meta immediately; if it uses Store API checkout instead, it must first attach custom cart item data and later copy that into line item meta through Woo hooks.
+  key_relationships_to_domain:
+    - from: React SPA /react/
+      to: PHP bridge endpoint
+      relationship: posts checkout intent
+    - from: PHP bridge endpoint
+      to: WordPress configuration
+      relationship: reads secrets, environment constants, and merchant settings
+    - from: PHP bridge endpoint
+      to: availability provider
+      relationship: validates requested date and slot
+    - from: PHP bridge endpoint
+      to: Google Maps Routes API
+      relationship: requests route or matrix data for delivery pricing
+    - from: PHP bridge endpoint
+      to: WooCommerce order writer
+      relationship: creates canonical order, fees, and metadata
+    - from: WooCommerce order writer
+      to: Woo admin, emails, exports, APIs
+      relationship: exposes persisted order and line-item metadata downstream
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - PHP
+    - JSON
+    - YAML
+    - Apache config
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Frontend catalog, configurator, cart, and checkout UX under the same-domain SPA.
+    - name: Vite
+      usage_in_domain: Builds the SPA with a /react base path suitable for subdirectory hosting.
+    - name: WordPress
+      usage_in_domain: Hosts the root site, configuration, REST surface, plugin runtime, and content-managed fulfillment data.
+    - name: WooCommerce
+      usage_in_domain: Owns products, orders, payment integrations, admin workflows, and line item metadata storage.
+  libraries_used_in_domain:
+    - name: react-hook-form
+      purpose_in_domain: Handles client checkout form state prior to bridge submission.
+    - name: zod
+      purpose_in_domain: Applies client-side validation before the request crosses into the bridge.
+    - name: lucide-react
+      purpose_in_domain: UI-only checkout and catalog icons.
+  external_apis_used_in_domain:
+    - name: WooCommerce Store API
+      integration_point: Optional cart-and-checkout path for draft orders and gateway-driven checkout.
+    - name: WooCommerce REST Orders API
+      integration_point: Direct server-side order creation with line_items.meta_data.
+    - name: Google Maps Routes API
+      integration_point: Backend route distance and duration calculation.
+
+related_conventions:
+  naming_patterns_in_domain: Frontend cart contracts use explicit names such as lineId, baseProductId, lineType, and summaryLines. Existing plan artifacts use bridge-ready wording and merchant-readable meta keys prefixed with bulwar_.
+  structure_of_domain: Frontend application logic is in zip/src and zip/components, while WordPress and WooCommerce are external runtime dependencies on the same host. Research and planning documents in docs/plan already treat the bridge as a separate server-side boundary.
+  error_handling_in_domain: Client input is validated with Zod, but authoritative errors belong on the bridge. The bridge should reject invalid slots, tampered prices, unknown option ids, out-of-range addresses, or stale fulfillment windows before any Woo order is created.
+  testing_in_domain: The repo has unit tests around the cart helper and special-menu summary logic, but there are no bridge, Woo, or availability-integration tests yet.
+  documentation_in_domain: Repo instructions explicitly require hidden Woo and Maps keys, CPT-based availability validation, and a secure bridge. Prior local research already documents Woo metadata behavior for special products.
+
+related_dependencies:
+  internal:
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: current client submission boundary and temporary fulfillment UI
+      direction: outbound
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: owns cart state and passes special-product lines into checkout
+      direction: outbound
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: provides the line-based cart contract that the bridge would receive
+      direction: outbound
+    - component: .github/copilot-instructions.md
+      relationship_to_domain: defines intended bridge, Maps, and CPT architecture constraints
+      direction: inbound
+    - component: temp_wp_config.php
+      relationship_to_domain: evidences current PHP configuration boundary on the same hosting
+      direction: inbound
+  external:
+    - name: WordPress core
+      purpose_for_domain: configuration runtime, plugin bootstrap, REST endpoints, and content model
+    - name: WooCommerce
+      purpose_for_domain: order creation, fees, payment handling, and line-item metadata persistence
+    - name: Google Maps Routes API
+      purpose_for_domain: route distance and duration calculation for delivery logic
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: WooCommerce credentials and privileged order creation
+      location: PHP bridge and WordPress runtime
+      concern: These credentials must never be exposed to React or stored in browser-visible assets.
+    - area: Google Maps web service key
+      location: backend configuration and server-side HTTP client
+      concern: Maps web service keys are intended to remain server-side secrets and should be API-restricted and IP-restricted when possible.
+    - area: wp-config.php and environment-backed constants
+      location: WordPress root configuration
+      concern: This is the appropriate secret boundary, but it must not be committed or echoed into frontend bundles or debug output.
+    - area: line item metadata payload
+      location: bridge request handling and Woo order creation path
+      concern: Human-readable meta and canonical JSON must be sanitized and size-bounded before persistence.
+  authentication_patterns_in_domain: The browser should authenticate only to the same-domain bridge endpoint using ordinary same-site browser context. The bridge then authenticates to Woo using server-held credentials or in-process WordPress/Woo APIs. Google Maps server-side traffic should use a server-only key or OAuth where supported.
+  authorization_patterns_in_domain: React is an untrusted client for pricing, slot validity, and special-product composition. Only the bridge or WordPress-side code should decide whether the order is allowed, what totals apply, and what metadata is persisted.
+  data_validation_in_domain: Required server checks include canonical product existence, special option id validity, slot existence, slot capacity or blackout windows, minimum lead times, address normalization, delivery radius eligibility, Maps response sanity checks, free-delivery threshold logic, and final total recomputation independent of any client-submitted numbers.
+
+testing_patterns:
+  framework: mixed local TypeScript unit tests plus expected future PHP/WordPress integration testing
+  coverage_areas:
+    - line-based cart serialization and special-line uniqueness
+    - bridge payload validation and rejection of tampered client prices
+    - Maps-based delivery fee calculation and free-delivery threshold behavior
+    - slot availability validation for CPT-backed and JSON-backed schedules
+    - Woo order creation with line_items.meta_data and readable admin display
+  test_organization: Frontend logic is currently unit-tested in colocated test files. The missing bridge layer would require separate PHP integration tests against WordPress/Woo runtime behavior.
+  mock_patterns:
+    - mock Google Maps route responses for deterministic fee calculations
+    - fixture CPT or JSON availability data to verify slot acceptance and rejection
+    - fixture Woo order creation requests to assert final line item meta keys and values
+
+open_questions:
+  - question: Should the production customer-facing entrypoint stay at /react/ permanently, or will React eventually replace the root home route while WordPress remains mounted only for wp-admin and API paths?
+    context: The current repo is configured for subdirectory SPA hosting, but same-domain coexistence can also be implemented with React at root and WordPress in a subdirectory or headless-only mode.
+  - question: Must online card payments run through Woo's cart-and-checkout flow, or is direct server-side order creation with manual or deferred payment sufficient for the first release?
+    context: This determines whether the bridge should prefer direct REST/WC_Order creation or the more complex Store API draft-order path.
+  - question: What is the exact fulfillment rule model for slots: simple open/closed windows, capacity-per-slot, blackout dates, per-zone schedules, or holiday overrides?
+    context: The answer decides whether server-managed JSON is enough or whether CPT plus custom fields is the operationally better source of truth.
+  - question: Does delivery pricing depend only on one computed route distance, or also on zone overrides, minimum order values, free-delivery promotions, or manual merchant exceptions?
+    context: This affects whether Maps output is the final fee source or only one input into a business-rule engine.
+  - question: How much of the special-product configuration must be visible in Woo admin, emails, exports, and downstream reporting?
+    context: This drives whether a small set of human-readable line-item meta keys is sufficient or whether additional structured order meta should be stored.
+
+gaps:
+  - area: implemented bridge runtime
+    description: No PHP bridge endpoint or WordPress plugin implementation exists in the workspace yet.
+    impact: The final endpoint shape, authentication method, and exact order-writing API are still inferred from plans and current frontend contracts.
+  - area: live payment gateway constraints
+    description: The research did not inspect the active Woo payment plugins or their compatibility with Store API checkout versus direct order creation.
+    impact: Gateway requirements may force a cart-first checkout flow even if direct order creation is cleaner for metadata.
+  - area: live availability schema
+    description: No actual CPT registration, meta schema, or server-side JSON availability file was present in the inspected workspace.
+    impact: The slot-source recommendation can be pragmatic, but not tied to an existing model beyond the project instruction that CPTs are intended.
+  - area: production rewrite topology outside /react
+    description: The research confirmed the /react rewrite rules but did not inspect the full live Apache or LiteSpeed configuration for the main domain root.
+    impact: Edge-case routing between WordPress pages, React routes, and any future bridge endpoints may still require host-specific verification.

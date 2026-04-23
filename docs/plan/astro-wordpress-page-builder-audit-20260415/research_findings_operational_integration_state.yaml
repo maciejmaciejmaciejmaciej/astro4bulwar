@@ -1,0 +1,505 @@
+plan_id: astro-wordpress-page-builder-audit-20260415
+objective: Audit operational/integration state around Firebase draft, deploy structure, and Make.com AI editing path.
+focus_area: operational_integration_state
+created_at: 2026-04-15T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+historical_snapshot: true
+current_state_reference: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+historical_note: >-
+  This audit reflects the implementation state observed on 2026-04-15.
+  Some findings are now outdated, especially around Astro slug discovery and
+  runtime-assisted publish/create-or-update flow. Use the current authoring
+  workflow document for day-to-day operator truth.
+
+tldr: |
+  - Firebase draft exists only as an architecture note; no Firebase package, runtime code, script, credential flow, or storage implementation was found in the repo.
+  - page_builder_schema_for_ai is real in the current proof: there is a generator, test JSON, WordPress meta registration, GET/POST transport, and a test-page seed path.
+  - Astro deploy is operational for the test page path: local PowerShell deploy, rollback, and GitHub Actions deploy all exist and enforce backup plus 755/644 permission repair.
+  - The Make.com client-editing path is documented as a target architecture, but no page-agent scenario blueprint, scenario-generation script, deploy webhook entrypoint, or pending-redeploy state implementation was found.
+  - The currently usable end-to-end path is repo JSON -> WordPress meta -> Astro build -> Astro deploy for testowa-blueprint; Firebase draft orchestration and client-facing AI editing remain conceptual.
+
+research_metadata:
+  methodology: Hybrid retrieval using list_dir, file_search, grep_search, and targeted read_file examination across docs, SCRIPTS, Astro site, GitHub Actions, and bulwar-bridge plugin files.
+  scope: Focused on docs/plan/astro-wordpress-page-builder/**, SCRIPTS/**, .github/workflows/**, .github/instructions/make-scenario.instructions.md, wordpress-plugin/bulwar-bridge/**, and astro-site/**, plus broad workspace searches for Firebase and Make-related implementation evidence.
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: firebase-page-draft-mvp.md
+    path: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+    purpose: Defines the intended Firebase working-draft model and compile/publish/deploy lifecycle.
+    key_elements:
+      - element: One-document Firebase draft model
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:11
+        description: States that one Firebase document should hold the page draft edited by Make.com.
+      - element: Compile and publish flags
+        type: variable
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:110
+        description: Defines needsCompile, needsPublish, and needsDeploy as operational state fields.
+      - element: Make-owned draft workflow
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:24
+        description: Describes VS Code agent creation, Make edits, compile, publish, and optional Astro deploy as the target flow.
+    language: markdown
+    lines: 209
+  - file: agentic-page-builder-blueprint.md
+    path: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    purpose: Documents the target agent architecture for WordPress meta storage, Make.com editing, and redeploy orchestration.
+    key_elements:
+      - element: Production content editing model
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:47
+        description: Says a script should create or update a Make.com scenario after each deploy.
+      - element: Three-module Make scenario contract
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:234
+        description: Defines AI editor, WordPress meta updater, and redeploy trigger modules.
+      - element: Open operational questions
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:605
+        description: Leaves pending-redeploy state and scenario granularity unresolved.
+    language: markdown
+    lines: 608
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Captures the current repeatable operator flow from repo JSON to WordPress meta and Astro deploy.
+    key_elements:
+      - element: Dual-meta-field workflow
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:12
+        description: Declares page_builder_schema and page_builder_schema_for_ai as current workflow artifacts.
+      - element: Existing-page-only POST limitation
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:22
+        description: States that the POST endpoint updates only an existing page and does not create missing pages.
+      - element: Canonical Astro deploy sequence
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:178
+        description: Locks the current build and deploy command path for Astro publication.
+    language: markdown
+    lines: 252
+  - file: generate-page-builder-ai-schema.js
+    path: SCRIPTS/generate-page-builder-ai-schema.js
+    purpose: Generates page_builder_schema_for_ai from page_builder_schema for supported block types.
+    key_elements:
+      - element: CLI generator entry
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:6
+        description: Exposes repo-side generation of AI schema from render schema.
+      - element: Output-path convention
+        type: variable
+        location: SCRIPTS/generate-page-builder-ai-schema.js:69
+        description: Derives .page_builder_schema_for_ai.json output names from render-schema filenames.
+      - element: Block edit guidance synthesis
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:121
+        description: Emits editRoute, editableFields, and doNotEditDirectly instructions into AI payloads.
+    language: javascript
+    lines: 241
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Registers page-builder meta fields and exposes WordPress read/write transport for schema payloads.
+    key_elements:
+      - element: Dual meta registration
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:12
+        description: Registers page_builder_schema and page_builder_schema_for_ai.
+      - element: Atomic update endpoint behavior
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:49
+        description: Accepts schema and aiSchema together and writes both meta fields in one POST.
+      - element: AI schema normalization
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:190
+        description: Loads AI schema from post meta and normalizes postId, slug, title, and blocks.
+    language: php
+    lines: 237
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Registers public GET and authenticated POST routes for page-builder pages.
+    key_elements:
+      - element: Public page-builder GET route
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:27
+        description: Exposes public schema reads by slug.
+      - element: Authenticated page-builder POST route
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:33
+        description: Allows edit_pages users to update both schema payloads.
+    language: php
+    lines: 39
+  - file: seed-testowa-blueprint-schema.php
+    path: SCRIPTS/seed-testowa-blueprint-schema.php
+    purpose: Test-page-specific WordPress seeding helper for testowa-blueprint.
+    key_elements:
+      - element: Fixed slug seed path
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:40
+        description: Creates or updates only the testowa-blueprint page.
+      - element: AI schema meta write
+        type: function
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:68
+        description: Writes page_builder_schema_for_ai when the AI JSON file is present.
+    language: php
+    lines: 80
+  - file: testowa-blueprint.page_builder_schema_for_ai.json
+    path: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json
+    purpose: Concrete example of the AI-oriented payload stored for the proof page.
+    key_elements:
+      - element: Gallery block edit contract
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:17
+        description: Shows editRoute guidance using WordPress media rather than arbitrary field edits.
+      - element: Woo-backed menu block contract
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:52
+        description: Shows contentSource=woo_category and directs content edits toward Woo tools when source is active.
+    language: json
+    lines: 92
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Fetches page_builder_schema from WordPress during Astro build.
+    key_elements:
+      - element: Build-time schema fetch
+        type: function
+        location: astro-site/src/lib/wordpress.ts:50
+        description: Reads only payload.data.schema from the page-builder API.
+      - element: Schema normalization layer
+        type: function
+        location: astro-site/src/lib/wordpress.ts:22
+        description: Normalizes meta, seo, build, and section meta objects before Zod parsing.
+    language: typescript
+    lines: 58
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Locks Astro proof environment and static slug scope.
+    key_elements:
+      - element: Hardcoded test slug list
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Limits static generation to testowa-blueprint.
+    language: typescript
+    lines: 3
+  - file: deploy-astro-static.ps1
+    path: SCRIPTS/deploy-astro-static.ps1
+    purpose: Local Windows deploy script for Astro static output.
+    key_elements:
+      - element: Archive upload
+        type: function
+        location: SCRIPTS/deploy-astro-static.ps1:34
+        description: Uploads astro-dist-deploy.zip to the dhosting host over SSH.
+      - element: Backup and permission repair
+        type: pattern
+        location: SCRIPTS/deploy-astro-static.ps1:39
+        description: Backs up current public_html/astro, unzips new files, and enforces 755/644 permissions.
+    language: powershell
+    lines: 52
+  - file: rollback-astro-static.ps1
+    path: SCRIPTS/rollback-astro-static.ps1
+    purpose: Restores the latest or requested Astro backup on the dhosting host.
+    key_elements:
+      - element: Backup selection
+        type: function
+        location: SCRIPTS/rollback-astro-static.ps1:20
+        description: Restores either a specified backup stamp or the newest backup.
+      - element: Post-rollback permission repair
+        type: pattern
+        location: SCRIPTS/rollback-astro-static.ps1:32
+        description: Reapplies 755/644 after copying the backup back to the public Astro folder.
+    language: powershell
+    lines: 43
+  - file: deploy-astro-dhosting.yml
+    path: .github/workflows/deploy-astro-dhosting.yml
+    purpose: GitHub Actions deploy workflow for Astro static output.
+    key_elements:
+      - element: workflow_dispatch and push triggers
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:3
+        description: Supports manual dispatch and deploy-on-main for astro-site changes.
+      - element: Remote backup and deploy
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:68
+        description: Uploads an archive, backs up remote content, extracts it, and repairs permissions.
+    language: yaml
+    lines: 90
+  - file: MakeWebhookNotifier.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+    purpose: Existing live Make integration unrelated to page editing; sends post-order webhook notifications.
+    key_elements:
+      - element: Order payload formatter
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:35
+        description: Builds an order_id plus HTML summary payload for Make.
+      - element: Best-effort sender
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php:43
+        description: Sends the webhook only when a server-side HTTPS URL is configured, with failure persisted in order meta.
+    language: php
+    lines: 220
+
+patterns_found:
+  - category: architecture
+    pattern: Dual WordPress meta-field model is implemented for page-builder pages.
+    description: The current proof stores a render schema and a separate AI-editing schema side by side in page meta, with one controller handling read/write transport for both.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:12
+        snippet: The current system now has page_builder_schema and page_builder_schema_for_ai plus a POST endpoint that writes both in one request.
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:12
+        snippet: registerMeta registers both page_builder_schema and page_builder_schema_for_ai.
+    prevalence: common
+  - category: structure
+    pattern: page_builder_schema_for_ai is generated from render schema, not from Firebase draft state.
+    description: The existing repo-side generator consumes page_builder_schema JSON and emits AI guidance fields for supported blocks.
+    examples:
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:9
+        snippet: This generator creates the AI-oriented page_builder_schema_for_ai payload from the render-oriented page_builder_schema.
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:77
+        snippet: The operator workflow explicitly runs the generator against repo JSON before WordPress POST.
+    prevalence: common
+  - category: architecture
+    pattern: Firebase exists only as a documented future working-state model.
+    description: Searches found Firebase references only in the draft MVP document and no code package or script implementing Firebase storage, compile, or publish behavior.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:11
+        snippet: one Firebase document = one page draft.
+      - file: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:176
+        snippet: The compile step reads the Firebase page draft and produces both compiled WordPress payloads.
+    prevalence: rare
+  - category: architecture
+    pattern: Astro consumes only render schema at build time.
+    description: The Astro proof fetches payload.data.schema from WordPress, resolves Woo-backed sections during build, and does not consume page_builder_schema_for_ai.
+    examples:
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:50
+        snippet: fetchWordPressPageBuilderSchema loads only the schema field from the page-builder API response.
+      - file: astro-site/src/lib/pageBuilder.ts
+        location: astro-site/src/lib/pageBuilder.ts:5
+        snippet: buildStaticPage resolves render sections and returns a PageBuilderSchema for Astro rendering.
+    prevalence: common
+  - category: operations
+    pattern: Astro deployment has concrete backup, rollback, and permission-repair automation.
+    description: Both local PowerShell and GitHub Actions flows deploy built dist artifacts to dhosting with backup and chmod repair.
+    examples:
+      - file: SCRIPTS/deploy-astro-static.ps1
+        location: SCRIPTS/deploy-astro-static.ps1:39
+        snippet: Remote deploy clears public_html/astro, unzips archive, and enforces 755/644.
+      - file: .github/workflows/deploy-astro-dhosting.yml
+        location: .github/workflows/deploy-astro-dhosting.yml:68
+        snippet: Action deploys an archive on dhosting and repairs permissions after extraction.
+    prevalence: common
+  - category: architecture
+    pattern: Make page-editing workflow is documented as target-state modules, not implemented as repo artifacts.
+    description: Blueprint and instructions define AI editor, meta update, and redeploy trigger modules, but no scenario template files, workflow docs, or generation scripts were found at the referenced paths.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:371
+        snippet: Scenario template files are listed under scripts/make/* as files to add.
+      - file: .github/instructions/make-scenario.instructions.md
+        location: .github/instructions/make-scenario.instructions.md:48
+        snippet: Module 3 is described as a redeploy trigger via webhook after explicit approval.
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Repo-side render schema JSON
+      responsibility: Holds canonical page composition used for publish and render.
+      location: docs/plan/astro-wordpress-page-builder/*.page_builder_schema.json
+      relationship_to_domain: domain starts from this artifact today
+    - component: AI schema generator
+      responsibility: Derives AI-editing payload from render schema.
+      location: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: domain depends on this for current AI meta generation
+    - component: WordPress PageBuilderController
+      responsibility: Stores and exposes both meta payloads by page slug.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: central transport and persistence layer
+    - component: Astro build pipeline
+      responsibility: Fetches render schema and resolves Woo-backed sections into static HTML.
+      location: astro-site/src/lib/*.ts and astro-site/src/pages/[slug].astro
+      relationship_to_domain: consumes published render schema only
+    - component: Astro deploy scripts and workflow
+      responsibility: Publishes built static output to dhosting and supports rollback.
+      location: SCRIPTS/deploy-astro-static.ps1, SCRIPTS/rollback-astro-static.ps1, .github/workflows/deploy-astro-dhosting.yml
+      relationship_to_domain: operational publication layer
+    - component: Make webhook notifier
+      responsibility: Sends post-order notifications to Make.
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php
+      relationship_to_domain: separate existing Make integration, not the page-editing path
+  interfaces_used_by_domain:
+    - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      usage_pattern: Public read of page_builder_schema and optional page_builder_schema_for_ai by page slug.
+    - interface: POST /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      usage_pattern: Authenticated write of schema and aiSchema together for an existing WordPress page.
+    - interface: GitHub Actions deploy workflow
+      location: .github/workflows/deploy-astro-dhosting.yml
+      usage_pattern: Manual or push-driven Astro deploy; no repository_dispatch or external webhook trigger is defined.
+  data_flow_involving_domain: Repo page_builder_schema JSON is authored in the repo, transformed into page_builder_schema_for_ai by a local generator, written together into WordPress page meta through the page-builder POST endpoint or a test-only seed script, fetched back by Astro using only the render schema, resolved against WooCommerce at build time, emitted as static HTML, and then deployed to dhosting through local PowerShell or GitHub Actions. Firebase draft storage is not present in this active flow.
+  key_relationships_to_domain:
+    - from: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+      to: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship: input to
+    - from: SCRIPTS/generate-page-builder-ai-schema.js
+      to: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json
+      relationship: generates
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      to: WordPress page meta
+      relationship: writes and reads
+    - from: astro-site/src/lib/wordpress.ts
+      to: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      relationship: fetches
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/pages/[slug].astro
+      relationship: supplies rendered page data
+    - from: SCRIPTS/deploy-astro-static.ps1
+      to: public_html/astro on dhosting
+      relationship: deploys
+
+related_technology_stack:
+  languages_used_in_domain:
+    - Markdown
+    - JavaScript
+    - TypeScript
+    - PHP
+    - PowerShell
+    - YAML
+    - JSON
+  frameworks_used_in_domain:
+    - name: Astro
+      usage_in_domain: Static page generation from WordPress page_builder_schema and Woo-backed sources.
+    - name: WordPress REST API
+      usage_in_domain: Custom route transport for schema reads and writes.
+  libraries_used_in_domain:
+    - name: Zod
+      purpose_in_domain: Validates fetched page_builder_schema inside Astro.
+    - name: WooCommerce Store API
+      purpose_in_domain: Resolves woo_category and woo_products sources during proof rendering.
+  external_apis_used_in_domain:
+    - name: WordPress custom REST endpoint
+      integration_point: astro-site/src/lib/wordpress.ts
+    - name: dhosting SSH/SCP
+      integration_point: SCRIPTS/deploy-astro-static.ps1 and deploy-astro-dhosting.yml
+    - name: Make webhook endpoint
+      integration_point: wordpress-plugin/bulwar-bridge/src/Checkout/MakeWebhookNotifier.php for order notifications only
+
+related_conventions:
+  naming_patterns_in_domain: Repo-side page artifacts follow <slug>.page_builder_schema.json and <slug>.page_builder_schema_for_ai.json naming; proof content centers on the slug testowa-blueprint.
+  structure_of_domain: Documentation defines target architecture in docs/plan/astro-wordpress-page-builder, operational scripts live in SCRIPTS, WordPress transport lives in bulwar-bridge, and Astro proof rendering lives in astro-site.
+  error_handling_in_domain: WordPress transport returns structured error envelopes through Response helpers; Astro throws on missing or invalid schema; deploy scripts stop on first failure and surface explicit markers like ASTRO_DEPLOY_OK and ASTRO_ROLLBACK_OK.
+  testing_in_domain: Direct tests are present for MakeWebhookNotifier, but no dedicated Firebase, page-agent Make scenario, or deploy-webhook tests were found in this focus area.
+  documentation_in_domain: The repo documents intended Make/Firebase architecture more extensively than it implements it; current operational truth is spread across implementation-plan, authoring workflow, deploy docs, and proof-of-concept status notes.
+
+related_dependencies:
+  internal:
+    - component: docs/plan/astro-wordpress-page-builder/*.page_builder_schema.json
+      relationship_to_domain: source page payloads for current proof workflow
+      direction: inbound
+    - component: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: derives AI payloads used by WordPress storage
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: persistence and API transport for both meta fields
+      direction: bidirectional
+    - component: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: build-time consumer of render schema
+      direction: outbound
+    - component: SCRIPTS/deploy-astro-static.ps1
+      relationship_to_domain: deploys generated Astro output to live hosting
+      direction: outbound
+  external:
+    - name: WordPress
+      purpose_for_domain: stores both meta payloads and hosts the custom page-builder endpoint
+    - name: WooCommerce
+      purpose_for_domain: resolves menu-category source data during proof rendering
+    - name: dhosting
+      purpose_for_domain: serves the static Astro output under /astro
+    - name: Make.com
+      purpose_for_domain: documented target execution layer for future production AI page edits; currently live only for order notification webhooks
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Authenticated schema mutation
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      concern: POST updates require edit_pages capability but currently do not add an explicit pending-redeploy flag or approval gate themselves.
+    - area: Deploy credentials
+      location: SCRIPTS/deploy-astro-static.ps1 and .github/workflows/deploy-astro-dhosting.yml
+      concern: Astro publication depends on SSH keys and GitHub secrets for direct server access.
+    - area: Make webhook configuration
+      location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      concern: Existing Make integration relies on a server-side webhook constant and stays disabled by default.
+  authentication_patterns_in_domain: WordPress page updates rely on current_user_can(edit_pages); GitHub Actions deploy relies on repository secrets; local deploy relies on an SSH private key in the repo root.
+  authorization_patterns_in_domain: Public reads are allowed for published pages, while non-public pages require edit_post capability; no external redeploy webhook authorization path is implemented in code.
+  data_validation_in_domain: Render schema is Zod-validated in Astro; POST input must parse as JSON arrays/objects in PageBuilderController; AI schema generation validates supported block structures per script logic.
+
+testing_patterns:
+  framework: Ad hoc PHP tests plus manual operational verification
+  coverage_areas:
+    - Make webhook sender formatting and failure persistence
+    - Manual live verification of Astro HTML path after deploy
+  test_organization: Tests for live Make integration sit under wordpress-plugin/bulwar-bridge/tests, while Astro deploy verification is documented as manual Invoke-WebRequest checks.
+  mock_patterns:
+    - MakeWebhookNotifier uses injected httpPost and logger callables in tests.
+    - Deploy verification uses live URL content checks instead of isolated mocks.
+
+open_questions:
+  - question: What exact WordPress status or separate flag should mark a page as changed by AI and waiting for redeploy?
+    context: The architecture blueprint leaves this open, and the current PageBuilderController POST path does not set any such state.
+    type: decision_blocker
+    affects:
+      - page-agent production editing
+      - redeploy approval flow
+  - question: Should Make scenarios be generated per page slug, template, or page family?
+    context: The architecture blueprint lists this as unresolved, which affects whether scenario bootstrap can become operational.
+    type: decision_blocker
+    affects:
+      - Make.com agent klienta
+      - scenario bootstrap automation
+  - question: "Which artifact becomes the real source of truth if Firebase draft is introduced later: repo JSON, Firebase draft, or WordPress meta?"
+    context: Current active workflow starts from repo JSON, while Firebase docs propose a separate working-state store.
+    type: research
+    affects:
+      - future compile pipeline
+      - operator workflow ownership
+
+gaps:
+  - area: Firebase runtime implementation
+    description: No Firebase dependency, config, service wrapper, storage script, or compile/publish code path exists beyond the Firebase draft MVP document.
+    impact: decision_blocker
+    affects:
+      - firebase draft creation/storage
+      - Make draft editing flow
+  - area: Make page-agent scenario artifacts
+    description: Referenced workflow docs under docs/agent-workflows/** and scenario template files under scripts/make/** were not found; only guidance documents and instructions exist.
+    impact: decision_blocker
+    affects:
+      - Make.com agent klienta
+      - per-page scenario bootstrap
+  - area: Redeploy webhook entrypoint
+    description: The Astro GitHub Actions workflow exposes workflow_dispatch and push triggers only; no repository_dispatch listener, signed webhook endpoint, or Make-facing trigger bridge was found.
+    impact: decision_blocker
+    affects:
+      - production AI publish path
+      - safe day-to-day redeploy orchestration
+  - area: Pending-redeploy operational state
+    description: Current WordPress POST update writes schema payloads only and does not mark changed pages as awaiting publish or deploy.
+    impact: decision_blocker
+    affects:
+      - approval-based publish flow
+      - operator visibility after AI edits
+  - area: Generic multi-page operator workflow
+    description: Astro static generation is hardcoded to testowa-blueprint, React proof is page-specific, and the only page-creation seed helper is test-page-specific.
+    impact: research_blocker
+    affects:
+      - broader operator rollout
+      - reusable page onboarding

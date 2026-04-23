@@ -1,0 +1,111 @@
+name: Deploy Astro To dhosting
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/deploy-astro-dhosting.yml'
+      - 'astro-site/**'
+
+concurrency:
+  group: deploy-astro-dhosting
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ASTRO_ROOT: astro-site
+      ARCHIVE_NAME: astro-dist-deploy.tar.gz
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: astro-site/package-lock.json
+
+      - name: Install Astro dependencies
+        working-directory: ${{ env.ASTRO_ROOT }}
+        run: npm ci
+
+      - name: Write Astro env file
+        env:
+          CLIENT_SITE_URL: ${{ vars.CLIENT_SITE_URL }}
+          CLIENT_WORDPRESS_BASE_URL: ${{ vars.CLIENT_WORDPRESS_BASE_URL }}
+          CLIENT_ASTRO_BASE_PATH: ${{ vars.CLIENT_ASTRO_BASE_PATH }}
+        run: |
+          test -n "$CLIENT_SITE_URL"
+          test -n "$CLIENT_WORDPRESS_BASE_URL"
+          test -n "$CLIENT_ASTRO_BASE_PATH"
+          cat > "${{ env.ASTRO_ROOT }}/.env.local" << EOF
+          CLIENT_SITE_URL="$CLIENT_SITE_URL"
+          CLIENT_ASTRO_BASE_PATH="$CLIENT_ASTRO_BASE_PATH"
+          PUBLIC_SITE_URL="$CLIENT_SITE_URL"
+          PUBLIC_WORDPRESS_BASE_URL="$CLIENT_WORDPRESS_BASE_URL"
+          EOF
+
+      - name: Build Astro site
+        working-directory: ${{ env.ASTRO_ROOT }}
+        run: npm run build
+
+      - name: Pack static output
+        run: tar -C "${{ env.ASTRO_ROOT }}/dist" -czf "${{ env.ARCHIVE_NAME }}" .
+
+      - name: Write SSH key
+        env:
+          DHOSTING_SSH_KEY: ${{ secrets.DHOSTING_SSH_KEY }}
+        run: |
+          test -n "$DHOSTING_SSH_KEY"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DHOSTING_SSH_KEY" > ~/.ssh/dhosting_key
+          chmod 600 ~/.ssh/dhosting_key
+
+      - name: Upload archive to dhosting
+        env:
+          DHOSTING_SSH_HOST: ${{ vars.DHOSTING_SSH_HOST }}
+          DHOSTING_SSH_USER: ${{ vars.DHOSTING_SSH_USER }}
+        run: |
+          test -n "$DHOSTING_SSH_HOST"
+          test -n "$DHOSTING_SSH_USER"
+          scp -o BatchMode=yes -o StrictHostKeyChecking=no -i ~/.ssh/dhosting_key \
+            "${{ env.ARCHIVE_NAME }}" \
+            "$DHOSTING_SSH_USER@$DHOSTING_SSH_HOST:~/${{ env.ARCHIVE_NAME }}"
+
+      - name: Deploy archive on dhosting
+        env:
+          DHOSTING_SSH_HOST: ${{ vars.DHOSTING_SSH_HOST }}
+          DHOSTING_SSH_USER: ${{ vars.DHOSTING_SSH_USER }}
+          REMOTE_PUBLIC_ROOT: ${{ vars.CLIENT_REMOTE_ASTRO_PUBLIC_ROOT }}
+          REMOTE_BACKUP_ROOT: ${{ vars.CLIENT_REMOTE_ASTRO_BACKUP_ROOT }}
+        run: |
+          test -n "$REMOTE_PUBLIC_ROOT"
+          test -n "$REMOTE_BACKUP_ROOT"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=no -i ~/.ssh/dhosting_key \
+            "$DHOSTING_SSH_USER@$DHOSTING_SSH_HOST" << EOF
+          set -e
+          mkdir -p '${REMOTE_PUBLIC_ROOT}'
+          mkdir -p '${REMOTE_BACKUP_ROOT}'
+          STAMP=\$(date +%Y%m%d-%H%M%S)
+          if [ -d '${REMOTE_PUBLIC_ROOT}' ] && [ "\$(find '${REMOTE_PUBLIC_ROOT}' -mindepth 1 -maxdepth 1 | wc -l)" -gt 0 ]; then
+            mkdir -p '${REMOTE_BACKUP_ROOT}/'"\$STAMP"
+            cp -a '${REMOTE_PUBLIC_ROOT}/.' '${REMOTE_BACKUP_ROOT}/'"\$STAMP"/
+          fi
+          find '${REMOTE_PUBLIC_ROOT}' -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          tar -xzf ~/'${ARCHIVE_NAME}' -C '${REMOTE_PUBLIC_ROOT}'
+          rm -f ~/'${ARCHIVE_NAME}'
+          find '${REMOTE_PUBLIC_ROOT}' -type d -exec chmod 755 {} \;
+          find '${REMOTE_PUBLIC_ROOT}' -type f -exec chmod 644 {} \;
+          echo ASTRO_DEPLOY_OK:\$STAMP
+          EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/dhosting_key

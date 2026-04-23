@@ -1,0 +1,307 @@
+---
+interface LinkItem {
+  label: string;
+  href: string;
+}
+
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface Gallery {
+  primaryImage: ImageAsset;
+  secondaryImage: ImageAsset;
+}
+
+interface DetailSection {
+  title: string;
+  body: string;
+}
+
+interface Props {
+  eyebrow: string;
+  title: string;
+  description: string;
+  links?: LinkItem[];
+  gallery: Gallery;
+  detailSection: DetailSection;
+}
+
+const {
+  eyebrow,
+  title,
+  description,
+  links = [],
+  gallery,
+  detailSection,
+} = Astro.props;
+---
+
+<section class="universal-header-block-1">
+  <div class="universal-header-block-1__inner theme-section-wrapper">
+    <header class="universal-header-block-1__header">
+      <div class="universal-header-block-1__header-grid">
+        <div class="universal-header-block-1__intro">
+          <p class="universal-header-block-1__eyebrow">{eyebrow}</p>
+          <h2 class="universal-header-block-1__title">{title}</h2>
+          <div class="universal-header-block-1__rule" aria-hidden="true"></div>
+          <p class="universal-header-block-1__description">{description}</p>
+        </div>
+
+        <div class="universal-header-block-1__links theme-radius-surface">
+          {links.map((item, index) => (
+            <a
+              class:list={[
+                'universal-header-block-1__link-row',
+                index < links.length - 1 && 'universal-header-block-1__link-row--bordered',
+              ]}
+              href={item.href}
+            >
+              <span class="universal-header-block-1__link-arrow">&gt;</span>
+              <span class="universal-header-block-1__link-label">{item.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </header>
+
+    <div class="universal-header-block-1__gallery-grid">
+      <div class="universal-header-block-1__primary-image theme-radius-media">
+        <img src={gallery.primaryImage.src} alt={gallery.primaryImage.alt} loading="eager" />
+        <div class="universal-header-block-1__image-overlay" aria-hidden="true"></div>
+      </div>
+
+      <div class="universal-header-block-1__secondary-column">
+        <div class="universal-header-block-1__secondary-image theme-radius-media">
+          <img src={gallery.secondaryImage.src} alt={gallery.secondaryImage.alt} loading="lazy" />
+          <div class="universal-header-block-1__image-overlay" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="universal-header-block-1__detail">
+      <div class="universal-header-block-1__detail-grid">
+        <div>
+          <h3 class="universal-header-block-1__detail-title">{detailSection.title}</h3>
+        </div>
+        <div>
+          <p class="universal-header-block-1__detail-body">{detailSection.body}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<style>
+  .universal-header-block-1 {
+    background: #ffffff;
+    color: var(--color-on-surface);
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+
+  .universal-header-block-1__inner {
+    font-family: var(--font-body);
+  }
+
+  .universal-header-block-1__header {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent);
+    padding-bottom: 3rem;
+  }
+
+  .universal-header-block-1__header-grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  .universal-header-block-1__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .universal-header-block-1__eyebrow {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.3rem;
+    text-transform: uppercase;
+  }
+
+  .universal-header-block-1__title {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-size: 2.5rem;
+    font-weight: 400;
+    letter-spacing: 0.25rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .universal-header-block-1__rule {
+    width: 3rem;
+    height: 1px;
+    background: var(--color-primary);
+  }
+
+  .universal-header-block-1__description {
+    margin: 0;
+    max-width: 42rem;
+    color: rgb(113 113 122);
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  .universal-header-block-1__links {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent);
+    background: var(--color-surface);
+  }
+
+  .universal-header-block-1__link-row {
+    display: flex;
+    min-height: 4rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    transition: background-color 0.2s ease;
+  }
+
+  .universal-header-block-1__link-row:hover {
+    background: var(--color-surface-container-low);
+  }
+
+  .universal-header-block-1__link-row--bordered {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent);
+  }
+
+  .universal-header-block-1__link-arrow {
+    font-family: var(--font-headline);
+    font-size: 1.25rem;
+    color: var(--color-on-surface);
+  }
+
+  .universal-header-block-1__link-label {
+    text-align: right;
+    font-family: var(--font-headline);
+    font-size: 0.875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-on-surface);
+  }
+
+  .universal-header-block-1__gallery-grid {
+    display: grid;
+    gap: 1.5rem;
+    padding-top: 3rem;
+  }
+
+  .universal-header-block-1__primary-image,
+  .universal-header-block-1__secondary-image {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-surface-container-low);
+  }
+
+  .universal-header-block-1__primary-image {
+    aspect-ratio: 16 / 9;
+  }
+
+  .universal-header-block-1__secondary-column {
+    display: flex;
+  }
+
+  .universal-header-block-1__secondary-image {
+    min-height: 100%;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+  }
+
+  .universal-header-block-1__primary-image img,
+  .universal-header-block-1__secondary-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1s ease;
+  }
+
+  .universal-header-block-1__primary-image:hover img,
+  .universal-header-block-1__secondary-image:hover img {
+    transform: scale(1.05);
+  }
+
+  .universal-header-block-1__image-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .universal-header-block-1__detail {
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+  }
+
+  .universal-header-block-1__detail-grid {
+    display: grid;
+    gap: 2rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent);
+    padding-top: 3rem;
+  }
+
+  .universal-header-block-1__detail-title {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-size: 1.125rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .universal-header-block-1__detail-body {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  @media (min-width: 1024px) {
+    .universal-header-block-1__header-grid {
+      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+      align-items: start;
+      gap: 3.5rem;
+    }
+
+    .universal-header-block-1__gallery-grid {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+    }
+
+    .universal-header-block-1__detail-grid {
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 3rem;
+      align-items: start;
+    }
+
+    .universal-header-block-1__title {
+      font-size: 3.75rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .universal-header-block-1 {
+      padding-top: 4.5rem;
+      padding-bottom: 4.5rem;
+    }
+
+    .universal-header-block-1__title {
+      font-size: 2.25rem;
+    }
+
+    .universal-header-block-1__description,
+    .universal-header-block-1__detail-body {
+      font-size: 0.9375rem;
+    }
+  }
+</style>

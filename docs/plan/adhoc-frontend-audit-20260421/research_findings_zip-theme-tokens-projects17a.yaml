@@ -1,0 +1,416 @@
+plan_id: adhoc-frontend-audit-20260421
+objective: Quick frontend audit for zip/ theme token sources and Projects17a alignment
+focus_area: zip-theme-tokens-projects17a
+created_at: 2026-04-21T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Global theme token definitions for the zip frontend live in zip/src/index.css via Tailwind v4 `@theme`, `@theme inline`, and the runtime CSS variable blocks in `:root` and `.dark`; the file is imported once from zip/src/main.tsx:5.
+  - Repo-approved utility vocabulary for new sections is explicitly documented as `page-margin`, `font-headline`, `font-body`, `font-label`, `text-on-surface`, `text-zinc-500`, `bg-white`, `bg-surface`, `bg-surface-container-low`, and `border-outline-variant/20` in docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:39, :65, :69, :97, :111.
+  - Projects17a already uses the approved typography and surface tokens for most of its content (`font-headline`, `font-body`, `font-label`, `text-on-surface`, `text-zinc-500`, `bg-surface-container-low`) and already uses the shared Button component with `variant="outline"` and `size="icon-lg"`.
+  - The only clear local styling override in Projects17a is the arrow-button class `bg-white/90 shadow-sm hover:bg-white`, which overrides the shared outline button surface instead of relying on the button variant defaults defined in zip/components/ui/button.tsx.
+  - Current repo usage mixes two valid shell patterns: section-level `bg-white text-on-surface` in feature sections and app-frame `bg-background text-foreground` in RootLayout.
+
+research_metadata:
+  methodology: Hybrid retrieval using grep_search for exact token/class locations, semantic_search for pattern discovery, targeted read_file examination for representative components, and a terminal line-count pass for file metadata.
+  scope: Focused on zip/ global CSS, shared button styling, Projects17a, TemplatePage usage, and nearby section components that demonstrate approved token usage.
+  confidence: high
+  coverage: 86
+  decision_blockers: 0
+  research_blockers: 0
+
+actionable_findings:
+- finding: Global theme token definitions and Tailwind mappings
+  evidence:
+  - zip/src/index.css:7
+  - zip/src/index.css:8
+  - zip/src/index.css:26
+  - zip/src/index.css:34
+  - zip/src/index.css:61
+  - zip/src/index.css:73
+  - zip/src/index.css:150
+  - zip/src/main.tsx:5
+  details:
+    token_source: Tailwind theme tokens are declared in `@theme` and `@theme inline`, while runtime values are supplied by `:root` and `.dark` in the same file.
+    mapped_utilities:
+    - bg-white -> --color-white -> var(--card)
+    - text-zinc-500 -> --color-zinc-500 -> var(--muted-foreground)
+    - font-headline -> --font-headline -> var(--font-serif)
+    - page-margin -> custom utility declared in @layer utilities
+- finding: Existing repo-approved classes and section patterns relevant to new imported blocks
+  evidence:
+  - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:39
+  - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:65
+  - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:69
+  - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:97
+  - docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:111
+  details:
+    preferred_tokens:
+    - --color-primary
+    - --color-on-primary
+    - --color-surface
+    - --color-on-surface
+    - --color-surface-container-low
+    - --color-outline-variant
+    - --font-headline
+    - --font-body
+    - --font-label
+    preferred_classes:
+    - page-margin
+    - bg-white
+    - bg-surface
+    - bg-surface-container-low
+    - text-on-surface
+    - text-zinc-500
+    - border-outline-variant/20
+    - rounded-[4px]
+- finding: Projects17a classes that already match the approved token vocabulary
+  evidence:
+  - zip/src/components/sections/Projects17a.tsx:133
+  - zip/src/components/sections/Projects17a.tsx:152
+  - zip/src/components/sections/Projects17a.tsx:190
+  - zip/src/components/sections/Projects17a.tsx:191
+  - zip/src/components/sections/Projects17a.tsx:199
+  - zip/src/components/sections/Projects17a.tsx:200
+  details:
+    keep_using:
+    - font-headline for headings
+    - font-body for descriptive copy
+    - font-label for metadata labels and pills
+    - text-on-surface for major headings
+    - text-zinc-500 for secondary copy
+    - bg-surface-container-low for image placeholders/surfaces
+    - shared Button component with variant="outline" and size="icon-lg"
+- finding: Concrete Projects17a replacements for local one-off styling
+  evidence:
+  - zip/src/components/sections/Projects17a.tsx:131
+  - zip/src/components/sections/Projects17a.tsx:194
+  - zip/src/components/sections/Projects17a.tsx:203
+  - zip/src/layouts/RootLayout.tsx:150
+  - zip/src/components/sections/FeatureGridSection.tsx:41
+  - zip/src/components/sections/CateringWielkanocnyHero.tsx:59
+  - zip/src/components/sections/PageBuilderMenuSection.tsx:57
+  - zip/src/components/sections/PageBuilderMenuSection.tsx:68
+  - zip/components/ui/button.tsx:10
+  - zip/components/ui/button.tsx:12
+  - zip/components/ui/button.tsx:33
+  details:
+    replacements:
+    - current: section shell `bg-white py-16 md:py-20`
+      repo_aligned_replacement: `bg-white text-on-surface py-16 md:py-20` for section shells, or `bg-background text-foreground` when matching the app frame pattern.
+      reason: Existing section shells pair the surface token with a semantic text token; RootLayout uses the app-frame semantic pair.
+    - current: outline arrow buttons plus local override `bg-white/90 shadow-sm hover:bg-white`
+      repo_aligned_replacement: keep the shared `Button` with `variant="outline" size="icon-lg"` and rely on the outline variant surface defaults; if an explicit surface override is still needed, use a semantic surface token (`bg-white`, `bg-surface`, or `bg-background`) instead of introducing a new non-patterned control treatment.
+      reason: The shared button variant already defines the standard border/background/hover behavior for outlined controls.
+
+files_analyzed:
+- file: index.css
+  path: zip/src/index.css
+  purpose: Global CSS source of truth for Tailwind theme token mapping, CSS variables, and custom utilities.
+  key_elements:
+  - element: '@theme'
+    type: pattern
+    location: zip/src/index.css:7
+    description: Maps semantic Tailwind color and font utilities such as `bg-white`, `text-zinc-500`, and `font-headline` to CSS variables.
+  - element: page-margin
+    type: pattern
+    location: zip/src/index.css:61
+    description: Defines the repo-wide horizontal page padding utility used by section shells.
+  - element: '@theme inline'
+    type: pattern
+    location: zip/src/index.css:73
+    description: Exposes runtime CSS variables to Tailwind utilities including `bg-background`, `text-foreground`, shadows, radii, and tracking.
+  - element: ':root'
+    type: variable
+    location: zip/src/index.css:150
+    description: Defines the default light theme values for semantic CSS variables.
+  language: css
+  lines: 250
+- file: main.tsx
+  path: zip/src/main.tsx
+  purpose: Frontend entry point that loads the global CSS bundle.
+  key_elements:
+  - element: index.css import
+    type: pattern
+    location: zip/src/main.tsx:5
+    description: Ensures the global theme tokens and utilities are present across the zip frontend.
+  language: typescript
+  lines: 10
+- file: Projects17a.tsx
+  path: zip/src/components/sections/Projects17a.tsx
+  purpose: Imported showcase section being audited for design-token alignment.
+  key_elements:
+  - element: section shell
+    type: pattern
+    location: zip/src/components/sections/Projects17a.tsx:131
+    description: Uses a white surface shell without a paired semantic text color on the section root.
+  - element: headline token usage
+    type: pattern
+    location: zip/src/components/sections/Projects17a.tsx:133
+    description: Uses `font-headline` and `text-on-surface` consistently for the section title.
+  - element: media surface token usage
+    type: pattern
+    location: zip/src/components/sections/Projects17a.tsx:152
+    description: Uses `bg-surface-container-low` as the card media surface.
+  - element: navigation buttons
+    type: pattern
+    location: zip/src/components/sections/Projects17a.tsx:190
+    description: Uses the shared Button component with outline/icon sizing, but adds local white surface overrides.
+  language: typescript
+  lines: 211
+- file: button.tsx
+  path: zip/components/ui/button.tsx
+  purpose: Shared button component and variant system used by Projects17a.
+  key_elements:
+  - element: buttonVariants
+    type: pattern
+    location: zip/components/ui/button.tsx:10
+    description: Defines shared button variants and sizes.
+  - element: outline variant
+    type: pattern
+    location: zip/components/ui/button.tsx:12
+    description: Provides the default outlined control background, border, and hover behavior.
+  - element: icon-lg size
+    type: pattern
+    location: zip/components/ui/button.tsx:33
+    description: Defines the icon button size used by Projects17a arrows.
+  language: typescript
+  lines: 63
+- file: RootLayout.tsx
+  path: zip/src/layouts/RootLayout.tsx
+  purpose: Current app-frame shell showing the semantic background/foreground pairing.
+  key_elements:
+  - element: app shell
+    type: pattern
+    location: zip/src/layouts/RootLayout.tsx:150
+    description: Uses `bg-background text-foreground font-body selection:bg-primary-fixed` for the global page frame.
+  language: typescript
+  lines: 164
+- file: Project10.tsx
+  path: zip/src/components/sections/Project10.tsx
+  purpose: Representative current section using approved shell, border, typography, and surface tokens.
+  key_elements:
+  - element: section shell
+    type: pattern
+    location: zip/src/components/sections/Project10.tsx:131
+    description: Uses the common `bg-white text-on-surface page-margin` section shell.
+  - element: section divider
+    type: pattern
+    location: zip/src/components/sections/Project10.tsx:141
+    description: Uses `border-outline-variant/20` for subdued section separators.
+  - element: image surface
+    type: pattern
+    location: zip/src/components/sections/Project10.tsx:191
+    description: Uses `bg-surface-container-low` for framed media.
+  language: typescript
+  lines: 225
+- file: PageBuilderMenuSection.tsx
+  path: zip/src/components/sections/PageBuilderMenuSection.tsx
+  purpose: Encodes approved section surface variants as reusable style contracts.
+  key_elements:
+  - element: white variant
+    type: pattern
+    location: zip/src/components/sections/PageBuilderMenuSection.tsx:57
+    description: Defines `bg-white text-on-surface` as a reusable section panel style.
+  - element: surface variant
+    type: pattern
+    location: zip/src/components/sections/PageBuilderMenuSection.tsx:68
+    description: Defines `bg-surface text-on-surface` as the semantic alternative surface style.
+  language: typescript
+  lines: 260
+- file: TemplatePage.tsx
+  path: zip/src/pages/TemplatePage.tsx
+  purpose: Preview surface where Projects17a is rendered among approved sections.
+  key_elements:
+  - element: preview wrapper
+    type: pattern
+    location: zip/src/pages/TemplatePage.tsx:417
+    description: Uses a white preview section shell for section variants.
+  - element: Projects17a mount
+    type: pattern
+    location: zip/src/pages/TemplatePage.tsx:511
+    description: Renders Projects17a in the canonical comparison page.
+  language: typescript
+  lines: 526
+- file: design-token-and-layout-whitelist.md
+  path: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md
+  purpose: Explicit internal whitelist of preferred tokens and utility classes for imported blocks.
+  key_elements:
+  - element: Preferred Global Tokens
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:39
+    description: Lists the semantic color and font tokens preferred for adapted blocks.
+  - element: Preferred Utility Classes
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:65
+    description: Lists approved recurring utility classes used throughout the repo.
+  - element: Surfaces And Borders
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md:97
+    description: Lists preferred surface and border classes for imported sections.
+  language: markdown
+  lines: 289
+
+patterns_found:
+- category: architecture
+  pattern: Theme utilities are centralized in one CSS entrypoint
+  description: The zip frontend does not use a separate Tailwind config file for these tokens; semantic color/font/shadow utilities are declared in zip/src/index.css and then consumed directly in section class strings.
+  examples:
+  - file: zip/src/index.css
+    location: zip/src/index.css:7
+    snippet: '@theme { --color-white: var(--card); --color-primary: var(--primary); --font-headline: var(--font-serif); }'
+  - file: zip/src/main.tsx
+    location: zip/src/main.tsx:5
+    snippet: import './index.css';
+  prevalence: common
+- category: structure
+  pattern: Section shells pair a surface utility with a semantic text utility
+  description: Current sections usually combine `bg-white` or `bg-surface` with `text-on-surface`, plus `page-margin` and editorial typography utilities.
+  examples:
+  - file: zip/src/components/sections/Project10.tsx
+    location: zip/src/components/sections/Project10.tsx:131
+    snippet: '<section className={cn("bg-white py-24 text-on-surface page-margin md:py-32", className)}>'
+  - file: zip/src/components/sections/PageBuilderMenuSection.tsx
+    location: zip/src/components/sections/PageBuilderMenuSection.tsx:57
+    snippet: 'panelClassName: "bg-white text-on-surface"'
+  - file: zip/src/components/sections/PageBuilderMenuSection.tsx
+    location: zip/src/components/sections/PageBuilderMenuSection.tsx:68
+    snippet: 'panelClassName: "bg-surface text-on-surface"'
+  prevalence: common
+- category: naming
+  pattern: Secondary copy uses tokenized zinc utilities rather than ad hoc colors
+  description: Supporting copy and metadata repeatedly use `text-zinc-500`, which is itself mapped back to the muted semantic variable in index.css.
+  examples:
+  - file: zip/src/index.css
+    location: zip/src/index.css:26
+    snippet: '--color-zinc-500: var(--muted-foreground);'
+  - file: zip/src/components/sections/Project10.tsx
+    location: zip/src/components/sections/Project10.tsx:149
+    snippet: 'font-body text-base leading-relaxed text-zinc-500'
+  - file: zip/src/components/sections/Projects17a.tsx
+    location: zip/src/components/sections/Projects17a.tsx:136
+    snippet: 'font-body text-sm leading-relaxed text-zinc-500'
+  prevalence: common
+- category: component_api
+  pattern: Shared Button variants are the control styling contract
+  description: New controls are expected to start from the shared Button component variants and sizes rather than bespoke button shells.
+  examples:
+  - file: zip/components/ui/button.tsx
+    location: zip/components/ui/button.tsx:12
+    snippet: 'outline: "border-border bg-background hover:bg-muted hover:text-foreground ..."'
+  - file: zip/components/ui/button.tsx
+    location: zip/components/ui/button.tsx:33
+    snippet: '"icon-lg": "size-9"'
+  - file: zip/src/components/sections/Projects17a.tsx
+    location: zip/src/components/sections/Projects17a.tsx:190
+    snippet: 'size="icon-lg"'
+  prevalence: common
+- category: audit_result
+  pattern: Projects17a is mostly token-aligned with one local control override
+  description: Typography, copy color, pill color, and media surfaces already match the repo token vocabulary; the arrow-button background override is the main divergence from the shared control contract.
+  examples:
+  - file: zip/src/components/sections/Projects17a.tsx
+    location: zip/src/components/sections/Projects17a.tsx:152
+    snippet: 'bg-surface-container-low'
+  - file: zip/src/components/sections/Projects17a.tsx
+    location: zip/src/components/sections/Projects17a.tsx:194
+    snippet: 'className="pointer-events-auto rounded-full bg-white/90 shadow-sm hover:bg-white"'
+  prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+  - component: Global CSS theme layer
+    responsibility: Defines semantic Tailwind token mapping and shared utilities for the zip frontend.
+    location: zip/src/index.css
+    relationship_to_domain: domain depends on this
+  - component: Shared button primitive
+    responsibility: Encapsulates default button variants and sizes.
+    location: zip/components/ui/button.tsx
+    relationship_to_domain: domain depends on this
+  - component: Root layout shell
+    responsibility: Applies the global app-frame background, foreground, and font tokens.
+    location: zip/src/layouts/RootLayout.tsx
+    relationship_to_domain: this uses domain outputs
+  - component: Template preview page
+    responsibility: Renders Projects17a beside approved sections for visual comparison.
+    location: zip/src/pages/TemplatePage.tsx
+    relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+  - interface: Projects17aProps
+    location: zip/src/components/sections/Projects17a.tsx:76
+    usage_pattern: Optional className override passed into the section shell.
+  - interface: Button variant and size props
+    location: zip/components/ui/button.tsx:38
+    usage_pattern: Projects17a uses `variant="outline"` and `size="icon-lg"`.
+  data_flow_involving_domain: Global CSS tokens are loaded in main.tsx, exposed as Tailwind utilities in index.css, consumed by section components, and compared visually in TemplatePage.
+  key_relationships_to_domain:
+  - from: zip/src/main.tsx
+    to: zip/src/index.css
+    relationship: imports
+  - from: zip/src/components/sections/Projects17a.tsx
+    to: zip/components/ui/button.tsx
+    relationship: imports
+  - from: zip/src/pages/TemplatePage.tsx
+    to: zip/src/components/sections/Projects17a.tsx
+    relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+  - TypeScript
+  - CSS
+  - Markdown
+  frameworks_used_in_domain:
+  - name: React 19.0.0
+    usage_in_domain: Section components, layout shell, and frontend composition in zip/src.
+  - name: Tailwind CSS 4.1.14
+    usage_in_domain: Token-driven utility styling via `@theme` and utility class strings.
+  - name: Vite 6.2.0
+    usage_in_domain: Frontend build entrypoint that loads the global CSS bundle.
+  libraries_used_in_domain:
+  - name: class-variance-authority 0.7.1
+    purpose_in_domain: Defines shared Button variants and sizes.
+  - name: @base-ui/react 1.3.0
+    purpose_in_domain: Provides the underlying Button primitive.
+  - name: lucide-react 0.546.0
+    purpose_in_domain: Supplies the Projects17a arrow icons.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Section components use PascalCase filenames, optional `className` props, and semantic utility names such as `text-on-surface`, `bg-surface-container-low`, and `border-outline-variant/20`.
+  structure_of_domain: Imported visual sections are mounted in TemplatePage for comparison, while shared tokens and utility aliases are kept in zip/src/index.css.
+  error_handling_in_domain: No domain-specific runtime error handling is involved in the styling layer; styling consistency is enforced through shared tokens, section patterns, and preview usage.
+  testing_in_domain: Styling patterns are snapshot/assertion tested in some section tests, for example PageBuilderMenuSection and registry tests that assert tokenized class names.
+  documentation_in_domain: The whitelist doc under docs/plan/astro-wordpress-page-builder formalizes the preferred tokens and utility classes for adapted blocks.
+
+related_dependencies:
+  internal:
+  - component: zip/src/index.css
+    relationship_to_domain: source of semantic utility mapping
+    direction: outbound
+  - component: zip/components/ui/button.tsx
+    relationship_to_domain: shared control contract used by Projects17a
+    direction: outbound
+  - component: zip/src/pages/TemplatePage.tsx
+    relationship_to_domain: visual comparison surface for Projects17a
+    direction: inbound
+  - component: zip/src/layouts/RootLayout.tsx
+    relationship_to_domain: app-level shell pattern using semantic background/foreground tokens
+    direction: inbound
+  external:
+  - name: tailwindcss
+    purpose_for_domain: Generates the utility classes backed by the CSS theme variables.
+  - name: class-variance-authority
+    purpose_for_domain: Encodes shared button styling patterns.
+
+open_questions:
+- question: Should newly adapted section shells standardize on `bg-white text-on-surface` or on `bg-background text-foreground` when they are standalone blocks inside TemplatePage?
+  context: Both patterns are present in the current codebase; most section components use the former, while RootLayout uses the latter app-frame shell.
+  type: nice_to_know
+  affects: [frontend-audit-projects17a]
+
+gaps:
+- area: Control-surface guidance for overlay navigation buttons
+  description: The whitelist documents section shells, surfaces, and CTA tone, but it does not explicitly call out the preferred surface treatment for floating outline icon buttons like the Projects17a arrows.
+  impact: nice_to_know
+  affects: [frontend-audit-projects17a]

@@ -1,0 +1,462 @@
+plan_id: none
+objective: translate the requested configurable special product UX for a 'menu for 2 people' into repo-specific implementation concerns covering state shape, validation rules, cart payload shape, and alignment with the simple Woo product plus order item meta bridge architecture
+focus_area: special_product_menu_for_2
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The current catering flow is quantity-only: page state is a Record<number, number>, checkout rows are display-only, and the checkout form validates customer data but not product configuration, so the 'menu for 2' UX is a net-new configurator flow rather than an extension of existing cart logic.
+  - A single simple Woo product remains compatible with this repo only if the bridge is authoritative for option IDs, pricing, and final metadata persistence; the frontend can collect the two-person configuration, but it cannot be the source of truth for line price or allowed combinations.
+  - The current cart shape cannot represent two distinct configurations of the same base product because it keys by product ID only; configurable specials require a line-level identifier plus nested configuration data.
+  - Woo supports persisting custom line-item details, but not as a raw client-side passthrough in the Store API checkout flow; the bridge must either inject cart_item_data during add-to-cart and copy it into order item meta later, or create the order directly with line_items.meta_data.
+  - The main risks are cart-line collisions, client-side price tampering, admin/reporting ambiguity from one base product, and unclear business rules about duplicate choices, substitutions, and stock consumption.
+
+research_metadata:
+  methodology: hybrid retrieval using semantic_search and grep_search across the workspace, targeted read_file inspection of the current catering cart and checkout flow, and external WooCommerce documentation plus source inspection via fetch_webpage and github_repo for Store API and order-meta extension points
+  scope: focused analysis of the Easter catering route, shared cart surfaces, product row interaction model, current Woo product import conventions, and WooCommerce order metadata paths relevant to a configurable special product sold as one simple product
+  confidence: high
+  coverage: 93
+
+files_analyzed:
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Current checkout boundary for cart summary, customer form validation, and eventual bridge submission
+    key_elements:
+      - element: checkoutSchema
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:14
+        description: Validates personal, payment, and delivery data only; no product-configuration validation exists here
+      - element: CheckoutDrawerCartItem
+        type: interface
+        location: zip/components/CheckoutDrawer.tsx:59
+        description: Current checkout row shape carries only display and price fields, not base Woo product IDs plus nested configuration
+      - element: onSubmit
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:149
+        description: Checkout currently logs the form payload and closes; no bridge serialization exists yet
+    language: typescript
+    lines: 459
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active catering route that owns cart state and feeds the sticky cart and checkout drawer
+    key_elements:
+      - element: CartQuantities
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:14
+        description: Current cart truth is Record<number, number>, which assumes one quantity bucket per numeric product ID
+      - element: loadCartQuantities
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:58
+        description: Restores localStorage cart state keyed only by numeric product ID
+      - element: buildCartItems
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:87
+        description: Flattens quantity buckets into display rows without preserving any richer selection metadata
+      - element: handleAddToCart
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:118
+        description: Adds quantity to an existing product bucket and therefore cannot distinguish multiple configurations of the same base product
+    language: typescript
+    lines: 190
+  - file: ProductItemAlt.tsx
+    path: zip/src/components/sections/ProductItemAlt.tsx
+    purpose: Current product row interaction model for adding catalog items into page-owned cart state
+    key_elements:
+      - element: ProductItemAltProps
+        type: interface
+        location: zip/src/components/sections/ProductItemAlt.tsx:5
+        description: Row contract expects a single productId and a quantity callback, not a multi-step draft configuration
+      - element: quantity state
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:33
+        description: Local row state only tracks integer quantity before add-to-cart
+      - element: onAddToCart
+        type: function
+        location: zip/src/components/sections/ProductItemAlt.tsx:88
+        description: Emits productId plus quantity only, which is insufficient for a menu composed from multiple subchoices
+    language: typescript
+    lines: 103
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Category section that maps normalized products into ProductItemAlt rows
+    key_elements:
+      - element: CateringProductListAltProps
+        type: interface
+        location: zip/src/components/sections/CateringProductListAlt.tsx:21
+        description: Section contract forwards only quantity-based cart callbacks to rows
+      - element: products.map
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:78
+        description: Repeats a simple row renderer and has no concept of a configurator or draft selection flow
+    language: typescript
+    lines: 98
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Current normalized catering data contract used by the route and row components
+    key_elements:
+      - element: CateringProductContract
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:19
+        description: Normalized product shape carries one product ID, one price, and display metadata for simple add-to-cart rows
+      - element: normalizeProduct
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:81
+        description: Treats catalog entries as individually purchasable products rather than as selectable sub-options inside a composite menu
+    language: typescript
+    lines: 134
+  - file: StickyCartControls.tsx
+    path: zip/src/components/sections/StickyCartControls.tsx
+    purpose: Shared cart summary surface that assumes a simple count plus total-price model
+    key_elements:
+      - element: StickyCartControlsProps
+        type: interface
+        location: zip/src/components/sections/StickyCartControls.tsx:4
+        description: Surface expects only aggregate itemCount and totalPrice values, not draft configuration state
+    language: typescript
+    lines: 56
+  - file: StepsGrid.tsx
+    path: zip/src/components/sections/StepsGrid.tsx
+    purpose: Presentational steps component used elsewhere as content, not as a stateful wizard
+    key_elements:
+      - element: StepDef
+        type: interface
+        location: zip/src/components/sections/StepsGrid.tsx:4
+        description: Defines only title and description content for static step cards
+      - element: StepsGrid
+        type: function
+        location: zip/src/components/sections/StepsGrid.tsx:15
+        description: Renders steps as static content and does not manage current step, selected options, or completion
+    language: typescript
+    lines: 37
+  - file: import.php
+    path: import.php
+    purpose: Existing Woo product import convention in the repo
+    key_elements:
+      - element: WC_Product_Simple creation
+        type: pattern
+        location: import.php:34
+        description: Current import path creates simple Woo products for catering items
+      - element: update_meta_data
+        type: pattern
+        location: import.php:45
+        description: Repo already uses Woo product meta for gramatura and dietary flags, showing an established custom-meta convention on products
+    language: php
+    lines: 54
+  - file: copilot-instructions.md
+    path: .github/copilot-instructions.md
+    purpose: Project architecture note describing the intended React-to-bridge-to-Woo flow
+    key_elements:
+      - element: Backend Bridge
+        type: pattern
+        location: .github/copilot-instructions.md:7
+        description: States that a middleware bridge should receive orders from React and translate them to WooCommerce securely
+      - element: validate inputs before bridge
+        type: pattern
+        location: .github/copilot-instructions.md:42
+        description: Confirms frontend validation is expected before bridge submission, but does not change the need for server-side validation
+    language: markdown
+    lines: 42
+  - file: Cart API docs
+    path: https://developer.woocommerce.com/docs/apis/store-api/resources-endpoints/cart/
+    purpose: Authoritative Store API cart behavior for add-item request shape, tokens, and cart-item-data extension points
+    key_elements:
+      - element: POST /cart/add-item
+        type: endpoint
+        location: cart.md:Add Item
+        description: Accepts id, quantity, and variation, and returns the full server cart state
+      - element: woocommerce_store_api_add_to_cart_data
+        type: hook
+        location: cart.md:Add Item
+        description: Allows server-side request values to be copied into cart_item_data before insertion into the Woo cart
+      - element: cart item response item_data
+        type: pattern
+        location: cart.md:Cart Response
+        description: Server cart responses can expose cart-derived item data, but that data still originates from server extension logic
+    language: markdown
+    lines: 0
+  - file: Checkout API docs
+    path: https://developer.woocommerce.com/docs/apis/store-api/resources-endpoints/checkout/
+    purpose: Authoritative Store API checkout behavior for draft orders, additional fields, and payment processing
+    key_elements:
+      - element: PUT /wc/store/v1/checkout
+        type: endpoint
+        location: checkout.md:Update checkout data
+        description: Persists additional_fields and recalculates cart totals if requested
+      - element: POST /wc/store/v1/checkout
+        type: endpoint
+        location: checkout.md:Process Order and Payment
+        description: Processes payment using the current server cart and customer addresses
+      - element: additional_fields and extensions
+        type: pattern
+        location: checkout.md:Update checkout data
+        description: Supports order-level extension data, but not raw arbitrary client line-item-meta passthrough
+    language: markdown
+    lines: 0
+  - file: CartAddItem.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/src/StoreApi/Routes/V1/CartAddItem.php
+    purpose: Concrete Store API add-to-cart implementation and request filter point
+    key_elements:
+      - element: woocommerce_store_api_add_to_cart_data
+        type: hook
+        location: CartAddItem.php:112
+        description: Filters request data into id, quantity, variation, and cart_item_data before cart insertion
+    language: php
+    lines: 0
+  - file: class-wc-checkout.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/includes/class-wc-checkout.php
+    purpose: Woo order creation flow from cart to order line items
+    key_elements:
+      - element: create_order_line_items
+        type: function
+        location: class-wc-checkout.php:527
+        description: Creates order line items from server cart values
+      - element: woocommerce_checkout_create_order_line_item
+        type: hook
+        location: class-wc-checkout.php:546
+        description: Main hook for copying cart values into order item meta before save
+    language: php
+    lines: 0
+  - file: class-wc-rest-orders-v2-controller.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/includes/rest-api/Controllers/Version2/class-wc-rest-orders-v2-controller.php
+    purpose: Direct order creation path with line-item metadata support
+    key_elements:
+      - element: line_items meta_data update
+        type: pattern
+        location: class-wc-rest-orders-v2-controller.php:908
+        description: REST order creation and update flows can persist explicit line_items[].meta_data values on order items
+    language: php
+    lines: 0
+
+patterns_found:
+  - category: architecture
+    pattern: Quantity-only page-owned cart state
+    description: The active catering route stores cart truth as numeric quantities keyed by product ID and derives display rows from that map.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:14
+        snippet: type CartQuantities = Record<number, number>;
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:87
+        snippet: buildCartItems converts quantity buckets into CheckoutDrawerCartItem rows
+    prevalence: common
+  - category: structure
+    pattern: Cart rows are display summaries, not canonical commerce payloads
+    description: The checkout drawer receives flattened row data for presentation and arithmetic, but those rows do not carry backend-ready configuration identifiers.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:59
+        snippet: CheckoutDrawerCartItem contains id, name, price, quantity, weight, and priceLabel
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:121
+        snippet: totalPrice is derived locally by reducing item.price * item.quantity
+    prevalence: common
+  - category: structure
+    pattern: Product interaction contract is productId plus quantity
+    description: Product rows emit only a product identifier and a quantity increment, which fits simple products but not composed menu selections.
+    examples:
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:12
+        snippet: onAddToCart?: (productId: number | string, quantity: number) => void;
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:88
+        snippet: onClick={() => onAddToCart?.(productId, quantity)}
+    prevalence: common
+  - category: error_handling
+    pattern: Validation currently covers checkout identity and fulfillment data, not line composition rules
+    description: Zod is already the validation boundary for customer-facing checkout fields, but no equivalent schema exists for configurable product composition.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:14
+        snippet: checkoutSchema validates personalData, paymentMethod, deliveryMethod, and deliveryDetails
+      - file: .github/copilot-instructions.md
+        location: .github/copilot-instructions.md:42
+        snippet: Validate user inputs thoroughly using Zod before submitting to the bridge
+    prevalence: common
+  - category: architecture
+    pattern: Repo architecture assumes a custom frontend plus future secure bridge
+    description: The project already intends the frontend to assemble an order payload and hand it to a server bridge rather than talk to Woo credentials directly.
+    examples:
+      - file: .github/copilot-instructions.md
+        location: .github/copilot-instructions.md:7
+        snippet: Backend Bridge receives orders from React and translates them to WooCommerce Store API calls securely
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:149
+        snippet: onSubmit currently stops at local logging, leaving a clear integration seam for the bridge
+    prevalence: common
+  - category: architecture
+    pattern: No existing stateful configurator or wizard flow
+    description: The workspace contains a static steps section, but no active component models current step, draft selections, or stepwise completion for product configuration.
+    examples:
+      - file: zip/src/components/sections/StepsGrid.tsx
+        location: zip/src/components/sections/StepsGrid.tsx:15
+        snippet: StepsGrid maps static step cards and does not expose currentStep or selection state
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:33
+        snippet: local state is limited to quantity instead of multi-step option selection
+    prevalence: occasional
+  - category: architecture
+    pattern: Woo simple-product plus custom-meta convention already exists in repo tooling
+    description: Import scripts already create simple Woo products and attach custom metadata fields, which is compatible with a simple-product plus line-item-meta approach for specials.
+    examples:
+      - file: import.php
+        location: import.php:34
+        snippet: $product_obj = new WC_Product_Simple();
+      - file: import.php
+        location: import.php:45
+        snippet: $product_obj->update_meta_data('gramatura', $gramatura);
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Owns current cart truth, localStorage persistence, totals, and prop flow into checkout surfaces
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: the configurable special flow would need to either replace or sit alongside this quantity-only cart model
+    - component: ProductItemAlt
+      responsibility: Handles per-row quantity interaction before dispatching add-to-cart intent upward
+      location: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: current row contract is too narrow for a composed product and would need a different interaction payload
+    - component: CheckoutDrawer
+      responsibility: Summarizes cart items and validates customer, payment, and delivery fields before submit
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: would be the last frontend boundary before bridge submission and therefore the place where configurable line items must already be fully serialized
+    - component: StepsGrid
+      responsibility: Renders static step cards
+      location: zip/src/components/sections/StepsGrid.tsx
+      relationship_to_domain: not reusable as-is for configurator state management; it is only a visual content primitive
+    - component: Woo bridge layer
+      responsibility: Intended server-side boundary between React and WooCommerce
+      location: .github/copilot-instructions.md
+      relationship_to_domain: bridge must be the authority for canonical payload validation, price resolution, and order/meta persistence
+  interfaces_used_by_domain:
+    - interface: CheckoutDrawerCartItem
+      location: zip/components/CheckoutDrawer.tsx:59
+      usage_pattern: current checkout display contract for cart rows
+    - interface: ProductItemAltProps.onAddToCart
+      location: zip/src/components/sections/ProductItemAlt.tsx:12
+      usage_pattern: current add-to-cart event contract productId plus quantity
+    - interface: Store API cart add-item request
+      location: cart.md:Add Item
+      usage_pattern: id and quantity are standard, while extra selection data must be mapped server-side into cart_item_data
+    - interface: REST orders line_items.meta_data
+      location: class-wc-rest-orders-v2-controller.php:908
+      usage_pattern: direct bridge-created order path for explicit line item meta persistence
+  data_flow_involving_domain: The current frontend builds catalog rows from normalized data, increments a quantity bucket per product ID, and passes flattened display items into the checkout drawer. A configurable 'menu for 2' changes this shape fundamentally: the frontend would first collect a draft configuration for person 1 soup and main plus person 2 soup and main, then convert that draft into a cart line with a unique line identity, base Woo product identity, and selected option identifiers. That serialized line would be sent to the bridge, which must revalidate allowed combinations and compute the canonical line price. From there the bridge either adds the base simple product to the Woo cart while attaching cart_item_data that is later copied into order item meta, or it creates the Woo order directly and writes line_items.meta_data itself.
+  key_relationships_to_domain:
+    - from: zip/src/components/sections/ProductItemAlt.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: emits add-to-cart intent upward as productId plus quantity
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/components/CheckoutDrawer.tsx
+      relationship: supplies flattened cart rows and derived totals
+    - from: cart.md POST /cart/add-item
+      to: CartAddItem.php woocommerce_store_api_add_to_cart_data
+      relationship: request can be extended server-side into cart_item_data
+    - from: CartAddItem.php cart_item_data
+      to: class-wc-checkout.php create_order_line_items
+      relationship: server cart values flow into order-item creation
+    - from: class-wc-checkout.php create_order_line_items
+      to: class-wc-checkout.php woocommerce_checkout_create_order_line_item
+      relationship: order item can be enriched with custom meta before save
+    - from: bridge direct order payload
+      to: class-wc-rest-orders-v2-controller.php line_items.meta_data
+      relationship: explicit line-item metadata can be written without relying on Store API cart hooks
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - PHP
+    - YAML
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: page-owned cart state, product-row interactions, checkout drawer form composition
+    - name: Vite
+      usage_in_domain: frontend bundling and local static asset delivery under /react/
+    - name: WooCommerce
+      usage_in_domain: simple product catalog, cart/order lifecycle, order item metadata persistence, Store API and REST order endpoints
+  libraries_used_in_domain:
+    - name: react-hook-form
+      purpose_in_domain: manages checkout form state and submission flow
+    - name: zod
+      purpose_in_domain: validates checkout form fields and would be the natural frontend validation mechanism for configurable menu drafts
+    - name: lucide-react
+      purpose_in_domain: iconography in cart and presentation components
+    - name: framer-motion / motion
+      purpose_in_domain: animation of cart and page sections, not business state
+  external_apis_used_in_domain:
+    - name: WooCommerce Store API
+      integration_point: cart/add-item and checkout lifecycle for server-cart-driven flow
+    - name: WooCommerce REST Orders API
+      integration_point: direct bridge-created order path with line_items.meta_data
+
+related_conventions:
+  naming_patterns_in_domain: Page-level state uses descriptive names like cartQuantities, cartItems, itemCount, and subtotal. Normalized data contracts expose explicit fields like combinedText, priceLabel, and imageUrl. Current cart callbacks are action-oriented and narrow, such as onAddToCart and onSetCartQuantity.
+  structure_of_domain: The route owns commerce state, section components stay presentational plus lightweight row interaction, normalized catalog data lives under zip/src/data, and shared cart surfaces are fed via props. No global store or dedicated commerce module exists yet.
+  error_handling_in_domain: Frontend validation is Zod-based for customer and fulfillment data, defensive parsing is used for localStorage restoration, and invalid cart mutations are ignored early by runtime guards. Server-side Woo validation for composed selections is not present in the workspace.
+  testing_in_domain: No domain-specific tests for cart or checkout logic were found in the active frontend path.
+  documentation_in_domain: Architecture intent is documented in .github/copilot-instructions.md, and prior repo research already covers Woo bridge and configurable-product metadata paths under docs/plan/none.
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: current normalized catalog source used by the page
+      direction: outbound
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: current owner of cart truth and totals
+      direction: bidirectional
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: current checkout serialization boundary before future bridge integration
+      direction: outbound
+    - component: import.php
+      relationship_to_domain: demonstrates existing Woo simple-product and custom-meta conventions
+      direction: outbound
+  external:
+    - name: WooCommerce Store API
+      purpose_for_domain: server-cart add-to-cart and checkout flow when using session-based cart handling
+    - name: WooCommerce REST Orders API
+      purpose_for_domain: simpler direct order creation path when the bridge wants to own canonical order assembly
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: configurable line price and allowed combinations
+      location: frontend to bridge boundary
+      concern: Any price or option labels sent by the client are user-controlled and must not be trusted as canonical commerce data
+    - area: identical base product with multiple configurations
+      location: cart serialization and line identity
+      concern: If the bridge or frontend keys by product ID alone, one customer's configuration can overwrite or merge with another unintentionally
+    - area: checkout plus payment flow
+      location: Woo Store API or bridge-created order
+      concern: Payment should only process against server-revalidated cart or order data, never against frontend-computed totals
+  authentication_patterns_in_domain: Project instructions require a secure bridge to hide Woo credentials from the React frontend. Store API flows additionally require Nonce or Cart Token for cart and checkout endpoints.
+  authorization_patterns_in_domain: The relevant domain appears to be anonymous customer checkout; security depends on server validation rather than user-role authorization.
+  data_validation_in_domain: Existing frontend validation uses Zod for customer data. For the configurable menu, authoritative validation must additionally confirm base product ID, option IDs, option availability, menu size, allowed duplicates or substitutions, and final price on the bridge or Woo side.
+
+open_questions:
+  - question: Are soup and main selections chosen from existing individually purchasable Woo products, or from option-only IDs that should never appear as separate cart lines?
+    context: This determines whether subchoices map to product IDs, custom taxonomies, or a bridge-owned option catalogue.
+  - question: Can both people choose the same soup or main dish, or must choices be unique within the menu?
+    context: Duplicate rules directly affect validation and how the draft state is checked before add-to-cart.
+  - question: Does the menu price stay fixed regardless of selection, or do some soups or mains introduce surcharges?
+    context: Fixed pricing fits the simple-product model cleanly; per-option surcharges increase reliance on canonical server price calculation and richer order metadata.
+  - question: Should the special menu consume stock from the base simple product only, from the selected component dishes, or from no stock-tracked source at all?
+    context: One simple product with descriptive meta is operationally different from component-based stock deduction.
+  - question: Should the Woo admin, emails, and exports display one human-readable summary meta field, several flattened meta rows, or a hidden JSON blob plus display rows?
+    context: This affects merchant usability and reporting while still fitting the one-product architecture.
+  - question: Is cart editing expected after add-to-cart, or is the intended UX remove-and-recreate only?
+    context: The current cart surfaces support quantity changes but not nested configuration editing, and that changes required line identity and UI complexity.
+
+gaps:
+  - area: business rules for configurable menu composition
+    description: The workspace does not define whether duplicates are allowed, whether some selections are unavailable by day, or whether any option affects price.
+    impact: These missing rules block a complete validation contract for the frontend draft schema and bridge authority checks.
+  - area: bridge implementation details
+    description: The repo documents the bridge architecture but does not yet implement the submission endpoint, cart synchronization, or order-writing path.
+    impact: Final payload shape can be narrowed to likely structures, but the exact transport contract is still uncommitted in code.
+  - area: admin-facing order meta format
+    description: No convention exists yet in the workspace for how configurable line selections should appear in Woo admin, emails, or exports.
+    impact: A technically valid line-item-meta solution could still create poor merchant usability if the display format is not decided early.
+  - area: state model for multiple configured lines of the same base product
+    description: Current frontend state assumes each product ID maps to one quantity bucket and cannot represent two separate configurations of the same base item.
+    impact: Reusing the existing cart shape would cause line merging or overwrite bugs for configurable specials.

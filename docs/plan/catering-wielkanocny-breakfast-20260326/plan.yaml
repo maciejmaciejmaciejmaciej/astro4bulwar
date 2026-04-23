@@ -1,0 +1,227 @@
+plan_id: catering-wielkanocny-breakfast-20260326
+objective: |
+  Implement a minimal Easter catering update so split-mode simple products use a safe cart/checkout display name fallback and the catering-wielkanocny page gains a new first JSON-backed category for "zestaw dla 2 osób" directly under the existing special meal for 2 people block.
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Apply the smallest viable frontend/data change set: add a cart display-name fallback from combinedText to productName for simple split-mode products, prepend one new Easter JSON category with WooCommerce category id 26 and product id 88, cover the fallback with targeted tests, and verify the new section renders directly below the standalone special-menu block without changing page composition.
+open_questions:
+  - Confirm whether the new category should intentionally reuse the existing category-section visual treatment with no custom heading or CTA changes.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The new product is entered with an unsupported HTML structure or incomplete split fields, causing normalization failure or degraded rendering.
+      likelihood: medium
+      impact: high
+      mitigation: Keep the product in the existing split-mode shape with both nazwa_produktu and opis_produktu populated and restrict markup to tags already styled by ProductItemAlt.
+    - scenario: Cart naming fallback is patched in the wrong layer, leaving checkout drawer and success snapshot inconsistent.
+      likelihood: low
+      impact: high
+      mitigation: Implement the fallback only at simple cart-line creation, where displayName is propagated downstream to drawer and success snapshot flows.
+  assumptions:
+    - The standalone special-menu-for-2 block must remain unchanged and stay above all JSON-backed categories.
+    - The new breakfast product should use existing split-mode rendering rather than introducing a new content mode or new component.
+    - No backend or bridge changes are required because checkout payloads already transmit product_id and quantity only.
+
+implementation_specification:
+  code_structure: |
+    Keep the change inside the existing Easter catering data and cart utility boundaries. Do not alter page composition, component hierarchy, or introduce new renderer variants. Use existing split-mode product contracts and existing category ordering behavior.
+  affected_areas:
+    - zip/src/lib/cateringCart.ts
+    - zip/src/lib/cateringCart.test.ts
+    - zip/src/data/cateringWielkanocny.json
+  component_details:
+    - component: Simple cart line display-name selection
+      responsibility: Ensure simple catering lines always receive a stable display name by falling back from combinedText to productName when the product uses split-mode content.
+      interfaces:
+        - addSimpleProductLine(product) continues to accept the existing CateringProductContract union.
+        - buildSimpleCartLine(product, quantity) returns the same cart-line shape with corrected displayName semantics.
+    - component: Easter JSON category seed
+      responsibility: Provide one additional first category entry with WooCommerce category id 26 and exactly one split-mode product entry for product id 88.
+      interfaces:
+        - Raw category schema remains unchanged: id, nazwa_kategorii, optional opis_kategorii/image_url, pozycje.
+        - Raw product schema remains unchanged: id, cena, nazwa_produktu, opis_produktu.
+    - component: Targeted regression coverage
+      responsibility: Lock in the naming fallback and prevent future regressions for split-mode simple products.
+      interfaces:
+        - Existing test runner continues to execute cateringCart unit coverage without new infrastructure.
+  dependencies:
+    - component: Simple cart line display-name selection
+      relationship: Supplies corrected displayName used by checkout drawer items and success snapshot items.
+    - component: Easter JSON category seed
+      relationship: Feeds the existing normalization pipeline and category renderer unchanged.
+    - component: Targeted regression coverage
+      relationship: Verifies the two implementation paths without changing production runtime behavior.
+  integration_points:
+    - Simple product add-to-cart flow in zip/src/pages/CateringWielkanocnyPage.tsx via existing addSimpleProductLine usage.
+    - Category normalization in zip/src/data/cateringWielkanocny.ts via existing raw JSON import.
+    - Drawer and success snapshot display through existing displayName propagation from cart state.
+
+contracts:
+  - from_task: T1
+    to_task: T3
+    interface: Corrected simple cart-line displayName semantics for split-mode products.
+    format: Existing CateringCartLine object with displayName resolved as combinedText ?? productName.
+  - from_task: T2
+    to_task: T3
+    interface: New first raw Easter category entry for breakfast-for-two product.
+    format: Existing RawCateringCategory JSON object containing one RawCateringProduct split-mode entry.
+  - from_task: T3
+    to_task: T4
+    interface: Verified implementation artifacts ready for targeted execution and smoke checks.
+    format: Passing targeted tests plus successful static validation/build checks.
+
+tasks:
+  - id: T1
+    title: Add simple-product cart name fallback for split-mode Easter items
+    description: |
+      Update the simple cart-line creation path so displayName prefers the existing combined text when present and otherwise falls back to the normalized split-mode product name. Keep the change local to the cart utility layer so checkout drawer and success snapshot inherit the fix automatically.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/lib/cateringCart.ts: buildSimpleCartLine currently uses product.combinedText only for simple products.
+      - zip/src/data/cateringWielkanocny.ts: CateringProductContract already exposes productName for split-mode products.
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 20
+    focus_area: cart display-name propagation
+    verification:
+      - Confirm simple split-mode products added from the Easter page produce a non-empty line.displayName.
+      - Confirm no behavioral change for combined-text products.
+    acceptance_criteria:
+      - Split-mode simple products use nazwa_produktu-derived productName in cart and checkout displays when zespolona_nazwa_z_opisem is absent.
+      - Combined-mode products keep their current display naming.
+    failure_modes:
+      - scenario: The fallback references a property not available on the combined-mode union branch and breaks TypeScript narrowing.
+        likelihood: medium
+        impact: medium
+        mitigation: Use the existing contentMode discriminant or equivalent safe property guard already established in the product renderer path.
+    tech_stack:
+      - TypeScript
+      - React cart utility layer
+    test_coverage: Add or extend a focused unit test for split-mode simple cart lines.
+
+  - id: T2
+    title: Prepend the new Easter breakfast-for-two category to the page data source
+    description: |
+      Insert a new first category object in the Easter JSON dataset so it renders immediately below the standalone special-menu block. Populate exactly one product with id 88, cena 129, nazwa_produktu "Śniadanie Wielkanocne dla 2 osób", and an HTML bullet-list description limited to tags already styled by the existing renderer.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/data/cateringWielkanocny.json: Array order controls category render order.
+      - zip/src/data/cateringWielkanocny.ts: Split-mode products require both nazwa_produktu and opis_produktu.
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 40
+    focus_area: Easter menu data seeding
+    verification:
+      - Confirm the new category is the first JSON object in the array.
+      - Confirm the product entry uses complete split-mode fields and no unsupported schema additions.
+    acceptance_criteria:
+      - The page gains category id 26 named "zestaw dla 2 osób" with exactly one product id 88.
+      - The new product description renders through the current HTML renderer without requiring component changes.
+    failure_modes:
+      - scenario: The new category is inserted in the wrong array position and renders lower on the page than requested.
+        likelihood: low
+        impact: medium
+        mitigation: Prepend the object at the JSON root array start, because page order follows array order unchanged.
+      - scenario: The description uses tags or formatting that the renderer does not style well.
+        likelihood: medium
+        impact: medium
+        mitigation: Restrict content to ul, li, p, strong, em, and br only.
+    tech_stack:
+      - JSON content source
+      - Existing Easter data normalizer
+    test_coverage: Rely on existing normalization/build validation unless a dedicated fixture test already exists.
+
+  - id: T3
+    title: Add targeted regression coverage for naming fallback and data integrity
+    description: |
+      Extend targeted tests so the split-mode naming regression is locked down and the new breakfast category remains aligned with the current data contract. Prefer existing cart tests and, if helpful, a lightweight data-shape assertion rather than broad snapshot churn.
+    wave: 2
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies:
+      - T1
+      - T2
+    context_files:
+      - zip/src/lib/cateringCart.test.ts: Existing cart tests can absorb a new split-mode naming assertion.
+      - zip/src/data/cateringWielkanocny.json: New category/product shape should stay minimal and contract-compliant.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 60
+    focus_area: regression prevention
+    verification:
+      - Add a test proving a split-mode simple product yields displayName from productName.
+      - Validate the Easter data import still normalizes successfully.
+    acceptance_criteria:
+      - Automated coverage fails if a future change reintroduces undefined split-mode cart names.
+      - The new category data remains consumable by the current normalizer.
+    failure_modes:
+      - scenario: Tests become brittle by asserting large rendered snapshots instead of the specific naming contract.
+        likelihood: medium
+        impact: low
+        mitigation: Assert the precise displayName/result values and avoid unrelated snapshot updates.
+    tech_stack:
+      - Vitest or existing repo test runner
+      - TypeScript
+    test_coverage: Focused unit/regression coverage only.
+
+  - id: T4
+    title: Run focused verification for page ordering and checkout display behavior
+    description: |
+      Execute a minimal verification pass covering the Easter category ordering, cart/drawer naming, and checkout success naming path. Keep validation targeted to this feature so unrelated frontend drift does not expand scope.
+    wave: 3
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - T3
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Existing page composition should remain unchanged.
+      - zip/components/CheckoutDrawer.tsx: Cart and checkout displays consume propagated item names.
+      - zip/src/components/CheckoutSuccessConfirmation.tsx: Thank-you view shows persisted item.name.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 0
+    focus_area: end-to-end smoke verification
+    verification:
+      - Verify the new category renders directly under the standalone special-menu block.
+      - Verify adding product id 88 to cart shows "Śniadanie Wielkanocne dla 2 osób" in the drawer.
+      - Verify the checkout success view or persisted snapshot shows the same item name.
+    acceptance_criteria:
+      - No UI composition changes beyond the requested new category placement.
+      - Cart, checkout drawer, and success confirmation use the expected fallback name for split-mode simple items.
+    failure_modes:
+      - scenario: Verification relies on full checkout completion and is blocked by external bridge state.
+        likelihood: medium
+        impact: medium
+        mitigation: Use local drawer-state and success-snapshot validation if end-to-end bridge submission is unavailable.
+    validation_matrix:
+      - scenario: Easter page section ordering
+        steps:
+          - Open the catering-wielkanocny page.
+          - Locate the standalone special-menu-for-2 block.
+          - Confirm the next category section is "zestaw dla 2 osób".
+        expected_result: The new breakfast-for-two category is the first JSON-backed section under the standalone special-menu block.
+      - scenario: Split-mode cart naming
+        steps:
+          - Add the breakfast-for-two product to cart.
+          - Open the checkout drawer.
+        expected_result: The line item name is "Śniadanie Wielkanocne dla 2 osób" and not blank or undefined.
+      - scenario: Success-summary naming continuity
+        steps:
+          - Complete or simulate checkout snapshot creation for a cart containing the breakfast-for-two product.
+          - Inspect the success confirmation summary.
+        expected_result: The same fallback-derived item name appears in the success summary.

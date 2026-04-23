@@ -1,0 +1,281 @@
+plan_id: none
+objective: Investigate the current mobile regression in the BULWAR APP catering product list layout and identify why product items render as two columns on mobile instead of a full-width text block with price, grammage, and actions below.
+focus_area: mobile_product_list_layout
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The active catering page is CateringWielkanocnyPage and it renders each category through CateringProductListAlt, which in turn renders ProductItemAlt for every product.
+  - The two-column mobile layout is produced inside ProductItemAlt by a mobile flex row that places the text block and the mobile-only price/weight block side by side.
+  - The action row already sits below that row, so the current mobile structure is explicitly text-left plus price-right on one line, then controls underneath.
+  - The same mobile pattern also exists in the legacy ProductItem component, so the issue can recur anywhere that component is still used.
+  - No responsive tests currently cover ProductItemAlt or ProductItem mobile stacking behavior.
+
+research_metadata:
+  methodology: Hybrid retrieval with semantic_search and grep_search to find the active catering/mobile listing path, targeted read_file inspection for the active page, list, item, data contract, and stylesheet files, plus git history inspection for ProductItemAlt to confirm where the mobile layout structure originated.
+  scope: Focused on the active catering/mobile product listing flow under zip/src, plus the legacy shared product item component reused elsewhere.
+  confidence: high
+  coverage: 92
+
+files_analyzed:
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active catering landing page that renders the mobile product listing sections.
+    key_elements:
+      - element: CateringProductListAlt import
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:5
+        description: Confirms the page uses the Alt product list implementation rather than the legacy list.
+      - element: category mapping to product lists
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:228
+        description: Iterates cateringWielkanocnyCategories and renders one CateringProductListAlt per category.
+    language: tsx
+    lines: 233
+
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Active list container for catering categories; maps normalized product data into ProductItemAlt props.
+    key_elements:
+      - element: isStructuredProduct
+        type: function
+        location: zip/src/components/sections/CateringProductListAlt.tsx:25
+        description: Detects split-name-plus-description products and routes them into the structured rendering path.
+      - element: products map
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:98
+        description: Renders ProductItemAlt for each product in the active catering list.
+      - element: ProductItemAlt props mapping
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:99
+        description: Passes combinedText or productName/productDescriptionHtml, plus weight and priceLabel, into the mobile item component.
+    language: tsx
+    lines: 118
+
+  - file: ProductItemAlt.tsx
+    path: zip/src/components/sections/ProductItemAlt.tsx
+    purpose: Active mobile/desktop product card row for the catering page.
+    key_elements:
+      - element: mobile text row wrapper
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:56
+        description: Uses flex justify-between on mobile, forcing the text content and mobile price block into two horizontal columns.
+      - element: mobile-only price and weight block
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:81
+        description: Renders price and grammage inside the left content column on mobile only, as a sibling of the text block.
+      - element: desktop-only price and weight row
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:102
+        description: Keeps price and grammage in the right column only from md upward.
+      - element: action row
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:108
+        description: Places quantity controls and add-to-cart button below the mobile text row.
+    language: tsx
+    lines: 128
+
+  - file: ProductItem.tsx
+    path: zip/src/components/sections/ProductItem.tsx
+    purpose: Legacy shared product item row reused by non-Easter list sections and older list variants.
+    key_elements:
+      - element: mobile text row wrapper
+        type: pattern
+        location: zip/src/components/sections/ProductItem.tsx:12
+        description: Uses the same mobile flex justify-between structure as ProductItemAlt.
+      - element: mobile-only price and weight block
+        type: pattern
+        location: zip/src/components/sections/ProductItem.tsx:18
+        description: Places mobile price and grammage beside the text block inside the left column.
+    language: tsx
+    lines: 64
+
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Normalizes raw catering JSON into either combined or split product contracts consumed by the active product list.
+    key_elements:
+      - element: productDescriptionHtml normalization
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:153
+        description: Reads HTML descriptions from the data source for structured products.
+      - element: split content contract branch
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.ts:158
+        description: Emits contentMode: split with productName and productDescriptionHtml when both fields exist.
+      - element: combined content contract branch
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.ts:176
+        description: Emits a single combinedText field for legacy one-line products.
+    language: ts
+    lines: 179
+
+  - file: index.css
+    path: zip/src/index.css
+    purpose: Defines shared visual primitives used by the product list layout.
+    key_elements:
+      - element: menu-leader
+        type: pattern
+        location: zip/src/index.css:35
+        description: Desktop-only dotted separator used in the middle column of legacy combined products.
+      - element: page-margin mobile rule
+        type: pattern
+        location: zip/src/index.css:49
+        description: Adjusts horizontal page padding on mobile but does not affect the two-column item body layout.
+    language: css
+    lines: 75
+
+patterns_found:
+  - category: structure
+    pattern: Mobile item body is built as a nested row inside a one-column outer grid.
+    description: The outer item container is grid-cols-1 on mobile, but the inner left column explicitly uses a horizontal flex row for text and mobile price/weight.
+    examples:
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:53
+        snippet: <div className="py-8 border-b border-zinc-200 last:border-0 grid grid-cols-1 md:grid-cols-3 items-center gap-4 md:gap-8">
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:56
+        snippet: <div className="flex justify-between items-start md:block">
+    prevalence: common
+
+  - category: architecture
+    pattern: Mobile price/weight is duplicated by breakpoint rather than shared in one location.
+    description: ProductItemAlt renders one price/weight block for mobile inside the left content row and a separate desktop block in the right column, which creates divergent layouts across breakpoints.
+    examples:
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:81
+        snippet: <div className="flex flex-col items-end shrink-0 md:hidden ml-4">
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:102
+        snippet: <div className="hidden md:flex flex-row items-center w-full mb-4">
+    prevalence: common
+
+  - category: naming
+    pattern: Active catering list components use Alt suffixes to distinguish the newer Easter flow from the legacy shared list components.
+    description: CateringWielkanocnyPage uses CateringProductListAlt and ProductItemAlt, while legacy sections still use ProductItem and CateringProductList.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:5
+        snippet: import { CateringProductListAlt } from "../components/sections/CateringProductListAlt";
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:3
+        snippet: import { ProductItemAlt } from "./ProductItemAlt";
+    prevalence: occasional
+
+  - category: testing
+    pattern: Responsive behavior is not covered by component tests.
+    description: Existing tests in the catering area cover page/header/footer/cart flows, but no tests target ProductItemAlt or ProductItem mobile stacking behavior.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:1
+        snippet: import { useEffect, useState } from "react";
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:1
+        snippet: import { useState } from "react";
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Owns the active Easter catering page and category rendering loop.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain depends on this
+    - component: CateringProductListAlt
+      responsibility: Wraps each category and maps product contracts to the active item row component.
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: domain depends on this
+    - component: ProductItemAlt
+      responsibility: Defines the actual mobile and desktop product row structure.
+      location: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: domain depends on this
+    - component: ProductItem
+      responsibility: Legacy shared item row with the same mobile price-beside-text structure.
+      location: zip/src/components/sections/ProductItem.tsx
+      relationship_to_domain: related fallback implementation
+    - component: cateringWielkanocny data normalization
+      responsibility: Supplies either split or combined content fields to the active list.
+      location: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: ProductItemAltProps
+      location: zip/src/components/sections/ProductItemAlt.tsx
+      usage_pattern: Receives already-normalized display content plus weight, price, quantity, and dietary flags.
+    - interface: CateringProductContract
+      location: zip/src/data/cateringWielkanocny.ts
+      usage_pattern: Provides normalized priceLabel, weight, and either combinedText or split text fields.
+  data_flow_involving_domain: CateringWielkanocnyPage maps category data into CateringProductListAlt; CateringProductListAlt selects combined or split content fields from the normalized catering contract; ProductItemAlt renders the mobile/desktop row and exposes add-to-cart interactions.
+  key_relationships_to_domain:
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship: imports
+    - from: zip/src/components/sections/CateringProductListAlt.tsx
+      to: zip/src/components/sections/ProductItemAlt.tsx
+      relationship: imports
+    - from: zip/src/components/sections/CateringProductListAlt.tsx
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+    - from: zip/src/components/sections/ProductItemAlt.tsx
+      to: @/components/ui/button
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - CSS
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Renders the page, category list, and product item components with local state for quantity handling.
+    - name: Tailwind CSS
+      usage_in_domain: Controls all breakpoint and spacing behavior responsible for the current mobile layout.
+  libraries_used_in_domain:
+    - name: framer-motion
+      purpose_in_domain: Provides parallax motion for the category section wrapper in CateringProductListAlt.
+    - name: lucide-react
+      purpose_in_domain: Renders dietary indicator icons in ProductItemAlt.
+    - name: shadcn/ui Button
+      purpose_in_domain: Supplies the add-to-cart button primitive used inside product items.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Alt-suffixed list and item components are used for the Easter catering flow, while unsuffixed ProductItem remains the legacy shared row component.
+  structure_of_domain: Active catering rendering is page -> category list wrapper -> item row, with normalized product contracts deciding whether content is rendered as combined text or split name plus HTML description.
+  error_handling_in_domain: Data validation is performed during normalization in cateringWielkanocny.ts, where incomplete split products throw before rendering.
+  testing_in_domain: Tests exist around broader catering flows, but not around responsive rendering of ProductItemAlt or ProductItem.
+  documentation_in_domain: No in-repo documentation was found for intended mobile stacking behavior of product rows.
+
+related_dependencies:
+  internal:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: upstream page that renders the active list
+      direction: inbound
+    - component: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: upstream wrapper that maps product data into item props
+      direction: inbound
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: upstream normalized product contract source
+      direction: inbound
+    - component: zip/src/components/sections/ProductItem.tsx
+      relationship_to_domain: sibling implementation that repeats the same mobile pattern
+      direction: bidirectional
+  external:
+    - name: react
+      purpose_for_domain: component rendering and local quantity state
+    - name: framer-motion
+      purpose_for_domain: animated section wrapper in the active product list
+    - name: lucide-react
+      purpose_for_domain: dietary badge icons
+
+open_questions:
+  - question: Should the same mobile stacking correction be applied to the legacy ProductItem component as well as ProductItemAlt?
+    context: ProductItem repeats the same mobile side-by-side text and price pattern and is still used by TemplatePage, SalatkiNaWynosSection, and the legacy CateringProductList.
+  - question: Is there a canonical pre-regression mobile reference beyond the verbal requirement?
+    context: The current repository contains the two-column mobile pattern in both ProductItemAlt and ProductItem, while the active working tree only shows recent content changes rather than a committed layout fix.
+
+gaps:
+  - area: visual baseline
+    description: No screenshot, visual test, or documented acceptance criteria was present to compare the current mobile rendering with the previous full-width stacked behavior.
+    impact: The exact intended spacing for the restored mobile stack must be inferred from the requirement and existing class system.
+  - area: automated coverage
+    description: No responsive tests were found for ProductItemAlt or ProductItem.
+    impact: The regression can reappear without being caught by the current test suite.

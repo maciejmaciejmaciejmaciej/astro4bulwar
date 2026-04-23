@@ -1,0 +1,352 @@
+plan_id: "page-builder-runtime-workflow"
+objective: >
+  Zaplanowac minimalny, bezpieczny kolejny etap po istniejacych modulach
+  runtime page buildera: live adapter Firestore wykonywany tylko w Node,
+  cienki CLI wrapper z env secrets i minimalna dokumentacja operacyjna,
+  bez dublowania compile gate ani runtime orchestratora.
+created_at: "2026-04-19T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 2
+  total_dependencies: 4
+  risk_score: "medium"
+
+tldr: |
+  Najmniejszy bezpieczny follow-up po gotowych modulach runtime to domkniecie
+  warstwy uruchomieniowej poza bundlerem przegladarkowym. Obecny workflow juz
+  reuse'uje compile gate z SCRIPTS i wykonuje ensurePageExists przed publish,
+  wiec kolejny etap powinien dodac tylko: node-only adapter Firestore,
+  uruchamialny CLI wrapper z env-based secret injection oraz krotka dokumentacje
+  operatora. Sources: zip/src/blocks/registry/firebasePageDraftStore.ts,
+  zip/src/blocks/registry/wordpressPageBuilderClient.ts,
+  zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+  docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+  docs/plan/page-builder-runtime-workflow/plan.yaml,
+  .github/instructions/project-foundation.instructions.md.
+
+open_questions:
+  - >
+    Czy operator ma odpalac runtime zawsze na lokalnym hoście przez `npx --prefix zip tsx`,
+    czy potrzebny jest tez wariant CI-only? Minimalny plan zaklada lokalny Node runtime,
+    bo to jest zgodne z obecnym wzorcem SCRIPTS/generate-page-draft-from-scrape.ts.
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: >
+        Firebase Admin albo sekrety WordPress trafia do kodu wykonywanego przez
+        browserowy runtime w zip, co naruszy twardy boundary bezpieczenstwa.
+      likelihood: "medium"
+      impact: "critical"
+      mitigation: >
+        Trzymac live adapter i ladowanie env wyłącznie po stronie SCRIPTS,
+        a runtime workflow w zip pozostawic jako czysta, dependency-injected
+        orkiestracje bez importu firebase-admin ani dotenv.
+    - scenario: >
+        CLI zacznie kopiowac compile logic albo sterowac publikacja bokiem,
+        przez co wyjscie runtime rozjedzie sie z istniejacym compile gate.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        CLI ma tylko zlozyc zaleznosci, wczytac draft i wywolac istniejace
+        runPageBuilderRuntimeWorkflow. Zero drugiego compiler path. Sources:
+        zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+        SCRIPTS/make-page-draft-compile-gate.js.
+    - scenario: >
+        Live adapter zostanie sprzezony z konkretnym ksztaltem SDK i utrudni
+        testy albo przyszla podmiane backendu draft store.
+      likelihood: "medium"
+      impact: "medium"
+      mitigation: >
+        Zamknac inicjalizacje Firestore Admin w cienkim adapterze/factory,
+        a do runtime workflow dalej podawac tylko kontrakt store kompatybilny z
+        createFirestoreFirebasePageDraftStore().
+  assumptions:
+    - >
+      Obecne moduly runtime przechodza testy i stanowia stabilna baze follow-upu.
+      Source: terminal context with passing tests for firebasePageDraftStore,
+      wordpressPageBuilderClient and pageBuilderRuntimeWorkflow.
+    - >
+      SCRIPTS jest poprawnym boundary dla node-only narzedzi i juz hostuje
+      compile gate oraz inne repo-side CLI. Sources: SCRIPTS/generate-page-draft-from-scrape.ts,
+      SCRIPTS/make-page-draft-compile-gate.js,
+      .github/instructions/project-foundation.instructions.md.
+    - >
+      Sekrety i live credentials nie moga trafic do repo ani do browser bundle.
+      Source: .github/copilot-instructions.md,
+      .github/instructions/project-foundation.instructions.md.
+
+implementation_specification:
+  code_structure: |
+    Zachowac obecny podzial odpowiedzialnosci. `zip/src/blocks/registry`
+    pozostaje miejscem dla testowalnych, env-agnostic kontraktow runtime,
+    natomiast `SCRIPTS/` przejmuje tylko node-only composition root:
+    inicjalizacje env, zbudowanie live Firestore adaptera, wczytanie draftu z
+    pliku lub docId i wywolanie istniejacej orkiestracji runtime. Dokumentacja
+    ma opisac jedyny kanoniczny sposob uruchomienia i wymagane zmienne,
+    bez dodawania drugiego toru publikacji.
+  affected_areas:
+    - "SCRIPTS/"
+    - "zip/src/blocks/registry/"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+    - ".env.example"
+  component_details:
+    - component: "Node-only live Firestore adapter"
+      responsibility: >
+        Zainicjalizowac Firebase Admin/Firestore tylko w Node i wystawic store
+        zgodny z juz istniejacym kontraktem FirebasePageDraftStore.
+      interfaces:
+        - "Factory zwraca draftStore kompatybilny z runPageBuilderRuntimeWorkflow()."
+        - "Konfiguracja pochodzi z env, nie z kodu bundle'a."
+    - component: "CLI runtime wrapper"
+      responsibility: >
+        Wczytac env, przyjac input operatora, zlozyc wordpressClient + draftStore,
+        zaladowac draft i wywolac istniejacy workflow wraz z opcjonalnym verifyReadback.
+      interfaces:
+        - "Jedna komenda CLI dla publish flow z jawnymi flagami i bez duplikacji compile logiki."
+    - component: "Operational usage note"
+      responsibility: >
+        Udokumentowac wymagane env, boundary Node-only, wejscia CLI i kroki weryfikacji.
+      interfaces:
+        - "Krótki usage doc plus lista sekretow w .env.example bez realnych wartosci."
+  dependencies:
+    - component: "CLI runtime wrapper"
+      relationship: "Konsumuje istniejące runPageBuilderRuntimeWorkflow() jako jedyny orchestrator publish flow."
+    - component: "Node-only live Firestore adapter"
+      relationship: "Jest composition root nad createFirestoreFirebasePageDraftStore(), nie nowym store contractem."
+    - component: "Operational usage note"
+      relationship: "Dokumentuje tylko kanoniczny flow oparty o SCRIPTS boundary i obecny WordPress client."
+  integration_points:
+    - "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+    - "zip/src/blocks/registry/firebasePageDraftStore.ts"
+    - "zip/src/blocks/registry/wordpressPageBuilderClient.ts"
+    - "SCRIPTS/generate-page-draft-from-scrape.ts"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+
+contracts:
+  - from_task: "define_node_runtime_contract"
+    to_task: "implement_live_firestore_adapter"
+    interface: "Jawny boundary: secrets and SDK init only in Node composition root."
+    format: "Env contract plus adapter factory boundary"
+  - from_task: "implement_live_firestore_adapter"
+    to_task: "implement_cli_wrapper"
+    interface: "Live draftStore zgodny z FirebasePageDraftStore."
+    format: "Injected store dependency"
+  - from_task: "implement_cli_wrapper"
+    to_task: "document_usage_and_env"
+    interface: "Jedna kanoniczna komenda i lista wymaganych parametrow/operator inputs."
+    format: "CLI usage contract"
+
+tasks:
+  - id: "define_node_runtime_contract"
+    title: "Domknac boundary Node-only dla runtime publish flow"
+    description: |
+      Najpierw trzeba spisac i utrwalic granice odpowiedzialnosci: `zip/src/blocks/registry`
+      zostaje bez sekretow i bez live SDK, a wszelka inicjalizacja env, Firebase Admin
+      i uruchomienie publish flow dzieje sie po stronie `SCRIPTS/`. To jest task
+      architektoniczny, ktory zapobiega niekontrolowanemu przeciekowi do browser runtime.
+      Sources: zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+      .github/copilot-instructions.md,
+      .github/instructions/project-foundation.instructions.md.
+    wave: 1
+    agent: "gem-critic"
+    prototype: false
+    covers:
+      - "Node-only boundary"
+      - "No secrets in zip"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+        description: "Istniejacy orchestrator bez env injection i bez live SDK."
+      - path: ".github/instructions/project-foundation.instructions.md"
+        description: "Repo-level reguly dla sekretow i script boundaries."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Bez tej granicy kolejne taski latwo rozmyja odpowiedzialnosci miedzy zip i SCRIPTS."
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 2
+        estimated_lines: 80
+        focus_area: "architecture boundary"
+        verification:
+          - "Plan wskazuje jedno miejsce ladowania env i jedno miejsce inicjalizacji live SDK."
+          - "Nie pojawia sie nowy browser-facing import firebase-admin ani dotenv."
+        acceptance_criteria:
+          - "Jasno ustalone, ze SCRIPTS jest composition root dla publish flow."
+          - "Jasno ustalone, ze zip runtime pozostaje dependency-injected i testowalny."
+        failure_modes:
+          - scenario: "Boundary zostanie opisany zbyt ogolnie i implementacja rozjedzie sie na dwa entrypointy."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Zamknac plan do jednej komendy CLI i jednego adaptera live store."
+    requires_review: true
+    review_depth: "standard"
+    review_security_sensitive: true
+
+  - id: "implement_live_firestore_adapter"
+    title: "Dodac prawdziwy adapter Firestore wykonywany tylko po stronie Node"
+    description: |
+      Zaimplementowac cienka warstwe inicjalizujaca Firebase Admin/Firestore na bazie env
+      i adaptujaca ja do juz istniejacego kontraktu draftStore. Ten task nie ma zmieniac
+      compile gate ani orkiestratora; ma jedynie dostarczyc live persistence layer dla draftu.
+      Sources: zip/src/blocks/registry/firebasePageDraftStore.ts,
+      docs/plan/page-builder-runtime-workflow/plan.yaml,
+      .github/instructions/project-foundation.instructions.md.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Live Firestore adapter"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "define_node_runtime_contract"
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/firebasePageDraftStore.ts"
+        description: "Kontrakt store, ktory adapter ma reuse'owac."
+      - path: "SCRIPTS/generate-page-draft-from-scrape.ts"
+        description: "Wzorzec uruchamiania node-only TypeScript z SCRIPTS przez tsx."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "To najmnieszy live krok potrzebny po gotowym in-memory/FirestoreLike store."
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 2
+        estimated_lines: 140
+        focus_area: "live firestore composition"
+        verification:
+          - "Adapter mozna zlozyc bez dotykania browser bundle."
+          - "Store przekazywany do workflow nadal spelnia istniejacy kontrakt save/load/upsert."
+        acceptance_criteria:
+          - "Live adapter mieszka w node-only boundary."
+          - "Sekrety pochodza tylko z env i nie sa zapisane w repo."
+          - "Adapter nie tworzy nowego store API."
+        failure_modes:
+          - scenario: "Adapter doda drugi kontrakt store zamiast reuse'owac obecny."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Factory ma zwracac obiekt zgodny z FirebasePageDraftStore bez dodatkowych metod."
+    tech_stack:
+      - "Node.js"
+      - "TypeScript"
+      - "Firebase Admin / Firestore"
+    test_coverage: "Node-only smoke test or injected contract test for adapter factory"
+
+  - id: "implement_cli_wrapper"
+    title: "Dodac cienki CLI wrapper uruchamiajacy istniejacy runtime workflow"
+    description: |
+      Dodac jeden kanoniczny entrypoint CLI w `SCRIPTS/`, ktory przyjmuje dane wejsciowe
+      operatora, laduje env, sklada dependencies i wywoluje `runPageBuilderRuntimeWorkflow()`.
+      CLI nie moze duplikowac compile logiki ani publish orchestration; ma tylko zrobic composition root
+      dla live adaptera, WordPress clienta i verifyReadback. Sources:
+      zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts,
+      zip/src/blocks/registry/wordpressPageBuilderClient.ts,
+      SCRIPTS/generate-page-draft-from-scrape.ts.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "CLI wrapper"
+      - "Single publish entrypoint"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "define_node_runtime_contract"
+      - "implement_live_firestore_adapter"
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/pageBuilderRuntimeWorkflow.ts"
+        description: "Jedyny orchestrator, ktory CLI ma reuse'owac."
+      - path: "zip/src/blocks/registry/wordpressPageBuilderClient.ts"
+        description: "Istniejacy klient publish/readback."
+      - path: "SCRIPTS/generate-page-draft-from-scrape.ts"
+        description: "Wzorzec ergonomii CLI i uruchamiania przez tsx."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "To bezposrednio realizuje oczekiwany next step bez rozszerzania backendu."
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 2
+        estimated_lines: 170
+        focus_area: "runtime entrypoint"
+        verification:
+          - "CLI sklada dependencies i deleguje wykonanie do istniejacego workflow."
+          - "Compile jest odpalany tylko przez obecny orchestrator i compile gate."
+        acceptance_criteria:
+          - "Istnieje jedna komenda uruchamiajaca publish flow z env secrets poza zip runtime."
+          - "CLI obsluguje minimalny input operatora bez zapisywania credentiali do repo."
+          - "CLI moze wlaczyc verifyReadback bez dodatkowego toru publikacji."
+        failure_modes:
+          - scenario: "CLI wprowadzi drugi publish flow z osobnym sequencingiem ensure/compile/publish."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "CLI ma byc cienkim wrapperem nad runPageBuilderRuntimeWorkflow(), nic wiecej."
+    tech_stack:
+      - "Node.js"
+      - "TypeScript"
+      - "tsx"
+    test_coverage: "CLI argument parsing plus one dry-run/injected integration path"
+
+  - id: "document_usage_and_env"
+    title: "Dodac minimalna dokumentacje uzycia i kontraktu env"
+    description: |
+      Uzupełnic minimalna dokumentacje operatora i `.env.example`, tak aby runtime mial jeden
+      opisany sposob uruchomienia, jawna liste wymaganych sekretow i czytelny komunikat,
+      ze nic z tego nie nalezy do browserowego `zip/`. Zakres ma zostac maly: usage, env,
+      wejscia CLI i podstawowa weryfikacja readback. Sources:
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      .github/instructions/project-foundation.instructions.md.
+    wave: 3
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers:
+      - "Minimalna dokumentacja"
+      - "Env contract"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "implement_cli_wrapper"
+    conflicts_with: []
+    context_files:
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Kanoniczny workflow operacyjny, ktory trzeba zaktualizowac o nowy runtime path."
+      - path: ".github/instructions/project-foundation.instructions.md"
+        description: "Reguly dla env.example, secret handling i canonical workflow docs."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Przy sekretach i node-only boundary dokumentacja jest czescia bezpiecznego wdrozenia, nie dodatkiem."
+        timestamp: "2026-04-19T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 2
+        estimated_lines: 90
+        focus_area: "operator documentation"
+        verification:
+          - "Dokument wskazuje jedna kanoniczna komende i wymagane env bez realnych wartosci."
+          - "Nie ma drugiej, konkurencyjnej sciezki publish flow."
+        acceptance_criteria:
+          - "Powstaje lub zostaje uzupelnione `.env.example` z opisem wymaganych zmiennych."
+          - "Dokumentacja usage wskazuje, ze SCRIPTS jest boundary node-only."
+          - "Opisane sa minimalne kroki verifyReadback lub innej bezpiecznej weryfikacji."
+        failure_modes:
+          - scenario: "Wiedza o required env zostanie tylko w czacie albo terminal history."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Jawnie zapisac kontrakt env w repo-side docs i `.env.example`."
+    task_type: "update"
+    audience: "developers"
+    coverage_matrix:
+      - "runtime CLI usage"
+      - "required env variables"
+      - "node-only boundary"
+      - "basic verification path"

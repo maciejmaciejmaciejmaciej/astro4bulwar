@@ -1,0 +1,371 @@
+plan_id: bulwar-bridge-checkout
+objective: >-
+  Audit WooCommerce and WordPress constraints on the live base site that affect
+  bridge checkout implementation, including payment gateways, shipping and tax
+  assumptions, plugin and CPT landscape, available hook surface, and the scope
+  that should be delegated to a parallel Woo or WordPress agent.
+focus_area: live_woo_constraints
+created_at: 2026-03-24T16:41:22Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The audited base WordPress instance is https://client.example at server path client.example/public_html.
+  - The live stack is minimal: WooCommerce 10.6.1 and LiteSpeed Cache are active, there are no must-use plugins, the active theme is Twenty Twenty-Four, and no custom CPTs are registered.
+  - Woo checkout configuration on v2 is effectively unconfigured for the target catering flow: currency is USD, default country is US:CA, taxes are disabled, there are no shipping zones or shipping methods, and all core offline payment gateways are disabled.
+  - The Woo pages exist and are assigned to the default Shop, Cart, Checkout, and My account pages, but there is no live custom plugin, CPT layer, or admin screen for scheduling, bridge settings, or order-meta rendering.
+  - Existing Woo hook usage on the live site is only the stock Twenty Twenty-Four theme init hooks; no live custom WooCommerce hook implementation was found in must-use plugins or the active theme.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval using local repository evidence, targeted read_file
+    inspection of plan and helper artifacts, and a read-only SSH plus WP-CLI
+    audit against the live v2 WordPress installation captured in a local raw
+    JSON artifact.
+  scope: >-
+    Focused audit of the live base WordPress instance used for backend and API
+    work, including site identity, active plugins and theme, registered post
+    types, WooCommerce checkout settings, shipping and tax tables, assigned Woo
+    pages, and custom hook presence in active runtime code.
+  confidence: high
+  coverage: 94
+
+files_analyzed:
+  - file: bulwar bridge plan
+    path: docs/plan/bulwar-bridge-checkout/plan.yaml
+    purpose: Defines task T2 scope and the implementation decisions that depend on the live Woo audit.
+    key_elements:
+      - element: T2 task definition
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/plan.yaml:168
+        description: Requests live gateway, shipping, tax, CPT, plugin, and ownership facts.
+      - element: delegation target
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/plan.yaml:413
+        description: States that Woo-native admin, CPT, and order-admin work may be delegated separately.
+    language: yaml
+    lines: 480
+  - file: repository instructions
+    path: .github/copilot-instructions.md
+    purpose: Establishes that v2 is the base WordPress backend and that availability should eventually be driven by CPTs.
+    key_elements:
+      - element: live domain setup rule
+        type: pattern
+        location: .github/copilot-instructions.md:16
+        description: Declares client.example as the base WordPress backend or API target for this work.
+      - element: CPT availability intent
+        type: pattern
+        location: .github/copilot-instructions.md:10
+        description: States that delivery date and time validation should use custom post types.
+    language: markdown
+    lines: 42
+  - file: prior WP-CLI helper
+    path: get_settings.js
+    purpose: Provides local evidence that the repository already uses SSH plus WP-CLI to inspect Woo settings on hosted WordPress instances.
+    key_elements:
+      - element: SSH plus WP-CLI pattern
+        type: pattern
+        location: get_settings.js:8
+        description: Uses ssh and wp-cli.phar to query Woo options from the hosting account.
+    language: javascript
+    lines: 14
+  - file: live audit raw data
+    path: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+    purpose: Captures the read-only SSH and WP-CLI audit results for the v2 live WordPress installation.
+    key_elements:
+      - element: site output
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:6
+        description: Confirms the audited site URL and home URL are both https://client.example.
+      - element: plugin inventory
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:10
+        description: Shows WooCommerce and LiteSpeed Cache as the only active plugins.
+      - element: Woo options snapshot
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:26
+        description: Captures live currency, country, tax, guest-checkout, and shipping-address options.
+      - element: payment gateway snapshot
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:34
+        description: Shows core offline gateways loaded by WooCommerce and all marked disabled.
+      - element: shipping and tax tables snapshot
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:38
+        description: Shows no shipping zones, no shipping methods, and no tax rates configured.
+      - element: custom code scan
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:50
+        description: Shows no must-use plugin files and only stock Twenty Twenty-Four hooks in the active theme.
+    language: json
+    lines: 58
+  - file: live audit helper
+    path: docs/plan/bulwar-bridge-checkout/live_site_audit.js
+    purpose: Read-only local script used to execute SSH and WP-CLI commands and persist the raw audit artifact.
+    key_elements:
+      - element: wpPath
+        type: variable
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit.js:7
+        description: Targets the v2 WordPress installation path on the hosting account.
+      - element: paymentGateways command
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit.js:45
+        description: Reads loaded Woo payment gateways and their enabled flags.
+      - element: shipping and tax table queries
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit.js:46
+        description: Reads shipping zone and tax configuration directly from Woo tables.
+    language: javascript
+    lines: 78
+
+patterns_found:
+  - category: architecture
+    pattern: Minimal stock WordPress runtime with no custom commerce extension layer
+    description: >-
+      The live v2 instance runs WooCommerce on top of the stock Twenty
+      Twenty-Four theme without any custom active plugin, child theme, or
+      must-use plugin layer.
+    examples:
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:10
+        snippet: active plugins are litespeed-cache and woocommerce only
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:14
+        snippet: muPlugins output is an empty array and active theme is twentytwentyfour
+    prevalence: common
+  - category: structure
+    pattern: No custom content model exists yet for scheduling or bridge administration
+    description: >-
+      Registered post types include only core WordPress and WooCommerce types.
+      No delivery-slot CPT, admin model, or schedule entity is present on the
+      audited site.
+    examples:
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:18
+        snippet: postTypes output lists product, product_variation, shop_order, shop_coupon and no custom business CPT
+      - file: .github/copilot-instructions.md
+        location: .github/copilot-instructions.md:10
+        snippet: project instructions say availability should eventually use custom post types
+    prevalence: common
+  - category: architecture
+    pattern: Woo checkout pages exist, but operational checkout settings are not aligned to the catering target
+    description: >-
+      Woo pages are assigned, guest checkout is enabled, and login reminder is
+      disabled, but live country and currency defaults point to US and USD,
+      with no shipping or tax configuration.
+    examples:
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:26
+        snippet: USD, US:CA, all countries, empty ship_to_countries, taxes no, tax based on shipping
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:46
+        snippet: wooPages point to page ids 7, 8, 9, and 10 for Shop, Cart, Checkout, and My account
+    prevalence: common
+  - category: architecture
+    pattern: Payment and shipping are effectively disabled in current Woo config
+    description: >-
+      Woo loads only its built-in offline gateways on v2 and marks each as
+      disabled. No shipping zones, locations, methods, or tax rates are
+      configured.
+    examples:
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:34
+        snippet: bacs no, cheque no, cod no
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:38
+        snippet: shippingZones output empty, shippingLocations output empty, shippingMethods output empty, taxRates output empty
+    prevalence: common
+  - category: structure
+    pattern: Live hook surface is stock Woo plus stock theme init hooks only
+    description: >-
+      The custom code scan found no site-specific Woo hooks in must-use plugins
+      or the active theme. The only hook registrations found were stock
+      Twenty Twenty-Four init hooks unrelated to commerce customization.
+    examples:
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:50
+        snippet: add_action init twentytwentyfour_block_styles
+      - file: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit_raw.json:50
+        snippet: no mu-plugin files were listed before the stock theme hooks
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: v2 base WordPress installation
+      responsibility: Hosts the backend or API runtime that the bridge is expected to extend.
+      location: client.example/public_html
+      relationship_to_domain: domain depends on this
+    - component: WooCommerce 10.6.1
+      responsibility: Provides product, order, coupon, checkout, and payment gateway infrastructure.
+      location: live plugin inventory on v2
+      relationship_to_domain: domain depends on this
+    - component: Twenty Twenty-Four theme
+      responsibility: Supplies the active front-end theme and the only detected live hook registrations.
+      location: wp-content/themes/twentytwentyfour
+      relationship_to_domain: domain depends on this
+    - component: parallel Woo or WordPress agent work area
+      responsibility: Would own any future CPT registration, admin screens, bridge settings UI, and order-admin rendering because those pieces do not exist today.
+      location: not implemented on the live site
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: WooCommerce checkout pages
+      location: Shop page 7, Cart page 8, Checkout page 9, My account page 10 on v2
+      usage_pattern: Stock Woo pages are assigned, but no custom bridge or schedule interface is present.
+    - interface: WooCommerce core payment gateway loader
+      location: live gateway snapshot on v2
+      usage_pattern: Loads only bacs, cheque, and cod, all disabled.
+    - interface: WooCommerce shipping tables
+      location: wp_woocommerce_shipping_zones, wp_woocommerce_shipping_zone_locations, wp_woocommerce_shipping_zone_methods
+      usage_pattern: No records were found during the audit.
+  data_flow_involving_domain: >-
+    The intended React checkout bridge will need to call into a WordPress and
+    WooCommerce runtime that is currently almost stock. There is no existing
+    site-specific CPT, plugin, or admin layer on v2 to provide slot data,
+    delivery pricing, gateway selection, or order meta rendering, so those
+    responsibilities would need to be added explicitly on the WordPress side.
+  key_relationships_to_domain:
+    - from: .github/copilot-instructions.md
+      to: v2 WordPress installation
+      relationship: names as backend target
+    - from: v2 WordPress installation
+      to: WooCommerce 10.6.1
+      relationship: loads plugin runtime
+    - from: WooCommerce 10.6.1
+      to: product and order post types
+      relationship: registers
+    - from: Twenty Twenty-Four theme
+      to: stock init hooks
+      relationship: adds
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - SQL
+    - JavaScript
+    - YAML
+  frameworks_used_in_domain:
+    - name: WordPress
+      usage_in_domain: Base CMS runtime and hook system on the audited live site.
+    - name: WooCommerce
+      usage_in_domain: Commerce runtime, checkout pages, product types, gateway loader, and shipping or tax settings.
+  libraries_used_in_domain:
+    - name: WP-CLI
+      purpose_in_domain: Read-only inspection of live WordPress options, plugins, post types, and database tables.
+    - name: LiteSpeed Cache
+      purpose_in_domain: Active cache plugin on the live site; not a commerce extension.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Live names follow stock WordPress and WooCommerce conventions such as
+    product, shop_order, shop_coupon, and the default core gateway ids bacs,
+    cheque, and cod.
+  structure_of_domain: >-
+    The audited site is a stock WordPress installation with WooCommerce pages
+    and post types enabled, a stock block theme, and no custom admin extension
+    layer for the bridge domain.
+  error_handling_in_domain: >-
+    No custom runtime error handling conventions were discovered because no
+    custom plugin or theme commerce code was present on the audited site.
+  testing_in_domain: >-
+    No live-site testing harness or custom QA helpers were visible through the
+    audited runtime footprint.
+  documentation_in_domain: >-
+    Local project instructions identify v2 as the backend target and describe a
+    future CPT-driven availability model that is not yet implemented on the
+    audited instance.
+
+related_dependencies:
+  internal:
+    - component: docs/plan/bulwar-bridge-checkout/plan.yaml
+      relationship_to_domain: defines the questions this live audit needed to answer
+      direction: inbound
+    - component: .github/copilot-instructions.md
+      relationship_to_domain: constrains which WordPress instance and future CPT behavior matter
+      direction: inbound
+  external:
+    - name: WooCommerce
+      purpose_for_domain: Provides checkout, orders, payments, shipping, and tax configuration surface.
+    - name: WordPress
+      purpose_for_domain: Provides plugin, theme, post type, and hook runtime surface.
+    - name: LiteSpeed Cache
+      purpose_for_domain: Active infrastructure plugin on the audited instance.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: server-authoritative checkout runtime
+      location: v2 WordPress installation
+      concern: >-
+        No custom bridge exists yet, so any future checkout authority,
+        credential handling, and input validation will need to be added on the
+        server side rather than relying on current live config.
+    - area: payment and order creation path
+      location: WooCommerce gateway and checkout configuration on v2
+      concern: >-
+        All detected core gateways are disabled, so payment behavior for MVP is
+        currently absent rather than merely hidden.
+  authentication_patterns_in_domain: >-
+    Guest checkout is enabled on v2 and the checkout login reminder is disabled,
+    which indicates no customer-account requirement for orders in the current
+    live configuration.
+  authorization_patterns_in_domain: >-
+    No custom admin capability model was discovered because there are no custom
+    plugin or must-use plugin surfaces on the audited instance.
+  data_validation_in_domain: >-
+    No custom CPT validation or checkout bridge validation layer exists yet on
+    the audited site; only stock WooCommerce settings and page assignments are
+    present.
+
+open_questions:
+  - question: >-
+      Is v2 intentionally a backend staging instance rather than the merchant's
+      production commerce configuration?
+    context: >-
+      The audited v2 site uses USD and US:CA with no shipping or tax setup,
+      which conflicts with other local artifacts in the workspace that reflect a
+      Polish store address and PLN settings.
+  - question: >-
+      Should the bridge target v2 immediately, or should its settings be synced
+      from another WordPress instance before implementation proceeds?
+    context: >-
+      The implementation plan treats v2 as the backend target, but current live
+      Woo settings on v2 do not match the expected catering geography.
+  - question: >-
+      Is the MVP expected to keep Woo payment gateways disabled and let the
+      bridge create manual or unpaid orders, or is an additional payment plugin
+      planned later?
+    context: >-
+      The audit found only core offline gateways and all were disabled, with no
+      external payment plugin active.
+  - question: >-
+      Should schedule authoring live in CPTs, JSON-first bridge config, or a
+      custom admin UI created from scratch?
+    context: >-
+      Project instructions call for CPT-driven availability, but the audited
+      live site contains no such content model or admin screen today.
+
+gaps:
+  - area: production-versus-base instance alignment
+    description: >-
+      The audit proved the state of v2, but it did not reconcile that state with
+      the separate hosted WordPress instances and local artifacts already present
+      in the workspace.
+    impact: >-
+      This affects whether the current v2 configuration should gate bridge
+      implementation decisions or whether it first needs environment alignment.
+  - area: future payment scope
+    description: >-
+      The live audit can prove that no gateway is enabled now, but it cannot
+      prove whether that is the intended MVP state or just an unfinished setup.
+    impact: >-
+      This directly affects whether direct order creation without online payment
+      is the intended checkout path.
+  - area: future merchant-facing admin ownership
+    description: >-
+      The audit can prove the absence of CPTs, bridge settings screens, and
+      order-admin renderers, but it cannot prove which of those the team wants
+      to introduce first.
+    impact: >-
+      This shapes the exact scope to delegate to the parallel Woo or WordPress
+      agent.

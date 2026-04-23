@@ -1,0 +1,138 @@
+plan_id: catering-wielkanocny-hotfix-20260326
+objective: inspect the current workspace state and identify exactly what product description texts in the Easter catering data were changed relative to likely prior intent, focusing only on the recent breakfast-for-two addition and any description text edits in catering-wielkanocny data
+focus_area: catering-wielkanocny-data
+created_at: 2026-03-26
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Git diff for zip/src/data/cateringWielkanocny.json shows one new category/product addition and one description-format change in an existing product.
+  - New product id 88, "Śniadanie Wielkanocne dla 2 osób", was added with a split HTML description list in opis_produktu.
+  - Existing product id 15, "Barszcz bardzo czerwony", was changed from one combined text field to split fields nazwa_produktu + opis_produktu.
+  - No other description-related edits were present in the JSON diff.
+  - Likely quickest hotfix is to revert only Barszcz to zespolona_nazwa_z_opisem if the intended change was only adding product 88.
+
+research_metadata:
+  methodology: hybrid retrieval using read_file, get_changed_files, git diff via terminal, targeted grep across current and deploy artifacts
+  scope: limited to zip/src/data/cateringWielkanocny.json, zip/src/data/cateringWielkanocny.ts for schema interpretation, and relevant workspace git state
+  confidence: high
+  coverage: 95
+
+files_analyzed:
+  - file: cateringWielkanocny.json
+    path: zip/src/data/cateringWielkanocny.json
+    purpose: source Easter catering catalog data
+    key_elements:
+      - element: category id 26
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:2
+        description: newly added category for the breakfast-for-two bundle
+      - element: product id 88
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:8
+        description: new split-format product with HTML list description
+      - element: product id 15
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:58
+        description: existing soup product now stored as split title plus description instead of one combined field
+    language: json
+    lines: 260
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: normalizes raw catering JSON into combined or split display contracts
+    key_elements:
+      - element: RawCateringProduct
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:5
+        description: supports both zespolona_nazwa_z_opisem and split nazwa_produktu/opis_produktu shapes
+      - element: normalizeProduct
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:107
+        description: emits split mode whenever nazwa_produktu or opis_produktu exists
+    language: typescript
+    lines: 188
+
+patterns_found:
+  - category: structure
+    pattern: dual content model for products
+    description: products render either as one combined text string or as split title plus HTML description depending on JSON fields present
+    examples:
+      - file: zip/src/data/cateringWielkanocny.json
+        location: zip/src/data/cateringWielkanocny.json:58
+        snippet: '"nazwa_produktu": "Barszcz bardzo czerwony"'
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:131
+        snippet: if (productName !== null || productDescriptionHtml !== null)
+    prevalence: common
+  - category: structure
+    pattern: split HTML list used for bundle description
+    description: the new breakfast bundle uses HTML ul/li markup in opis_produktu, unlike most existing products
+    examples:
+      - file: zip/src/data/cateringWielkanocny.json
+        location: zip/src/data/cateringWielkanocny.json:9
+        snippet: '"opis_produktu": "<ul><li><strong>Pasta jajeczna</strong>...'</snippet>
+    prevalence: occasional
+  - category: structure
+    pattern: one existing product converted from combined to split format
+    description: Barszcz changed representation without changing its wording except for extracting the title prefix
+    examples:
+      - file: zip/src/data/cateringWielkanocny.json
+        location: git diff
+        snippet: 'zespolona_nazwa_z_opisem -> nazwa_produktu + opis_produktu'
+    prevalence: rare
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: cateringWielkanocny JSON source
+      responsibility: stores raw catalog copy and pricing data
+      location: zip/src/data/cateringWielkanocny.json
+      relationship_to_domain: domain is defined here
+    - component: data normalizer
+      responsibility: maps raw JSON into UI rendering contracts
+      location: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: RawCateringProduct
+      location: zip/src/data/cateringWielkanocny.ts
+      usage_pattern: accepts either combined text or split title/description fields
+  data_flow_involving_domain: JSON raw product records are imported by cateringWielkanocny.ts, normalized into combined or split contracts, and then consumed by page components/build outputs.
+  key_relationships_to_domain:
+    - from: zip/src/data/cateringWielkanocny.json
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - JSON
+    - TypeScript
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: downstream rendering of normalized product contracts
+  libraries_used_in_domain:
+    - name: Vite
+      purpose_in_domain: bundles JSON into deploy assets
+
+related_conventions:
+  naming_patterns_in_domain: Polish field names in raw data, English contract names in TypeScript
+  structure_of_domain: categories contain pozycje arrays; products use either combined text or split fields
+  error_handling_in_domain: TypeScript normalizer throws on invalid or partially specified product content
+  testing_in_domain: not examined in this scope
+  documentation_in_domain: none found in scope
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: reads and validates JSON shape
+      direction: outbound
+  external:
+    - name: git
+      purpose_for_domain: source of exact diff history for copy changes
+
+open_questions:
+  - question: Was the Barszcz split intended for UI formatting, or was the only intended content change the new breakfast bundle?
+    context: git diff shows Barszcz changed representation even though the request focus suggests the breakfast addition may have been the main intended change
+
+gaps:
+  - area: prior explicit product copy specification
+    description: no separate source-of-truth brief or content spec was found in the scoped files
+    impact: likely intent is inferred from git diff and existing data patterns rather than a dedicated requirements document

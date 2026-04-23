@@ -1,0 +1,336 @@
+plan_id: catering-special-menu-for-2
+objective: Find all active frontend data sources for the special product described as 'zestaw obiad swiateczny dla 2 osob' and identify where the visible description text and option texts live on the active catering route.
+focus_area: zip-frontend-data-sources
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+	- The active route is /react/catering-wielkanocny, wired through zip/src/main.tsx -> zip/src/App.tsx -> zip/src/pages/CateringWielkanocnyPage.tsx.
+	- The menu-for-2 product is rendered by zip/src/components/sections/CateringProductSpecialMenuFor2.tsx, but its option labels and portion strings come from zip/src/data/cateringSpecialMenuFor2.ts.
+	- The main visible intro paragraph for this product is not data-driven; it is hardcoded in the component. The seed field intro exists but is currently unused.
+	- Option labels propagate into the cart summary through buildSpecialMenuFor2Config/buildSpecialMenuFor2SummaryLines, while option weights are display-only in the configurator cards.
+	- Matching text also appears in dist and deploy snapshot bundles, but those are generated copies of the src authoring source, not separate active authoring sources.
+
+research_metadata:
+	methodology: Hybrid retrieval using semantic_search and grep_search, followed by direct file reads of the route entry, page, special menu component, data seed, and cart consumer. Relationship discovery traced imports and downstream label usage.
+	scope: Focused on zip/src and nearby generated zip outputs only where duplication needed verification.
+	confidence: high
+	coverage: 92
+
+files_analyzed:
+	- file: main.tsx
+		path: zip/src/main.tsx
+		purpose: React entrypoint that mounts the application under the /react basename.
+		key_elements:
+			- element: BrowserRouter basename
+				type: variable
+				location: zip/src/main.tsx:8
+				description: Sets the frontend route prefix to /react, making /react/catering-wielkanocny the live catering route path.
+		language: TypeScript
+		lines: 12
+
+	- file: App.tsx
+		path: zip/src/App.tsx
+		purpose: Top-level route table for the React frontend.
+		key_elements:
+			- element: CateringWielkanocnyPage route
+				type: pattern
+				location: zip/src/App.tsx:9
+				description: Maps /catering-wielkanocny to the catering page component.
+		language: TypeScript
+		lines: 11
+
+	- file: CateringWielkanocnyPage.tsx
+		path: zip/src/pages/CateringWielkanocnyPage.tsx
+		purpose: Active catering page that composes the hero, special menu-for-2 block, category product lists, and cart behavior.
+		key_elements:
+			- element: cateringSpecialMenuFor2Seed import
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:15
+				description: Imports the single seed object used for the menu-for-2 product.
+			- element: addSpecialMenuFor2Line call
+				type: function
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:176
+				description: Persists the configured special product into cart state using the same seed object.
+			- element: CateringProductSpecialMenuFor2 render
+				type: pattern
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:223
+				description: Renders the special menu section and injects the seed prop.
+			- element: seed prop binding
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:224
+				description: Confirms the active page uses cateringSpecialMenuFor2Seed as the frontend data source.
+		language: TypeScript
+		lines: 233
+
+	- file: CateringProductSpecialMenuFor2.tsx
+		path: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+		purpose: UI renderer for the menu-for-2 product, including visible headings, descriptive copy, option cards, and summary.
+		key_elements:
+			- element: option.label render
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:67
+				description: Renders the visible option description text from the seed data.
+			- element: option.weight render
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:69
+				description: Renders the visible portion string from the seed data.
+			- element: shellProduct title render
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:184
+				description: Renders the visible section title from the seed data.
+			- element: hardcoded intro paragraph
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:192
+				description: Main visible descriptive paragraph for the product; this does not read from seed.intro.
+			- element: shellProduct displayName render
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:206
+				description: Renders the product name card line from the seed data.
+			- element: hardcoded cart-line explanation
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:208
+				description: Secondary visible descriptive copy explaining that each configured set is stored as a separate cart line.
+			- element: summary list labels
+				type: pattern
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:309
+				description: Renders chosen soup/main labels from config, which originate from option labels in the seed data.
+		language: TypeScript
+		lines: 309
+
+	- file: cateringSpecialMenuFor2.ts
+		path: zip/src/data/cateringSpecialMenuFor2.ts
+		purpose: Authoring source for the special product shell data, option labels, visible portion strings, and summary/config builders.
+		key_elements:
+			- element: shellProduct slug/title/displayName/image
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:85
+				description: Defines the product identity fields shown on the active page.
+			- element: intro
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:91
+				description: Unused seed field containing alternate explanatory copy.
+			- element: soups array
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:93
+				description: Defines active soup option labels and portion strings displayed in the configurator.
+			- element: mains array
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:113
+				description: Defines active main option labels and portion strings displayed in the configurator.
+			- element: buildSpecialMenuFor2Config
+				type: function
+				location: zip/src/data/cateringSpecialMenuFor2.ts:145
+				description: Copies option labels into the persisted two-person config.
+			- element: buildSpecialMenuFor2SummaryLines
+				type: function
+				location: zip/src/data/cateringSpecialMenuFor2.ts:244
+				description: Produces downstream summary lines from label-only config fields.
+		language: TypeScript
+		lines: 225
+
+	- file: cateringCart.ts
+		path: zip/src/lib/cateringCart.ts
+		purpose: Cart-state consumer that persists the special product display name and label-only summaries.
+		key_elements:
+			- element: buildSpecialMenuFor2CartLine
+				type: function
+				location: zip/src/lib/cateringCart.ts:219
+				description: Persists shellProduct.displayName into cart lines for the special product.
+			- element: metaSummary assignment
+				type: pattern
+				location: zip/src/lib/cateringCart.ts:229
+				description: Stores summary lines derived from option labels, not option weights.
+			- element: sanitizeSpecialMenuLine fallback display name
+				type: pattern
+				location: zip/src/lib/cateringCart.ts:167
+				description: Falls back to cateringSpecialMenuFor2Seed.shellProduct.displayName if serialized cart data is incomplete.
+		language: TypeScript
+		lines: 362
+
+patterns_found:
+	- category: architecture
+		pattern: Single-seed injection for special product data
+		description: The active catering page imports one seed object and passes it into a generic special-product component.
+		examples:
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:223
+				snippet: <CateringProductSpecialMenuFor2 seed={cateringSpecialMenuFor2Seed}
+		prevalence: common
+
+	- category: structure
+		pattern: Data-driven option cards
+		description: Option card text is rendered generically from option.label and option.weight, so wording changes in the seed propagate across all rendered cards.
+		examples:
+			- file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:67
+				snippet: {option.label} / {option.weight}
+		prevalence: common
+
+	- category: structure
+		pattern: Mixed data-driven and hardcoded copy
+		description: Product title and display name come from the seed, but the main introductory paragraph and cart-line explanation are hardcoded in JSX.
+		examples:
+			- file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:192
+				snippet: Skonfiguruj świąteczny zestaw dla dwóch osób...
+			- file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+				location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:208
+				snippet: Zestaw zapisuje się w koszyku jako osobna linia...
+		prevalence: occasional
+
+	- category: structure
+		pattern: Unused alternate intro field
+		description: The seed defines intro, but the active component never reads it.
+		examples:
+			- file: zip/src/data/cateringSpecialMenuFor2.ts
+				location: zip/src/data/cateringSpecialMenuFor2.ts:91
+				snippet: intro: "USER DO WYBORU MA ZUPĘ I DANIE GŁÓWNE DLA KAŻDEJ Z 2 OSÓB."
+		prevalence: rare
+
+	- category: architecture
+		pattern: Label-only downstream summaries
+		description: The persisted config and cart summaries store option labels only; portion strings are not copied into summaries or cart meta.
+		examples:
+			- file: zip/src/data/cateringSpecialMenuFor2.ts
+				location: zip/src/data/cateringSpecialMenuFor2.ts:165
+				snippet: soupLabel: person1Soup.label
+			- file: zip/src/lib/cateringCart.ts
+				location: zip/src/lib/cateringCart.ts:229
+				snippet: metaSummary: buildSpecialMenuFor2SummaryLines(config)
+		prevalence: common
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: BrowserRouter
+			responsibility: Provides the /react basename for the frontend application.
+			location: zip/src/main.tsx
+			relationship_to_domain: domain depends on this
+		- component: App route table
+			responsibility: Selects the catering page for /catering-wielkanocny.
+			location: zip/src/App.tsx
+			relationship_to_domain: domain depends on this
+		- component: CateringWielkanocnyPage
+			responsibility: Composes the active catering route and passes the special-menu seed into the section component.
+			location: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship_to_domain: domain depends on this
+		- component: CateringProductSpecialMenuFor2
+			responsibility: Renders the visible menu-for-2 UI and summary.
+			location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+			relationship_to_domain: domain depends on this
+		- component: cateringSpecialMenuFor2Seed
+			responsibility: Stores the authoring data for title, display name, option texts, and weights.
+			location: zip/src/data/cateringSpecialMenuFor2.ts
+			relationship_to_domain: domain depends on this
+		- component: cateringCart utilities
+			responsibility: Consumes displayName and label-derived summaries for cart persistence.
+			location: zip/src/lib/cateringCart.ts
+			relationship_to_domain: this uses domain outputs
+	interfaces_used_by_domain:
+		- interface: SpecialMenuFor2Seed
+			location: zip/src/data/cateringSpecialMenuFor2.ts:47
+			usage_pattern: Passed from page to component as the canonical source of shellProduct and option arrays.
+		- interface: SpecialMenuOption
+			location: zip/src/data/cateringSpecialMenuFor2.ts:8
+			usage_pattern: Supplies label and weight strings rendered on each option button.
+		- interface: SpecialMenuFor2Config
+			location: zip/src/data/cateringSpecialMenuFor2.ts:30
+			usage_pattern: Persists chosen labels into summary/cart state after selection.
+	data_flow_involving_domain: Route selection happens in App.tsx, the catering page imports cateringSpecialMenuFor2Seed, passes it into CateringProductSpecialMenuFor2, the component renders shellProduct.title/displayName and option.label/weight, then buildSpecialMenuFor2Config copies selected labels into config, and cateringCart persists displayName plus label-only summary lines.
+	key_relationships_to_domain:
+		- from: zip/src/main.tsx
+			to: zip/src/App.tsx
+			relationship: imports
+		- from: zip/src/App.tsx
+			to: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship: composes
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+			relationship: composes
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/data/cateringSpecialMenuFor2.ts
+			relationship: imports
+		- from: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+			to: zip/src/data/cateringSpecialMenuFor2.ts
+			relationship: imports
+		- from: zip/src/lib/cateringCart.ts
+			to: zip/src/data/cateringSpecialMenuFor2.ts
+			relationship: imports
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+	frameworks_used_in_domain:
+		- name: React
+			usage_in_domain: Component rendering and local state for the special menu configurator.
+		- name: React Router
+			usage_in_domain: Route activation for /catering-wielkanocny under /react.
+	libraries_used_in_domain:
+		- name: lucide-react
+			purpose_in_domain: Renders dietary and page icons within the special-menu and catering page UI.
+		- name: localStorage Web API
+			purpose_in_domain: Persists cart state for the special product selections.
+	external_apis_used_in_domain: []
+
+related_conventions:
+	naming_patterns_in_domain: Seed objects use the prefix cateringSpecialMenuFor2..., React sections use CateringProduct... names, and special-product constants use SPECIAL_MENU_FOR_2... uppercase constants.
+	structure_of_domain: Route/page/component/data/cart concerns are split into separate files; authoring data lives in src/data and rendering logic lives in src/components/sections.
+	error_handling_in_domain: Defensive null/shape guards are used in config building and cart deserialization; invalid or partial selections return null or are ignored.
+	testing_in_domain: Tests exist for the seed, component rendering, page route behavior, and cart utilities, but these are verification files rather than active data sources.
+	documentation_in_domain: No dedicated inline documentation for this special product beyond type definitions and test coverage.
+
+related_dependencies:
+	internal:
+		- component: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship_to_domain: injects the special-menu seed into the active page
+			direction: inbound
+		- component: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+			relationship_to_domain: renders shell and option text from the seed
+			direction: inbound
+		- component: zip/src/lib/cateringCart.ts
+			relationship_to_domain: persists displayName and label summaries derived from the seed
+			direction: outbound
+	external:
+		- name: react
+			purpose_for_domain: UI rendering and state management
+		- name: react-router-dom
+			purpose_for_domain: Route selection and basename handling
+		- name: lucide-react
+			purpose_for_domain: Visual indicators in the configurator
+
+domain_security_considerations:
+	sensitive_areas:
+		- area: local cart persistence
+			location: zip/src/lib/cateringCart.ts
+			concern: User-selected labels are serialized into localStorage, but no sensitive credentials are involved in this domain slice.
+	authentication_patterns_in_domain: None present in the researched frontend slice.
+	authorization_patterns_in_domain: None present in the researched frontend slice.
+	data_validation_in_domain: Selection and cart payloads are guarded by runtime validators such as isSpecialMenuFor2Config and record checks before reuse.
+
+testing_patterns:
+	framework: node:test with assert and renderToStaticMarkup-based component/page tests
+	coverage_areas:
+		- special-menu seed invariants
+		- special-menu component image rendering
+		- catering page route rendering
+		- cart summary and line behavior
+	test_organization: Tests sit alongside source files under zip/src/data, zip/src/components/sections, zip/src/pages, and zip/src/lib.
+	mock_patterns:
+		- MemoryRouter for route rendering tests
+		- Direct seed reuse in unit tests for summary/cart assertions
+
+open_questions:
+	- question: Should the requested per-person wording update affect only option.weight strings, or also the hardcoded intro copy and product naming copy?
+		context: The active UI mixes portion strings from data with explanatory copy hardcoded in JSX.
+	- question: Are generated bundles under zip/dist and zip/deploy-* considered deploy targets or only snapshots for verification?
+		context: They contain duplicated copies of the same text, but are not authoring sources.
+
+gaps:
+	- area: Deployment source of truth outside src
+		description: The research verified generated duplicates in dist and deploy snapshot bundles, but did not inspect deployment automation to determine which generated folder is currently published.
+		impact: Low impact on authoring-source identification; medium impact if a user intends to hot-edit built output instead of src.
+	- area: Backend product metadata outside zip
+		description: The shell product references baseProductId 53, but backend product definitions were intentionally out of scope for this frontend-only pass.
+		impact: Low impact on visible frontend wording, but it leaves backend-admin copy parity unverified.

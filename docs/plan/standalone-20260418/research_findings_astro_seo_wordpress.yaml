@@ -1,0 +1,473 @@
+plan_id: standalone-20260418
+objective: Explain how this Astro + WordPress repository is currently structured for static page-builder pages and what that means for SEO and AI answer engines/search models.
+focus_area: astro_seo_wordpress
+created_at: 2026-04-18T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Astro is currently a static overlay published under /astro, with build-time fetches from WordPress page meta via the bridge endpoint, not a full site replacement yet. Sources: astro-site/astro.config.mjs:4-6, astro-site/README.md:7-13, wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-52.
+  - Crawlability benefits already exist because Astro outputs HTML at build time, but the current head layer only renders title and viewport, so canonical, meta description, robots, OG/Twitter, and JSON-LD are effectively absent from the Astro shell. Sources: astro-site/src/layouts/BaseLayout.astro:20-21, astro-site/src/lib/types.ts:89.
+  - The page-builder contract already allows seo/meta/build payloads, but the Astro route and layout do not consume them, and static generation is limited to TEST_PAGE_SLUGS with only testowa-blueprint configured. Sources: astro-site/src/lib/types.ts:87-89, astro-site/src/lib/config.ts:1-3, astro-site/src/pages/[slug].astro:15-16.
+  - Migration risk is repo-specific: hardcoded old origin values, a hardcoded test slug, /react asset and checkout links, and the retained /astro mount point can all leave duplicate or off-canonical public surfaces after rollout. Sources: astro-site/astro.config.mjs:6, astro-site/src/lib/config.ts:1-3, astro-site/src/components/StickyCartControls.astro:53-54, docs/setup/klonowanie-astro-wordpress-woocommerce.md:49-50,244-248.
+
+research_metadata:
+  methodology: Hybrid retrieval using memory review, targeted grep_search, semantic_search, read_file, and one terminal fallback for literal-path line lookup; focused on Astro build/render code, WordPress bridge endpoints, and cloning/migration docs.
+  scope: Medium-depth repo-specific research limited to astro-site, wordpress-plugin/bulwar-bridge, and setup/docs related to the Astro page-builder deployment model.
+  confidence: high
+  coverage: 86
+  decision_blockers: 2
+  research_blockers: 0
+
+files_analyzed:
+  - file: astro.config.mjs
+    path: astro-site/astro.config.mjs
+    purpose: Defines the public Astro deployment base, output mode, and canonical site origin used by Astro helpers.
+    key_elements:
+      - element: defineConfig
+        type: configuration
+        location: astro-site/astro.config.mjs:3
+        description: Sets base to /astro, output to static, and site to https://client.example. Source: astro-site/astro.config.mjs:4-6.
+    language: javascript
+    lines: 6
+
+  - file: README.md
+    path: astro-site/README.md
+    purpose: States the intended proof-of-concept direction for Astro in this repo.
+    key_elements:
+      - element: POC target bullets
+        type: pattern
+        location: astro-site/README.md:7
+        description: Declares build-time WordPress page_builder_schema fetch, Woo source resolution, and static HTML output. Source: astro-site/README.md:7-13.
+    language: markdown
+    lines: 17
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Hardcodes the WordPress origin and the static list of slugs that Astro will build.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: Points Astro build-time fetches at https://client.example. Source: astro-site/src/lib/config.ts:1.
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Limits static page generation to testowa-blueprint. Source: astro-site/src/lib/config.ts:3.
+    language: typescript
+    lines: 3
+
+  - file: [slug].astro
+    path: astro-site/src/pages/[slug].astro
+    purpose: Central Astro route that builds static pages from WordPress schema and renders supported blocks.
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:15
+        description: Generates pages only from TEST_PAGE_SLUGS. Source: astro-site/src/pages/[slug].astro:15-16.
+      - element: loadGlobalLayout
+        type: function
+        location: astro-site/src/pages/[slug].astro:30
+        description: Fetches global layout and may fall back to DEFAULT_GLOBAL_LAYOUT_DATA depending on environment. Source: astro-site/src/pages/[slug].astro:32-43.
+      - element: page build promise
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:47
+        description: Builds page content and global layout together during Astro execution. Source: astro-site/src/pages/[slug].astro:47-49.
+      - element: title derivation
+        type: variable
+        location: astro-site/src/pages/[slug].astro:51
+        description: Constructs only a title string based on page.page.title with a BulwaR Astro suffix. Source: astro-site/src/pages/[slug].astro:51.
+      - element: section renderer
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:61
+        description: Renders only gallery-masonry-style1 and menu-category-photo-parallax-full-width sections; unsupported block keys render null. Source: astro-site/src/pages/[slug].astro:61-98.
+    language: astro
+    lines: 102
+
+  - file: BaseLayout.astro
+    path: astro-site/src/layouts/BaseLayout.astro
+    purpose: Provides the shared HTML shell for Astro pages.
+    key_elements:
+      - element: head tags
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:19
+        description: The head currently includes charset, viewport, title, and Google Fonts links, but no canonical, meta description, robots, OG/Twitter, or JSON-LD tags. Source: astro-site/src/layouts/BaseLayout.astro:19-24.
+      - element: shared chrome render
+        type: pattern
+        location: astro-site/src/layouts/BaseLayout.astro:28
+        description: Injects navbar, footer, and sticky cart on every page. Source: astro-site/src/layouts/BaseLayout.astro:28-33.
+    language: astro
+    lines: 34
+
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Defines the subset of page-builder schema Astro currently accepts.
+    key_elements:
+      - element: supported section union
+        type: type
+        location: astro-site/src/lib/types.ts:87
+        description: Limits sections to galleryBlockSchema and menuBlockSchema. Source: astro-site/src/lib/types.ts:46-87.
+      - element: seo field
+        type: type
+        location: astro-site/src/lib/types.ts:89
+        description: Allows an optional seo object in the schema contract, even though current Astro rendering does not use it. Source: astro-site/src/lib/types.ts:89.
+    language: typescript
+    lines: 95
+
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Fetches WordPress page-builder and global-layout payloads and normalizes schema objects.
+    key_elements:
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:201
+        description: Fetches page-builder JSON from the bridge endpoint and validates it through Zod. Source: astro-site/src/lib/wordpress.ts:201-209.
+      - element: fetchWordPressGlobalLayout
+        type: function
+        location: astro-site/src/lib/wordpress.ts:212
+        description: Fetches public global layout data and fails if meta status is unresolved. Source: astro-site/src/lib/wordpress.ts:212-236.
+      - element: DEFAULT_GLOBAL_LAYOUT_DATA
+        type: variable
+        location: astro-site/src/lib/wordpress.ts:31
+        description: Contains fallback logo and legal links that still reference /react assets and the old bulwarrestauracja.pl legal URLs. Source: astro-site/src/lib/wordpress.ts:31-141.
+    language: typescript
+    lines: 236
+
+  - file: pageBuilder.ts
+    path: astro-site/src/lib/pageBuilder.ts
+    purpose: Resolves build-time content for supported page-builder sections.
+    key_elements:
+      - element: buildStaticPage
+        type: function
+        location: astro-site/src/lib/pageBuilder.ts:5
+        description: Reads page_builder_schema from WordPress and resolves only one Woo-backed block type before returning the page. Source: astro-site/src/lib/pageBuilder.ts:5-20.
+    language: typescript
+    lines: 20
+
+  - file: woo.ts
+    path: astro-site/src/lib/woo.ts
+    purpose: Builds static menu content from Woo Store API responses.
+    key_elements:
+      - element: Woo Store API fetches
+        type: pattern
+        location: astro-site/src/lib/woo.ts:75
+        description: Pulls products and categories from /wp-json/wc/store/v1 during Astro build. Source: astro-site/src/lib/woo.ts:75,85,115.
+      - element: stripHtml product description mapping
+        type: pattern
+        location: astro-site/src/lib/woo.ts:58
+        description: Converts Woo short_description or description into plain-text menu item descriptions in static output. Source: astro-site/src/lib/woo.ts:58.
+    language: typescript
+    lines: 141
+
+  - file: StickyCartControls.astro
+    path: astro-site/src/components/StickyCartControls.astro
+    purpose: Documents the Astro-to-React handoff for checkout.
+    key_elements:
+      - element: static checkout notice
+        type: pattern
+        location: astro-site/src/components/StickyCartControls.astro:53
+        description: Explicitly states that checkout logic remains in the React app. Source: astro-site/src/components/StickyCartControls.astro:53.
+      - element: React checkout link
+        type: pattern
+        location: astro-site/src/components/StickyCartControls.astro:54
+        description: Hardcodes /react/<page-slug> as the escape hatch from static Astro to the React checkout flow. Source: astro-site/src/components/StickyCartControls.astro:54.
+    language: astro
+    lines: 55
+
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Exposes WordPress page_builder_schema and page_builder_schema_for_ai through the bridge.
+    key_elements:
+      - element: registerSchemaMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:15
+        description: Registers both render schema and AI schema meta keys on pages. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:15-16.
+      - element: show
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:19
+        description: Returns normalized page_builder_schema for a page slug and optionally aiSchema. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:33-52.
+      - element: resolvePage
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:131
+        description: Resolves the page strictly by slug using get_page_by_path. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:138.
+      - element: normalizeSchema
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:170
+        description: Rewrites page.slug, page.title, and page.status from the actual WP post before response. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:170-179.
+    language: php
+    lines: 225
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Registers the public bridge endpoints Astro depends on.
+    key_elements:
+      - element: global layout route
+        type: route
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40
+        description: Public GET route for the shared Astro layout payload. Source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44.
+      - element: page-builder route
+        type: route
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46
+        description: Public GET and protected POST routes for page-builder pages by slug. Source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-57.
+    language: php
+    lines: 58
+
+  - file: contracts.md
+    path: wordpress-plugin/bulwar-bridge/docs/contracts.md
+    purpose: Records the repo-level contract that React stays under /react and uses same-domain bridge endpoints.
+    key_elements:
+      - element: frontend location rule
+        type: contract
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:6
+        description: Confirms the React SPA remains under /react and uses same-domain /wp-json/bulwar/v1 routes. Source: wordpress-plugin/bulwar-bridge/docs/contracts.md:6.
+    language: markdown
+    lines: 220
+
+  - file: klonowanie-astro-wordpress-woocommerce.md
+    path: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+    purpose: Documents the intended deployment topology and the main migration pitfalls for this repo.
+    key_elements:
+      - element: topology rule
+        type: contract
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:19
+        description: Keeps WordPress on root, React on /react, and Astro on /astro. Source: docs/setup/klonowanie-astro-wordpress-woocommerce.md:19-20,256-268.
+      - element: migration pitfalls
+        type: pattern
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:244
+        description: Explicitly warns about old origin fallbacks and leaving testowa-blueprint in place. Source: docs/setup/klonowanie-astro-wordpress-woocommerce.md:244-248.
+    language: markdown
+    lines: 270
+
+patterns_found:
+  - category: architecture
+    pattern: WordPress meta -> bridge endpoint -> Astro build-time fetch -> static HTML output
+    description: The repo uses WordPress page meta as the authoring source, exposes it through the bulwar bridge, and freezes the result into static Astro pages during build. Sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:33-52, astro-site/src/lib/wordpress.ts:201-209, astro-site/README.md:7-13.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:33-52
+        snippet: $rawSchema = get_post_meta($page->ID, 'page_builder_schema', true); ... 'schema' => self::normalizeSchema($decoded, $page)
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:201-209
+        snippet: fetchWordPressPageBuilderSchema(...) -> pageBuilderSchema.parse(normalizeSchema(payload.data.schema))
+      - file: astro-site/README.md
+        location: astro-site/README.md:7-13
+        snippet: Astro fetches page_builder_schema from WordPress during build ... Astro outputs static HTML pages
+    prevalence: common
+
+  - category: structure
+    pattern: Static route generation is manually enumerated by TEST_PAGE_SLUGS
+    description: Astro does not discover published pages from WordPress; it only builds the slugs listed in config. Sources: astro-site/src/lib/config.ts:3, astro-site/src/pages/[slug].astro:15-16.
+    examples:
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:3
+        snippet: export const TEST_PAGE_SLUGS = ['testowa-blueprint'] as const;
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:15-16
+        snippet: return TEST_PAGE_SLUGS.map((slug) => ({ params: { slug } }));
+    prevalence: common
+
+  - category: seo
+    pattern: SEO contract exists in data model but is not rendered into the HTML head
+    description: The schema allows seo payloads, but the BaseLayout head only emits title and viewport. Sources: astro-site/src/lib/types.ts:89, astro-site/src/layouts/BaseLayout.astro:19-24.
+    examples:
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:89
+        snippet: seo: z.record(z.string(), z.unknown()).optional()
+      - file: astro-site/src/layouts/BaseLayout.astro
+        location: astro-site/src/layouts/BaseLayout.astro:20-21
+        snippet: <meta name="viewport" ... /> and <title>{title}</title>
+    prevalence: common
+
+  - category: architecture
+    pattern: Astro currently supports only a narrow subset of page-builder blocks
+    description: The Zod contract and route renderer only cover gallery and one Woo-backed menu section, so many page-builder shapes would not render even if the schema exists in WordPress. Sources: astro-site/src/lib/types.ts:46-87, astro-site/src/pages/[slug].astro:61-98, astro-site/src/lib/pageBuilder.ts:13-14.
+    examples:
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:46-87
+        snippet: sections: z.array(z.union([galleryBlockSchema, menuBlockSchema]))
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:61-98
+        snippet: if blockKey === 'gallery-masonry-style1' ... if blockKey === 'menu-category-photo-parallax-full-width' ... else null
+    prevalence: common
+
+  - category: migration
+    pattern: Old-instance references are retained in active Astro runtime/config fallback paths
+    description: The repo still carries old-domain URLs, the test slug, and /react handoff links inside active Astro code and default fallback data. Sources: astro-site/astro.config.mjs:6, astro-site/src/lib/config.ts:1-3, astro-site/src/lib/wordpress.ts:31-141, astro-site/src/components/StickyCartControls.astro:54.
+    examples:
+      - file: astro-site/astro.config.mjs
+        location: astro-site/astro.config.mjs:6
+        snippet: site: 'https://client.example'
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:1-3
+        snippet: WORDPRESS_BASE_URL = 'https://client.example'; TEST_PAGE_SLUGS = ['testowa-blueprint']
+      - file: astro-site/src/components/StickyCartControls.astro
+        location: astro-site/src/components/StickyCartControls.astro:54
+        snippet: <a class="cart-drawer__action" href="/react/<page-slug>">Otwórz checkout React</a>
+    prevalence: common
+
+  - category: content
+    pattern: Woo menu text is normalized into plain-text static snippets at build time
+    description: Product descriptions are stripped from HTML and converted into short text descriptions inside static menu columns, which helps renderable content but removes richer semantics from Woo content. Sources: astro-site/src/lib/woo.ts:58,75,115.
+    examples:
+      - file: astro-site/src/lib/woo.ts
+        location: astro-site/src/lib/woo.ts:58
+        snippet: description: stripHtml(product.short_description || product.description) || undefined
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: WordPress page post meta
+      responsibility: Stores render-oriented page_builder_schema and AI-oriented page_builder_schema_for_ai.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: Domain content source for Astro SEO-visible HTML.
+    - component: bulwar bridge REST layer
+      responsibility: Exposes public page-builder and global-layout JSON endpoints.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship_to_domain: Astro depends on this bridge during build.
+    - component: Astro dynamic page route
+      responsibility: Converts fetched schema into static pages for configured slugs.
+      location: astro-site/src/pages/[slug].astro
+      relationship_to_domain: Produces crawlable public HTML.
+    - component: Astro layout shell
+      responsibility: Emits document head and shared navigation/footer wrappers.
+      location: astro-site/src/layouts/BaseLayout.astro
+      relationship_to_domain: Determines page-level SEO tag output.
+    - component: Woo resolver
+      responsibility: Hydrates Woo-driven menu content into static sections.
+      location: astro-site/src/lib/woo.ts
+      relationship_to_domain: Injects product copy into final static HTML.
+  interfaces_used_by_domain:
+    - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:46-50
+      usage_pattern: Astro build fetch for page schema by slug.
+    - interface: GET /wp-json/bulwar/v1/layout/global
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44
+      usage_pattern: Astro build fetch for shared navbar/footer payload.
+    - interface: GET /wp-json/wc/store/v1/products and categories
+      location: astro-site/src/lib/woo.ts:75,85,115
+      usage_pattern: Build-time enrichment of menu sections from Woo content.
+  data_flow_involving_domain: WordPress page content is authored in page_builder_schema post meta, normalized and exposed through the bulwar bridge, fetched by Astro during build, optionally enriched with Woo Store API product/category data, then written as static HTML under the /astro mount point. Sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:33-52, astro-site/src/lib/wordpress.ts:201-236, astro-site/src/lib/pageBuilder.ts:5-20, docs/plan/astro-wordpress-page-builder/astro-hosting-layout.md:7-8,36,46.
+  key_relationships_to_domain:
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      to: astro-site/src/lib/wordpress.ts
+      relationship: exposes schema consumed by
+    - from: astro-site/src/lib/wordpress.ts
+      to: astro-site/src/lib/pageBuilder.ts
+      relationship: provides data to
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/pages/[slug].astro
+      relationship: feeds build content into
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/layouts/BaseLayout.astro
+      relationship: renders within
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/woo.ts
+      relationship: calls for Woo-backed block hydration
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - Astro
+    - PHP
+    - Markdown
+  frameworks_used_in_domain:
+    - name: Astro
+      usage_in_domain: Static site generation for page-builder pages under the /astro base path. Declared in astro-site/package.json:7 and configured in astro-site/astro.config.mjs:4-6.
+    - name: WordPress
+      usage_in_domain: Source CMS storing page-builder schema in page meta and serving bridge REST routes. Evidenced by wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php and Routes.php.
+    - name: WooCommerce Store API
+      usage_in_domain: Build-time product/category source for static menu sections. Evidenced by astro-site/src/lib/woo.ts:75,85,115.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Validates the subset of page-builder schema Astro accepts. Declared in astro-site/package.json:8 and used in astro-site/src/lib/types.ts:1-89.
+  external_apis_used_in_domain:
+    - name: WordPress REST API via bulwar bridge
+      integration_point: astro-site/src/lib/wordpress.ts:201-236
+    - name: Woo Store API
+      integration_point: astro-site/src/lib/woo.ts:75,85,115
+
+related_conventions:
+  naming_patterns_in_domain: The repo consistently uses explicit content-source names such as page_builder_schema, page_builder_schema_for_ai, globalLayout, TEST_PAGE_SLUGS, and WORDPRESS_BASE_URL. Sources: PageBuilderController.php:15-16, astro-site/src/lib/config.ts:1-3.
+  structure_of_domain: The Astro layer is split into config, data fetch/normalization helpers, a narrow page-builder resolver, and a single dynamic [slug] page wrapped by a shared BaseLayout. Sources: astro-site/src/lib/config.ts, astro-site/src/lib/wordpress.ts, astro-site/src/lib/pageBuilder.ts, astro-site/src/pages/[slug].astro, astro-site/src/layouts/BaseLayout.astro.
+  error_handling_in_domain: Bridge endpoints return Response::error(...) envelopes, while Astro fetch helpers throw runtime errors when schema/global-layout requests fail or when global-layout meta is unresolved. Sources: PageBuilderController.php:29-42, astro-site/src/lib/wordpress.ts:205-236.
+  testing_in_domain: The inspected domain shows tests for global layout parsing in Astro and controller tests in the bridge, but no SEO-oriented tests for head tags, canonical generation, or sitemap/robots behavior were found in the inspected scope. Sources: astro-site/src/lib/globalLayout.test.ts, wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php.
+  documentation_in_domain: Deployment and migration documentation is strong and repeatedly emphasizes preserving the / + /react + /astro topology and removing old-domain/test-slug references. Sources: docs/setup/klonowanie-astro-wordpress-woocommerce.md, docs/setup/repo-do-klonowania-plan-parametryzacji.md, docs/setup/sekwencyjny-przewodnik-klonowania.md:120-301.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: Supplies page schema content to Astro
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+      relationship_to_domain: Supplies shared chrome data to Astro
+      direction: outbound
+    - component: astro-site/src/lib/types.ts
+      relationship_to_domain: Restricts which schema shapes Astro accepts and renders
+      direction: outbound
+    - component: astro-site/src/components/StickyCartControls.astro
+      relationship_to_domain: Connects static pages to the React checkout path
+      direction: bidirectional
+  external:
+    - name: astro
+      purpose_for_domain: Static generation and HTML routing shell
+    - name: zod
+      purpose_for_domain: Runtime schema validation of fetched page payloads
+    - name: WordPress REST layer
+      purpose_for_domain: CMS-side content source
+    - name: Woo Store API
+      purpose_for_domain: Product/category hydration into static menu blocks
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Cross-instance content/source bleed
+      location: astro-site/astro.config.mjs:6 and astro-site/src/lib/config.ts:1-3
+      concern: Hardcoded old origin and test slug can make a new public instance fetch or point back to the old instance, causing wrong content and off-canonical URLs.
+    - area: Fallback public layout content
+      location: astro-site/src/lib/wordpress.ts:31-141
+      concern: Default fallback data contains old-brand legal URLs and /react logo paths, which can leak stale public references into generated pages when fallback is allowed.
+  authentication_patterns_in_domain: Public GET endpoints for page-builder pages and global layout are intentionally open, while page updates require edit_pages capability. Sources: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-57 and PageBuilderController.php:55-100.
+  authorization_patterns_in_domain: Unpublished pages are hidden unless the requester can edit the post. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:27-31.
+  data_validation_in_domain: Astro validates fetched schema through Zod, and the bridge normalizes page slug/title/status against the actual WP post before returning it. Sources: astro-site/src/lib/wordpress.ts:173-209, PageBuilderController.php:170-179.
+
+testing_patterns:
+  framework: Node/Astro built-in test style plus PHP unit-style controller tests in the bridge
+  coverage_areas:
+    - Global layout payload parsing and normalization in Astro
+    - Global layout controller behavior in the WordPress bridge
+  test_organization: Astro tests live under astro-site/src/lib; bridge tests live under wordpress-plugin/bulwar-bridge/tests.
+  mock_patterns:
+    - Fetch mocking for Astro global layout requests
+    - Controller-level response assertions for bridge payloads
+
+open_questions:
+  - question: Will Astro remain published under /astro in production, or is it intended to replace the root WordPress presentation layer later?
+    context: Current docs explicitly preserve WordPress on / and Astro on /astro, which strongly affects canonical strategy and duplicate-content exposure. Sources: docs/setup/klonowanie-astro-wordpress-woocommerce.md:19-20,256-268.
+    type: decision_blocker
+    affects: [seo-surface, migration-canonicals]
+  - question: Is the optional seo object in page_builder_schema intended to become the authoritative source for title, description, canonical, robots, and social metadata?
+    context: The contract already permits seo, but the active Astro layout does not consume it. Sources: astro-site/src/lib/types.ts:89, astro-site/src/layouts/BaseLayout.astro:19-24.
+    type: decision_blocker
+    affects: [head-metadata, ai-answer-surface]
+  - question: Is there an approved source of truth for the full list of publishable page-builder slugs, or is TEST_PAGE_SLUGS only a temporary POC gate?
+    context: Current static generation is hand-maintained and limited to testowa-blueprint. Sources: astro-site/src/lib/config.ts:3, astro-site/README.md:11-13.
+    type: research
+    affects: [indexation-coverage]
+
+gaps:
+  - area: Head metadata implementation
+    description: No canonical tag, meta description, robots directives, OG/Twitter tags, or JSON-LD were found in the Astro layout within the inspected scope, despite the schema allowing an seo object. Sources: astro-site/src/layouts/BaseLayout.astro:19-24, astro-site/src/lib/types.ts:89.
+    impact: decision_blocker
+    affects: [seo-surface, ai-answer-surface]
+  - area: Sitemap and robots delivery
+    description: No sitemap.xml or robots.txt implementation was found in the inspected Astro scope, and no generation logic surfaced during targeted searches. Sources: astro-site search pass over astro-site/** for sitemap|robots returned no implementation matches.
+    impact: research_blocker
+    affects: [indexation-coverage]
+  - area: Full block coverage for page-builder pages
+    description: Astro currently validates and renders only two block types, so a large subset of WordPress-authored pages could be partially empty or blank if additional block keys are used. Sources: astro-site/src/lib/types.ts:46-87, astro-site/src/pages/[slug].astro:61-98.
+    impact: research_blocker
+    affects: [content-completeness, crawl-quality]
+  - area: Old-origin and old-slug cleanup completeness
+    description: Active code and setup docs still reference https://client.example and testowa-blueprint, meaning migration correctness depends on systematic parameter replacement rather than current code neutrality. Sources: astro-site/astro.config.mjs:6, astro-site/src/lib/config.ts:1-3, astro-site/src/components/StickyCartControls.astro:54, docs/setup/klonowanie-astro-wordpress-woocommerce.md:244-248.
+    impact: decision_blocker
+    affects: [migration-canonicals, public-link-integrity]
+

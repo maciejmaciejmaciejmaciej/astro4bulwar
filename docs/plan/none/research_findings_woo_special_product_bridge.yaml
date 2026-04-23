@@ -1,0 +1,433 @@
+plan_id: none
+objective: validate the MVP architecture for configurable catering specials using one simple WooCommerce product plus configuration data carried through a bridge into WooCommerce order metadata or line item metadata
+focus_area: woo_special_product_bridge
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The current BULWAR APP frontend already models checkout as custom cart rows plus a Zod-validated form, and there is no implemented bridge yet; this makes a bridge-owned pricing and order-writing model compatible with the repo's present architecture.
+  - WooCommerce Store API supports server-side injection of cart item data during add-to-cart and supports additional checkout fields on the order, but it does not provide a simple client-driven arbitrary line-item-meta passthrough during checkout.
+  - A single simple Woo product is a sound MVP path only if the bridge remains authoritative for allowed configurations, price calculation, stock rules, and metadata persistence; otherwise order integrity and reporting drift quickly.
+  - If Store API cart and checkout are used, custom Woo hooks are required to carry configuration from request to cart item data and from cart item data to order line item meta; if the bridge creates orders directly via server-side Woo APIs or REST orders endpoints, this is simpler and more predictable.
+  - Non-negotiable caveats are payment-gateway compatibility, server-side validation of every submitted option, and the operational tradeoff that analytics, stock, coupons, and merchant workflows will see one base product unless extra reporting/meta conventions are added.
+
+research_metadata:
+  methodology: hybrid retrieval using semantic_search and grep_search in the BULWAR APP workspace, targeted read_file inspection of checkout/cart data flow, and external WooCommerce documentation/code discovery via fetch_webpage and github_repo against woocommerce/woocommerce
+  scope: focused analysis of the current React checkout shell, catering cart composition, WooCommerce Store API cart and checkout behavior, and Woo order/meta persistence mechanisms relevant to configurable special products
+  confidence: high
+  coverage: 88
+
+files_analyzed:
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Current frontend checkout shell and validation boundary for customer, payment, and delivery data
+    key_elements:
+      - element: checkoutSchema
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:13
+        description: Zod schema validates personal data, payment method, delivery method, and delivery details before submit
+      - element: CheckoutDrawerCartItem
+        type: interface
+        location: zip/components/CheckoutDrawer.tsx:59
+        description: Current cart item contract only carries display and pricing information, not server identifiers or configuration payloads
+      - element: onSubmit
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:149
+        description: Checkout currently logs and closes locally; no bridge integration exists yet
+    language: typescript
+    lines: 488
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Current catering page cart assembly and persistence model
+    key_elements:
+      - element: loadCartQuantities
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:59
+        description: Restores cart state from localStorage using product ids and quantities only
+      - element: buildCartItems
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:101
+        description: Transforms local cart quantities into checkout cart rows for display and totals
+      - element: handleAddToCart
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:124
+        description: Adds quantity by numeric product id without any server synchronization
+    language: typescript
+    lines: 214
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Validated source of catering catalog data and present client-side pricing contract
+    key_elements:
+      - element: CateringProductContract
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:20
+        description: Product contract includes id, display text, price, weight, and dietary flags
+      - element: normalizeCategory
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:107
+        description: Enforces local data integrity before rendering categories and products
+      - element: cateringWielkanocnyCategories
+        type: variable
+        location: zip/src/data/cateringWielkanocny.ts:136
+        description: Exports normalized category and product data used by the page
+    language: typescript
+    lines: 138
+  - file: Cart API docs
+    path: https://developer.woocommerce.com/docs/apis/store-api/resources-endpoints/cart/
+    purpose: Authoritative Store API cart behavior for add-item, cart response, tokens, and extension points
+    key_elements:
+      - element: POST /cart/add-item
+        type: endpoint
+        location: cart.md:Add Item
+        description: Accepts id, quantity, variation, and requires Nonce or Cart Token
+      - element: woocommerce_store_api_add_to_cart_data
+        type: hook
+        location: cart.md:Add Item
+        description: Allows server-side injection of supplemental cart_item_data from the Store API request before add_to_cart
+      - element: cart response item_data and extensions
+        type: pattern
+        location: cart.md:Cart Response
+        description: Cart items expose item_data and extensions in responses but those are derived server-side
+    language: markdown
+    lines: 0
+  - file: Checkout API docs
+    path: https://developer.woocommerce.com/docs/apis/store-api/resources-endpoints/checkout/
+    purpose: Authoritative Store API checkout behavior for draft orders, additional fields, and payment processing
+    key_elements:
+      - element: PUT /wc/store/v1/checkout
+        type: endpoint
+        location: checkout.md:Update checkout data
+        description: Persists additional_fields, payment_method, and order_notes onto the draft checkout order
+      - element: POST /wc/store/v1/checkout
+        type: endpoint
+        location: checkout.md:Process Order and Payment
+        description: Processes the cart-derived order using customer addresses, payment method, payment_data, and extensions
+      - element: additional_fields
+        type: pattern
+        location: checkout.md:Update checkout data
+        description: Supported mechanism for order-level extra fields in Store API checkout
+    language: markdown
+    lines: 0
+  - file: extend-store-api-add-custom-fields.md
+    path: https://github.com/woocommerce/woocommerce/tree/main/docs/apis/store-api/extending-store-api/extend-store-api-add-custom-fields.md
+    purpose: Official example of updating Woo orders from Store API request extensions
+    key_elements:
+      - element: woocommerce_store_api_checkout_update_order_from_request
+        type: hook
+        location: extend-store-api-add-custom-fields.md:264
+        description: Example action hook reads request extensions and writes order meta during Store API checkout
+    language: markdown
+    lines: 0
+  - file: class-wc-checkout.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/includes/class-wc-checkout.php
+    purpose: Core Woo order creation from cart and line item hook points
+    key_elements:
+      - element: create_order_line_items
+        type: function
+        location: class-wc-checkout.php:527
+        description: Iterates over cart items and creates WC_Order_Item_Product instances from cart values
+      - element: woocommerce_checkout_create_order_line_item
+        type: hook
+        location: class-wc-checkout.php:546
+        description: Primary hook to add custom line item meta before the order item is saved
+      - element: woocommerce_checkout_update_order_meta
+        type: hook
+        location: class-wc-checkout.php:455
+        description: Order-level post-create metadata hook for classic checkout flow
+    language: php
+    lines: 0
+  - file: CartAddItem.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/src/StoreApi/Routes/V1/CartAddItem.php
+    purpose: Store API add-to-cart request handling and request filter point
+    key_elements:
+      - element: woocommerce_store_api_add_to_cart_data
+        type: hook
+        location: CartAddItem.php:112
+        description: Filters request data into id, quantity, variation, and cart_item_data before cart insertion
+    language: php
+    lines: 0
+  - file: Checkout.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/src/StoreApi/Routes/V1/Checkout.php
+    purpose: Store API checkout route and order update hook points
+    key_elements:
+      - element: woocommerce_store_api_checkout_update_order_meta
+        type: hook
+        location: Checkout.php:676
+        description: Allows extensions to update order metadata during Store API checkout
+    language: php
+    lines: 0
+  - file: CheckoutTrait.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/src/StoreApi/Utilities/CheckoutTrait.php
+    purpose: Store API additional field persistence and request-to-order synchronization
+    key_elements:
+      - element: woocommerce_store_api_checkout_update_order_from_request
+        type: hook
+        location: CheckoutTrait.php:201
+        description: Exposes full REST request plus order object for extension-driven persistence during checkout
+      - element: persist_additional_fields_for_order
+        type: function
+        location: CheckoutTrait.php:227
+        description: Saves registered additional checkout fields onto the order in the other group
+    language: php
+    lines: 0
+  - file: additional-checkout-fields.md
+    path: https://github.com/woocommerce/woocommerce/tree/main/docs/block-development/extensible-blocks/cart-and-checkout-blocks/additional-checkout-fields.md
+    purpose: Official block checkout field model and persistence rules
+    key_elements:
+      - element: order information location
+        type: pattern
+        location: additional-checkout-fields.md:46
+        description: Order-only fields are rendered in order information and saved to order, not customer account
+      - element: direct meta key prefixes
+        type: pattern
+        location: additional-checkout-fields.md:148
+        description: Contact and order fields are stored under prefixed order meta keys like _wc_other/namespace/field
+      - element: backward compatibility note
+        type: pattern
+        location: additional-checkout-fields.md:1017
+        description: Meta keys are managed by Woo and are intentionally prefixed rather than fully custom
+    language: markdown
+    lines: 0
+  - file: class-wc-rest-orders-v2-controller.php
+    path: https://github.com/woocommerce/woocommerce/tree/main/plugins/woocommerce/includes/rest-api/Controllers/Version2/class-wc-rest-orders-v2-controller.php
+    purpose: REST orders controller behavior for direct order creation and line item meta_data support
+    key_elements:
+      - element: update_meta_data on line items
+        type: pattern
+        location: class-wc-rest-orders-v2-controller.php:908
+        description: REST order creation and updates can write line_items[].meta_data to order item meta directly
+    language: php
+    lines: 0
+
+patterns_found:
+  - category: architecture
+    pattern: Frontend is a custom catalog and checkout shell, not a Woo-native product configurator
+    description: The current React app keeps product catalog, cart state, pricing display, and checkout form outside Woo, with no current server sync.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:101
+        snippet: buildCartItems derives checkout rows entirely from local product data and local quantities
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:149
+        snippet: onSubmit only logs form data and does not talk to Woo or a bridge
+    prevalence: common
+  - category: structure
+    pattern: Client-side validation exists, but authoritative business validation is not implemented
+    description: The repo already validates customer fields locally, but all availability, pricing, and product option integrity still need a server-side authority.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:13
+        snippet: checkoutSchema validates personal and delivery data with Zod
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:38
+        snippet: normalizeString/normalizeNumber/normalizeBoolean enforce catalog data shape locally
+    prevalence: common
+  - category: architecture
+    pattern: Store API is cart-and-checkout centric and expects server-side extension hooks for extra data
+    description: Woo Store API permits extra request data only through extensibility hooks and registered checkout fields, not by arbitrary free-form line item metadata in the checkout payload.
+    examples:
+      - file: cart.md
+        location: cart.md:Add Item
+        snippet: use woocommerce_store_api_add_to_cart_data to inject custom request data into cart_item_data
+      - file: CheckoutTrait.php
+        location: CheckoutTrait.php:201
+        snippet: woocommerce_store_api_checkout_update_order_from_request exposes request plus order for extension persistence
+      - file: additional-checkout-fields.md
+        location: additional-checkout-fields.md:46
+        snippet: order information fields are saved as order meta under managed prefixes
+    prevalence: common
+  - category: architecture
+    pattern: Woo order line item meta is first-class, but it is written server-side during order creation
+    description: Core Woo line items save internal line item props plus any custom metadata added via hooks or direct REST order payloads.
+    examples:
+      - file: class-wc-checkout.php
+        location: class-wc-checkout.php:546
+        snippet: woocommerce_checkout_create_order_line_item fires before line item save
+      - file: class-wc-rest-orders-v2-controller.php
+        location: class-wc-rest-orders-v2-controller.php:908
+        snippet: REST orders controller updates line item meta_data when provided in line item payloads
+    prevalence: common
+  - category: naming
+    pattern: Additional checkout fields are namespace-scoped and meta-prefixed
+    description: Store API additional_fields are managed through namespace/id keys and persisted under Woo-controlled prefixes rather than arbitrary merchant-chosen raw meta keys.
+    examples:
+      - file: additional-checkout-fields.md
+        location: additional-checkout-fields.md:148
+        snippet: _wc_other/my-plugin-namespace/my-field
+      - file: CheckoutSchema.php
+        location: CheckoutSchema.php:293
+        snippet: get_additional_fields_schema builds schema from registered fields only
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: React catering page cart state
+      responsibility: Holds selected products and quantities before checkout
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain produces the payload the bridge would have to canonicalize
+    - component: Checkout drawer form
+      responsibility: Collects customer, payment, and delivery information
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: domain would extend this payload with configurable special-product options or identifiers
+    - component: Bridge service
+      responsibility: Translate frontend cart and checkout payload into Woo-compatible cart/order operations
+      location: planned, not implemented in repo
+      relationship_to_domain: domain depends on this as the trust boundary and persistence layer
+    - component: Woo Store API cart and checkout
+      responsibility: Maintain session cart, draft order, checkout processing, and payment handoff
+      location: WooCommerce Store API
+      relationship_to_domain: optional integration path if the bridge chooses cart-and-checkout flow instead of direct order creation
+    - component: Woo order creation internals
+      responsibility: Create order line items from cart and persist line item and order metadata
+      location: class-wc-checkout.php and StoreApi OrderController/CheckoutTrait
+      relationship_to_domain: receives validated configuration and writes the final order representation
+  interfaces_used_by_domain:
+    - interface: CheckoutDrawerCartItem
+      location: zip/components/CheckoutDrawer.tsx
+      usage_pattern: current client-facing line item shape for UI and total calculation
+    - interface: CateringProductContract
+      location: zip/src/data/cateringWielkanocny.ts
+      usage_pattern: current client-side source for product ids and displayed prices
+    - interface: Store API cart add-item payload
+      location: cart.md:Add Item
+      usage_pattern: accepts product id, quantity, variation, and extension-supplied cart_item_data only through hooks
+    - interface: Store API checkout payload
+      location: checkout.md:Process Order and Payment
+      usage_pattern: accepts customer addresses, payment_method, payment_data, and extension/additional_fields data, not arbitrary line item meta arrays
+    - interface: REST orders line_items.meta_data
+      location: class-wc-rest-orders-v2-controller.php:908
+      usage_pattern: supports direct server-side creation of order items with metadata when bypassing Store API checkout
+  data_flow_involving_domain: Frontend catalog data and cart selections are assembled locally into checkout rows, then would be posted to a future bridge. The bridge must resolve those selections against server-side product/configuration rules, calculate the canonical line price, and either (a) inject cart_item_data into Store API cart items and later copy it into order line item meta during checkout hooks, or (b) create the Woo order directly and write line item meta_data itself. In both cases Woo stores the final order and exposes order meta and line item meta to admin, emails, and API consumers.
+  key_relationships_to_domain:
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/components/CheckoutDrawer.tsx
+      relationship: composes
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+    - from: Store API cart add-item
+      to: woocommerce_store_api_add_to_cart_data
+      relationship: calls extension hook before cart insertion
+    - from: Store API order synchronization
+      to: class-wc-checkout.php create_order_line_items
+      relationship: delegates line item creation from cart
+    - from: class-wc-checkout.php create_order_line_items
+      to: woocommerce_checkout_create_order_line_item
+      relationship: calls hook for line item meta customization
+    - from: Store API checkout request
+      to: woocommerce_store_api_checkout_update_order_from_request
+      relationship: calls extension hook for order-level persistence from request data
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - PHP
+    - JSON
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: renders the custom catering catalog, cart summary, and checkout form in zip/
+    - name: WooCommerce Store API
+      usage_in_domain: optional cart and checkout mechanism for session-driven draft-order checkout
+    - name: WooCommerce REST API
+      usage_in_domain: direct order-creation alternative that supports line item meta_data payloads
+  libraries_used_in_domain:
+    - name: react-hook-form
+      purpose_in_domain: manages current checkout form state
+    - name: zod
+      purpose_in_domain: validates current frontend checkout inputs before submission
+    - name: WooCommerce Blocks CheckoutFields
+      purpose_in_domain: registers and persists Store API additional checkout fields onto orders
+  external_apis_used_in_domain:
+    - name: WooCommerce Store API
+      integration_point: cart and checkout endpoints with Nonce or Cart Token requirements
+    - name: WooCommerce REST Orders API
+      integration_point: direct server-side order creation with line_items.meta_data support
+
+affected_behavior_summary:
+  mvp_viability: Using one simple Woo product as the purchasable SKU and storing configuration outside native variations is technically viable for an MVP.
+  viability_conditions: It works well only when the bridge owns option validation, price calculation, and metadata persistence; Woo is then treated primarily as order ledger and payment/order management backend.
+  failure_mode_if_ignored: If client selections are trusted directly or expected to survive Store API checkout without hooks, the order will either lose configuration detail or persist inconsistent price and fulfillment data.
+
+related_conventions:
+  naming_patterns_in_domain: Frontend cart and checkout contracts use explicit typed interfaces, while Woo additional fields use namespace or field identifiers and Woo-managed meta prefixes
+  structure_of_domain: Current repo keeps catalog data and cart logic in zip/src and zip/components; bridge logic is planned but absent; Woo extensibility points live in filters/actions around Store API and checkout internals
+  error_handling_in_domain: Frontend uses schema validation and safe parsing patterns; Woo Store API expects extension hooks to throw exceptions to block invalid add-to-cart or checkout operations
+  testing_in_domain: No bridge tests exist in the repo; Woo upstream docs and tests show additional field and checkout request persistence behavior
+  documentation_in_domain: Project instructions state the bridge should hide Woo credentials and validate delivery constraints; Woo docs clearly separate Store API additional_fields from direct order line item meta
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: provides client-visible price and product mapping that the bridge must not trust blindly
+      direction: outbound
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: provides customer/delivery form data to the future bridge
+      direction: outbound
+    - component: planned bridge middleware
+      relationship_to_domain: receives all frontend order data and produces the canonical Woo write operations
+      direction: bidirectional
+  external:
+    - name: WooCommerce core checkout flow
+      purpose_for_domain: converts cart items into order line items and exposes hooks for custom line item meta
+    - name: WooCommerce Store API
+      purpose_for_domain: manages draft-order checkout but requires custom hooks for non-standard cart/order data
+    - name: WooCommerce REST Orders API
+      purpose_for_domain: simpler direct path for bridge-owned order creation with explicit line_items.meta_data
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: price authority
+      location: bridge and Woo order creation path
+      concern: client-side submitted prices or option totals must never be trusted; the bridge must recompute canonical totals from server-side rules
+    - area: configuration payload integrity
+      location: bridge request handling and Woo hooks
+      concern: option ids, quantities, modifiers, and free-text inputs must be validated, sanitized, and bounded before being stored or displayed
+    - area: payment method handoff
+      location: Store API checkout or payment gateway integration
+      concern: chosen payment method and payment_data must be compatible with the chosen order-creation path and gateway expectations
+    - area: order item display surfaces
+      location: Woo admin, emails, order details, and APIs
+      concern: stored meta values may be rendered to staff and customers, so output-safe, human-readable, sanitized values are required
+  authentication_patterns_in_domain: Store API checkout and cart mutations require a Nonce token or Cart Token; direct REST orders creation requires authenticated server credentials and should only be performed from the bridge
+  authorization_patterns_in_domain: The frontend must never hold privileged Woo credentials; only the bridge or WordPress-side extension code should create orders or write protected metadata
+  data_validation_in_domain: Required validation includes allowed configuration combinations, quantity limits, fulfillment windows, delivery eligibility, server-side price recomputation, string sanitization, and guarding against oversized or malformed metadata
+
+testing_patterns:
+  framework: mixed evidence from repo TypeScript usage and WooCommerce upstream PHP tests/docs
+  coverage_areas:
+    - server-side recomputation of price from submitted configuration
+    - invalid option combinations rejected before order creation
+    - cart item data preserved into order line item meta when using Store API hooks
+    - additional checkout fields persisted and readable from order meta
+    - payment method compatibility with the selected order creation flow
+    - admin, email, and API visibility of stored meta
+  test_organization: bridge contract tests plus WordPress integration tests are the relevant pattern; current repo has no implemented bridge test suite
+  mock_patterns:
+    - mock frontend payloads with tampered price and invalid option ids
+    - exercise Store API request hooks with WP_REST_Request fixtures
+    - assert resulting WC_Order and WC_Order_Item_Product metadata values
+
+open_questions:
+  - question: Will the bridge create Woo orders directly, or must it strictly drive Woo Store API cart and checkout endpoints?
+    context: This determines whether line item meta can be written directly in the bridge or must be propagated through Store API cart and checkout hooks.
+  - question: Does the special catering product need gateway-driven online payment through standard Woo checkout, or is cash/transfer/manual capture sufficient for MVP?
+    context: Gateway requirements strongly influence whether a draft-order Store API checkout path is preferable to direct order creation.
+  - question: Are configurable options purely descriptive, or can they change price, tax class, stock consumption, preparation routing, or fulfillment window?
+    context: Once options affect price or operations, the bridge must own a full rules engine rather than just storing labels.
+  - question: How much reporting granularity is required in Woo admin and downstream analytics?
+    context: One base product plus meta is operationally simple but weak for native SKU-level reporting, stock accounting, and category-based merchandising.
+  - question: Are free-text customer configuration inputs required?
+    context: Free text substantially raises sanitization, display, and staff-fulfillment complexity relative to strict enum-based options.
+
+gaps:
+  - area: bridge implementation
+    description: The repository contains no actual bridge code, so all bridge behavior remains architectural rather than verified in-project
+    impact: medium; feasibility is clear, but exact payload contract and server responsibilities are still unimplemented
+  - area: live Woo configuration
+    description: The workspace does not expose active payment gateways, shipping setup, tax classes, or plugin landscape on the target WordPress instance
+    impact: medium; gateway and extension compatibility could materially change the preferred integration path
+  - area: operational requirements for configurable specials
+    description: No finalized rule set exists in the repo for option combinations, pricing modifiers, stock logic, or merchant-side display requirements
+    impact: high; these rules decide whether simple-product-plus-meta remains a clean MVP or becomes operationally brittle

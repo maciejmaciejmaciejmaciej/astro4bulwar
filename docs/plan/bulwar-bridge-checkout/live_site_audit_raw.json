@@ -1,0 +1,81 @@
+{
+  "wpPath": "client.example/public_html",
+  "generatedAt": "2026-03-24T16:41:22.932Z",
+  "results": {
+    "site": {
+      "ok": true,
+      "label": "site",
+      "output": "https://client.example\n---\nhttps://client.example"
+    },
+    "plugins": {
+      "ok": true,
+      "label": "plugins",
+      "output": "[{\"name\":\"akismet\",\"status\":\"inactive\",\"version\":\"5.3.7\",\"update\":\"available\"},{\"name\":\"hello\",\"status\":\"inactive\",\"version\":\"1.7.2\",\"update\":\"none\"},{\"name\":\"litespeed-cache\",\"status\":\"active\",\"version\":\"7.0.1\",\"update\":\"available\"},{\"name\":\"woocommerce\",\"status\":\"active\",\"version\":\"10.6.1\",\"update\":\"none\"}]"
+    },
+    "muPlugins": {
+      "ok": true,
+      "label": "muPlugins",
+      "output": "[]"
+    },
+    "themes": {
+      "ok": true,
+      "label": "themes",
+      "output": "[{\"name\":\"twentytwentyfive\",\"status\":\"inactive\",\"version\":\"1.2\",\"update\":\"available\"},{\"name\":\"twentytwentyfour\",\"status\":\"active\",\"version\":\"1.3\",\"update\":\"available\"},{\"name\":\"twentytwentyone\",\"status\":\"inactive\",\"version\":\"2.5\",\"update\":\"available\"},{\"name\":\"twentytwentythree\",\"status\":\"inactive\",\"version\":\"1.6\",\"update\":\"none\"}]"
+    },
+    "postTypes": {
+      "ok": true,
+      "label": "postTypes",
+      "output": "[{\"name\":\"post\",\"label\":\"Wpisy\",\"public\":true,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"page\",\"label\":\"Strony\",\"public\":true,\"show_ui\":true,\"hierarchical\":true},{\"name\":\"attachment\",\"label\":\"Media\",\"public\":true,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"revision\",\"label\":\"Poprzednie wersje\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"nav_menu_item\",\"label\":\"Elementy menu nawigacyjnego\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"custom_css\",\"label\":\"W\\u0142asny CSS\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"customize_changeset\",\"label\":\"Zestawy zmian\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"oembed_cache\",\"label\":\"Odpowiedzi oEmbed\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"user_request\",\"label\":\"\\u017b\\u0105dania u\\u017cytkownik\\u00f3w\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"wp_block\",\"label\":\"Wzorce\",\"public\":false,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"wp_template\",\"label\":\"Szablony\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"wp_template_part\",\"label\":\"Cz\\u0119\\u015bci szablonu\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"wp_global_styles\",\"label\":\"Style og\\u00f3lne\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"wp_navigation\",\"label\":\"Menu nawigacyjne\",\"public\":false,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"wp_font_family\",\"label\":\"Rodziny kroju pisma\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"wp_font_face\",\"label\":\"Odmiany kroju pisma\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"product\",\"label\":\"Produkty\",\"public\":true,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"product_variation\",\"label\":\"Warianty\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"shop_order\",\"label\":\"Zam\\u00f3wienia\",\"public\":false,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"shop_order_refund\",\"label\":\"Zwroty\",\"public\":false,\"show_ui\":false,\"hierarchical\":false},{\"name\":\"shop_coupon\",\"label\":\"Kupony\",\"public\":false,\"show_ui\":true,\"hierarchical\":false},{\"name\":\"shop_order_placehold\",\"label\":\"Wpisy\",\"public\":false,\"show_ui\":false,\"hierarchical\":false}]"
+    },
+    "wooOptions": {
+      "ok": true,
+      "label": "wooOptions",
+      "output": "USD\n---\nUS:CA\n---\nall\n---\n\n---\nno\n---\nno\n---\nshipping\n---\nno\n---\nyes\n---\nno"
+    },
+    "gatewayOptions": {
+      "ok": true,
+      "label": "gatewayOptions",
+      "output": "[]"
+    },
+    "paymentGateways": {
+      "ok": true,
+      "label": "paymentGateways",
+      "output": "{\"id\":\"bacs\",\"enabled\":\"no\",\"title\":\"Przelew bankowy\",\"class\":\"WC_Gateway_BACS\"}\n{\"id\":\"cheque\",\"enabled\":\"no\",\"title\":\"Płatność czekiem\",\"class\":\"WC_Gateway_Cheque\"}\n{\"id\":\"cod\",\"enabled\":\"no\",\"title\":\"Za pobraniem\",\"class\":\"WC_Gateway_COD\"}"
+    },
+    "shippingZones": {
+      "ok": true,
+      "label": "shippingZones",
+      "output": ""
+    },
+    "shippingLocations": {
+      "ok": true,
+      "label": "shippingLocations",
+      "output": ""
+    },
+    "shippingMethods": {
+      "ok": true,
+      "label": "shippingMethods",
+      "output": ""
+    },
+    "taxRates": {
+      "ok": true,
+      "label": "taxRates",
+      "output": ""
+    },
+    "taxClasses": {
+      "ok": true,
+      "label": "taxClasses",
+      "output": "Reduced rate\nZero rate"
+    },
+    "wooPages": {
+      "ok": true,
+      "label": "wooPages",
+      "output": "7\n---\n8\n---\n9\n---\n10\n---"
+    },
+    "customCode": {
+      "ok": true,
+      "label": "customCode",
+      "output": "[MU-PLUGINS]\n[THEME FUNCTIONS]\nwp-content/themes/twentytwentyfour/functions.php\nwp-content/themes/twentytwentyfour/parts/footer.html\nwp-content/themes/twentytwentyfour/parts/header.html\nwp-content/themes/twentytwentyfour/parts/post-meta.html\nwp-content/themes/twentytwentyfour/parts/sidebar.html\nwp-content/themes/twentytwentyfour/patterns/banner-hero.php\nwp-content/themes/twentytwentyfour/patterns/banner-project-description.php\nwp-content/themes/twentytwentyfour/patterns/cta-content-image-on-right.php\nwp-content/themes/twentytwentyfour/patterns/cta-pricing.php\nwp-content/themes/twentytwentyfour/patterns/cta-rsvp.php\nwp-content/themes/twentytwentyfour/patterns/cta-services-image-left.php\nwp-content/themes/twentytwentyfour/patterns/cta-subscribe-centered.php\nwp-content/themes/twentytwentyfour/patterns/footer-centered-logo-nav.php\nwp-content/themes/twentytwentyfour/patterns/footer-colophon-3-col.php\nwp-content/themes/twentytwentyfour/patterns/footer.php\nwp-content/themes/twentytwentyfour/patterns/gallery-full-screen-image.php\nwp-content/themes/twentytwentyfour/patterns/gallery-offset-images-grid-2-col.php\nwp-content/themes/twentytwentyfour/patterns/gallery-offset-images-grid-3-col.php\nwp-content/themes/twentytwentyfour/patterns/gallery-offset-images-grid-4-col.php\nwp-content/themes/twentytwentyfour/patterns/gallery-project-layout.php\nwp-content/themes/twentytwentyfour/patterns/hidden-404.php\nwp-content/themes/twentytwentyfour/patterns/hidden-comments.php\nwp-content/themes/twentytwentyfour/patterns/hidden-no-results.php\nwp-content/themes/twentytwentyfour/patterns/hidden-portfolio-hero.php\nwp-content/themes/twentytwentyfour/patterns/hidden-post-meta.php\nwp-content/themes/twentytwentyfour/patterns/hidden-post-navigation.php\nwp-content/themes/twentytwentyfour/patterns/hidden-posts-heading.php\nwp-content/themes/twentytwentyfour/patterns/hidden-search.php\nwp-content/themes/twentytwentyfour/patterns/hidden-sidebar.php\nwp-content/themes/twentytwentyfour/patterns/page-about-business.php\nwp-content/themes/twentytwentyfour/patterns/page-home-blogging.php\nwp-content/themes/twentytwentyfour/patterns/page-home-business.php\nwp-content/themes/twentytwentyfour/patterns/page-home-portfolio-gallery.php\nwp-content/themes/twentytwentyfour/patterns/page-home-portfolio.php\nwp-content/themes/twentytwentyfour/patterns/page-newsletter-landing.php\nwp-content/themes/twentytwentyfour/patterns/page-portfolio-overview.php\nwp-content/themes/twentytwentyfour/patterns/page-rsvp-landing.php\nwp-content/themes/twentytwentyfour/patterns/posts-1-col.php\nwp-content/themes/twentytwentyfour/patterns/posts-3-col.php\nwp-content/themes/twentytwentyfour/patterns/posts-grid-2-col.php\nwp-content/themes/twentytwentyfour/patterns/posts-images-only-3-col.php\nwp-content/themes/twentytwentyfour/patterns/posts-images-only-offset-4-col.php\nwp-content/themes/twentytwentyfour/patterns/posts-list.php\nwp-content/themes/twentytwentyfour/patterns/team-4-col.php\nwp-content/themes/twentytwentyfour/patterns/template-archive-blogging.php\nwp-content/themes/twentytwentyfour/patterns/template-archive-portfolio.php\nwp-content/themes/twentytwentyfour/patterns/template-home-blogging.php\nwp-content/themes/twentytwentyfour/patterns/template-home-business.php\nwp-content/themes/twentytwentyfour/patterns/template-home-portfolio.php\nwp-content/themes/twentytwentyfour/patterns/template-index-blogging.php\nwp-content/themes/twentytwentyfour/patterns/template-index-portfolio.php\nwp-content/themes/twentytwentyfour/patterns/template-search-blogging.php\nwp-content/themes/twentytwentyfour/patterns/template-search-portfolio.php\nwp-content/themes/twentytwentyfour/patterns/template-single-portfolio.php\nwp-content/themes/twentytwentyfour/patterns/testimonial-centered.php\nwp-content/themes/twentytwentyfour/patterns/text-alternating-images.php\nwp-content/themes/twentytwentyfour/patterns/text-centered-statement-small.php\nwp-content/themes/twentytwentyfour/patterns/text-centered-statement.php\nwp-content/themes/twentytwentyfour/patterns/text-faq.php\nwp-content/themes/twentytwentyfour/patterns/text-feature-grid-3-col.php\nwp-content/themes/twentytwentyfour/patterns/text-project-details.php\nwp-content/themes/twentytwentyfour/patterns/text-title-left-image-right.php\nwp-content/themes/twentytwentyfour/templates/404.html\nwp-content/themes/twentytwentyfour/templates/archive.html\nwp-content/themes/twentytwentyfour/templates/home.html\nwp-content/themes/twentytwentyfour/templates/index.html\nwp-content/themes/twentytwentyfour/templates/page-no-title.html\nwp-content/themes/twentytwentyfour/templates/page-wide.html\nwp-content/themes/twentytwentyfour/templates/page-with-sidebar.html\nwp-content/themes/twentytwentyfour/templates/page.html\nwp-content/themes/twentytwentyfour/templates/search.html\nwp-content/themes/twentytwentyfour/templates/single-with-sidebar.html\nwp-content/themes/twentytwentyfour/templates/single.html\n[CUSTOM HOOK SEARCH]\nwp-content/themes/twentytwentyfour/functions.php:147:add_action( 'init', 'twentytwentyfour_block_styles' );\nwp-content/themes/twentytwentyfour/functions.php:181:add_action( 'init', 'twentytwentyfour_block_stylesheets' );\nwp-content/themes/twentytwentyfour/functions.php:206:add_action( 'init', 'twentytwentyfour_pattern_categories' );"
+    }
+  }
+}

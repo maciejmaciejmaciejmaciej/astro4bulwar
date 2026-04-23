@@ -1,0 +1,294 @@
+plan_id: catering-json-products
+objective: Convert the catering page to render JSON-driven categories and products, reuse the current CateringProductListAlt section for each category, add vegan or vegetarian indicators under the combined product text, keep products addable to cart, right-align pricing, source category background images from public/images via image_url, preserve the existing design patterns, and keep the frontend build passing.
+created_at: "2026-03-24T00:00:00Z"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+tldr: |
+  The catering page now renders fully from the JSON-backed data source under zip/src/data, reuses CateringProductListAlt for every category, shows dietary indicators beneath the combined product text, keeps pricing right-aligned, and routes add-to-cart actions into shared page-level cart state consumed by ProductItemAlt, StickyCartControls, and CheckoutDrawer. Validation completed with clean diagnostics on the affected files and a successful frontend production build.
+open_questions: []
+
+completion_summary:
+  implementation:
+    - Added a JSON source of truth under zip/src/data plus a typed normalization layer that exposes reusable category and product contracts.
+    - Refactored the category section and product row so all categories render through the same reusable section and dietary metadata is displayed directly beneath the combined product text.
+    - Replaced mock cart data with shared page-level cart state wired into the product rows, sticky cart controls, and checkout drawer.
+  validation:
+    - Confirmed there are no current editor diagnostics in the affected route, data, section, drawer, sticky cart, or tsconfig files.
+    - Ran the frontend production build from zip with `npm run build`; Vite completed successfully on 2026-03-24.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The new data source is placed under src/data as JSON, but TypeScript cannot import it cleanly in the current Vite app configuration.
+      likelihood: medium
+      impact: high
+      mitigation: Treat direct JSON import as part of the implementation scope and either enable resolveJsonModule in the main tsconfig or add a tiny typed adapter that keeps the source of truth in JSON without changing the page contract.
+    - scenario: Cart state remains split between ProductItemAlt, StickyCartControls, and CheckoutDrawer, so products appear addable but the drawer still shows mock items.
+      likelihood: high
+      impact: critical
+      mitigation: Centralize cart state in CateringWielkanocnyPage and make the row and cart surfaces fully prop-driven before removing any mock data.
+    - scenario: image_url values do not match existing public filenames, producing blank hero bands for some categories.
+      likelihood: medium
+      impact: medium
+      mitigation: Normalize image_url values against the confirmed public/images asset set during the data-preparation task and keep the existing bgImage rendering pattern unchanged.
+  assumptions:
+    - The current CateringProductListAlt and ProductItemAlt layout is the correct visual baseline and should be extended rather than redesigned.
+    - A page-local cart state is sufficient for this route and no app-wide store is required.
+    - The existing public image path convention /react/images/... must be preserved because the app is built with Vite base /react/.
+    - The new catering menu source of truth should live under zip/src/data and remain human-editable as JSON.
+
+implementation_specification:
+  code_structure: Keep the data source and data-shaping logic inside zip/src/data, keep section and row rendering inside the existing section components, and keep cart state orchestration inside CateringWielkanocnyPage with prop-driven updates flowing into StickyCartControls and CheckoutDrawer. Avoid introducing a new design system, global state library, or separate cart feature module.
+  affected_areas:
+    - zip/src/data/
+    - zip/src/components/sections/CateringProductListAlt.tsx
+    - zip/src/components/sections/ProductItemAlt.tsx
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+    - zip/components/CheckoutDrawer.tsx
+    - zip/src/components/sections/StickyCartControls.tsx
+    - zip/tsconfig.json
+  component_details:
+    - component: catering JSON data module
+      responsibility: Hold the editable category and product source of truth, including category title, description, image_url, product ids, pricing, gramatura, and vegan or vegetarian flags in a shape the page can consume safely.
+      interfaces:
+        - Exports typed category and product records derived from the JSON source.
+        - Guarantees each category provides an image_url compatible with the existing bgImage prop pattern.
+    - component: CateringProductListAlt
+      responsibility: Render a single reusable category block from props and map its products into ProductItemAlt rows while preserving the current overlay image panel and table-like list shell.
+      interfaces:
+        - Accepts category title, optional category description, normalized products, background image, and cart action callbacks.
+    - component: ProductItemAlt
+      responsibility: Render the combined product text, dietary icon row, quantity controls, right-aligned price block, and add-to-cart interaction without owning cart truth locally.
+      interfaces:
+        - Accepts product id, text fields, dietary flags, quantity value, and callbacks for quantity and add-to-cart actions.
+    - component: CateringWielkanocnyPage
+      responsibility: Import the JSON-backed categories, render one CateringProductListAlt per category, own cart state, and pass aggregated data to StickyCartControls and CheckoutDrawer.
+      interfaces:
+        - Maps category data to repeated section instances.
+        - Exposes cart items, totals, and UI handlers to the drawer and sticky controls.
+    - component: CheckoutDrawer and StickyCartControls
+      responsibility: Stop using placeholder order data and reflect the shared cart state coming from the page while preserving the existing shell and interaction model.
+      interfaces:
+        - Receive cart items, totals, counts, and open or close handlers through props.
+  dependencies:
+    - component: CateringWielkanocnyPage
+      relationship: composes CateringProductListAlt for each category and owns the cart state consumed by ProductItemAlt, StickyCartControls, and CheckoutDrawer
+    - component: CateringProductListAlt
+      relationship: maps normalized category products into ProductItemAlt rows
+    - component: ProductItemAlt
+      relationship: emits quantity and add-to-cart actions back to page-owned cart state
+    - component: CheckoutDrawer
+      relationship: renders the current cart summary and checkout form from page-provided cart data instead of mock constants
+    - component: StickyCartControls
+      relationship: reflects cart count or summary state and opens the drawer
+  integration_points:
+    - React route composition in zip/src/pages/CateringWielkanocnyPage.tsx
+    - Static data loading from zip/src/data
+    - Existing section shell styles and bgImage prop flow in CateringProductListAlt
+    - Existing cart drawer and sticky bar surfaces
+    - Frontend build command in zip/package.json
+
+contracts:
+  - from_task: prepare_catering_json_contract
+    to_task: refactor_category_section_and_row
+    interface: A typed JSON-backed category collection with category title, optional description, image_url, and product records including id, combined text, gramatura, numeric or formatted price, vegan, and vegetarian fields.
+    format: JSON source plus typed TypeScript adapter contract
+  - from_task: refactor_category_section_and_row
+    to_task: wire_page_level_cart_flow
+    interface: Reusable section and row props that expose product identity, dietary metadata, quantity control hooks, and add-to-cart callbacks while preserving current classes and layout rhythm.
+    format: TSX component prop contract
+  - from_task: prepare_catering_json_contract
+    to_task: wire_page_level_cart_flow
+    interface: Category list and product ids that the page can iterate over and use as stable cart keys.
+    format: Typed category and product arrays
+  - from_task: wire_page_level_cart_flow
+    to_task: verify_catering_json_page
+    interface: The page renders all categories from JSON, cart surfaces consume shared state, and no mock order constants remain in the active flow.
+    format: Integrated TSX route and prop-driven cart surfaces
+
+tasks:
+  - id: prepare_catering_json_contract
+    title: Create the JSON-backed catering data contract under src/data
+    description: |
+      Add a new catering data source under zip/src/data that preserves the JSON as the source of truth and normalizes it into the shape needed by the page and row components. This task includes deciding the smallest compatible way to load JSON in the current Vite plus TypeScript setup, populating image_url values with existing public asset paths, and defining stable ids and field names for category and product records.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - result_with_ids.json: Current enriched source data with category ids, product ids, dietary flags, and empty image_url fields.
+      - zip/src/data/ofertaData.ts: Existing pattern for app-side static data modules.
+      - zip/tsconfig.json: Determines whether direct JSON imports need configuration changes.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 180
+    focus_area: data contract
+    verification:
+      - Confirm the new source of truth lives under zip/src/data and remains JSON-driven.
+      - Confirm every category has a usable image_url that matches the app's /react/images path convention.
+      - Confirm the page can import or consume the data without TypeScript build errors.
+    acceptance_criteria:
+      - A new data file under zip/src/data drives the catering categories and products.
+      - The normalized contract exposes category and product fields required by the current section and cart flow.
+      - image_url values point to real public image assets compatible with the existing background-image pattern.
+    failure_modes:
+      - scenario: Direct JSON import fails and blocks the route build.
+        likelihood: medium
+        impact: high
+        mitigation: Add only the minimal adapter or tsconfig support necessary to keep JSON as the source of truth.
+      - scenario: Product pricing remains inconsistent as mixed strings and numbers.
+        likelihood: medium
+        impact: medium
+        mitigation: Normalize price formatting once at the data boundary instead of inside multiple UI components.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Vite 6
+    test_coverage: null
+
+  - id: refactor_category_section_and_row
+    title: Make the category section and product row reusable for the JSON menu
+    description: |
+      Refactor CateringProductListAlt so the current single-category section becomes a true reusable renderer for any category from the new data contract, and update ProductItemAlt so it can show dietary icons beneath the combined text, keep the price visually right-aligned, and emit add-to-cart actions through props instead of local fake cart state. Preserve the present visual shell, spacing, typography, and border treatments.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - prepare_catering_json_contract
+    context_files:
+      - zip/src/components/sections/CateringProductListAlt.tsx: Current one-category section to generalize.
+      - zip/src/components/sections/ProductItemAlt.tsx: Current row renderer with local quantity and cart badge state.
+      - zip/src/components/sections/ProductItem.tsx: Older row analogue that can be used as a structural reference if needed.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 220
+    focus_area: reusable section rendering
+    verification:
+      - Confirm the section can render multiple category instances without hardcoded salad-specific content.
+      - Confirm dietary indicators render directly below the combined product text without altering the surrounding design language.
+      - Confirm desktop price placement remains visibly right-aligned in the final row layout.
+    acceptance_criteria:
+      - CateringProductListAlt is reusable for every category coming from the JSON source.
+      - ProductItemAlt renders vegan or vegetarian indicators from boolean fields directly beneath the combined text.
+      - The row layout preserves the existing table-like composition and keeps the price aligned to the right.
+      - No cart summary state remains local to ProductItemAlt.
+    failure_modes:
+      - scenario: The dietary indicators push the text block into a different visual rhythm and break the established row height balance.
+        likelihood: medium
+        impact: medium
+        mitigation: Add the indicator line inside the existing text column only, using existing typography scale and compact spacing.
+      - scenario: Price alignment changes on desktop but regresses mobile readability.
+        likelihood: medium
+        impact: medium
+        mitigation: Preserve the separate mobile price block and scope the alignment change to the desktop price container.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+      - lucide-react
+    test_coverage: null
+
+  - id: wire_page_level_cart_flow
+    title: Replace mock cart data with a shared page-level cart flow
+    description: |
+      Move cart truth into CateringWielkanocnyPage, render all categories by mapping over the normalized JSON data, and pass shared cart data into StickyCartControls and CheckoutDrawer so the add-to-cart action affects the actual visible cart surfaces. Remove the current mock CART_ITEMS dependency from the active flow while preserving the existing drawer form, sticky bar structure, and page shell.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - prepare_catering_json_contract
+      - refactor_category_section_and_row
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Current page with inline sample data and local drawer open state.
+      - zip/components/CheckoutDrawer.tsx: Current drawer with hardcoded CART_ITEMS and derived totals.
+      - zip/src/components/sections/StickyCartControls.tsx: Current sticky controls with no shared cart summary props.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 260
+    focus_area: cart integration
+    verification:
+      - Confirm the page renders one section per category from the new data source.
+      - Confirm adding a product updates the drawer summary and sticky controls from shared state.
+      - Confirm no active cart UI still depends on hardcoded mock items.
+    acceptance_criteria:
+      - The catering page is fully driven by the JSON-backed data source.
+      - Products can be added to cart from any category and appear in the shared cart state.
+      - CheckoutDrawer and StickyCartControls reflect the same cart contents and totals.
+      - Existing design patterns and shell structure remain unchanged.
+    failure_modes:
+      - scenario: Cart items are keyed by row index instead of stable product id, causing duplicate or overwritten entries across categories.
+        likelihood: medium
+        impact: high
+        mitigation: Use the normalized product ids from the data contract as the only cart keys.
+      - scenario: The drawer form remains coupled to mock totals and ignores the live cart payload.
+        likelihood: medium
+        impact: high
+        mitigation: Replace mock total calculations at the top of the drawer with derived values from props before any further UI adjustments.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - react-hook-form
+      - zod
+    test_coverage: null
+
+  - id: verify_catering_json_page
+    title: Validate the JSON-driven page, cart behavior, and build output
+    description: |
+      Verify the route after integration by checking that every category renders from the new data source, background images load via image_url, dietary indicators appear in the intended position, prices remain right-aligned, and add-to-cart updates the shared cart surfaces. Finish with a frontend build to ensure the new data-loading approach and prop changes do not introduce TypeScript or bundling regressions.
+    wave: 4
+    agent: gem-browser-tester
+    priority: medium
+    status: completed
+    dependencies:
+      - wire_page_level_cart_flow
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Final route composition and shared state orchestration.
+      - zip/src/components/sections/CateringProductListAlt.tsx: Final category section reuse and image wiring.
+      - zip/package.json: Frontend build command reference.
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: integration validation
+    verification:
+      - Confirm all categories from the JSON source render on the page.
+      - Confirm image_url values drive the background-image band for each category.
+      - Confirm dietary indicators, right-aligned price, and add-to-cart behavior work without layout regressions.
+      - Run the frontend build and confirm success.
+    acceptance_criteria:
+      - The catering page renders multiple reusable category sections from JSON data.
+      - Background images, dietary indicators, price alignment, and cart interactions all work in the integrated flow.
+      - The frontend build passes.
+    failure_modes:
+      - scenario: The route works in development but fails build because of JSON typing or stale props.
+        likelihood: medium
+        impact: medium
+        mitigation: Include build validation as part of the acceptance gate and resolve TypeScript-level issues before sign-off.
+    validation_matrix:
+      - scenario: Multi-category rendering
+        steps:
+          - Open the catering page.
+          - Compare the rendered section count with the category count in the new JSON source.
+          - Confirm each section title and product list matches the source data.
+        expected_result: Every category from the JSON source renders as its own reused CateringProductListAlt instance.
+      - scenario: Row metadata and price layout
+        steps:
+          - Inspect rows with vegan true, vegetarian true, and both false.
+          - Check the line directly beneath the combined product text.
+          - Check desktop alignment of the price block.
+        expected_result: The proper dietary indicator appears below the text and the price remains right-aligned.
+      - scenario: Cart integration
+        steps:
+          - Add items from at least two different categories.
+          - Open the sticky cart or drawer.
+          - Review item quantities and totals.
+        expected_result: The drawer and sticky cart reflect the same shared cart state.
+      - scenario: Build validation
+        steps:
+          - Run the frontend build from the zip workspace.
+          - Review the output for errors in data imports, section props, and cart components.
+        expected_result: The build completes successfully without new errors.

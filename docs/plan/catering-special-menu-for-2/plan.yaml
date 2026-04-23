@@ -1,0 +1,468 @@
+plan_id: catering-special-menu-for-2
+objective: Add a configurable special catering product flow on /catering-wielkanocny using one Woo simple product as the purchasable shell, a stepwise menu-for-2 configurator UI, line-based cart storage that can hold multiple distinct configurations of the same base product, and a bridge-ready checkout payload that persists the configuration as order item meta.
+created_at: "2026-03-24T00:00:00Z"
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+	Introduce a dedicated special-product panel named CateringProduct-Special_zestaw_for2.tsx that visually follows the existing CateringProductListAlt and ProductItemAlt language while adding a four-step configuration flow for two people: person 1 soup, person 1 main, person 2 soup, person 2 main, then add-to-cart.
+	Replace the current quantity-only Record<number, number> cart model with a line-based cart model keyed by lineId so the same Woo shell product can appear multiple times with different nested configurations. Keep the special menu remove-and-recreate only in the MVP to avoid premature edit-in-cart complexity.
+	Serialize each configured set as one shell-product line with a versioned configuration object and bridge-ready meta payload. The bridge remains authoritative for allowed option IDs, canonical pricing, and final Woo order item meta persistence.
+open_questions: []
+
+pre_mortem:
+	overall_risk_level: medium
+	critical_failure_modes:
+		- scenario: The cart still keys special sets by productId, causing later configurations to overwrite or merge into earlier ones.
+			likelihood: high
+			impact: critical
+			mitigation: Move the route to a line-based cart model keyed by lineId, with unique line ids for every configured special set and productId used only as base commerce identity.
+		- scenario: The new configurator drifts away from the established panel and row design, creating a visually inconsistent block on the catering route.
+			likelihood: medium
+			impact: high
+			mitigation: Keep the component inside the same bordered panel treatment, typography scale, spacing rhythm, and button language already used by CateringProductListAlt and ProductItemAlt; avoid introducing new visual patterns.
+		- scenario: The frontend payload becomes the source of truth for price or option labels, enabling tampering or producing Woo order meta that does not match valid catalog choices.
+			likelihood: medium
+			impact: critical
+			mitigation: Send option ids and base product id to the bridge, treat client labels and totals as display-only, and require bridge-side validation plus canonical price resolution before order creation.
+	assumptions:
+		- The special menu uses a fixed bundle price from one simple Woo shell product for the MVP, with no per-option surcharge logic.
+		- The option seeds come from the existing Zupy category for soups and Swiateczny obiad for mains.
+		- Duplicate choices are allowed in the MVP unless the business later tightens the rule; the schema and payload remain compatible with a future uniqueness rule.
+		- Special-menu lines are remove-only in the cart for the MVP; editing an existing configuration is out of scope.
+		- The special panel will be rendered on /catering-wielkanocny after the feature grid and before the existing repeated category sections.
+
+implementation_specification:
+	code_structure: Keep the route as the owner of cart state, add one dedicated special-product section component, add one derived data module for the menu-for-2 seed and schema, and add one small cart helper module to centralize line-based storage and serialization. Do not refactor unrelated product-list components unless a direct integration seam is required.
+	affected_areas:
+		- zip/src/components/sections/CateringProduct-Special_zestaw_for2.tsx (new)
+		- zip/src/data/cateringSpecialMenuFor2.ts (new)
+		- zip/src/lib/cateringCart.ts (new)
+		- zip/src/pages/CateringWielkanocnyPage.tsx
+		- zip/components/CheckoutDrawer.tsx
+		- zip/src/data/cateringWielkanocny.ts
+	component_details:
+		- component: cateringSpecialMenuFor2 data module
+			responsibility: Derive soups and mains from the normalized Easter catering data, expose the shell-product contract, and define the versioned configuration schema used by the UI, cart, and bridge serializer.
+			interfaces:
+				- 'Exports SpecialMenuOption { optionId, sourceProductId, categoryKey, label, weight, dietaryTag }.'
+				- 'Exports SpecialMenuFor2Seed { shellProductId, shellSlug, title, fixedUnitPrice, soups, mains }.'
+				- 'Exports SpecialMenuFor2Config { kind: "menu_for_2", schemaVersion: 1, persons: [SpecialMenuPersonSelection, SpecialMenuPersonSelection] }.'
+		- component: CateringProduct-Special_zestaw_for2
+			responsibility: Render the stepwise configurator UI inside the existing catering panel style and emit exactly one fully configured set at a time.
+			interfaces:
+				- 'Accepts seed data, configuredCount, and onCommitConfiguredSet(config).' 
+				- 'Handles the button-label switch between "Skonfiguruj zestaw" and "Skonfiguruj kolejny zestaw" based on configuredCount > 0.'
+				- 'Auto-advances and scrolls from soup to main within each person section.'
+		- component: cateringCart helper
+			responsibility: Own the line-based cart types, localStorage parsing and migration, line-id helpers, totals helpers, and display-summary generation for checkout rows.
+			interfaces:
+				- 'Exports CateringCartLine = SimpleCartLine | SpecialMenuFor2CartLine keyed by lineId.'
+				- 'Exports SpecialMenuFor2CartLine { lineId, lineType, baseProductId, displayName, unitPrice, quantity, config, metaSummary }.'
+				- 'Exports helpers to loadCartState(), saveCartState(), addSimpleProductLine(), addSpecialConfiguredLine(), removeCartLine(), and buildCheckoutDrawerItems().'
+		- component: CheckoutDrawer bridge serializer
+			responsibility: Convert cart lines plus checkout form values into a bridge-ready order payload without making the frontend authoritative for price or validation.
+			interfaces:
+				- 'Builds BridgeCheckoutPayload { customer, fulfillment, lines }.'
+				- 'Maps special lines to productId = shellProductId, quantity = 1, configuration, and recommended meta_data preview rows.'
+				- 'Keeps special lines separately identifiable by clientLineId so the bridge can trace validation failures precisely.'
+	dependencies:
+		- component: CateringProduct-Special_zestaw_for2
+			relationship: consumes the seed and schema exported by zip/src/data/cateringSpecialMenuFor2.ts
+		- component: CateringWielkanocnyPage
+			relationship: composes the new special panel and owns the shared line-based cart state used by the drawer and sticky controls
+		- component: CheckoutDrawer
+			relationship: consumes the new cart-line summaries and emits the bridge-ready payload at submit time
+		- component: cateringCart helper
+			relationship: is the single source of truth for line identity, storage, totals, and checkout-row shaping
+	integration_points:
+		- React route composition in zip/src/pages/CateringWielkanocnyPage.tsx for /catering-wielkanocny
+		- Existing visual shell conventions established by CateringProductListAlt and ProductItemAlt
+		- localStorage persistence under the current catering cart storage key with compatibility handling for the old quantity map
+		- Checkout submission boundary in zip/components/CheckoutDrawer.tsx
+		- Future bridge endpoint that translates frontend lines into Woo order line_items.meta_data or Store API cart_item_data
+
+contracts:
+	- from_task: define_special_menu_seed_contract
+		to_task: build_special_menu_panel_component
+		interface: 'SpecialMenuFor2Seed { shellProductId, shellSlug, title, fixedUnitPrice, soups: SpecialMenuOption[], mains: SpecialMenuOption[] } plus SpecialMenuFor2Config schema with exactly two person selections.'
+		format: TypeScript types and seed selectors exported from zip/src/data/cateringSpecialMenuFor2.ts
+	- from_task: define_special_menu_seed_contract
+		to_task: introduce_line_based_catering_cart
+		interface: 'SpecialMenuFor2Config carries stable option ids and sourceProductId references so cart lines can store ids for validation and labels for display.'
+		format: Versioned TypeScript configuration contract
+	- from_task: introduce_line_based_catering_cart
+		to_task: wire_special_menu_into_route_and_summary
+		interface: 'CateringCartLine[] keyed by lineId, where simple products can still aggregate by product key and each configured special set is appended as a unique special line.'
+		format: Shared cart helper and route state contract
+	- from_task: build_special_menu_panel_component
+		to_task: wire_special_menu_into_route_and_summary
+		interface: 'onCommitConfiguredSet(config: SpecialMenuFor2Config) callback fired only after person 1 and person 2 each have one soup and one main.'
+		format: TSX component prop callback
+	- from_task: wire_special_menu_into_route_and_summary
+		to_task: define_bridge_ready_checkout_payload
+		interface: 'Checkout-ready cart rows already include baseProductId, lineId, unitPrice, displayName, and config/metaSummary for special lines.'
+		format: Shared cart-line to checkout-row mapping
+	- from_task: define_bridge_ready_checkout_payload
+		to_task: verify_special_menu_flow
+		interface: 'BridgeCheckoutPayload lines use productId = shell product id, quantity = 1, clientLineId, configuration, and recommended meta_data rows such as bulwar_special_type, bulwar_special_config_version, bulwar_person_1, bulwar_person_2, and bulwar_special_config_json.'
+		format: JSON payload contract emitted from CheckoutDrawer submit boundary
+
+tasks:
+	- id: define_special_menu_seed_contract
+		title: Add the special-menu seed module and versioned configuration contract
+		description: |
+			Create a dedicated data module that derives the option pools for the menu-for-2 product from the existing Easter catering data. Soups must come from the Zupy category and mains from the Swiateczny obiad category. This module should also define the versioned SpecialMenuFor2Config contract and keep the shell-product identity in one place so the UI, cart, and bridge serializer all consume the same source of truth.
+
+			Proposed data model:
+			- SpecialMenuOption: optionId, sourceProductId, label, weight, dietaryTag, categoryKey
+			- SpecialMenuPersonSelection: personIndex, soupOptionId, soupSourceProductId, mainOptionId, mainSourceProductId
+			- SpecialMenuFor2Config: kind = menu_for_2, schemaVersion = 1, persons = [person1, person2]
+
+			Keep the module small and derived from the existing normalized data rather than duplicating the Easter catalog in a second raw JSON file.
+		wave: 1
+		agent: gem-implementer
+		priority: high
+		status: pending
+		dependencies: []
+		context_files:
+			- zip/src/data/cateringWielkanocny.ts: Current normalized category and product contracts that already expose price, weight, and dietary flags.
+			- zip/src/data/cateringWielkanocny.json: Raw Easter catalog containing the Zupy and Swiateczny obiad categories that seed the configurable menu.
+			- zip/src/data/cateringSpecialMenuFor2.ts: New derived module for shell metadata, option selectors, and versioned config types.
+		estimated_effort: medium
+		estimated_files: 2
+		estimated_lines: 180
+		focus_area: data contract
+		verification:
+			- Confirm soups are sourced only from Zupy and mains only from Swiateczny obiad.
+			- Confirm the config schema enforces exactly two persons with one soup and one main each.
+			- Confirm every option preserves the original sourceProductId for bridge validation.
+		acceptance_criteria:
+			- zip/src/data/cateringSpecialMenuFor2.ts exists and exports the special-menu seed contract.
+			- The shell-product identity and fixed unit price live in one central contract.
+			- The config object is versioned and ready to pass through cart and checkout serialization.
+		failure_modes:
+			- scenario: Category names change in the source data and the selectors silently return empty option pools.
+				likelihood: medium
+				impact: high
+				mitigation: Fail loudly if Zupy or Swiateczny obiad cannot be found, and isolate the lookup in one module.
+			- scenario: The config type stores labels only and drops original product ids needed by the bridge.
+				likelihood: medium
+				impact: critical
+				mitigation: Keep sourceProductId on every selected option and require it in the final config.
+		tech_stack:
+			- React 19
+			- TypeScript
+			- zod
+		test_coverage: null
+
+	- id: introduce_line_based_catering_cart
+		title: Replace quantity-only cart storage with line-based cart state
+		description: |
+			Replace the route's Record<number, number> cart with a line-based model that can represent both simple products and configured specials. Simple products may still collapse to one predictable line per product for the MVP, but each configured special set must always get a unique lineId so multiple distinct configurations of the same shell product coexist safely.
+
+			Proposed cart shape:
+			- SimpleCartLine: lineId, lineType = simple, baseProductId, displayName, unitPrice, quantity
+			- SpecialMenuFor2CartLine: lineId, lineType = special_menu_for_2, baseProductId, displayName, unitPrice, quantity = 1, config, metaSummary
+			- CateringCartState: lines: CateringCartLine[]
+
+			Add compatibility handling for the existing localStorage value so previously stored simple-product quantities can be migrated into the new line model instead of being discarded abruptly.
+		wave: 2
+		agent: gem-implementer
+		priority: high
+		status: pending
+		dependencies:
+			- define_special_menu_seed_contract
+		context_files:
+			- zip/src/lib/cateringCart.ts: New helper that will own line types, storage parsing, migration, and totals helpers.
+			- zip/src/pages/CateringWielkanocnyPage.tsx: Current quantity-only route state that must migrate to line-based cart state.
+			- zip/components/CheckoutDrawer.tsx: Current drawer item contract and quantity actions still keyed by productId instead of lineId.
+		estimated_effort: medium
+		estimated_files: 3
+		estimated_lines: 260
+		focus_area: cart architecture
+		verification:
+			- Confirm two configured specials with the same shell product can coexist without overwriting one another.
+			- Confirm simple products still add and remove correctly after migration.
+			- Confirm localStorage parsing accepts the old quantity map and upgrades it into line-based state.
+		acceptance_criteria:
+			- The route no longer stores cart truth as Record<number, number>.
+			- Cart mutations for special lines use lineId instead of productId.
+			- The special menu is remove-only in the cart for the MVP, with quantity fixed at 1 per configured line.
+		failure_modes:
+			- scenario: Old storage data becomes unreadable and clears the cart unexpectedly.
+				likelihood: medium
+				impact: medium
+				mitigation: Support a lazy one-way migration from the old shape to the new line array before writing back.
+			- scenario: Drawer controls still call handlers with productId and remove the wrong line.
+				likelihood: medium
+				impact: high
+				mitigation: Change the drawer contract to act on lineId for all line mutations.
+		tech_stack:
+			- React 19
+			- TypeScript
+			- localStorage
+		test_coverage: null
+
+	- id: build_special_menu_panel_component
+		title: Implement the stepwise menu-for-2 configurator panel
+		description: |
+			Build zip/src/components/sections/CateringProduct-Special_zestaw_for2.tsx as a dedicated stateful component that follows the existing catering panel look while adding the required guided flow.
+
+			Required UX in scope:
+			- Initial CTA: "Skonfiguruj zestaw"
+			- If at least one set already exists in cart: "Skonfiguruj kolejny zestaw"
+			- Person 1: choose soup, then auto-progress or scroll to main
+			- After person 1 is complete, reveal person 2 choices
+			- After person 2 is complete, show add-to-cart action
+			- Emit exactly one finalized config object when the user adds the set
+
+			Keep the implementation inside the current visual language: same panel shell, existing button styling, same typography families, and no custom design system detours.
+		wave: 2
+		agent: gem-implementer
+		priority: high
+		status: pending
+		dependencies:
+			- define_special_menu_seed_contract
+		context_files:
+			- zip/src/components/sections/CateringProduct-Special_zestaw_for2.tsx: New special-product panel component.
+			- zip/src/components/sections/CateringProductListAlt.tsx: Reference for the existing bordered panel shell, spacing, and overlay section treatment.
+			- zip/src/components/sections/ProductItemAlt.tsx: Reference for row typography, action button styling, and the menu-item visual rhythm.
+		estimated_effort: medium
+		estimated_files: 1
+		estimated_lines: 260
+		focus_area: stepwise configurator UX
+		verification:
+			- Confirm person 2 is hidden until person 1 has both required choices.
+			- Confirm selecting soup auto-progresses or scrolls to the matching main step.
+			- Confirm the button label changes after at least one configured set exists.
+		acceptance_criteria:
+			- The new component matches the existing catering panel language rather than introducing a new layout style.
+			- Each person must end with exactly one soup and one main before the add action becomes available.
+			- The component emits a fully populated SpecialMenuFor2Config and does not mutate page cart state directly.
+		failure_modes:
+			- scenario: Step state persists incorrectly between consecutive configurations and leaks previous selections into a new set.
+				likelihood: medium
+				impact: high
+				mitigation: Reset the local draft only after a successful commit and derive the initial state from one explicit empty-draft factory.
+			- scenario: Auto-scroll targets the wrong section on mobile and makes the flow feel broken.
+				likelihood: medium
+				impact: medium
+				mitigation: Use explicit refs for each step block and keep scroll behavior scoped to the component container.
+		tech_stack:
+			- React 19
+			- TypeScript
+			- Tailwind CSS v4
+		test_coverage: null
+
+	- id: wire_special_menu_into_route_and_summary
+		title: Integrate the special panel into /catering-wielkanocny and the checkout summary
+		description: |
+			Render the special menu panel on the Easter catering route after the feature grid and before the repeated category sections. When the panel commits a finalized configuration, convert it into a SpecialMenuFor2CartLine using the shared cart helper, append it to route state, and surface the resulting line in CheckoutDrawer with a clear per-person summary.
+
+			Recommended summary behavior:
+			- displayName: merchant-friendly bundle name such as "Zestaw swiateczny dla 2"
+			- metaSummary lines shown in the drawer:
+				- Osoba 1: Zupa ... / Danie ...
+				- Osoba 2: Zupa ... / Danie ...
+
+			Keep the existing simple-product list flow working unchanged alongside the new special line type.
+		wave: 3
+		agent: gem-implementer
+		priority: high
+		status: pending
+		dependencies:
+			- introduce_line_based_catering_cart
+			- build_special_menu_panel_component
+		context_files:
+			- zip/src/pages/CateringWielkanocnyPage.tsx: Route composition, shared cart state, and totals wiring.
+			- zip/components/CheckoutDrawer.tsx: Order-summary surface that must show special-line summaries and remove actions by lineId.
+			- zip/src/components/sections/CateringProduct-Special_zestaw_for2.tsx: Emits finalized configurations into page-owned cart state.
+		estimated_effort: medium
+		estimated_files: 2
+		estimated_lines: 240
+		focus_area: route integration
+		verification:
+			- Confirm the special panel renders in the intended position without disturbing the surrounding page shell.
+			- Confirm adding two different configured sets results in two distinct cart lines.
+			- Confirm simple products still appear in the same shared cart and totals calculations.
+		acceptance_criteria:
+			- /catering-wielkanocny shows the new special panel inside the existing page composition.
+			- The drawer displays special-line summaries with remove support and without collapsing distinct configurations together.
+			- StickyCartControls totals continue to work from shared aggregated cart state.
+		failure_modes:
+			- scenario: The special panel placement breaks the visual rhythm or duplicates spacing wrappers from the surrounding page sections.
+				likelihood: medium
+				impact: medium
+				mitigation: Reuse the same page-margin and bordered-panel rhythm already established by the route and section components.
+			- scenario: Simple-product lines regress because totals or item counts assume quantity-only rows.
+				likelihood: medium
+				impact: high
+				mitigation: Make totals and counts derive from the unified line array rather than from product-id buckets.
+		tech_stack:
+			- React 19
+			- TypeScript
+			- react-hook-form
+		test_coverage: null
+
+	- id: define_bridge_ready_checkout_payload
+		title: Add a bridge-ready order payload builder and Woo meta recommendation
+		description: |
+			Add a typed serializer at the checkout boundary that maps the unified cart lines into a bridge-ready payload. The frontend should not attempt to speak directly to Woo credentials or final Store API internals, but it should emit a stable contract the bridge can validate and translate.
+
+			Recommended payload shape:
+			- BridgeCheckoutPayload
+				- customer: checkout form identity fields
+				- fulfillment: pickup or delivery fields
+				- lines:
+					- clientLineId
+					- productId: shell simple-product id for the special menu
+					- quantity: 1
+					- lineType: special_menu_for_2
+					- requestedUnitPrice: display-only client copy of the shell price
+					- configuration: SpecialMenuFor2Config
+					- metaDataPreview:
+						- bulwar_special_type = menu_for_2
+						- bulwar_special_config_version = 1
+						- bulwar_person_1 = human-readable summary
+						- bulwar_person_2 = human-readable summary
+						- bulwar_special_config_json = canonical JSON string
+
+			Bridge recommendation:
+			- Ignore requestedUnitPrice as canonical truth
+			- Revalidate shell product id and option ids
+			- Persist meta_data on the Woo order line item, either through REST order creation or cart_item_data copied during checkout
+		wave: 4
+		agent: gem-implementer
+		priority: medium
+		status: pending
+		dependencies:
+			- wire_special_menu_into_route_and_summary
+		context_files:
+			- zip/components/CheckoutDrawer.tsx: Current submit boundary and checkout form values.
+			- zip/src/lib/cateringCart.ts: Source of unified cart-line data and summary helpers.
+			- zip/src/lib/cateringBridgePayload.ts: New serializer module for the bridge-ready order contract.
+		estimated_effort: medium
+		estimated_files: 2
+		estimated_lines: 180
+		focus_area: bridge payload contract
+		verification:
+			- Confirm the payload distinguishes simple lines from special lines.
+			- Confirm each special line sends ids plus nested configuration rather than labels alone.
+			- Confirm the recommended Woo meta keys are stable and merchant-readable.
+		acceptance_criteria:
+			- CheckoutDrawer can build a stable BridgeCheckoutPayload without losing line identity.
+			- Special lines serialize as one shell product plus nested configuration.
+			- The contract is explicitly bridge-authoritative for price and validation.
+		failure_modes:
+			- scenario: The serializer flattens only labels and makes server-side validation impossible.
+				likelihood: medium
+				impact: critical
+				mitigation: Require source product ids and schema version inside the serialized configuration.
+			- scenario: Meta keys are too opaque for Woo admin or too verbose for line-item display.
+				likelihood: medium
+				impact: medium
+				mitigation: Emit both human-readable person summaries and one canonical JSON blob under a dedicated machine key.
+		tech_stack:
+			- TypeScript
+			- React Hook Form
+			- WooCommerce bridge contract
+		test_coverage: null
+
+	- id: review_special_menu_contracts
+		title: Review cart, payload, and metadata decisions before backend hookup
+		description: |
+			Perform a focused review of the cart architecture and bridge payload contract before any real bridge submission or Woo persistence work starts. The review should challenge line-identity handling, client-price trust boundaries, metadata readability in Woo admin, and whether the MVP remove-only behavior is consistently enforced for special lines.
+		wave: 5
+		agent: gem-reviewer
+		priority: medium
+		status: pending
+		dependencies:
+			- define_bridge_ready_checkout_payload
+		context_files:
+			- zip/src/lib/cateringCart.ts: Line identity, totals, and storage behavior.
+			- zip/src/lib/cateringBridgePayload.ts: Bridge payload shape and metadata mapping.
+			- zip/components/CheckoutDrawer.tsx: Submit boundary and payload emission point.
+		estimated_effort: small
+		estimated_files: 0
+		estimated_lines: 0
+		focus_area: security and merchant usability review
+		verification:
+			- Check that no cart action for special lines depends on productId.
+			- Check that client-side price and labels are not treated as server truth.
+			- Check that metadata remains understandable in Woo admin and exports.
+		acceptance_criteria:
+			- Review findings, if any, are limited to real risks in cart identity, validation, or order-meta usability.
+			- The contract is suitable for a later bridge implementation without redesigning the frontend line model.
+		failure_modes:
+			- scenario: The review is skipped and the frontend bakes in a payload shape that is awkward for Woo order creation.
+				likelihood: medium
+				impact: high
+				mitigation: Schedule the review before backend hookup and treat bridge feedback as a contract gate.
+		requires_review: true
+		review_depth: standard
+		security_sensitive: true
+
+	- id: verify_special_menu_flow
+		title: Validate the configurator flow, cart behavior, and build output
+		description: |
+			Validate the end-to-end frontend behavior for the new special menu without expanding scope into backend implementation. The verification should cover the stepwise UX, mixed cart behavior, localStorage persistence, payload serialization shape, and the frontend production build.
+		wave: 5
+		agent: gem-browser-tester
+		priority: medium
+		status: pending
+		dependencies:
+			- define_bridge_ready_checkout_payload
+		context_files:
+			- zip/src/pages/CateringWielkanocnyPage.tsx: Final route composition and line-based cart integration.
+			- zip/src/components/sections/CateringProduct-Special_zestaw_for2.tsx: Stepwise configurator flow.
+			- zip/components/CheckoutDrawer.tsx: Cart summary and payload builder boundary.
+		estimated_effort: small
+		estimated_files: 0
+		estimated_lines: 0
+		focus_area: integration validation
+		verification:
+			- Confirm the stepwise configurator gates progress correctly and resets cleanly after a successful add.
+			- Confirm two differently configured specials produce two distinct checkout rows.
+			- Confirm the build passes after the route, cart, and drawer changes.
+		acceptance_criteria:
+			- The required UX flow works on desktop and mobile.
+			- Mixed carts containing both simple products and special-menu lines behave correctly.
+			- The generated payload shape matches the planned bridge contract.
+			- The frontend build completes successfully.
+		failure_modes:
+			- scenario: The component works in isolation but breaks when mixed with normal product lines in the shared cart.
+				likelihood: medium
+				impact: high
+				mitigation: Include mixed-cart scenarios in the validation matrix instead of testing the special flow alone.
+		validation_matrix:
+			- scenario: First configured set flow
+				steps:
+					- Open /catering-wielkanocny.
+					- Start from the "Skonfiguruj zestaw" CTA.
+					- Choose soup and main for person 1, then soup and main for person 2.
+					- Add the completed set to cart.
+				expected_result: The panel gates progress correctly, reveals the add action only after all four selections are present, and adds one special line with two person summaries.
+			- scenario: Consecutive set flow
+				steps:
+					- Add one configured set.
+					- Reopen the panel and confirm the CTA now reads "Skonfiguruj kolejny zestaw".
+					- Add a second set with different selections.
+				expected_result: The cart contains two distinct special lines for the same shell product and they are not merged.
+			- scenario: Mixed cart flow
+				steps:
+					- Add a normal catering product from the existing list.
+					- Add a special menu set.
+					- Open the checkout drawer.
+				expected_result: Totals and item counts include both line types, and simple products still use the existing flow.
+			- scenario: Persistence and payload flow
+				steps:
+					- Refresh the page after adding one special set and one simple product.
+					- Open the checkout drawer and submit through the non-production payload path.
+				expected_result: The cart state restores correctly, and the serialized payload includes clientLineId, shell product id, nested configuration, and metadata preview rows.
+			- scenario: Build validation
+				steps:
+					- Run the frontend production build from zip.
+					- Review the output for type or bundling regressions in the affected files.
+				expected_result: The build completes successfully without new errors.

@@ -1,0 +1,322 @@
+plan_id: thank-you-url-20260326
+objective: >-
+  Quickly add a dedicated post-order thank-you URL to the React catering checkout
+  flow so Google Ads can target a unique success page, while preserving good UX,
+  reusing the existing success confirmation content, and avoiding any broad
+  routing or layout refactor.
+created_at: 2026-03-26T00:00:00Z
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Persist the existing checkout success snapshot in a minimal localStorage-backed contract,
+  add one dedicated thank-you route under the current /react BrowserRouter basename,
+  reuse the current confirmation summary content through a shared presenter,
+  and navigate to the thank-you page immediately after successful order creation.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The thank-you page depends on volatile drawer/form state instead of a persisted snapshot, so refresh or direct navigation loses the accepted order summary.
+      likelihood: medium
+      impact: high
+      mitigation: Define a dedicated persisted success snapshot contract with timestamped lifecycle rules before any route/page work begins.
+    - scenario: The implementation stores too much customer data in localStorage, increasing privacy risk beyond what the thank-you page actually needs.
+      likelihood: medium
+      impact: high
+      mitigation: Persist only the fields already rendered in the success confirmation UI and required for the thank-you page, plus a createdAt marker for stale cleanup.
+    - scenario: Route work expands into a broader router/layout refactor and slows down a small checkout-specific change.
+      likelihood: low
+      impact: high
+      mitigation: Keep routing changes limited to one additional Route in App.tsx and one new page component that follows the established catering page shell.
+    - scenario: Cleanup happens too aggressively and removes the snapshot before the thank-you page can render after navigation or refresh.
+      likelihood: medium
+      impact: medium
+      mitigation: Use an explicit stale-data policy with page-level read/guard logic, not drawer-close cleanup, and validate refresh behavior before clearing data.
+  assumptions:
+    - The current CheckoutDrawer already has a local success snapshot and confirmation content worth reusing rather than redesigning.
+    - A dedicated thank-you route under the existing React basename is sufficient for Google Ads conversion tracking needs.
+    - The only active order-entry route remains CateringWielkanocnyPage, so this flow can stay scoped to that checkout path.
+
+implementation_specification:
+  code_structure: >-
+    Keep the change narrow and checkout-specific. Introduce a small success-snapshot
+    persistence helper that mirrors the existing cart localStorage pattern, extract or
+    isolate the current confirmation summary into a reusable presenter, add one thank-you
+    page and one flat route, and update the checkout success branch to persist and navigate
+    without refactoring the wider routing or layout architecture.
+  affected_areas:
+    - zip/components/CheckoutDrawer.tsx
+    - zip/src/App.tsx
+    - zip/src/pages/
+    - zip/src/lib/
+  component_details:
+    - component: persisted checkout success snapshot
+      responsibility: Own the minimal localStorage contract for the accepted-order summary and define stale-data cleanup rules.
+      interfaces:
+        - A single success snapshot payload keyed separately from the catering cart storage key.
+        - Read, write, and clear helpers that expose a typed snapshot plus createdAt metadata.
+    - component: reusable success confirmation presenter
+      responsibility: Render the already-approved confirmation content in both the drawer success state and the thank-you page without introducing new design patterns.
+      interfaces:
+        - Props matching the success snapshot view model used by CheckoutDrawer and the thank-you page.
+    - component: catering thank-you page
+      responsibility: Hydrate the persisted snapshot, render the shared confirmation summary in a stable URL context, and handle missing or stale data gracefully.
+      interfaces:
+        - A route component mounted from App.tsx.
+        - A guard path for missing or expired snapshot data.
+    - component: checkout success navigation branch
+      responsibility: Persist the accepted order snapshot, clear cart state at the correct moment, and navigate to the thank-you page after order success.
+      interfaces:
+        - CheckoutDrawer success handler writes the snapshot and navigates to the route.
+        - Existing success response data remains the source of truth for order identifiers and totals.
+  dependencies:
+    - component: CheckoutDrawer success snapshot state
+      relationship: Supplies the view model that must be persisted and then reused by the thank-you page.
+    - component: BrowserRouter basename /react
+      relationship: Provides the existing routing boundary for the thank-you URL.
+    - component: cateringCart localStorage pattern
+      relationship: Serves as the approved persistence approach to mirror for snapshot storage helpers.
+    - component: App.tsx flat route table
+      relationship: Accepts the single new thank-you route without structural router changes.
+  integration_points:
+    - Existing order-success branch in zip/components/CheckoutDrawer.tsx after POST /wp-json/bulwar/v1/checkout/orders succeeds.
+    - Existing inline confirmation content currently driven by local successSnapshot state in zip/components/CheckoutDrawer.tsx.
+    - Existing flat routing table in zip/src/App.tsx.
+    - Existing BrowserRouter basename configuration in zip/src/main.tsx.
+
+contracts:
+  - from_task: TY1
+    to_task: TY2
+    interface: Success snapshot view model and storage lifecycle rules for reusable confirmation rendering.
+    format: Typed TypeScript interface plus localStorage key/read-write-clear helper contract.
+  - from_task: TY1
+    to_task: TY4
+    interface: Persisted thank-you snapshot payload available immediately after successful checkout and after page refresh.
+    format: Serialized JSON object with createdAt and minimal rendered fields.
+  - from_task: TY2
+    to_task: TY3
+    interface: Shared confirmation presenter props used by the thank-you page.
+    format: React component props matching the success snapshot view model.
+  - from_task: TY3
+    to_task: TY4
+    interface: Final thank-you route path and page mount point available for post-success navigation.
+    format: Flat react-router-dom Route entry and exported page component.
+
+tasks:
+  - id: TY1
+    title: Define the persisted thank-you snapshot contract and cleanup policy
+    description: |
+      Formalize the minimal accepted-order snapshot that must survive drawer close,
+      navigation, and refresh. Reuse the existing localStorage persistence style from
+      the catering cart domain, add a dedicated storage key, and define how missing,
+      replaced, and stale snapshots are handled without persisting unnecessary checkout
+      form data.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Current local successSnapshot state and success response handling.
+      - zip/src/lib/cateringCart.ts: Existing localStorage helper pattern already used in the active checkout flow.
+      - wordpress-plugin/bulwar-bridge/docs/contracts.md: Order success response contract used to build the persisted snapshot.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 120
+    focus_area: checkout_success_persistence_contract
+    verification:
+      - The snapshot includes only fields needed to render the accepted-order summary and thank-you UX.
+      - The contract supports both immediate post-submit navigation and browser refresh on the thank-you page.
+      - Cleanup rules are explicit for stale, missing, and replaced snapshots.
+    acceptance_criteria:
+      - A dedicated, typed thank-you snapshot contract exists outside ephemeral component state.
+      - Storage rules do not depend on drawer open/close lifecycle.
+      - Persisted data is limited to summary-safe fields rather than the full checkout payload.
+    failure_modes:
+      - scenario: The contract omits a field currently rendered by the success summary, forcing the page to reach back into live drawer state.
+        likelihood: medium
+        impact: high
+        mitigation: Build the contract directly from the existing success confirmation content and documented order response fields before coding the page.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - localStorage Web API
+    test_coverage: Manual persistence and refresh-path validation.
+
+  - id: TY2
+    title: Isolate the existing confirmation content into a reusable presenter
+    description: |
+      Extract or otherwise isolate the current success confirmation summary so it can
+      render identically inside the drawer flow and on the dedicated thank-you page.
+      Keep the current class vocabulary, spacing, and confirmation-content structure;
+      this task is about reuse, not redesign.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - TY1
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Current success confirmation markup and data mapping.
+      - zip/src/pages/TemplatePage.tsx: Reference shell and design language constraints.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 160
+    focus_area: shared_success_confirmation_ui
+    verification:
+      - The drawer can still render the existing confirmation content through the shared presenter.
+      - No new design system primitives or off-pattern styling are introduced.
+    acceptance_criteria:
+      - The confirmation summary can be rendered from the persisted snapshot contract.
+      - Drawer and thank-you page reuse the same confirmation-content structure.
+    failure_modes:
+      - scenario: The presenter extraction changes visual structure or copy enough to create a UX regression from the current accepted drawer success state.
+        likelihood: medium
+        impact: medium
+        mitigation: Keep the presenter purely presentational and preserve the existing class names and content order.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind utility classes already present in the repo
+    test_coverage: Visual/manual comparison against the current drawer success state.
+
+  - id: TY3
+    title: Add a dedicated catering thank-you route and page
+    description: |
+      Extend the flat App.tsx routing table with one thank-you route under the existing
+      /react basename and add a dedicated page component that reads the persisted
+      snapshot, renders the shared confirmation presenter, and provides a graceful
+      missing-data fallback without touching the wider site routing structure.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - TY2
+    context_files:
+      - zip/src/App.tsx: Existing flat route map to extend with one thank-you route.
+      - zip/src/main.tsx: BrowserRouter basename that the new route must respect.
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Reference page shell and catering-specific visual context.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 180
+    focus_area: thank_you_route_page
+    verification:
+      - The thank-you page resolves correctly under the /react basename.
+      - Refreshing the thank-you URL still renders the last accepted-order summary when the snapshot is valid.
+      - Missing or stale snapshot state produces a controlled fallback instead of a broken page.
+    acceptance_criteria:
+      - A dedicated unique URL exists for the catering thank-you state.
+      - The new page stays within the current flat-router model and existing design language.
+      - The page does not require live drawer state to render.
+    failure_modes:
+      - scenario: The page path works locally but ignores the /react basename and breaks when deployed under the existing frontend mount point.
+        likelihood: medium
+        impact: high
+        mitigation: Define and verify the route relative to the existing BrowserRouter basename rather than hardcoding absolute deployment assumptions.
+    tech_stack:
+      - react-router-dom
+      - React 19
+      - TypeScript
+    test_coverage: Manual routing and refresh validation.
+
+  - id: TY4
+    title: Redirect successful checkout into the thank-you page flow
+    description: |
+      Update the successful order branch in CheckoutDrawer so it writes the persisted
+      snapshot, clears or resets transient checkout state in the correct sequence,
+      and navigates to the dedicated thank-you route instead of relying only on the
+      drawer-local success state. Preserve good UX by keeping the accepted-order
+      summary available on the new page immediately after success.
+    wave: 4
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - TY1
+      - TY3
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Current order-success branch, successSnapshot state, and cart-clearing behavior.
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Existing cart-clear handler passed into the drawer.
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 180
+    focus_area: checkout_success_navigation
+    verification:
+      - Successful order creation persists the accepted-order snapshot before any cart-clearing step that would remove summary data.
+      - The user lands on the thank-you URL immediately after success.
+      - Closing the drawer or leaving the page no longer destroys the accepted-order summary needed by the thank-you page.
+    acceptance_criteria:
+      - The post-success UX ends on the dedicated thank-you URL.
+      - The accepted-order summary is visible there without depending on live form state.
+      - The change does not introduce a router or layout refactor beyond the single new route.
+    failure_modes:
+      - scenario: Cart clearing or form reset runs before snapshot persistence and the thank-you page loses line items or totals.
+        likelihood: medium
+        impact: high
+        mitigation: Persist the snapshot first, then clear cart/transient state, then navigate.
+    tech_stack:
+      - React 19
+      - react-router-dom
+      - TypeScript
+    test_coverage: Manual successful-checkout path validation.
+
+  - id: TY5
+    title: Validate thank-you URL behavior and regression boundaries
+    description: |
+      Run focused validation for the new thank-you URL flow: successful checkout,
+      refresh persistence, stale/missing snapshot handling, and safe regression checks
+      around the existing catering page and drawer interactions. Confirm the resulting
+      URL is suitable as the dedicated Google Ads conversion destination.
+    wave: 5
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - TY4
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Final success and navigation behavior under test.
+      - zip/src/App.tsx: Final thank-you route entry.
+      - zip/src/pages/: Final thank-you page and existing catering page surface.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 60
+    focus_area: thank_you_flow_validation
+    verification:
+      - Build passes with the new route/page wiring.
+      - Successful checkout lands on the thank-you page and shows the accepted-order summary.
+      - Refresh retains the valid snapshot and stale/missing data produces the intended guarded behavior.
+      - The original catering order-entry route still opens and uses the drawer correctly.
+    acceptance_criteria:
+      - The thank-you URL is stable and unique within the React app for conversion tracking.
+      - The accepted-order summary remains available after refresh for the intended persistence window.
+      - No obvious regression appears in cart open, submit, or post-submit behavior.
+    failure_modes:
+      - scenario: A stale thank-you snapshot is left behind and later shows the wrong historical order to a returning visitor.
+        likelihood: medium
+        impact: medium
+        mitigation: Validate explicit stale-data handling and snapshot replacement behavior with a second success-path run.
+    validation_matrix:
+      - scenario: Successful order to thank-you route
+        steps:
+          - Place a valid catering order through the active checkout flow.
+          - Wait for the order endpoint to return success.
+        expected_result: The app navigates to the dedicated thank-you URL and renders the accepted-order summary.
+      - scenario: Refresh on thank-you page
+        steps:
+          - Land on the thank-you page after a successful order.
+          - Refresh the browser.
+        expected_result: The accepted-order summary still renders from the persisted snapshot.
+      - scenario: Missing or stale snapshot
+        steps:
+          - Open the thank-you URL without a valid persisted snapshot or after the stale threshold.
+        expected_result: The page shows the guarded fallback behavior instead of broken confirmation content.
+      - scenario: Repeat order replaces snapshot
+        steps:
+          - Complete one successful order and visit the thank-you page.
+          - Complete a second successful order.
+        expected_result: The new thank-you page reflects only the latest accepted-order snapshot.

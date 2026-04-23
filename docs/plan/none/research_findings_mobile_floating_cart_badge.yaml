@@ -1,0 +1,205 @@
+plan_id: "none"
+objective: "Investigate the active mobile floating cart button badge in BULWAR APP and identify the minimal safe class-only fix to restore a red badge with a white number."
+focus_area: "zip/src/components/sections/CateringStickyCartControls.tsx"
+created_at: "2026-03-25T00:00:00Z"
+created_by: "gem-researcher"
+status: "completed"
+
+tldr: |
+  - The active numbered mobile floating cart badge is rendered by `CateringStickyCartControls`, not the generic `StickyCartControls`.
+  - `CateringWielkanocnyPage` passes the live `itemCount` and `subtotal` props into this component, and `App.tsx` mounts that page at `/catering-wielkanocny`.
+  - The current badge classes are `bg-white ... text-black`, which directly contradict the requirement for a red badge with a white number.
+  - The file is currently new in the working tree, so the regression is most likely from the catering-specific control being introduced with copied/default neutral badge styling rather than inheriting the existing red badge pattern used in product tiles.
+  - The minimal safe fix is a class-only change on the badge span: replace `bg-white` with `bg-red-600` and `text-black` with `text-white`.
+
+research_metadata:
+  methodology: "Hybrid retrieval using semantic search and exact grep, followed by targeted file reads of routing, page composition, component source, tests, and current git workspace state."
+  scope: "Focused on the mobile floating cart trigger path for the catering frontend route and related component wiring in `zip/src`."
+  confidence: "high"
+  coverage: 95
+
+files_analyzed:
+  - file: "CateringStickyCartControls.tsx"
+    path: "zip/src/components/sections/CateringStickyCartControls.tsx"
+    purpose: "Renders the catering-specific sticky cart controls, including the mobile floating action button and badge."
+    key_elements:
+      - element: "CateringStickyCartControls"
+        type: "function"
+        location: "zip/src/components/sections/CateringStickyCartControls.tsx:12"
+        description: "Main component that renders both desktop sticky cart controls and the mobile FAB."
+      - element: "mobile FAB button classes"
+        type: "pattern"
+        location: "zip/src/components/sections/CateringStickyCartControls.tsx:61"
+        description: "Mobile cart button uses a black circular button with white icon."
+      - element: "mobile badge classes"
+        type: "pattern"
+        location: "zip/src/components/sections/CateringStickyCartControls.tsx:65"
+        description: "Badge is currently styled as white background with black text."
+    language: "tsx"
+    lines: 72
+  - file: "CateringWielkanocnyPage.tsx"
+    path: "zip/src/pages/CateringWielkanocnyPage.tsx"
+    purpose: "Active catering page that computes cart state and renders the catering sticky cart controls."
+    key_elements:
+      - element: "CateringStickyCartControls import"
+        type: "pattern"
+        location: "zip/src/pages/CateringWielkanocnyPage.tsx:10"
+        description: "Imports the catering-specific sticky cart control component."
+      - element: "CateringStickyCartControls usage"
+        type: "pattern"
+        location: "zip/src/pages/CateringWielkanocnyPage.tsx:247"
+        description: "Passes live `itemCount` and `subtotal` into the mobile/desktop cart controls."
+    language: "tsx"
+    lines: 260
+  - file: "App.tsx"
+    path: "zip/src/App.tsx"
+    purpose: "Defines the frontend route map."
+    key_elements:
+      - element: "catering route"
+        type: "pattern"
+        location: "zip/src/App.tsx:9"
+        description: "Maps `/catering-wielkanocny` to `CateringWielkanocnyPage`."
+    language: "tsx"
+    lines: 10
+  - file: "CateringStickyCartControls.test.tsx"
+    path: "zip/src/components/sections/CateringStickyCartControls.test.tsx"
+    purpose: "Covers presence of the catering sticky cart controls and hidden-empty-badge behavior."
+    key_elements:
+      - element: "render test"
+        type: "testing"
+        location: "zip/src/components/sections/CateringStickyCartControls.test.tsx:7"
+        description: "Checks that fixed desktop/mobile triggers render and badge appears for a nonzero item count."
+      - element: "empty badge test"
+        type: "testing"
+        location: "zip/src/components/sections/CateringStickyCartControls.test.tsx:19"
+        description: "Checks that the badge is omitted when item count is zero."
+    language: "tsx"
+    lines: 25
+  - file: "StickyCartControls.tsx"
+    path: "zip/src/components/sections/StickyCartControls.tsx"
+    purpose: "Generic sticky cart control used by non-catering pages."
+    key_elements:
+      - element: "generic mobile badge classes"
+        type: "pattern"
+        location: "zip/src/components/sections/StickyCartControls.tsx:54"
+        description: "Also uses white badge background with black text, but this component does not receive live nonzero cart count on the catering route."
+    language: "tsx"
+    lines: 59
+  - file: "ProductItem.tsx"
+    path: "zip/src/components/sections/ProductItem.tsx"
+    purpose: "Product tile with an existing red badge pattern elsewhere in the UI."
+    key_elements:
+      - element: "red badge pattern"
+        type: "pattern"
+        location: "zip/src/components/sections/ProductItem.tsx:52"
+        description: "Uses `bg-red-600 text-white` for a compact quantity badge."
+    language: "tsx"
+    lines: 70
+
+patterns_found:
+  - category: "structure"
+    pattern: "Route-specific sticky cart implementation"
+    description: "The catering flow uses a dedicated sticky cart control component instead of the site-wide generic control."
+    examples:
+      - file: "zip/src/pages/CateringWielkanocnyPage.tsx"
+        location: "line 247"
+        snippet: "<CateringStickyCartControls onOpenCart={() => setIsCartOpen(true)} itemCount={itemCount} totalPrice={subtotal} />"
+    prevalence: "occasional"
+  - category: "architecture"
+    pattern: "Badge styling expressed purely with Tailwind utility classes"
+    description: "The badge colors are controlled directly in JSX through utility classes, so the regression is localized to the component markup rather than shared theme logic."
+    examples:
+      - file: "zip/src/components/sections/CateringStickyCartControls.tsx"
+        location: "line 65"
+        snippet: "className=\"absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 font-label text-[10px] font-bold leading-6 text-black shadow-sm\""
+      - file: "zip/src/components/sections/ProductItem.tsx"
+        location: "line 52"
+        snippet: "className=\"absolute -top-2 -right-2 bg-red-600 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full z-10 animate-in zoom-in duration-200\""
+    prevalence: "common"
+  - category: "testing"
+    pattern: "Markup tests assert structure but not color classes"
+    description: "Existing tests verify render presence and empty-state omission, but they do not assert badge color tokens."
+    examples:
+      - file: "zip/src/components/sections/CateringStickyCartControls.test.tsx"
+        location: "lines 7-23"
+        snippet: "assert.match(markup, />7<\/span>/); assert.doesNotMatch(markup, /absolute -right-1 -top-1/);"
+    prevalence: "occasional"
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: "CateringStickyCartControls"
+      responsibility: "Render the active floating cart trigger and badge for the catering route"
+      location: "zip/src/components/sections/CateringStickyCartControls.tsx"
+      relationship_to_domain: "domain owns the active mobile badge"
+    - component: "CateringWielkanocnyPage"
+      responsibility: "Compute live cart state and pass it into the sticky cart controls"
+      location: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      relationship_to_domain: "domain supplies badge count and total"
+    - component: "App"
+      responsibility: "Route `/catering-wielkanocny` to the catering page"
+      location: "zip/src/App.tsx"
+      relationship_to_domain: "domain entry point"
+  interfaces_used_by_domain:
+    - interface: "CateringStickyCartControlsProps"
+      location: "zip/src/components/sections/CateringStickyCartControls.tsx"
+      usage_pattern: "Receives `onOpenCart`, `itemCount`, and `totalPrice` from the page"
+  data_flow_involving_domain: "Cart state is derived in `CateringWielkanocnyPage`, then `itemCount` is passed to `CateringStickyCartControls`, which conditionally renders the mobile badge when `itemCount > 0`."
+  key_relationships_to_domain:
+    - from: "zip/src/App.tsx"
+      to: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      relationship: "imports"
+    - from: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      to: "zip/src/components/sections/CateringStickyCartControls.tsx"
+      relationship: "imports"
+    - from: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      to: "zip/src/lib/cateringCart"
+      relationship: "calls"
+
+related_technology_stack:
+  languages_used_in_domain:
+    - "TypeScript"
+    - "TSX"
+  frameworks_used_in_domain:
+    - name: "React"
+      usage_in_domain: "Component rendering and state-driven conditional badge output"
+    - name: "React Router"
+      usage_in_domain: "Route selection for the catering page"
+  libraries_used_in_domain:
+    - name: "Tailwind CSS"
+      purpose_in_domain: "Utility classes define badge and FAB styling"
+    - name: "lucide-react"
+      purpose_in_domain: "Shopping cart icon used in the floating action button"
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: "Route-specific components are prefixed with `Catering...` and colocated under `zip/src/components/sections/`."
+  structure_of_domain: "Page component computes state, section component renders the sticky control, tests validate static markup."
+  error_handling_in_domain: "No explicit error handling in the sticky cart control; rendering is prop-driven."
+  testing_in_domain: "Node-based `renderToStaticMarkup` tests assert structural output rather than visual regression details."
+  documentation_in_domain: "No component-local documentation found."
+
+related_dependencies:
+  internal:
+    - component: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      relationship_to_domain: "provides live cart count and total"
+      direction: inbound
+    - component: "zip/src/lib/cateringCart"
+      relationship_to_domain: "supplies derived cart totals/counts through page-level helpers"
+      direction: inbound
+    - component: "zip/src/App.tsx"
+      relationship_to_domain: "routes into the page that uses this control"
+      direction: inbound
+  external:
+    - name: "react"
+      purpose_for_domain: "component rendering"
+    - name: "lucide-react"
+      purpose_for_domain: "cart icon"
+
+open_questions:
+  - question: "Should the generic `StickyCartControls` badge also be aligned to the same red/white styling for consistency on non-catering routes?"
+    context: "It currently uses the same white badge pattern, but it is not the active numbered badge in the catering flow investigated here."
+
+gaps:
+  - area: "Historical commit lineage"
+    description: "The active `CateringStickyCartControls.tsx` file is currently new in the working tree, so there is no committed git history for this exact file to pinpoint a prior commit-based regression."
+    impact: "The regression cause can be localized to the introduction of this component and its hardcoded neutral badge classes, but not to a specific older commit hash."

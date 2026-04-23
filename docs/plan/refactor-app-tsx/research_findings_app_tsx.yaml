@@ -1,0 +1,128 @@
+plan_id: refactor-app-tsx
+objective: Read zip/src/App.tsx and identify all distinct sections that need to be extracted into separate .tsx components
+focus_area: zip/src/App.tsx
+created_at: '2026-03-22T00:00:00Z'
+created_by: gem-researcher
+status: completed
+
+tldr: |
+  - Analized zip/src/App.tsx.
+  - Identified multiple inline sections (Hero, Reservation, Services, Breakfast, Menu, Gallery, etc.) that can be extracted.
+  - Also found subcomponents like ProductItem, Project5a, About28, ImageSection, TextSection already partially defined but in the same file.
+
+research_metadata:
+  methodology: read_file
+  scope: zip/src/App.tsx entirely
+  confidence: high
+  coverage: 100
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Main application entry point containing layout and all landing page sections
+    key_elements:
+      - element: ProductItem
+        type: function
+        location: zip/src/App.tsx:10-67
+        description: Subcomponent for displaying product
+      - element: Project5a
+        type: function
+        location: zip/src/App.tsx:69-183
+        description: Section component representing a project/art vision
+      - element: About28
+        type: function
+        location: zip/src/App.tsx:185-288
+        description: Section component representing an about section
+      - element: Navbar
+        type: pattern
+        location: zip/src/App.tsx:352-414
+        description: Top navigation inside App
+      - element: Hero Section
+        type: pattern
+        location: zip/src/App.tsx:417-430
+        description: Hero banner
+      - element: Reservation Quick Bar
+        type: pattern
+        location: zip/src/App.tsx:432-458
+        description: Quick reservation form
+      - element: Modern Interior Section
+        type: pattern
+        location: zip/src/App.tsx:461-487
+        description: Text and images section
+      - element: The Selection
+        type: pattern
+        location: zip/src/App.tsx:490-577
+        description: Selection list of items
+      - element: Services / Highlights
+        type: pattern
+        location: zip/src/App.tsx:579-661
+        description: Masonry grid of services
+      - element: Wielkanoc w Bulwarze Section
+        type: pattern
+        location: zip/src/App.tsx:663-700
+        description: Easter event section
+      - element: Breakfast Section
+        type: pattern
+        location: zip/src/App.tsx:704-768
+        description: Parallax header and breakfast menu
+      - element: The Menu
+        type: pattern
+        location: zip/src/App.tsx:770-843
+        description: Grid of menu items
+      - element: Wielkanoc w Bulwarze Section (Copied)
+        type: pattern
+        location: zip/src/App.tsx:845-889
+        description: Duplicate of easter event section
+      - element: Gallery Section
+        type: pattern
+        location: zip/src/App.tsx:891-923
+        description: Photo gallery grid
+      - element: Oferta Section
+        type: pattern
+        location: zip/src/App.tsx:925-979
+        description: Offer details with images
+      - element: Quote Section
+        type: pattern
+        location: zip/src/App.tsx:981-989
+        description: Quote block
+      - element: Blog Section
+        type: pattern
+        location: zip/src/App.tsx:991-1025
+        description: Blog post list
+      - element: Special Offer Section
+        type: pattern
+        location: zip/src/App.tsx:1028-1039
+        description: Special offer call to action
+      - element: Sałatki na wynos Section
+        type: pattern
+        location: zip/src/App.tsx:1042-1077
+        description: Salad menu with ProductItem instances
+      - element: Footer
+        type: pattern
+        location: zip/src/App.tsx:1085-1116
+        description: Page footer
+      - element: Sticky Cart Bar & Mobile FAB
+        type: pattern
+        location: zip/src/App.tsx:1118-1145
+        description: Cart UI elements
+    language: typescript (tsx)
+    lines: 1150
+
+patterns_found:
+  - category: structure
+    pattern: Monolithic file
+    description: App.tsx contains many distinct sections that should be separate components.
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:350-1150
+        snippet: The App component directly returns a massive layout of multiple <section> elements.
+    prevalence: common
+
+open_questions:
+  - question: Should we keep duplicates like 'Wielkanoc w Bulwarze Section (Copied)'?
+    context: It's defined twice with identical content.
+
+gaps:
+  - area: Component reusability
+    description: Sections are hardcoded inside App.tsx instead of being reusable components.
+    impact: High, reduces maintainability and readability.

@@ -1,0 +1,253 @@
+---
+interface PrimaryCta {
+  label: string;
+  href: string;
+}
+
+interface Card {
+  meta: string;
+  title: string;
+  description: string;
+  linkLabel: string;
+  linkHref: string;
+}
+
+interface Props {
+  title: string;
+  primaryCta: PrimaryCta;
+  cards?: Card[];
+}
+
+const {
+  title,
+  primaryCta,
+  cards = [],
+} = Astro.props;
+
+const ARROW_RIGHT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 5l7 7-7 7"></path></svg>';
+---
+
+<section class="universal-multilink-block">
+  <div class="universal-multilink-block__inner theme-section-wrapper">
+    <div class="universal-multilink-block__grid">
+      <div class="universal-multilink-block__intro">
+        <div class="universal-multilink-block__intro-stack">
+          <h2 class="universal-multilink-block__title">{title}</h2>
+          <div class="universal-multilink-block__rule" aria-hidden="true"></div>
+          <a class="universal-multilink-block__cta theme-radius-control" href={primaryCta.href}>{primaryCta.label}</a>
+        </div>
+      </div>
+
+      <div class="universal-multilink-block__cards">
+        {cards.map((card) => (
+          <article class="universal-multilink-block__card theme-radius-surface">
+            <div class="universal-multilink-block__card-copy">
+              <p class="universal-multilink-block__meta">{card.meta}</p>
+
+              <div>
+                <h3 class="universal-multilink-block__card-title">{card.title}</h3>
+                <p class="universal-multilink-block__description">{card.description}</p>
+              </div>
+            </div>
+
+            <a class="universal-multilink-block__link" href={card.linkHref}>
+              <span>{card.linkLabel}</span>
+              <span class="universal-multilink-block__link-icon" aria-hidden="true" set:html={ARROW_RIGHT_ICON}></span>
+            </a>
+          </article>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .universal-multilink-block {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    padding-top: 8rem;
+    padding-bottom: 8rem;
+    background: var(--color-surface-container-lowest);
+  }
+
+  .universal-multilink-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    mask-image: url('https://deifkwefumgah.cloudfront.net/shadcnblocks/block/patterns/waves.svg');
+    mask-repeat: repeat;
+    mask-size: 64px 32px;
+    opacity: 0.9;
+    z-index: -2;
+  }
+
+  .universal-multilink-block::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 0%, var(--color-surface-container-lowest) 100%);
+    z-index: -1;
+  }
+
+  .universal-multilink-block__inner {
+    position: relative;
+  }
+
+  .universal-multilink-block__grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  .universal-multilink-block__intro {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .universal-multilink-block__intro-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .universal-multilink-block__title {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-size: 3rem;
+    font-weight: 400;
+    letter-spacing: 0.3rem;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .universal-multilink-block__rule {
+    width: 4rem;
+    height: 1px;
+    background: var(--color-primary);
+  }
+
+  .universal-multilink-block__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    padding: 1rem 2rem;
+    font-family: var(--font-label);
+    font-size: 0.875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: opacity 0.2s ease;
+  }
+
+  .universal-multilink-block__cta:hover {
+    opacity: 0.8;
+  }
+
+  .universal-multilink-block__cards {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .universal-multilink-block__card {
+    display: flex;
+    min-height: 15rem;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+    background: #ffffff;
+    padding: 2rem;
+  }
+
+  .universal-multilink-block__card-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .universal-multilink-block__meta {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+  }
+
+  .universal-multilink-block__card-title {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-headline);
+    font-size: 1.125rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .universal-multilink-block__description {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  .universal-multilink-block__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 1.5rem;
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(113 113 122);
+    transition: color 0.2s ease;
+  }
+
+  .universal-multilink-block__link:hover {
+    color: var(--color-primary);
+  }
+
+  .universal-multilink-block__link-icon {
+    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .universal-multilink-block__link-icon :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  @media (min-width: 1024px) {
+    .universal-multilink-block__grid {
+      grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+      gap: 2.5rem;
+    }
+
+    .universal-multilink-block__cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .universal-multilink-block__title {
+      font-size: 4.5rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .universal-multilink-block {
+      padding-top: 5rem;
+      padding-bottom: 5rem;
+    }
+
+    .universal-multilink-block__title {
+      font-size: 2.5rem;
+    }
+
+    .universal-multilink-block__card {
+      min-height: auto;
+      padding: 1.5rem;
+    }
+  }
+</style>

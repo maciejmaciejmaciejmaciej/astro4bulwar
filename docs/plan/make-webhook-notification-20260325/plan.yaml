@@ -1,0 +1,239 @@
+plan_id: make-webhook-notification-20260325
+objective: >-
+  Add a minimal, safe Make.com webhook notification to the existing BULWAR APP
+  WordPress bridge so that, after a Woo order is successfully created, the
+  plugin sends a sanitized JSON payload containing only order_id and a
+  text_long_string HTML summary with no personal data.
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Add the webhook at the bridge boundary, not in React. Keep the change set small:
+  one config entry for the Make URL, one formatter/sender path inside the plugin,
+  and one post-create call from OrderService after the Woo order is saved.
+  The payload must stay intentionally narrow: order_id plus a simple HTML summary
+  built from order lines, totals, fulfillment type, and slot timing only.
+
+open_questions:
+  - Should webhook delivery failure be logged-only, or also stored in order meta for operator visibility?
+  - Where should the user-provided Make webhook URL live for MVP: plugin constant, wp-config constant, or WordPress option?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Webhook payload accidentally includes billing, shipping, email, phone, or customer note fields.
+      likelihood: medium
+      impact: critical
+      mitigation: Build the payload from an explicit allowlist formatter based on order items and fulfillment meta only.
+    - scenario: Make endpoint timeout or HTTP failure breaks the checkout API response after order creation.
+      likelihood: medium
+      impact: high
+      mitigation: Trigger webhook only after successful order save, use short timeout, catch transport errors, and keep order creation response successful.
+    - scenario: HTML summary becomes inconsistent with Woo totals or misses fee lines.
+      likelihood: low
+      impact: medium
+      mitigation: Build summary from authoritative saved Woo order items and totals, not from raw request payload.
+  assumptions:
+    - The webhook is best-effort for MVP and must not block a successfully created order.
+    - The existing bridge plugin remains the only trusted place to send outbound notifications.
+    - The user will provide a valid Make webhook URL outside of frontend code.
+
+implementation_specification:
+  code_structure: >-
+    Keep the implementation inside the existing WordPress bridge plugin. Add one
+    small notification helper under the plugin source tree for payload building
+    and sending, expose a single configuration read for the webhook URL, and call
+    the sender from OrderService immediately after order save.
+  affected_areas:
+    - wordpress-plugin/bulwar-bridge/src/Checkout
+    - wordpress-plugin/bulwar-bridge/src/Config
+    - wordpress-plugin/bulwar-bridge/docs
+  component_details:
+    - component: Make webhook configuration
+      responsibility: Provide the webhook URL and enablement check without exposing secrets to React.
+      interfaces:
+        - Read configured webhook URL from server-side bridge configuration.
+    - component: Sanitized order summary formatter
+      responsibility: Produce the minimal payload with order_id and text_long_string HTML from the saved Woo order.
+      interfaces:
+        - formatPayload(order): array{order_id:int,text_long_string:string}
+    - component: Make webhook sender
+      responsibility: POST the formatted JSON payload to the configured Make endpoint with safe failure handling.
+      interfaces:
+        - send(order): void
+  dependencies:
+    - component: OrderService
+      relationship: Calls Make webhook sender only after successful Woo order save.
+    - component: Sanitized order summary formatter
+      relationship: Supplies the outbound JSON body used by the sender.
+    - component: Bridge configuration
+      relationship: Supplies the server-side webhook URL used by the sender.
+  integration_points:
+    - OrderService post-save flow after order status and meta are persisted.
+    - Bridge configuration constants or settings lookup.
+    - Bridge contract documentation for operational notes about outbound notification behavior.
+
+contracts:
+  - from_task: T1
+    to_task: T3
+    interface: Server-side webhook URL lookup and enabled-or-disabled decision.
+    format: non-empty HTTPS URL string or null
+  - from_task: T2
+    to_task: T3
+    interface: Sanitized outbound payload built from the saved Woo order.
+    format: JSON object with order_id:number and text_long_string:string
+
+tasks:
+  - id: T1
+    title: Define server-side webhook configuration and failure policy
+    description: |
+      Add the minimal configuration seam for the Make webhook URL in the bridge,
+      and lock the MVP behavior that webhook delivery is best-effort after order
+      creation rather than part of the transactional success criteria.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - wordpress-plugin/bulwar-bridge/src/Config/Constants.php: existing runtime constants for bridge configuration
+      - wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php: order creation flow where post-save notification will be attached
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 40
+    focus_area: configuration
+    verification:
+      - Confirm the webhook URL is read only from server-side plugin configuration.
+      - Confirm the plan does not require any React payload or UI change.
+    acceptance_criteria:
+      - A clear server-side source of truth exists for the Make webhook URL.
+      - Webhook delivery failure policy is explicitly non-blocking for successful order creation.
+    failure_modes:
+      - scenario: URL configuration is added in a way that leaks into frontend code or docs unintentionally.
+        likelihood: low
+        impact: high
+        mitigation: Restrict URL handling to PHP bridge config and deployment documentation only.
+    tech_stack:
+      - PHP
+      - WordPress
+      - WooCommerce
+    test_coverage: null
+
+  - id: T2
+    title: Design the sanitized Make payload formatter
+    description: |
+      Build a narrow formatter that creates order_id and text_long_string from the
+      saved Woo order using only allowed fields: order number, item names,
+      quantities, line prices, fulfillment type, slot date/time, and relevant
+      non-PII fee or total context needed for operator readability.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php: authoritative order meta and saved line items
+      - docs/plan/bulwar-bridge-checkout/research_findings_make_webhook_payload.yaml: privacy and transport constraints
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 120
+    focus_area: payload
+    verification:
+      - Confirm text_long_string excludes name, email, phone, address, and customer note.
+      - Confirm summary is generated from the saved Woo order, not directly from raw request body.
+    acceptance_criteria:
+      - Formatter outputs exactly the minimal JSON shape required by Make.
+      - HTML summary includes order number, items, quantities, prices, fulfillment type, and slot date/time.
+      - No personal data is present in the output.
+    failure_modes:
+      - scenario: A helper reuses raw checkout request data and accidentally includes private fields.
+        likelihood: medium
+        impact: high
+        mitigation: Build from an allowlist over WC_Order getters and saved bridge meta only.
+    tech_stack:
+      - PHP
+      - WordPress
+      - WooCommerce
+    test_coverage: Minimal unit-style formatter assertions or manual sample payload verification.
+
+  - id: T3
+    title: Attach best-effort webhook sending to successful order creation
+    description: |
+      After Woo order creation succeeds and the order is saved, invoke a small
+      sender that posts the sanitized payload to Make with a short timeout and
+      safe error handling. Transport failure should be logged for operators but
+      must not convert a successful order creation into an API failure.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+      - T2
+    context_files:
+      - wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php: post-save integration point
+      - wordpress-plugin/bulwar-bridge/src/Support/Response.php: existing retryability and response conventions
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 140
+    focus_area: integration
+    verification:
+      - Confirm a successful Woo order still returns the existing bridge success response even if Make is unavailable.
+      - Confirm failed webhook delivery is observable through logs or order meta.
+    acceptance_criteria:
+      - Webhook send happens only after order save succeeds.
+      - Non-2xx or transport failures do not break order creation response.
+      - No duplicate send occurs on idempotent replay unless explicitly intended and documented.
+    failure_modes:
+      - scenario: Idempotent retry on the bridge resends the webhook for an already-created order.
+        likelihood: medium
+        impact: medium
+        mitigation: Decide and document MVP behavior; prefer a sent marker in order meta if duplicate notifications are unacceptable.
+      - scenario: Long webhook timeout slows checkout noticeably.
+        likelihood: medium
+        impact: medium
+        mitigation: Use a short timeout and no response-dependent business logic.
+    tech_stack:
+      - PHP
+      - WordPress HTTP API
+      - WooCommerce
+    test_coverage: Manual integration test against a temporary webhook capture endpoint.
+
+  - id: T4
+    title: Verify privacy, transport behavior, and deployment procedure
+    description: |
+      Validate the outgoing payload contents, confirm that checkout success is
+      preserved under webhook failure, and document the small deployment and
+      configuration steps needed to enable the webhook safely on the WordPress
+      backend.
+    wave: 3
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - T3
+    context_files:
+      - wordpress-plugin/bulwar-bridge/docs/contracts.md: bridge contract and operational notes
+      - .github/copilot-instructions.md: deployment constraints and permissions requirement
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 60
+    focus_area: verification
+    verification:
+      - Submit one test order and inspect the received Make payload.
+      - Simulate webhook failure and confirm order creation still succeeds.
+      - Review payload for absence of PII.
+    acceptance_criteria:
+      - Privacy review passes with no personal data in outbound payload.
+      - Deployment notes cover webhook URL setup and post-deploy validation.
+      - Operator can verify whether the webhook was sent successfully.
+    failure_modes:
+      - scenario: Deployment enables the code but forgets to populate the webhook URL.
+        likelihood: medium
+        impact: medium
+        mitigation: Document explicit post-deploy config and one live verification order.
+    requires_review: true
+    review_depth: standard
+    security_sensitive: true

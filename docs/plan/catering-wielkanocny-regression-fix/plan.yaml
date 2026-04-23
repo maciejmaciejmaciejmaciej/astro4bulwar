@@ -1,0 +1,181 @@
+plan_id: catering-wielkanocny-regression-fix
+objective: Repair /catering-wielkanocny after the mistaken change by restoring the missing page sections, trimming only the top header/logo/CTA area from Hero24, preserving the lower grid/table-like content, and verifying with build using existing design-system classes only.
+created_at: "2026-03-24T00:00:00Z"
+created_by: gem-planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Restore the earlier /catering-wielkanocny page composition, keep Hero24 on the page but remove only its top header/logo/CTA block, and verify the route still builds cleanly. Limit the change to the known route and section files, reuse existing classes only, and avoid redesigning the preserved lower content.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The page composition is restored incorrectly and reintroduces the wrong section order or an extra experimental block.
+      likelihood: medium
+      impact: medium
+      mitigation: Restore only the three-section composition supported by current local research: CateringWielkanocnyHero, Hero24, and CateringProductListAlt.
+    - scenario: The Hero24 edit removes lower grid/table-like content instead of only the top header/logo/CTA area.
+      likelihood: medium
+      impact: high
+      mitigation: Scope the Hero24 edit to the initial top wrapper only and leave the lower content structure intact.
+  assumptions:
+    - The intended route composition is CateringWielkanocnyHero, Hero24, and CateringProductListAlt inside the existing page shell.
+    - CateringWielkanocnyHero may need to be restored as an import target only, without redesign.
+    - Existing Tailwind and design-system classes already used in the repo are sufficient for the fix.
+
+implementation_specification:
+  code_structure: Keep the route composition change in the page file, keep the scoped structural trim in Hero24, and avoid creating new components, styles, or layout utilities.
+  affected_areas:
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+    - zip/src/components/sections/Hero24.tsx
+    - zip/src/components/sections/CateringWielkanocnyHero.tsx
+  component_details:
+    - component: CateringWielkanocnyPage
+      responsibility: Restore the missing content sections in the correct order within the existing shell.
+      interfaces:
+        - Renders CateringWielkanocnyHero, Hero24, and CateringProductListAlt in page composition.
+    - component: Hero24
+      responsibility: Remove only the top header/logo/CTA area while preserving the lower grid/table-like content and existing classes.
+      interfaces:
+        - Keeps the existing section component contract and lower content structure.
+    - component: CateringWielkanocnyHero
+      responsibility: Serve as the restored first content section if already present in source.
+      interfaces:
+        - Imported and rendered from the page file without redesign.
+  dependencies:
+    - component: CateringWielkanocnyPage
+      relationship: composes CateringWielkanocnyHero, Hero24, and CateringProductListAlt
+    - component: Hero24
+      relationship: remains in page composition after the top area is removed
+  integration_points:
+    - React route for /catering-wielkanocny
+    - Existing section components in zip/src/components/sections
+    - Frontend build from zip/package.json
+
+contracts:
+  - from_task: restore_page_composition
+    to_task: verify_regression_fix
+    interface: Page file renders the restored three-section composition using the existing shell and imports.
+    format: TSX page composition update
+  - from_task: scope_hero24_trim
+    to_task: verify_regression_fix
+    interface: Hero24 preserves the lower grid/table-like content and removes only the top header/logo/CTA block.
+    format: TSX section structure update
+
+tasks:
+  - id: restore_page_composition
+    title: Restore the missing /catering-wielkanocny sections in the page composition
+    description: |
+      Update the route page so it again renders the missing sections in the supported order: CateringWielkanocnyHero, Hero24, and CateringProductListAlt. Keep the existing Navbar, breadcrumbs, Footer, StickyCartControls, and CheckoutDrawer shell unchanged, and treat CateringWielkanocnyHero only as a restored import/render target.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Active route composition and likely regression source.
+      - zip/src/components/sections/CateringWielkanocnyHero.tsx: Existing section to restore as the first content block.
+      - zip/src/components/sections/CateringProductListAlt.tsx: Existing lower table-like section that remains in composition.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 40
+    focus_area: route composition
+    verification:
+      - Confirm the page renders three content sections again inside the unchanged shell.
+      - Confirm no new sections or wrappers are introduced.
+    acceptance_criteria:
+      - /catering-wielkanocny includes CateringWielkanocnyHero, Hero24, and CateringProductListAlt again.
+      - Shared shell elements remain unchanged.
+      - No redesign work is done in CateringWielkanocnyHero.
+    failure_modes:
+      - scenario: The page restore adds the wrong section or wrong order.
+        likelihood: medium
+        impact: medium
+        mitigation: Use the earlier local regression research as the source of truth for composition.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: null
+
+  - id: scope_hero24_trim
+    title: Remove only the top header/logo/CTA area from Hero24
+    description: |
+      Edit Hero24 so the top logo, heading, and CTA area referenced by the user is removed without disturbing the lower grid/table-like content. Reuse only classes already present in the repo and avoid replacing the preserved lower content with a new design.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/Hero24.tsx: Contains the current top header/logo/CTA block and the lower content that must remain.
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Keeps Hero24 in route composition.
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 40
+    focus_area: section structure
+    verification:
+      - Confirm only the top header/logo/CTA wrapper is removed.
+      - Confirm the lower grid/table-like content remains intact.
+      - Confirm no new custom classes are added.
+    acceptance_criteria:
+      - Hero24 no longer renders the top header/logo/CTA area.
+      - The lower grid/table-like content remains present.
+      - Only existing design-system classes are used.
+    failure_modes:
+      - scenario: The edit removes shared spacing wrappers needed by the preserved lower content.
+        likelihood: medium
+        impact: high
+        mitigation: Trim only the top block and retain the lower content container hierarchy unless strictly unnecessary.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: null
+
+  - id: verify_regression_fix
+    title: Verify the restored route and build output
+    description: |
+      Validate that the route composition is restored, the Hero24 trim is scoped correctly, and the project still builds successfully. Check that the fix stays within the existing design system and does not introduce unused imports or TSX regressions.
+    wave: 2
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - restore_page_composition
+      - scope_hero24_trim
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Verify final route composition.
+      - zip/src/components/sections/Hero24.tsx: Verify final trimmed structure.
+      - zip/package.json: Use the existing frontend build command.
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: regression validation
+    verification:
+      - Confirm /catering-wielkanocny has the restored three-section composition.
+      - Confirm Hero24 preserves the lower grid/table-like content.
+      - Run the frontend build and confirm success.
+    acceptance_criteria:
+      - Restored route composition matches the intended three sections.
+      - Hero24 trim is limited to the top header/logo/CTA area.
+      - Build passes without new errors.
+    failure_modes:
+      - scenario: The page structure is correct but the build fails because of stale imports or JSX structure issues.
+        likelihood: medium
+        impact: medium
+        mitigation: Validate imports and JSX nesting as part of the verification pass.
+    validation_matrix:
+      - scenario: Route structure check
+        steps:
+          - Open the /catering-wielkanocny route.
+          - Confirm the restored section order.
+          - Confirm Hero24 no longer shows its top header/logo/CTA area.
+        expected_result: The route shows the restored sections and only the intended Hero24 trim.
+      - scenario: Build validation
+        steps:
+          - Run the frontend build from the zip workspace.
+          - Review the output for errors related to the affected files.
+        expected_result: The build completes successfully without new regressions.

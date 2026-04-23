@@ -1,0 +1,263 @@
+plan_id: none
+objective: Determine the current regression state of /catering-wielkanocny, identify the likely intended composition, and isolate the minimal corrective change without modifying source files.
+focus_area: zip/src catering-wielkanocny route regression
+created_at: 2026-03-24T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The current route page now renders only one content block, CateringProductListAlt, between the shared shell elements.
+  - Earlier local research artifacts and untracked companion files show the page had been assembled from three content sections: CateringWielkanocnyHero, Hero24, and CateringProductListAlt.
+  - Hero24 itself still contains the header/logo area and placeholder marketing copy, so the requested change to remove only the header/logo from Hero24 was not actually applied there.
+  - The most likely mistaken change was collapsing page composition in CateringWielkanocnyPage instead of editing Hero24 in place.
+  - The minimal corrective path is to restore the prior page composition and then limit the requested edit to Hero24.
+
+research_metadata:
+  methodology: Hybrid review using targeted file reads, grep-based relationship checks, git status/diff inspection, and comparison against an earlier local research artifact already stored in docs/plan/none.
+  scope: Medium-depth inspection of the active route page, Hero24, adjacent catering components, local untracked provenance, and earlier route-composition findings.
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active route composition for /catering-wielkanocny.
+    key_elements:
+      - element: CateringWielkanocnyPage
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:36
+        description: Currently renders Navbar, breadcrumbs, one CateringProductListAlt block, Footer, StickyCartControls, and CheckoutDrawer.
+      - element: salatkiData
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:8
+        description: Static placeholder list data passed into CateringProductListAlt.
+    language: TSX
+    lines: 67
+  - file: Hero24.tsx
+    path: zip/src/components/sections/Hero24.tsx
+    purpose: Promotional section that the user reportedly wanted to edit by removing only its header and logo.
+    key_elements:
+      - element: Hero24
+        type: function
+        location: zip/src/components/sections/Hero24.tsx:9
+        description: Still renders logo image, PLATFORM eyebrow, large heading, CTA button, and four feature cards.
+    language: TSX
+    lines: 79
+  - file: CateringWielkanocnyHero.tsx
+    path: zip/src/components/sections/CateringWielkanocnyHero.tsx
+    purpose: Companion hero section for the catering page found in the workspace.
+    key_elements:
+      - element: CateringWielkanocnyHero
+        type: function
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:8
+        description: A full editorial hero/introduction block for the route, using max-w-7xl and multiple image/text regions.
+    language: TSX
+    lines: 146
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Product-list/table-like section still rendered by the page.
+    key_elements:
+      - element: CateringProductListAlt
+        type: function
+        location: zip/src/components/sections/CateringProductListAlt.tsx:20
+        description: Renders the parallax image band and the wide product list container.
+    language: TSX
+    lines: 72
+  - file: StepsGrid.tsx
+    path: zip/src/components/sections/StepsGrid.tsx
+    purpose: Supporting grid section created alongside the route-related files.
+    key_elements:
+      - element: StepsGrid
+        type: function
+        location: zip/src/components/sections/StepsGrid.tsx:15
+        description: Renders a four-card informational grid structurally similar to the card area of Hero24.
+    language: TSX
+    lines: 40
+  - file: research_findings_catering_wielkanocny_route.yaml
+    path: docs/plan/none/research_findings_catering_wielkanocny_route.yaml
+    purpose: Earlier local research artifact capturing the route composition before the current regression report.
+    key_elements:
+      - element: prior composition finding
+        type: pattern
+        location: docs/plan/none/research_findings_catering_wielkanocny_route.yaml:13
+        description: Reports the page rendering CateringWielkanocnyHero, Hero24, and CateringProductListAlt.
+    language: YAML
+    lines: 220
+
+patterns_found:
+  - category: structure
+    pattern: Route page composition is explicit and section-based.
+    description: The page file directly lists the content sections in render order, so removing sections at the page level immediately changes route composition.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:54
+        snippet: <CateringProductListAlt title="SAŁATKI NA WYNOS" products={salatkiData} bgImage="https://picsum.photos/seed/salad/1920/1080" />
+    prevalence: common
+  - category: structure
+    pattern: Hero24 still contains the exact header/logo region the user referenced.
+    description: The component begins with a centered logo, eyebrow text, large heading, and CTA before the card grid.
+    examples:
+      - file: zip/src/components/sections/Hero24.tsx
+        location: zip/src/components/sections/Hero24.tsx:13
+        snippet: <img src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/block-1.svg" alt="placeholder" className="mx-auto ..." />
+      - file: zip/src/components/sections/Hero24.tsx
+        location: zip/src/components/sections/Hero24.tsx:18
+        snippet: <h1 className="mt-4 font-headline text-4xl md:text-5xl ...">Develop, launch, and grow your service with our platform</h1>
+    prevalence: common
+  - category: architecture
+    pattern: Untracked route-related files were introduced together.
+    description: The page and its companion sections are all currently untracked, which explains the lack of committed git history and makes local artifacts the best evidence for the earlier intended assembly.
+    examples:
+      - file: terminal
+        location: git status --short
+        snippet: ?? zip/src/components/sections/CateringWielkanocnyHero.tsx / Hero24.tsx / StepsGrid.tsx / CateringProductListAlt.tsx / pages/CateringWielkanocnyPage.tsx
+    prevalence: occasional
+  - category: structure
+    pattern: Earlier local research captured a three-section page.
+    description: The prior findings file explicitly documents the route as composed of CateringWielkanocnyHero, Hero24, and CateringProductListAlt.
+    examples:
+      - file: docs/plan/none/research_findings_catering_wielkanocny_route.yaml
+        location: docs/plan/none/research_findings_catering_wielkanocny_route.yaml:13
+        snippet: The active page renders CateringWielkanocnyHero, Hero24, and CateringProductListAlt
+    prevalence: rare
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Composes the visible /catering-wielkanocny route.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain root
+    - component: CateringWielkanocnyHero
+      responsibility: Intro/hero section for the route.
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      relationship_to_domain: likely intended to remain in page composition
+    - component: Hero24
+      responsibility: Mid-page promotional/info section with a removable header/logo block and a card grid.
+      location: zip/src/components/sections/Hero24.tsx
+      relationship_to_domain: likely intended edit target
+    - component: CateringProductListAlt
+      responsibility: Table-like product list section.
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: still active in current page composition
+  interfaces_used_by_domain:
+    - interface: Hero24Props
+      location: zip/src/components/sections/Hero24.tsx
+      usage_pattern: Optional className-only section wrapper props.
+    - interface: CateringProductListAltProps
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      usage_pattern: title, products, bgImage, className.
+  data_flow_involving_domain: App.tsx routes to CateringWielkanocnyPage; that page currently passes local salatkiData into CateringProductListAlt. Earlier local findings indicate the same page also rendered CateringWielkanocnyHero and Hero24 ahead of the product list.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship: imports
+    - from: docs/plan/none/research_findings_catering_wielkanocny_route.yaml
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: documents earlier composition state
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - YAML
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Page and section composition for the route.
+    - name: React Router
+      usage_in_domain: Maps the route and breadcrumb link.
+    - name: Tailwind CSS
+      usage_in_domain: Layout and typography utilities inside the sections.
+  libraries_used_in_domain:
+    - name: framer-motion
+      purpose_in_domain: Motion behavior in CateringWielkanocnyHero and CateringProductListAlt.
+    - name: lucide-react
+      purpose_in_domain: Icons inside Hero24 and StepsGrid.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Route pages use PascalCase Page suffixes; reusable blocks use descriptive PascalCase section names.
+  structure_of_domain: Shared shell elements live in the page and content sections are inserted inside main in explicit order.
+  error_handling_in_domain: No explicit runtime error handling in these presentational components.
+  testing_in_domain: No automated tests found for this route-specific composition.
+  documentation_in_domain: Current best evidence of prior state is a local research YAML artifact rather than committed git history.
+
+related_dependencies:
+  internal:
+    - component: zip/src/App.tsx
+      relationship_to_domain: Routes traffic into the page.
+      direction: inbound
+    - component: zip/src/components/sections/Navbar.tsx
+      relationship_to_domain: Shared page shell element.
+      direction: outbound
+    - component: zip/src/components/sections/Footer.tsx
+      relationship_to_domain: Shared page shell element.
+      direction: outbound
+    - component: zip/src/components/sections/StickyCartControls.tsx
+      relationship_to_domain: Shared route-level cart UI.
+      direction: outbound
+    - component: zip/src/components/CheckoutDrawer.tsx
+      relationship_to_domain: Shared route-level checkout drawer.
+      direction: outbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Route wiring and breadcrumb link.
+    - name: framer-motion
+      purpose_for_domain: Motion/layout behavior.
+    - name: lucide-react
+      purpose_for_domain: Iconography.
+
+open_questions:
+  - question: Was StepsGrid ever actually inserted into CateringWielkanocnyPage, or was Hero24 meant to absorb its card-grid responsibility?
+    context: StepsGrid exists alongside the page files but no current import path from the page was found in the active source.
+  - question: Should the restored page composition include only the previously documented three blocks, or was there a short-lived fourth section during local experimentation?
+    context: The strongest evidence supports three content blocks, but the co-created StepsGrid suggests there may have been an intermediate assembly variant.
+
+gaps:
+  - area: committed git history
+    description: The relevant files are untracked, so there is no authoritative git commit history for their earlier content.
+    impact: Low to medium; conclusions rely on current source plus prior local research artifacts instead of commit diffs.
+  - area: visual runtime verification
+    description: The regression was inferred from source state and artifact comparison rather than a live browser capture.
+    impact: Low; the source-level composition difference is explicit.
+
+current_broken_state:
+  page_composition:
+    shared_shell:
+      - Navbar
+      - breadcrumbs bar
+      - Footer
+      - StickyCartControls
+      - CheckoutDrawer
+    content_sections:
+      - CateringProductListAlt
+  issues:
+    - Two previously documented content sections are absent from CateringWielkanocnyPage.
+    - Hero24 still includes the logo/header block and placeholder copy, so the requested component-level change was not performed there.
+    - The route now reads like a reduced placeholder page rather than the earlier assembled landing page.
+
+likely_intended_state:
+  page_composition:
+    content_sections:
+      - CateringWielkanocnyHero
+      - Hero24
+      - CateringProductListAlt
+  hero24_expectation:
+    - Keep Hero24 on the page.
+    - Remove only the top header/logo/CTA portion from Hero24 if that was the user request.
+    - Preserve the lower informational/card content unless separately requested.
+
+minimal_fix_recommendation:
+  summary: Restore the page composition in CateringWielkanocnyPage to the earlier three-section assembly, then edit only Hero24 to remove the header/logo area the user described.
+  rationale:
+    - The regression was introduced at page-composition level, not by a completed Hero24 edit.
+    - The user request described a scoped component edit, not removing route sections.
+    - Reinstating the missing page sections is smaller and safer than redesigning the route around the reduced one-block page.
+
+files_to_change:
+  - path: zip/src/pages/CateringWielkanocnyPage.tsx
+    reason: Restore the missing content sections in the route composition.
+  - path: zip/src/components/sections/Hero24.tsx
+    reason: Apply the actual requested change by removing only the header/logo area.

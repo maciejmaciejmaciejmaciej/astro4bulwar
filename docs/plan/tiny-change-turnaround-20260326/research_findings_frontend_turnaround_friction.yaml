@@ -1,0 +1,421 @@
+plan_id: tiny-change-turnaround-20260326
+objective: Identify evidence-based hypotheses for why tiny BULWAR APP changes can feel slow or cumbersome.
+focus_area: frontend_turnaround_friction
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Tiny frontend changes are coupled to a live-like deployment loop: build, package, SCP upload, remote unzip, permission repair, and post-deploy verification.
+  - The active catering UI and data path have multiple branching structures: ProductItemAlt renders separate mobile and desktop action blocks, and the Easter menu data supports both combined-text and split HTML modes.
+  - Repository clutter is measurable in the frontend workspace: zip currently contains node_modules, dist, 10 deploy-* directories, 7 react-deploy*.zip archives, and 21,697 files under node_modules.
+  - Current scripts cover local dev, build, preview, and type-check, but not the actual release workflow; that workflow is documented separately and executed manually.
+  - The Easter dataset is not a trivial flat copy file: it currently contains 9 categories and 42 products, and tests assert special ordering and content-shape behavior for the first category.
+
+research_metadata:
+  methodology: Hybrid retrieval using read_file, grep_search, list_dir, and terminal measurements; relationship discovery between the Easter JSON source, its normalization layer, ProductItemAlt rendering, tests, and the documented deploy flow.
+  scope: Focused on .github/copilot-instructions.md, deploy-react.sh, zip/package.json, zip/src/components/sections/ProductItemAlt.tsx, zip/src/data/cateringWielkanocny.json, the directly connected normalization/tests, and the current documented deploy workflow.
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: copilot-instructions.md
+    path: .github/copilot-instructions.md
+    purpose: Defines collaboration and deployment constraints that shape how even small frontend changes are made and verified.
+    key_elements:
+      - element: No-assumptions rule
+        type: pattern
+        location: .github/copilot-instructions.md:29
+        description: Requires explicit verification instead of trusting a local edit.
+      - element: Strict design adherence
+        type: pattern
+        location: .github/copilot-instructions.md:33
+        description: Requires matching the established design system rather than making isolated local tweaks.
+      - element: Mandatory permission repair after deploy
+        type: pattern
+        location: .github/copilot-instructions.md:34
+        description: Makes SCP deployment a multi-step process with a required follow-up SSH command.
+      - element: TemplatePage as canonical visual reference
+        type: pattern
+        location: .github/copilot-instructions.md:50-53
+        description: Forces cross-checking against an existing reference page before changing layout or classes.
+    language: markdown
+    lines: 53
+
+  - file: deploy-react.sh
+    path: deploy-react.sh
+    purpose: Encodes the production deployment mechanics for the React overlay on top of WordPress hosting.
+    key_elements:
+      - element: Backup existing live react directory
+        type: pattern
+        location: deploy-react.sh:7-9
+        description: Existing live bundle is moved aside before each deploy.
+      - element: Unzip-based release deployment
+        type: pattern
+        location: deploy-react.sh:11-13
+        description: Deployment depends on a prepared react-deploy.zip archive being uploaded first.
+      - element: Permission repair
+        type: pattern
+        location: deploy-react.sh:14-15
+        description: Every deploy re-applies directory and file permissions recursively.
+    language: bash
+    lines: 16
+
+  - file: package.json
+    path: zip/package.json
+    purpose: Defines the frontend command surface available for local iteration.
+    key_elements:
+      - element: Local scripts
+        type: variable
+        location: zip/package.json:6-11
+        description: Provides dev, build, preview, clean, and type-check only.
+      - element: Dependency stack
+        type: pattern
+        location: zip/package.json:13-45
+        description: Confirms a sizable React, Vite, Tailwind, form, motion, and UI dependency surface.
+    language: json
+    lines: 46
+
+  - file: ProductItemAlt.tsx
+    path: zip/src/components/sections/ProductItemAlt.tsx
+    purpose: Renders catering product rows and exposes the branching UI structure behind copy and layout tweaks.
+    key_elements:
+      - element: Structured vs combined product mode
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:49-53
+        description: Component layout changes depending on whether a product is split into title plus HTML description or kept as one combined string.
+      - element: HTML description rendering
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:67-70
+        description: Product descriptions are injected as HTML rather than rendered as plain text.
+      - element: Separate mobile action block
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:105-137
+        description: Mobile quantity and add-to-cart UI has its own markup.
+      - element: Separate desktop action block
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:139-165
+        description: Desktop quantity and add-to-cart UI repeats similar logic in a second branch.
+    language: typescript
+    lines: 169
+
+  - file: cateringWielkanocny.json
+    path: zip/src/data/cateringWielkanocny.json
+    purpose: Stores the Easter catering menu content that must be updated for product wording and menu copy.
+    key_elements:
+      - element: Split-mode breakfast product
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:3-16
+        description: The first category uses separate nazwa_produktu and opis_produktu HTML fields.
+      - element: Combined-text products
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:25-40
+        description: Other products use a single zespolona_nazwa_z_opisem field.
+      - element: Mixed product modeling in one dataset
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:43-73
+        description: The file mixes combined strings and split text-plus-description products within the same menu.
+    language: json
+    lines: 260
+
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Normalizes and validates the raw Easter JSON before rendering.
+    key_elements:
+      - element: Dual content contract
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.ts:35-48
+        description: Supports both combined and split product contracts.
+      - element: Split-mode validation rule
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:128-180
+        description: Enforces that split-mode products provide both nazwa_produktu and opis_produktu; otherwise normalization throws.
+      - element: Whole-file normalization pass
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.ts:183-217
+        description: Every category and product is normalized eagerly when the module loads.
+    language: typescript
+    lines: 217
+
+  - file: CateringWielkanocnyPage.test.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.test.tsx
+    purpose: Shows what behavior around menu data and ordering is already treated as important enough to test.
+    key_elements:
+      - element: Split-mode breakfast assertion
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:32-45
+        description: Confirms the first product is rendered through split mode, not as a combined string.
+      - element: Ordering assertion
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:47-63
+        description: Confirms breakfast-for-two appears between the standalone menu block and Pieczywo.
+    language: typescript
+    lines: 63
+
+  - file: copilot-private-session-memory.md
+    path: memories/session/copilot-private-session-memory.md
+    purpose: Captures the most recent real deployment and verification flow used in this workspace.
+    key_elements:
+      - element: Current deploy workflow log
+        type: pattern
+        location: memories/session/copilot-private-session-memory.md:79-83
+        description: Documents build, packaging, upload, deploy-react.sh execution, chmod repair, and live verification as the actual workflow used on 2026-03-26.
+    language: markdown
+    lines: 83
+
+patterns_found:
+  - category: process
+    pattern: Tiny changes are treated like deployable releases.
+    description: The documented and logged process requires building a production artifact, uploading it, deploying it remotely, fixing permissions, and verifying live output.
+    examples:
+      - file: .github/copilot-instructions.md
+        location: .github/copilot-instructions.md:34
+        snippet: Every SCP deploy must be followed by an SSH chmod repair to avoid a white screen or 403.
+      - file: deploy-react.sh
+        location: deploy-react.sh:7-15
+        snippet: Existing /react is backed up, a ZIP is unzipped, and permissions are recursively repaired.
+      - file: memories/session/copilot-private-session-memory.md
+        location: memories/session/copilot-private-session-memory.md:80-83
+        snippet: Deployment log records build, package, upload, deploy, chmod repair, and live verification.
+    prevalence: common
+
+  - category: structure
+    pattern: Product row UI is branched by viewport and content shape.
+    description: The same logical product row contains separate rendering paths for split vs combined content and separate mobile vs desktop action layouts.
+    examples:
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:49-53
+        snippet: isStructuredProduct changes the grid layout class.
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:105-165
+        snippet: Mobile and desktop quantity/add-to-cart controls are implemented in two different markup branches.
+    prevalence: common
+
+  - category: architecture
+    pattern: Content is partly data-driven text and partly HTML payloads.
+    description: The Easter menu is not a single plain-text schema; some entries are combined strings while others are title plus HTML description.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.json
+        location: zip/src/data/cateringWielkanocny.json:3-16
+        snippet: First product uses nazwa_produktu plus opis_produktu HTML.
+      - file: zip/src/data/cateringWielkanocny.json
+        location: zip/src/data/cateringWielkanocny.json:25-40
+        snippet: Later products use zespolona_nazwa_z_opisem.
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:67-70
+        snippet: dangerouslySetInnerHTML renders productDescriptionHtml.
+    prevalence: common
+
+  - category: testing
+    pattern: Menu content shape and ordering are already contract-like.
+    description: Tests do not only check shell rendering; they also pin the first category content mode and relative ordering.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.test.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:32-45
+        snippet: breakfast-for-two is asserted to be split mode.
+      - file: zip/src/pages/CateringWielkanocnyPage.test.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:47-63
+        snippet: breakfast category must render before Pieczywo and after the standalone menu block.
+    prevalence: occasional
+
+  - category: tooling
+    pattern: Local commands stop before deploy/verify.
+    description: package.json gives a local loop, but the production release loop lives outside it.
+    examples:
+      - file: zip/package.json
+        location: zip/package.json:6-11
+        snippet: Scripts cover dev, build, preview, clean, and tsc only.
+      - file: deploy-react.sh
+        location: deploy-react.sh:1-16
+        snippet: The real deployment mechanics are split into a separate shell script outside zip.
+    prevalence: common
+
+  - category: workspace_hygiene
+    pattern: Frontend workspace contains many non-source artifacts.
+    description: The active zip folder includes dependency trees, build outputs, deploy snapshots, and deployment archives alongside source files.
+    examples:
+      - file: zip
+        location: workspace measurement
+        snippet: node_modules currently contains 21,697 files; zip also contains dist, 10 deploy-* directories, and 7 react-deploy*.zip archives.
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: ProductItemAlt
+      responsibility: Renders product text, dietary badges, pricing, quantity controls, and add-to-cart CTA for each catering item.
+      location: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: domain depends on this
+    - component: cateringWielkanocny.ts
+      responsibility: Converts raw Easter JSON into the typed rendering contract.
+      location: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: domain depends on this
+    - component: CateringWielkanocnyPage tests
+      responsibility: Protect shell output, split-mode breakfast behavior, and category ordering.
+      location: zip/src/pages/CateringWielkanocnyPage.test.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: deploy-react.sh
+      responsibility: Publishes the built React overlay into the live WordPress-hosted react directory.
+      location: deploy-react.sh
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: ProductItemAltProps
+      location: zip/src/components/sections/ProductItemAlt.tsx:5-16
+      usage_pattern: Supports both combinedText and productName plus productDescriptionHtml input modes.
+    - interface: RawCateringProduct
+      location: zip/src/data/cateringWielkanocny.ts:5-15
+      usage_pattern: Raw JSON contract accepts mixed field shapes.
+    - interface: CateringProductContract
+      location: zip/src/data/cateringWielkanocny.ts:46-48
+      usage_pattern: Normalized union contract used by rendering layer.
+  data_flow_involving_domain: Raw Easter menu content is loaded from cateringWielkanocny.json, normalized eagerly in cateringWielkanocny.ts into a union-based render contract, consumed by the catering page and ProductItemAlt, then verified through page tests and in practice through built-bundle and live-site checks after deployment.
+  key_relationships_to_domain:
+    - from: zip/src/data/cateringWielkanocny.json
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+    - from: zip/src/data/cateringWielkanocny.ts
+      to: zip/src/components/sections/ProductItemAlt.tsx
+      relationship: composes
+    - from: zip/src/pages/CateringWielkanocnyPage.test.tsx
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+    - from: deploy-react.sh
+      to: zip/dist and packaged release archives
+      relationship: uses domain outputs
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JSON
+    - Bash
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Drives product-row rendering and page composition.
+    - name: Vite
+      usage_in_domain: Produces the production bundle that is uploaded and deployed.
+    - name: Tailwind CSS v4
+      usage_in_domain: Encodes the visual system that changes must match exactly.
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: Supplies dietary icons in ProductItemAlt.
+    - name: react-router-dom
+      purpose_in_domain: Supports route-level rendering tested in the catering page tests.
+    - name: zod
+      purpose_in_domain: Project convention indicates validation-first frontend behavior even if not central in ProductItemAlt.
+  external_apis_used_in_domain:
+    - name: dhosting SSH/SCP environment
+      integration_point: deploy-react.sh and the logged deployment workflow use remote archive deployment over SSH/SCP.
+
+related_conventions:
+  naming_patterns_in_domain: Polish business-content field names are kept in raw JSON, then mapped to English-oriented render contract names in the normalization layer.
+  structure_of_domain: Source content lives in JSON, business normalization lives in a TypeScript adapter, UI rendering lives in ProductItemAlt, and live publication lives outside zip in a deployment shell script.
+  error_handling_in_domain: Invalid data is rejected early by normalization with thrown errors for empty strings, wrong types, broken image paths, and incomplete split-mode products.
+  testing_in_domain: Current tests cover page chrome, the first category split-mode contract, and category ordering rather than only broad snapshot output.
+  documentation_in_domain: The deploy and design workflow is documented more strongly in instructions and plan artifacts than in the frontend README.
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.json
+      relationship_to_domain: raw source data for the Easter menu
+      direction: outbound
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: normalizes and validates raw data before render
+      direction: bidirectional
+    - component: zip/src/pages/CateringWielkanocnyPage.test.tsx
+      relationship_to_domain: encodes behavioral expectations for this data and route
+      direction: inbound
+    - component: deploy-react.sh
+      relationship_to_domain: publishes built frontend output to hosting
+      direction: inbound
+  external:
+    - name: Vite
+      purpose_for_domain: build production assets before deployment
+    - name: React
+      purpose_for_domain: render product UI and route output
+    - name: Tailwind CSS
+      purpose_for_domain: implement the project’s approved class-based visual system
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: HTML description rendering
+      location: zip/src/components/sections/ProductItemAlt.tsx:67-70
+      concern: productDescriptionHtml is injected directly into the DOM, so content editing is not only textual; it also carries HTML-shape implications.
+  authentication_patterns_in_domain: Deployment and verification flow depend on SSH/SCP access to the dhosting host.
+  authorization_patterns_in_domain: Live changes are gated by explicit process rules in project instructions and by access to the deployment host.
+  data_validation_in_domain: The normalization layer performs strict runtime validation before the page renders.
+
+testing_patterns:
+  framework: node:test with server-side render assertions
+  coverage_areas:
+    - Route chrome consistency
+    - Split-mode breakfast category contract
+    - Category ordering in the rendered page
+  test_organization: Focused route-level tests live next to the catering page domain.
+  mock_patterns:
+    - MemoryRouter route injection for page rendering
+    - renderToStaticMarkup for deterministic output inspection
+
+turnaround_hypotheses:
+  - hypothesis: Small frontend changes often inherit a full release-style deploy loop instead of staying in a purely local edit-refresh cycle.
+    evidence:
+      - .github/copilot-instructions.md:34 makes SCP deployment plus post-deploy chmod a required step.
+      - deploy-react.sh:7-15 backs up the current react directory, unzips a prepared archive, and recursively repairs permissions.
+      - memories/session/copilot-private-session-memory.md:80-83 logs the actual 2026-03-26 flow as build, package, upload, deploy, chmod repair, and live verification.
+    impact: Even a wording or spacing tweak can expand into build, packaging, remote deployment, and production verification work.
+
+  - hypothesis: The project’s explicit verification rules make tiny changes slower because they discourage trusting a quick local fix.
+    evidence:
+      - .github/copilot-instructions.md:29 says to never assume and always verify the current state.
+      - .github/copilot-instructions.md:33 and :50-53 require strict adherence to the existing design library and cross-checking against TemplatePage.
+      - Current terminal context shows live SSH inspection of the deployed bundle content rather than stopping at a local code change.
+    impact: Copy or layout tweaks require extra comparison and verification passes before they are considered safe.
+
+  - hypothesis: Small layout changes in the product row are cumbersome because ProductItemAlt duplicates important UI in separate responsive branches.
+    evidence:
+      - ProductItemAlt.tsx:105-137 implements one mobile quantity/add-to-cart block.
+      - ProductItemAlt.tsx:139-165 implements a second desktop quantity/add-to-cart block with the same behavior.
+      - ProductItemAlt.tsx:49-53 also switches layout based on structured vs combined product content.
+    impact: A tiny button, spacing, or alignment tweak can require synchronized edits across multiple branches and breakpoint checks.
+
+  - hypothesis: Copy changes are slower because the Easter menu content model is mixed, not uniform.
+    evidence:
+      - cateringWielkanocny.json:3-16 uses nazwa_produktu plus opis_produktu HTML for the first product.
+      - cateringWielkanocny.json:25-40 uses zespolona_nazwa_z_opisem for later products.
+      - cateringWielkanocny.ts:128-180 converts these into different render contracts and throws if split-mode fields are incomplete.
+      - ProductItemAlt.tsx:67-70 renders split-mode descriptions via dangerouslySetInnerHTML.
+    impact: A “small text edit” is not always a single field update; the editor must first identify which content mode that product uses and how it will render.
+
+  - hypothesis: The seasonal menu file has enough breadth and special-case behavior that localizing one tiny content change still requires careful navigation and regression awareness.
+    evidence:
+      - Terminal measurement of zip/src/data/cateringWielkanocny.json found 9 categories and 42 products.
+      - CateringWielkanocnyPage.test.tsx:32-45 pins the first category as a split-mode breakfast entry.
+      - CateringWielkanocnyPage.test.tsx:47-63 pins category ordering relative to the standalone menu block and Pieczywo.
+    impact: Tiny edits still happen inside a non-trivial dataset with contract-like ordering and shape assumptions.
+
+  - hypothesis: The repo lacks one integrated command for tiny-change verification and release, so operators have to stitch the loop together manually.
+    evidence:
+      - zip/package.json:6-11 only defines dev, build, preview, clean, and tsc.
+      - deploy-react.sh exists outside zip and expects a prebuilt react-deploy.zip rather than building it itself.
+      - zip/README.md is generic AI Studio boilerplate and does not document the real BULWAR deploy flow.
+    impact: The lack of a single test/build/deploy command increases command-switching and procedural overhead for otherwise small edits.
+
+  - hypothesis: Repository clutter likely slows navigation and search enough that even finding the right source file can feel heavier than it should.
+    evidence:
+      - The zip folder currently contains node_modules, dist, 10 deploy-* directories, and 7 react-deploy*.zip archives.
+      - Terminal measurement found 21,697 files under zip/node_modules and 48 top-level items in zip.
+      - Multiple historical deploy snapshots sit beside active source, increasing source-vs-artifact noise during exploration.
+    impact: Code search, indexing, and human orientation are noisier, which lengthens the time to make and confidently verify tiny changes.
+
+open_questions:
+  - question: How often are tiny copy or spacing changes accepted after local preview only versus requiring full live verification?
+    context: The documented and logged process clearly supports live verification, but the threshold for when that heavier loop is mandatory is not codified in the inspected files.
+  - question: Are old deploy-* directories and release archives intentionally retained for rollback, or are they just accumulated working artifacts?
+    context: Their presence clearly adds workspace noise, but the inspected evidence does not say whether that tradeoff is deliberate.
+
+gaps:
+  - area: Measured timings
+    description: No stopwatch-style duration metrics for build, upload, deploy, or verification steps were captured during this research.
+    impact: Findings explain likely causes of slowness with strong structural evidence, but they do not quantify minutes per step.
+  - area: Team policy threshold for live deploys
+    description: The files show the process and constraints, but not a formal rule describing when a local-only check is acceptable for tiny UI changes.
+    impact: This limits precision about whether the heavy deploy loop is universal or just common in practice.

@@ -1,0 +1,327 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface MenuItem {
+  title: string;
+  description?: string;
+  priceLabel: string;
+  tagSlugs?: string[];
+}
+
+interface MenuColumn {
+  items: MenuItem[];
+}
+
+interface MenuItemPill {
+  slug: string;
+  label: string;
+}
+
+interface Props {
+  heroTitle: string;
+  backgroundImage: ImageAsset;
+  overlayOpacity?: number;
+  heroHeight?: string;
+  menuColumns: MenuColumn[];
+  emptyStateText?: string;
+}
+
+const {
+  heroTitle,
+  backgroundImage,
+  overlayOpacity = 0.2,
+  heroHeight = '400px',
+  menuColumns,
+  emptyStateText = 'Brak pozycji w tej kategorii.',
+} = Astro.props;
+
+const MENU_ITEM_PILL_LABELS: Record<string, string> = {
+  '500-ml': '500 ml',
+  vegan: 'Vegan',
+  vege: 'Vege',
+  ostre: 'Ostre',
+  'bardzo-ostre': 'Bardzo ostre',
+};
+
+const getOptionalMenuText = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeMenuMetadataValue = (value: string): string => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+};
+
+const getMenuItemPills = (tagSlugs: readonly string[] | undefined): MenuItemPill[] => {
+  if (!tagSlugs || tagSlugs.length === 0) {
+    return [];
+  }
+
+  const uniquePills = new Map<string, string>();
+
+  for (const tagSlug of tagSlugs) {
+    const safeTag = getOptionalMenuText(tagSlug);
+
+    if (!safeTag) {
+      continue;
+    }
+
+    const normalized = normalizeMenuMetadataValue(safeTag);
+
+    if (!uniquePills.has(normalized)) {
+      uniquePills.set(normalized, safeTag);
+    }
+  }
+
+  return Array.from(uniquePills.entries()).map(([slug, label]) => ({
+    slug,
+    label: MENU_ITEM_PILL_LABELS[slug] ?? label,
+  }));
+};
+
+const safeMenuColumns = menuColumns.filter((column) => column.items.length > 0);
+---
+
+<section class="menu-parallax-section">
+  <div class="theme-section-wrapper">
+    <div
+      class="menu-section__hero menu-parallax-section__hero theme-radius-media menu-parallax-section__hero--docked"
+      style={`background-image: url('${backgroundImage.src}'); height: ${heroHeight};`}
+      aria-label={backgroundImage.alt}
+    >
+      <div class="menu-section__overlay" style={`background-color: rgba(39, 39, 42, ${overlayOpacity});`}></div>
+      <h2 class="menu-section__hero-title">{heroTitle}</h2>
+    </div>
+  </div>
+
+  <div class="theme-section-wrapper">
+    <div class="menu-parallax-section__panel theme-radius-surface menu-parallax-section__panel--docked">
+      <div class="menu-parallax-section__panel-inner">
+        {safeMenuColumns.length > 0 ? (
+          <div class="menu-parallax-section__grid">
+            {safeMenuColumns.map((column, columnIndex) => (
+              <div class="menu-parallax-section__column">
+                {column.items.map((item, itemIndex) => {
+                  const description = getOptionalMenuText(item.description);
+                  const pills = getMenuItemPills(item.tagSlugs);
+                  const hasDetails = Boolean(description) || pills.length > 0;
+
+                  return (
+                    <div class="menu-parallax-section__item">
+                      <div class="menu-parallax-section__copy">
+                        <span class:list={['menu-parallax-section__item-title', hasDetails && 'menu-parallax-section__item-title--with-details']}>
+                          {item.title}
+                        </span>
+
+                        {hasDetails ? (
+                          <div class="menu-parallax-section__details">
+                            {description ? <p class="menu-parallax-section__item-description">{description}</p> : null}
+
+                            {pills.length > 0 ? (
+                              <div class="menu-parallax-section__pills" data-menu-item-pills>
+                                {pills.map((pill) => (
+                                  <span class="menu-parallax-section__pill">
+                                    {pill.label}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div class="menu-parallax-section__price-row">
+                        <div class="menu-leader menu-parallax-section__leader"></div>
+                        <span class="menu-parallax-section__price">{item.priceLabel}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p class="menu-parallax-section__empty">{emptyStateText}</p>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .menu-parallax-section {
+    width: 100%;
+  }
+
+  .menu-parallax-section__hero,
+  .menu-parallax-section__panel {
+    overflow: hidden;
+  }
+
+  .menu-parallax-section__hero--docked {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .menu-parallax-section__panel {
+    background: #ffffff;
+  }
+
+  .menu-parallax-section__panel--docked {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .menu-parallax-section__panel-inner {
+    margin: 0 auto;
+    max-width: 80rem;
+    padding: 6rem 1rem;
+  }
+
+  .menu-parallax-section__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .menu-parallax-section__column {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .menu-parallax-section__item {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .menu-parallax-section__copy {
+    display: flex;
+    min-width: 0;
+    width: fit-content;
+    max-width: calc(100% - 6rem);
+    flex-direction: column;
+  }
+
+  .menu-parallax-section__item-title {
+    display: block;
+    margin: 0;
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: 1rem;
+    line-height: 1.2;
+    letter-spacing: 0.1em;
+    overflow-wrap: break-word;
+    text-transform: uppercase;
+  }
+
+  .menu-parallax-section__item-title--with-details {
+    margin-bottom: 0.25rem;
+  }
+
+  .menu-parallax-section__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .menu-parallax-section__item-description {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-family: var(--font-label);
+    font-size: 1rem;
+    line-height: 1.35;
+    letter-spacing: 0.08em;
+    overflow-wrap: break-word;
+  }
+
+  .menu-parallax-section__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .menu-parallax-section__pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 9999px;
+    padding: 0.25rem 0.5rem;
+    color: rgb(113 113 122);
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .menu-parallax-section__price-row {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .menu-parallax-section__leader {
+    min-width: 20px;
+    flex: 1;
+    margin: 0 0 0.3rem;
+  }
+
+  .menu-parallax-section__price {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: 1.125rem;
+  }
+
+  .menu-parallax-section__empty {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+  }
+
+  @media (min-width: 768px) {
+    .menu-parallax-section__panel-inner {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+
+    .menu-parallax-section__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .menu-parallax-section__panel-inner {
+      padding-top: 3.5rem;
+      padding-bottom: 3.5rem;
+    }
+
+    .menu-parallax-section__item {
+      gap: 0.25rem;
+    }
+
+    .menu-parallax-section__item-description {
+      font-size: 0.875rem;
+    }
+  }
+</style>

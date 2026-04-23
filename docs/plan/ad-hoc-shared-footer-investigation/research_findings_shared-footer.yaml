@@ -1,0 +1,420 @@
+plan_id: ad-hoc-shared-footer-investigation
+objective: Read-only investigation to locate the intended shared_footer page content/source in the repo and extract the minimal valid payload shape.
+focus_area: shared-footer
+created_at: 2026-04-20
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - The repo contains an explicit shared footer authoring contract in docs and mirrored schema modules: the footer lives in a WordPress page's page_builder_schema.sections[] as one enabled shared_footer block, with the public footer shape defined in docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:35 and mirrored in zip/src/blocks/registry/globalLayoutContract.ts:84 plus astro-site/src/lib/globalLayoutContract.ts:84.
+  - Runtime resolution is footerPageId-based, not slug-based: the bridge reads option bulwar_bridge_global_layout, casts footerPageId, loads that page, reads page_builder_schema, and resolves the first enabled shared_footer block in section order (wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20, wordpress-plugin/bulwar-bridge/src/Config/Constants.php:78, wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:73).
+  - No checked-in production/shared footer slug was found. The only repo slug is the test fixture post_name shared-footer in wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254, which is test-only evidence rather than a documented live page contract.
+  - The strictest safe payload for creating or fixing the live footer page is a page_builder_schema object with version: 1 and one enabled sections[] entry whose blockKey is shared_footer, blockVersion is 1, source is null, and data matches the globalLayout.footer shape exactly.
+
+research_metadata:
+  methodology: hybrid retrieval using memory review, file_search, grep_search, targeted read_file passes, one relationship discovery pass with vscode_listCodeUsages, and metadata collection from package.json plus file line counts
+  scope: focused investigation of the WordPress bridge footer resolver, shared footer contract docs, React/Astro contract modules, and tests that demonstrate the intended shared_footer storage shape
+  confidence: high
+  coverage: 93
+  decision_blockers: 1
+  research_blockers: 1
+
+files_analyzed:
+  - file: GlobalLayoutResolver.php
+    path: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+    purpose: Resolves global navbar/footer runtime data from the WordPress option and footer page post meta.
+    key_elements:
+      - element: SHARED_FOOTER_BLOCK_KEY
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:12
+        description: Hard-codes the only block key accepted by the footer resolver as shared_footer.
+      - element: resolve
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:18
+        description: Public entry point that normalizes navbar data and resolves footer data into the public layout payload plus meta statuses.
+      - element: resolveFooter
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:73
+        description: Casts footerPageId, loads the referenced page, reads page_builder_schema, scans sections[], and validates the enabled shared_footer block.
+      - element: defaultFooter
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:365
+        description: Defines the normalized fallback footer shape used when the page reference or shared_footer block is missing or invalid.
+    language: php
+    lines: 391
+
+  - file: GlobalLayoutControllerTest.php
+    path: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+    purpose: Provides the checked-in fixture showing how a shared footer page is expected to look in tests.
+    key_elements:
+      - element: buildFooterFixture
+        type: function
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:203
+        description: Canonical sample footer data used by the bridge test.
+      - element: testGlobalLayoutControllerResolvesSharedFooterBlock
+        type: function
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:245
+        description: Verifies that the public endpoint resolves footer content from a shared_footer block on a referenced page.
+      - element: footerPageId test fixture
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:251
+        description: Uses footerPageId 37 to point at the shared footer page fixture.
+      - element: shared-footer post_name
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254
+        description: The only checked-in page slug-like identifier found for the shared footer page is shared-footer, and it appears only in the test fixture.
+      - element: shared-footer-main
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:259
+        description: Example block instance id for the dedicated shared_footer section.
+    language: php
+    lines: 324
+
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: Defines the option name used to locate the global layout settings object.
+    key_elements:
+      - element: BULWAR_BRIDGE_GLOBAL_LAYOUT_OPTION
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20
+        description: Defaults the bridge-owned option name to bulwar_bridge_global_layout.
+      - element: globalLayoutOptionName
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:78
+        description: Returns the option name used by the resolver to read navbar data and footerPageId.
+    language: php
+    lines: 89
+
+  - file: globalLayoutContract.ts
+    path: zip/src/blocks/registry/globalLayoutContract.ts
+    purpose: React-side typed contract for the public global layout payload and the dedicated shared footer section block.
+    key_elements:
+      - element: SHARED_FOOTER_BLOCK_KEY
+        type: variable
+        location: zip/src/blocks/registry/globalLayoutContract.ts:3
+        description: Mirrors the shared_footer block key constant on the React side.
+      - element: sharedFooterSectionDataSchema
+        type: variable
+        location: zip/src/blocks/registry/globalLayoutContract.ts:84
+        description: Aliases the footer public schema as the dedicated shared footer block data shape.
+      - element: sharedFooterSectionBlockSchema
+        type: variable
+        location: zip/src/blocks/registry/globalLayoutContract.ts:86
+        description: Strict Zod schema for a dedicated shared_footer page_builder_schema section.
+      - element: parseSharedFooterSectionBlock
+        type: function
+        location: zip/src/blocks/registry/globalLayoutContract.ts:116
+        description: Parses and validates a shared_footer block against the React-side contract.
+    language: typescript
+    lines: 117
+
+  - file: globalLayoutContract.test.ts
+    path: zip/src/blocks/registry/globalLayoutContract.test.ts
+    purpose: Confirms the public global layout contract and dedicated shared footer block shape on the React side.
+    key_elements:
+      - element: globalLayoutPayload
+        type: variable
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:10
+        description: Checked-in sample public global layout payload whose footer data is also reused as a shared_footer block fixture.
+      - element: parseGlobalLayoutApiResponse rejects internal footerPageId from the public payload
+        type: function
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:108
+        description: Verifies that footerPageId remains internal and must not leak into public clients.
+      - element: parseSharedFooterSectionBlock validates the dedicated shared footer block shape
+        type: function
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:123
+        description: Demonstrates the exact strict shared_footer block shape accepted by the React-side parser.
+    language: typescript
+    lines: 159
+
+  - file: globalLayoutContract.ts
+    path: astro-site/src/lib/globalLayoutContract.ts
+    purpose: Astro-side mirror of the shared footer and public layout contract.
+    key_elements:
+      - element: SHARED_FOOTER_BLOCK_KEY
+        type: variable
+        location: astro-site/src/lib/globalLayoutContract.ts:3
+        description: Mirrors the shared_footer block key constant on the Astro side.
+      - element: sharedFooterSectionBlockSchema
+        type: variable
+        location: astro-site/src/lib/globalLayoutContract.ts:86
+        description: Mirrors the strict dedicated shared footer block schema used in the React contract.
+    language: typescript
+    lines: 117
+
+  - file: how-navbar-footer-work.md
+    path: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+    purpose: End-to-end explainer of storage, resolution, public contract, and editing workflow for the shared navbar/footer system.
+    key_elements:
+      - element: Storage model
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:5
+        description: States that footer content lives in a shared footer page referenced by footerPageId, not in the option itself.
+      - element: shared_footer authoring contract example
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:19
+        description: Provides a minimal documented block example for the shared_footer section data shape.
+      - element: Shared footer authoring rule
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:35
+        description: Documents first-match/first-failure section-order semantics and the expectation of exactly one enabled shared_footer block.
+      - element: Editing workflow
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:155
+        description: States that footer changes must be made in the enabled shared_footer block on the shared footer page.
+    language: markdown
+    lines: 166
+
+  - file: operator-reference.md
+    path: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+    purpose: Operator quick reference for source of truth, public API, and authoring behavior.
+    key_elements:
+      - element: Source of truth
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:5
+        description: Defines the option and footerPageId as the authoritative runtime storage entry points.
+      - element: Footer authoring rule
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:14
+        description: States the required shared_footer block properties and first-match/first-failure semantics.
+      - element: Operator workflow
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:122
+        description: Instructs operators to update footer content only in the shared footer page shared_footer block data.
+    language: markdown
+    lines: 127
+
+  - file: global-layout-contract.md
+    path: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md
+    purpose: Contract note locking the v1 public payload and internal shared footer storage rule.
+    key_elements:
+      - element: Public payload
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:5
+        description: Defines the normalized public footer object returned to clients.
+      - element: Internal storage rule
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:35
+        description: States that the shared footer page must contain one enabled dedicated footer section in page_builder_schema.sections[].
+      - element: required dedicated footer section bullets
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:39
+        description: Lists blockKey shared_footer, blockVersion 1, source null, and data matching the public footer shape exactly.
+    language: markdown
+    lines: 50
+
+patterns_found:
+  - category: structure
+    pattern: Shared footer is authored as a dedicated page-builder section, not as a standalone option object.
+    description: Footer content is stored inside a referenced WordPress page's page_builder_schema.sections[] array, and the bridge extracts only the dedicated shared_footer block from that page.
+    examples:
+      - file: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:15
+        snippet: The footer lives in the referenced WordPress page's page_builder_schema.sections[].
+      - file: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md
+        location: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:37
+        snippet: The shared footer stays in the shared footer page page_builder_schema.sections[].
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:94
+        snippet: $sections = isset($decoded['sections']) && is_array($decoded['sections']) ? $decoded['sections'] : [];
+    prevalence: common
+
+  - category: architecture
+    pattern: Live footer lookup is ID-addressed through footerPageId; slug is not part of the runtime contract.
+    description: The resolver casts footerPageId from the global layout option and loads the page directly by post ID. No runtime resolver code reads a page slug or page title to locate the shared footer source.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75
+        snippet: $footerPageId = isset($settings['footerPageId']) ? (int) $settings['footerPageId'] : 0;
+      - file: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20
+        snippet: 'BULWAR_BRIDGE_GLOBAL_LAYOUT_OPTION' => 'bulwar_bridge_global_layout'
+      - file: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254
+        snippet: new \WP_Post(37, 'page', 'publish', 'shared-footer', 'Shared Footer')
+    prevalence: common
+
+  - category: validation
+    pattern: First enabled shared_footer block wins, and invalid first enabled matches fail immediately.
+    description: The resolver skips disabled shared_footer sections, but once it finds the first enabled shared_footer section it requires blockVersion 1, source null, and data as an array; later shared_footer sections are ignored.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:107
+        snippet: if (($section['blockKey'] ?? null) !== self::SHARED_FOOTER_BLOCK_KEY) { continue; }
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:117
+        snippet: if ((int) ($section['blockVersion'] ?? 0) !== self::SHARED_FOOTER_BLOCK_VERSION) { return [self::defaultFooter(), 'fallback_footer_block_invalid']; }
+      - file: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:21
+        snippet: Resolution is first-match/first-failure in section order for shared_footer blocks.
+    prevalence: common
+
+  - category: testing
+    pattern: The repo's strictest safe payload is locked in Zod contracts and tests, while the PHP resolver itself is slightly more permissive.
+    description: The React and Astro contract modules require a full footer object shape and a strict shared_footer block object, whereas the PHP resolver will normalize missing or blank footer subfields to defaults as long as data is an array. The docs align with the stricter safe authoring shape.
+    examples:
+      - file: zip/src/blocks/registry/globalLayoutContract.ts
+        location: zip/src/blocks/registry/globalLayoutContract.ts:86
+        snippet: export const sharedFooterSectionBlockSchema = z.object({
+      - file: zip/src/blocks/registry/globalLayoutContract.test.ts
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:123
+        snippet: test("parseSharedFooterSectionBlock validates the dedicated shared footer block shape", () => {
+      - file: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:140
+        snippet: return [self::normalizeFooter($section['data']), 'resolved'];
+    prevalence: occasional
+
+  - category: documentation
+    pattern: There is a contract and operator workflow for shared_footer, but no checked-in live page manifest or production footer-page slug.
+    description: The repo documents how the shared footer must be authored and resolved, and tests it, but it does not provide a concrete production page slug or checked-in page JSON fixture for the actual live shared footer page.
+    examples:
+      - file: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:5
+        snippet: There is one bridge-owned settings option and one shared footer page.
+      - file: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:122
+        snippet: Update footer content only in the shared footer page's shared_footer block data.
+      - file: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254
+        snippet: shared-footer appears only in the test post fixture.
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Global layout option
+      responsibility: Stores navbar data and the internal footerPageId pointer used to find the shared footer page.
+      location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php and WordPress option bulwar_bridge_global_layout
+      relationship_to_domain: domain depends on this
+    - component: GlobalLayoutResolver
+      responsibility: Resolves and normalizes the footer from the shared footer page into the public payload.
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship_to_domain: domain depends on this
+    - component: React shared footer contract
+      responsibility: Defines the strict repo-side shared_footer section and public footer payload schemas.
+      location: zip/src/blocks/registry/globalLayoutContract.ts
+      relationship_to_domain: domain depends on this
+    - component: Astro shared footer contract
+      responsibility: Mirrors the same shared_footer section and public footer payload schemas for Astro.
+      location: astro-site/src/lib/globalLayoutContract.ts
+      relationship_to_domain: domain depends on this
+    - component: Navbar/footer docs set
+      responsibility: Documents source of truth, authoring rules, and operator workflow.
+      location: docs/plan/navbar-footer-global-layout-v1/
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: WordPress option payload
+      location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md and wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      usage_pattern: Resolver reads navbar plus footerPageId from bulwar_bridge_global_layout.
+    - interface: page_builder_schema.sections[] shared_footer block
+      location: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md and zip/src/blocks/registry/globalLayoutContract.ts
+      usage_pattern: Shared footer page must include one enabled dedicated footer section.
+    - interface: Public GET /wp-json/bulwar/v1/layout/global payload
+      location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+      usage_pattern: Bridge emits normalized footer data to React and Astro after resolving the shared footer section server-side.
+  data_flow_involving_domain: GlobalLayoutResolver reads the bridge-owned option bulwar_bridge_global_layout, casts footerPageId, loads the referenced WordPress page, parses page_builder_schema JSON, scans sections[] for the first enabled shared_footer block, normalizes that block's data into globalLayout.footer, and returns it through the public GET /wp-json/bulwar/v1/layout/global response.
+  key_relationships_to_domain:
+    - from: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      to: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      to: page_builder_schema post meta on the referenced page
+      relationship: reads
+    - from: zip/src/blocks/registry/globalLayoutContract.ts
+      to: zip/src/blocks/registry/globalLayoutContract.test.ts
+      relationship: imports
+    - from: astro-site/src/lib/globalLayoutContract.ts
+      to: Astro footer/global layout consumers
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - TypeScript
+    - Markdown
+    - JSON
+  frameworks_used_in_domain:
+    - name: WordPress
+      usage_in_domain: Supplies get_option, get_post, get_post_meta, and the REST route/controller environment used by the bridge resolver.
+    - name: React 19.0.0
+      usage_in_domain: Hosts one mirrored contract module for the public layout payload and shared_footer section parsing.
+    - name: Astro 5.14.2
+      usage_in_domain: Hosts the second mirrored contract module for the same public layout payload and shared_footer section parsing.
+    - name: Vite 6.2.0
+      usage_in_domain: Build tooling for the React app that contains the shared footer contract module.
+  libraries_used_in_domain:
+    - name: zod 4.3.6
+      purpose_in_domain: Defines strict public layout and shared_footer section schemas in both React and Astro contract modules.
+    - name: node:test
+      purpose_in_domain: Runs the React-side contract tests in globalLayoutContract.test.ts.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: The internal page-builder block is always named shared_footer, its version is fixed at 1, and the storage pointer is always named footerPageId.
+  structure_of_domain: Footer content is authored in one page_builder_schema.sections[] block on a referenced WordPress page, while the public runtime contract exposes only normalized navbar/footer data and meta statuses.
+  error_handling_in_domain: The bridge never throws the raw footer schema outward; it falls back to defaultFooter() and reports fallback_* states in meta.footer_status when footerPageId, page lookup, schema parsing, or block validation fails.
+  testing_in_domain: PHP tests simulate WordPress option/post/meta storage and validate shared footer resolution; TypeScript tests validate strict contract parsing and enforce that footerPageId stays out of public payloads.
+  documentation_in_domain: Shared footer storage and authoring behavior are documented under docs/plan/navbar-footer-global-layout-v1 in how-navbar-footer-work.md, operator-reference.md, and global-layout-contract.md.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      relationship_to_domain: Provides the option name used to find the shared footer page reference.
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship_to_domain: Reads and normalizes the shared footer page content.
+      direction: bidirectional
+    - component: zip/src/blocks/registry/globalLayoutContract.ts
+      relationship_to_domain: Supplies strict shared_footer section parsing and public payload types for React.
+      direction: outbound
+    - component: astro-site/src/lib/globalLayoutContract.ts
+      relationship_to_domain: Supplies the mirrored strict shared_footer section parsing and public payload types for Astro.
+      direction: outbound
+    - component: docs/plan/navbar-footer-global-layout-v1/
+      relationship_to_domain: Documents the intended storage and editing model for the shared footer page.
+      direction: inbound
+  external:
+    - name: WordPress core option/post/meta APIs
+      purpose_for_domain: Runtime storage and retrieval of footerPageId and page_builder_schema.
+    - name: zod 4.3.6
+      purpose_for_domain: Strict validation of the shared footer block and public layout payload shapes.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: footerPageId storage detail
+      location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php and the global layout option payload
+      concern: The repo explicitly keeps footerPageId internal and out of the public runtime payload.
+  authentication_patterns_in_domain: The public GET /wp-json/bulwar/v1/layout/global endpoint is intentionally public; shared footer page identity remains internal through footerPageId rather than being exposed to clients.
+  authorization_patterns_in_domain: This investigation found only the public read path for global layout; write/edit authorization for the shared footer page itself is delegated to WordPress page editing and is not defined in these contract files.
+  data_validation_in_domain: PHP normalizes footer data and falls back on invalid storage, while React and Astro Zod contracts enforce a stricter public payload and shared_footer section shape and reject leaked footerPageId in the public contract.
+
+testing_patterns:
+  framework: Custom PHP test harness for WordPress bridge behavior plus TypeScript contract tests using node:test and zod parsing.
+  coverage_areas:
+    - Shared footer resolution from footerPageId and page_builder_schema in the bridge.
+    - Rejection of footerPageId in the public client-facing payload.
+    - Acceptance of the dedicated shared_footer section shape.
+    - Trimmed non-empty brand-name validation in the public footer contract.
+  test_organization: Backend tests live in wordpress-plugin/bulwar-bridge/tests/, while React contract tests live adjacent to the contract source in zip/src/blocks/registry/.
+  mock_patterns:
+    - WordPress globals emulate options, posts, and post meta in GlobalLayoutControllerTest.php.
+    - Shared footer sample data is reused as the strict block fixture in globalLayoutContract.test.ts.
+
+open_questions:
+  - question: Which actual live WordPress page should be assigned as the shared footer source today?
+    context: The resolver contract is footerPageId-based, but the repo does not include a checked-in production page id, page slug, or page manifest for the live shared footer page; only the test fixture uses shared-footer as a post_name.
+    type: decision_blocker
+    affects: [shared-footer]
+  - question: Should operators treat the PHP resolver's permissive normalization as acceptable authoring input, or should they always author against the stricter repo-side Zod contract?
+    context: PHP will normalize partial/blank footer subfields, but docs and contract modules describe the stricter full footer object as the safe authoring shape.
+    type: nice_to_know
+    affects: [shared-footer]
+
+gaps:
+  - area: Live footer page identity
+    description: No repository file, fixture, or manifest identifies a production/shared footer page slug or post id. The only slug-like identifier found is the test-only shared-footer post_name in GlobalLayoutControllerTest.php.
+    impact: decision_blocker
+    affects: [shared-footer]
+  - area: Checked-in page instance fixture
+    description: The repo contains contract docs and tests for shared_footer, but no dedicated standalone JSON fixture file for a real shared footer page_builder_schema instance.
+    impact: research_blocker
+    affects: [shared-footer]

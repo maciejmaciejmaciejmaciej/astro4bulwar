@@ -1,0 +1,290 @@
+plan_id: catering-wielkanocny-description-layout-hotfix-20260326
+objective: |
+  Apply a narrow live hotfix for the Easter catering page: replace only the wrong opis_produktu for product id 88 in category id 26 with the exact user-provided list formatted as supported HTML bullets, widen the desktop split-row description area while shrinking the middle separator area, run focused validation, and redeploy live through the existing dhosting flow with permission repair.
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Update only the Easter breakfast-for-two product copy and the split-row desktop proportions.
+  Keep the existing normalization and overall UI structure intact.
+  Validate the touched data/layout paths, then rebuild and deploy using the existing dhosting script plus chmod fix.
+open_questions:
+  - Confirm the implementer should paste the exact approved breakfast item list from the user message into product id 88 without any wording additions or reordering.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The wrong product record is edited because product 88 is confused with another split-format item.
+      likelihood: low
+      impact: high
+      mitigation: Match both category id 26 and product id 88 before editing, and verify rendered output against the exact approved list.
+    - scenario: Desktop width changes spill into unrelated combined rows or mobile layouts.
+      likelihood: medium
+      impact: medium
+      mitigation: Constrain layout edits to the split-mode desktop path in ProductItemAlt and validate both split and combined rows at desktop and mobile breakpoints.
+    - scenario: Live deploy succeeds but file permissions are incorrect, causing 403 or white screen.
+      likelihood: low
+      impact: critical
+      mitigation: Use the existing dhosting deploy flow and run the directory 755 plus file 644 permission fix immediately after upload/extract.
+  assumptions:
+    - The authoritative copy for the breakfast-for-two list has already been provided by the user outside the workspace files.
+    - The existing split HTML rendering in the Easter product flow is the intended rendering path for product 88.
+    - The deploy-react.sh flow remains the approved live deployment path for the React app on client.example.
+
+implementation_specification:
+  code_structure: |
+    Keep the hotfix inside the existing Easter data source and active product-row component. Do not introduce new components, data models, or styling systems. Reuse the current split-product HTML rendering path and only rebalance desktop grid proportions in the active row component.
+  affected_areas:
+    - zip/src/data/cateringWielkanocny.json
+    - zip/src/components/sections/ProductItemAlt.tsx
+    - zip/src/components/sections/ProductItemAlt.test.tsx
+    - deploy-react.sh
+  component_details:
+    - component: Easter catering data source
+      responsibility: Store the exact raw product copy for category 26 / product 88 using supported HTML list markup only.
+      interfaces:
+        - Raw product entry with id, nazwa_produktu, opis_produktu, gramatura, cena, vegan, vegetarian
+    - component: ProductItemAlt
+      responsibility: Render split-mode and combined-mode product rows while preserving current mobile behavior and adjusting only desktop column proportions.
+      interfaces:
+        - ProductItemAltProps for combinedText or split productName plus productDescriptionHtml
+    - component: Focused regression test
+      responsibility: Assert the split desktop row still renders the intended structure/classes after the width rebalance.
+      interfaces:
+        - Static markup test for ProductItemAlt split-mode rendering
+    - component: Existing live deploy script
+      responsibility: Publish the built React bundle to the dhosting live path and preserve the required chmod behavior.
+      interfaces:
+        - unzip to live react directory
+        - chmod 755 for directories and 644 for files
+  dependencies:
+    - component: zip/src/components/sections/ProductItemAlt.tsx
+      relationship: consumes split productDescriptionHtml produced from zip/src/data/cateringWielkanocny.json through the existing normalizer
+    - component: zip/src/components/sections/ProductItemAlt.test.tsx
+      relationship: verifies the desktop split layout contract exposed by ProductItemAlt
+    - component: deploy-react.sh
+      relationship: deploys the bundle created after validation passes
+  integration_points:
+    - Existing JSON import and normalization path in zip/src/data/cateringWielkanocny.ts
+    - Existing active Easter page render path through CateringProductListAlt -> ProductItemAlt
+    - Existing zip build output and dhosting deployment workflow
+
+contracts:
+  - from_task: task_1_update_breakfast_copy
+    to_task: task_3_run_focused_validation
+    interface: Product 88 in category 26 contains only the approved HTML bullet list in opis_produktu.
+    format: JSON product record with nazwa_produktu plus HTML string in opis_produktu
+  - from_task: task_2_rebalance_split_desktop_row
+    to_task: task_3_run_focused_validation
+    interface: Split-mode desktop row exposes updated width proportions without changing mobile rendering contract.
+    format: TSX markup and Tailwind classes in ProductItemAlt
+  - from_task: task_3_run_focused_validation
+    to_task: task_4_redeploy_live
+    interface: Focused checks pass for data integrity, split-row rendering, and production build.
+    format: Passing targeted test output and successful build artifact
+
+tasks:
+  - id: task_1_update_breakfast_copy
+    title: Replace Only Product 88 Description
+    description: |
+      Edit the Easter data source so category id 26 / product id 88 keeps its existing split-product structure but replaces the current wrong opis_produktu with the exact user-provided breakfast items formatted as an HTML bullet list using the supported tags already accepted by the split renderer.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/data/cateringWielkanocny.json: raw Easter product catalog containing category 26 and product 88
+      - zip/src/data/cateringWielkanocny.ts: confirms split products already support opis_produktu HTML rendering
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 20
+    focus_area: product-copy-hotfix
+    verification:
+      - Confirm category id 26 contains product id 88 with unchanged metadata except opis_produktu.
+      - Confirm the HTML uses supported list tags only and no new marketing copy is introduced.
+    acceptance_criteria:
+      - Product 88 description exactly matches the approved user list.
+      - No other product copy changes are made.
+    failure_modes:
+      - scenario: Another product record is edited by mistake.
+        likelihood: low
+        impact: high
+        mitigation: Verify both ids before editing and diff only the targeted JSON block.
+      - scenario: Unsupported HTML causes malformed rendering.
+        likelihood: low
+        impact: medium
+        mitigation: Use only the currently supported ul/li/strong/p tags already styled in ProductItemAlt.
+    tech_stack:
+      - JSON
+      - TypeScript normalization already present in zip/src/data/cateringWielkanocny.ts
+    test_coverage: Validate via focused data diff and rendered split-row checks.
+
+  - id: task_2_rebalance_split_desktop_row
+    title: Widen Split-Mode Desktop Description Column
+    description: |
+      Adjust the active split-row desktop layout so the left description area gains width and the middle separator area shrinks, while leaving unrelated UI and mobile behavior untouched. Prefer a localized ProductItemAlt class/layout change over global CSS changes.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/ProductItemAlt.tsx: active split and combined product row renderer
+      - zip/src/components/sections/CateringProductListAlt.tsx: upstream consumer confirming ProductItemAlt is the active Easter row path
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 40
+    focus_area: desktop-split-row-layout
+    verification:
+      - Confirm split rows show a visibly wider text block on desktop.
+      - Confirm the middle separator occupies less horizontal space.
+      - Confirm mobile layout markup and behavior remain unchanged.
+    acceptance_criteria:
+      - Only split-row desktop proportions change.
+      - Combined rows and mobile rows retain their current behavior.
+    failure_modes:
+      - scenario: Grid changes affect all rows, including combined products.
+        likelihood: medium
+        impact: medium
+        mitigation: Gate the width rebalance to the split layout path or keep class changes minimal and validated against both modes.
+      - scenario: Desktop alignment of price/actions breaks after column rebalance.
+        likelihood: medium
+        impact: medium
+        mitigation: Re-check right-column alignment in the focused static markup test and desktop preview.
+    tech_stack:
+      - React 19
+      - TypeScript TSX
+      - Tailwind CSS v4
+    test_coverage: Update or add a focused ProductItemAlt static markup assertion for split desktop classes.
+
+  - id: task_3_run_focused_validation
+    title: Validate Touched Data and Layout Paths
+    description: |
+      Run only the checks needed for this hotfix: inspect the targeted diff, execute the focused product-row test if present or add one if needed, and run the production build to ensure the changed data and TSX compile cleanly.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - task_1_update_breakfast_copy
+      - task_2_rebalance_split_desktop_row
+    context_files:
+      - zip/package.json: contains build and lint commands
+      - zip/src/components/sections/ProductItemAlt.test.tsx: focused regression surface for split-row rendering
+      - zip/src/data/cateringWielkanocny.json: target data diff to verify
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 30
+    focus_area: focused-validation
+    verification:
+      - Run the targeted ProductItemAlt test or equivalent focused assertion.
+      - Run the React production build in zip.
+      - Inspect the diff to confirm only requested copy and layout files changed.
+    acceptance_criteria:
+      - Focused validation passes.
+      - Build succeeds without introducing unrelated changes.
+    failure_modes:
+      - scenario: No focused test exists for the split-row desktop layout.
+        likelihood: medium
+        impact: medium
+        mitigation: Add a minimal static markup assertion in ProductItemAlt.test.tsx limited to the touched layout contract.
+      - scenario: Build passes but diff includes unrelated changes due to working tree noise.
+        likelihood: medium
+        impact: medium
+        mitigation: Review only touched hotfix files before deploy and avoid bundling unrelated source edits.
+    tech_stack:
+      - Node test runner
+      - Vite build
+      - TypeScript
+    test_coverage: Focused ProductItemAlt regression plus production build.
+
+  - id: task_4_redeploy_live
+    title: Redeploy Live Through Existing dhosting Flow
+    description: |
+      Rebuild the production bundle, package and upload it through the already working dhosting deployment path, then execute the permission fix so directories are 755 and files are 644 in the live React target.
+    wave: 3
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies:
+      - task_3_run_focused_validation
+    context_files:
+      - deploy-react.sh: existing server-side extract and chmod logic
+      - zip/react-deploy.zip: expected deployment artifact path
+      - c:/Users/macie/Documents/BULWAR APP/id_rsa: existing SSH key used for dhosting access
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 0
+    focus_area: live-deploy
+    verification:
+      - Confirm deploy-react.sh completes successfully on the server.
+      - Confirm the chmod pass runs for directories and files.
+      - Confirm the live Easter route loads with the updated description and desktop layout.
+    acceptance_criteria:
+      - Live site reflects the approved product 88 description and desktop width change.
+      - No permission-related 403 or white screen occurs after deploy.
+    failure_modes:
+      - scenario: Upload or extract succeeds but permissions are not corrected.
+        likelihood: low
+        impact: critical
+        mitigation: Explicitly run the permission fix after deployment and verify command success.
+      - scenario: Live bundle is built from stale artifacts.
+        likelihood: low
+        impact: high
+        mitigation: Rebuild immediately before packaging and deploy only the fresh artifact produced after validation.
+    environment: production
+    requires_approval: true
+    security_sensitive: true
+
+  - id: task_5_post_deploy_smoke_check
+    title: Verify Live Hotfix Behavior
+    description: |
+      Perform a narrow post-deploy smoke check on the live Easter catering page: confirm product 88 renders the approved bullet list, the split desktop row has the wider text region and smaller separator area, and no unrelated UI regressions are visible in the touched flow.
+    wave: 4
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - task_4_redeploy_live
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: active live route composition
+      - zip/src/components/sections/ProductItemAlt.tsx: touched UI behavior
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 0
+    focus_area: post-deploy-smoke
+    verification:
+      - Open the live Easter route and inspect category 26 / product 88.
+      - Check desktop split-row proportions visually.
+      - Check mobile route quickly to confirm no unintended layout regression.
+    acceptance_criteria:
+      - Live product 88 content matches the approved list.
+      - Desktop split row reflects the intended width rebalance.
+      - Mobile presentation remains unchanged.
+    failure_modes:
+      - scenario: The local build and deployed result diverge from what is visible live.
+        likelihood: low
+        impact: high
+        mitigation: Validate directly against the live route after deploy and roll forward with a corrected redeploy if needed.
+    validation_matrix:
+      - scenario: Product 88 description renders correctly
+        steps:
+          - Open the live Easter catering page on desktop.
+          - Navigate to the breakfast-for-two category and locate product id 88.
+          - Inspect the rendered bullet list contents.
+        expected_result: The description matches the exact approved bullet list with no extra copy.
+      - scenario: Desktop split row uses updated proportions
+        steps:
+          - Stay on desktop viewport.
+          - Compare the split row layout for product 88 and another split product if present.
+          - Inspect that the text block is wider and the middle separator is smaller.
+        expected_result: The left description region is visibly wider while the middle separator region is reduced.
+      - scenario: Mobile layout remains stable
+        steps:
+          - Switch to a mobile viewport.
+          - Re-open the Easter page and inspect the same product row.
+        expected_result: Mobile content flow remains unchanged and readable.
+

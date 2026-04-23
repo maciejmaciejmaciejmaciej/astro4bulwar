@@ -1,0 +1,760 @@
+plan_id: navbar-footer-global-layout-v1
+objective: |
+  Implement the approved global navbar/footer architecture in BULWAR APP so the navbar is stored as a global WordPress settings object, the footer is stored in a shared page-builder page referenced internally by footerPageId, and the bridge exposes one normalized global layout payload consumed by both React and Astro without redesigning the current chrome.
+created_at: 2026-04-18T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 11
+  risk_score: medium
+
+tldr: |
+  Add a dedicated bridge global-layout payload because the plugin currently exposes only page-level page-builder responses in wordpress-plugin/bulwar-bridge/src/Http/Routes.php while React and Astro still hardcode or duplicate navbar/footer chrome in zip/src/App.tsx, zip/src/layouts/RootLayout.tsx, zip/src/pages/HomePage.tsx, zip/src/pages/TemplatePage.tsx, zip/src/pages/TestowaBlueprintPage.tsx, and astro-site/src/layouts/BaseLayout.astro. Keep footer storage inside a shared footer page, but make v1 authoring a dedicated footer block inside that page's sections and resolve that block server-side into normalized footer data so neither client receives raw footer page-builder sections or footerPageId. Then migrate the React shell in duplicate-safe phases: parameterize presenters, move HomePage into RootLayout with one cart/drawer owner, clean TemplatePage and TestowaBlueprintPage before expanding them under RootLayout, wire Astro BaseLayout to the same payload, and finish with endpoint smoke checks plus npm run lint and npm run build in zip and npm run build in astro-site.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The shared footer page is referenced correctly by footerPageId, but its stored page_builder_schema does not contain the dedicated footer block expected by the bridge resolver, causing empty or malformed footer data at runtime.
+      likelihood: medium
+      impact: high
+      mitigation: Lock a narrow footer block authoring contract in T1, validate it in the bridge resolver in T2, and keep stable fallback semantics so React and Astro do not lose chrome if optional fields are missing.
+    - scenario: TemplatePage or TestowaBlueprintPage are mounted under RootLayout before their local Navbar/Footer usage is removed, producing duplicate navbar, footer, cart controls, or checkout drawer state during the rollout.
+      likelihood: medium
+      impact: critical
+      mitigation: Move only HomePage under RootLayout first, then remove local chrome from TemplatePage and TestowaBlueprintPage before expanding the shared route group in the same task.
+    - scenario: RootLayout becomes the active shell for all routes and unintentionally wraps catering pages that currently own page-specific chrome and cart behavior in zip/src/pages/CateringWielkanocnyPage.tsx and zip/src/pages/CateringWielkanocnyThankYouPage.tsx.
+      likelihood: medium
+      impact: high
+      mitigation: Group only the standard shared-chrome routes under RootLayout in App.tsx and leave catering routes mounted directly unless explicitly migrated later.
+    - scenario: React and Astro drift into slightly different interpretations of the new payload, so one runtime accepts data that the other rejects or ignores.
+      likelihood: medium
+      impact: high
+      mitigation: Create mirrored typed contract/parsing modules in T1, use the bridge payload from T2 as the only runtime source, and validate both builds plus route smoke checks in T8.
+  assumptions:
+    - This scope introduces a read-focused bridge contract and does not require building a WordPress admin UI for editing navbar settings; the bridge may read a single option directly with get_option as long as the option name and payload shape are documented.
+    - The footer remains stored in a shared page-builder page, but the bridge resolves one dedicated footer block from that page's sections into normalized footer content instead of asking React or Astro to render raw footer page-builder sections.
+    - footerPageId remains an internal bridge storage detail for the shared footer page reference and is not part of the public React or Astro runtime contract.
+    - Existing catering-specific routes keep their page-scoped chrome outside this refactor because current route composition already treats them separately in zip/src/App.tsx.
+
+implementation_specification:
+  code_structure: |
+    Introduce one canonical global-layout contract in repo code, then make the bridge the sole resolver for runtime layout data. The bridge should expose a dedicated GET endpoint returning public navbar data and resolved footer content, while keeping footerPageId internal to bridge storage and admin/debug workflows. React should fetch that payload once in RootLayout and pass it into presentational Navbar/Footer components while keeping StickyCartControls and CheckoutDrawer ownership in RootLayout. Astro should fetch the same payload during page build/render and pass it into BaseLayout while preserving the current page-builder fetch path for page sections. To keep changes minimal, footer authoring should live in one dedicated footer block inside the shared footer page sections, and the bridge should resolve that block server-side into normalized footer data instead of adding a generic footer page-builder renderer in the clients.
+  affected_areas:
+    - wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    - wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    - zip/src/blocks/registry/pageBuilderSchema.ts
+    - zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+    - zip/src/components/sections/Footer.tsx
+    - zip/src/App.tsx
+    - zip/src/layouts/RootLayout.tsx
+    - zip/src/pages/HomePage.tsx
+    - zip/src/pages/TemplatePage.tsx
+    - zip/src/pages/TestowaBlueprintPage.tsx
+    - astro-site/src/lib/types.ts
+    - astro-site/src/lib/wordpress.ts
+    - astro-site/src/components/Navbar.astro
+    - astro-site/src/components/Footer.astro
+    - astro-site/src/layouts/BaseLayout.astro
+    - "astro-site/src/pages/[slug].astro"
+    - docs/plan/navbar-footer-global-layout-v1/
+  component_details:
+    - component: GlobalLayoutContract
+      responsibility: Define the normalized public payload shape shared by the bridge, React, and Astro, including strict field names for navbar settings and resolved footer content but excluding internal storage identifiers.
+      interfaces:
+        - GlobalLayoutData.navbar.brand
+        - GlobalLayoutData.navbar.primaryItems[] with optional children[]
+        - GlobalLayoutData.navbar.companyLinks[]
+        - GlobalLayoutData.navbar.legalLinks[]
+        - GlobalLayoutData.footer with brand, address, contact, hours, socialLinks, legalLinks, and copyright
+    - component: SharedFooterBlockAuthoringContract
+      responsibility: Define the dedicated footer block stored inside the shared footer page_builder_schema.sections array so the bridge can resolve footer content server-side without exposing raw page-builder sections to clients.
+      interfaces:
+        - SharedFooterSectionData.brand
+        - SharedFooterSectionData.address
+        - SharedFooterSectionData.contact
+        - SharedFooterSectionData.hours
+        - SharedFooterSectionData.socialLinks[]
+        - SharedFooterSectionData.legalLinks[]
+        - SharedFooterSectionData.copyright
+    - component: BridgeGlobalLayoutResolver
+      responsibility: Read the global navbar settings option, resolve footerPageId internally, load the referenced page_builder_schema, locate and validate the dedicated footer block, and expose a public GET endpoint without altering the existing page-builder page route behavior.
+      interfaces:
+        - GET /wp-json/bulwar/v1/layout/global
+        - WordPress option payload for navbar settings and internal footerPageId
+        - page_builder_schema.sections[] dedicated footer block on the shared footer page
+    - component: ReactGlobalLayoutShell
+      responsibility: Activate RootLayout as the standard shared chrome owner, fetch the bridge payload once, and pass normalized data into the existing Navbar/Footer presenters while preserving current cart drawer ownership and route behavior without duplicate intermediate shell states.
+      interfaces:
+        - fetchWordPressGlobalLayout()
+        - RootLayout layout state and loading/fallback policy
+        - App.tsx nested route group for shared-chrome pages
+    - component: AstroGlobalLayoutShell
+      responsibility: Fetch the same bridge payload for Astro pages, pass it into BaseLayout, and keep the existing page-builder section rendering pipeline unchanged beyond the added global-layout fetch.
+      interfaces:
+        - fetchWordPressGlobalLayout()
+        - BaseLayout globalLayout prop
+        - "[slug].astro page-build orchestration"
+  dependencies:
+    - component: GlobalLayoutContract
+      relationship: Supplies the canonical field names and nullability rules consumed by the bridge resolver and both frontends.
+    - component: BridgeGlobalLayoutResolver
+      relationship: Must exist before RootLayout and BaseLayout can consume live shared layout data.
+    - component: ReactGlobalLayoutShell
+      relationship: Depends on the bridge payload and the data-driven React presenters.
+    - component: AstroGlobalLayoutShell
+      relationship: Depends on the bridge payload and the data-driven Astro presenters.
+  integration_points:
+    - wordpress-plugin/bulwar-bridge/src/Http/Routes.php existing REST registration pattern
+    - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php page-builder normalization conventions
+    - zip/src/App.tsx current direct route composition
+    - zip/src/layouts/RootLayout.tsx current inactive shared shell
+    - zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx current React navbar DOM and class structure
+    - zip/src/components/sections/Footer.tsx current React footer DOM and class structure
+    - astro-site/src/layouts/BaseLayout.astro current Astro shell
+    - astro-site/src/components/Navbar.astro current Astro navbar DOM and class structure
+    - astro-site/src/components/Footer.astro current Astro footer DOM and class structure
+    - astro-site/src/lib/wordpress.ts current WordPress fetch helper pattern
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: Canonical public global layout contract and internal footer block storage shape.
+    format: Typed repo-side modules plus a contract note defining public GlobalLayoutData and dedicated footer block semantics inside the shared footer page sections.
+  - from_task: T1
+    to_task: T3
+    interface: React-facing navbar and footer prop contracts.
+    format: TypeScript interfaces and default/fallback value rules.
+  - from_task: T1
+    to_task: T6
+    interface: Astro-facing navbar and footer prop contracts.
+    format: TypeScript-friendly data shape mirrored for Astro component props.
+  - from_task: T2
+    to_task: T4
+    interface: Live bridge payload for shared layout without storage identifiers.
+    format: GET /wp-json/bulwar/v1/layout/global returning success.data.globalLayout with public navbar and resolved footer only.
+  - from_task: T3
+    to_task: T4
+    interface: Data-driven React presenters.
+    format: NavbarBigSpaceBetweenElements and Footer accepting external layout data with stable DOM/class output.
+  - from_task: T4
+    to_task: T5
+    interface: RootLayout-backed home route and single shared cart/drawer ownership.
+    format: App.tsx and RootLayout support HomePage under RootLayout while TemplatePage and TestowaBlueprintPage remain direct until their cleanup task.
+  - from_task: T2
+    to_task: T7
+    interface: Live bridge payload for Astro without storage identifiers.
+    format: GET /wp-json/bulwar/v1/layout/global with the same normalized public shape consumed by React.
+  - from_task: T6
+    to_task: T7
+    interface: Data-driven Astro presenters.
+    format: Navbar.astro and Footer.astro props matching the canonical contract.
+  - from_task: T5
+    to_task: T8
+    interface: Final React shared-chrome route surfaces.
+    format: Shared layout routes render from RootLayout with no page-level Navbar/Footer/cart duplication and one persistent drawer owner.
+  - from_task: T7
+    to_task: T8
+    interface: Final Astro shared-chrome build surface.
+    format: Astro build path consumes the bridge payload and renders BaseLayout from normalized data.
+  - from_task: T8
+    to_task: T9
+    interface: Verified implementation behavior and validation commands.
+    format: Confirmed endpoint path, route scope, build commands, and smoke-test outcomes for operator documentation.
+
+tasks:
+  - id: T1
+    title: Lock the shared global layout contract in repo code
+    description: |
+      Create the canonical shared contract for the new architecture in repo code before changing runtime behavior. Define mirrored contract/parsing modules for React and Astro plus one concise contract note in docs/plan/navbar-footer-global-layout-v1/ that explains the public payload fields and the internal footer storage rule. The public contract should cover navbar brand/logo, primary items with optional children, company/legal links used by the current React drawer, and a normalized footer object resolved from the shared footer page. The internal storage contract should define one dedicated footer block inside the shared footer page page_builder_schema.sections array, resolved server-side via internal footerPageId, so clients never consume raw footer page sections or footerPageId.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-1
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/src/blocks/registry/pageBuilderSchema.ts
+        description: Confirms React page-builder schema is the right contract seam for defining the dedicated shared footer block in page sections.
+      - path: astro-site/src/lib/types.ts
+        description: Confirms Astro page-builder types must mirror the dedicated shared footer block contract for bridge-fed parsing.
+      - path: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+        description: Defines the current React navbar fields that the contract must cover without redesign.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Establish one canonical payload first so the bridge and both runtimes do not drift.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: contract normalization
+        verification:
+          - Both runtimes expose the same public field names and nullability.
+          - Footer block storage semantics are explicit and minimal.
+        acceptance_criteria:
+          - Repo contains one canonical contract definition for global layout.
+          - Footer storage uses a documented, bridge-resolvable block shape.
+        failure_modes:
+          - scenario: React and Astro contract files diverge during initial authoring.
+            likelihood: medium
+            impact: high
+            mitigation: Mirror field names exactly and keep one short contract note as the human-readable source.
+    verification:
+      - React and Astro expose the same public global layout field names and fallback rules.
+      - The footer block storage contract is explicit enough for bridge validation.
+      - footerPageId is documented as internal bridge storage detail rather than client runtime data.
+    acceptance_criteria:
+      - GlobalLayoutData is defined in repo code for both runtimes.
+      - The public contract excludes footerPageId while still defining normalized footer content.
+      - The contract note documents the dedicated footer block as the minimal storage rule for the shared footer page.
+    failure_modes:
+      - scenario: The contract omits fields needed by the current React navbar drawer or Astro footer.
+        likelihood: medium
+        impact: high
+        mitigation: Derive field coverage directly from the current presenter files before freezing the contract.
+      - scenario: The footer storage rule is too loose and allows multiple ambiguous footer-like blocks in one shared page.
+        likelihood: medium
+        impact: high
+        mitigation: Require one dedicated footer block contract in T1 and make the bridge resolver reject or safely fall back on ambiguous matches.
+    tech_stack:
+      - TypeScript
+      - Zod-compatible parsing shapes
+      - Markdown documentation
+    test_coverage: Parser-level compile validation and static contract inspection.
+
+  - id: T2
+    title: Add the bridge global-layout endpoint and server-side footer resolution
+    description: |
+      Implement a dedicated bridge resolver and route that returns the canonical global layout payload without altering the existing page-builder page endpoint. Follow the controller/route conventions already used in wordpress-plugin/bulwar-bridge/src/Http/Routes.php and wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php. Read navbar settings and internal footerPageId from one documented WordPress option, load the referenced footer page, scan its page_builder_schema.sections array for the dedicated footer block defined in T1, validate that block, and emit a normalized payload from GET /wp-json/bulwar/v1/layout/global. Keep failure behavior explicit: missing footerPageId or missing/incompatible footer block should return stable empty-state/fallback semantics rather than fatal client-side parsing ambiguity, and the public response should not expose footerPageId.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-1
+      - scope-2
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        description: Existing REST route registration pattern to extend with the new endpoint.
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        description: Existing page-builder normalization and response patterns to mirror.
+      - path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+        description: Existing plugin convention for documented configuration constants and named settings.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Bridge resolution is the architectural pivot because both runtimes must consume the same payload.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 260
+        focus_area: bridge payload resolution
+        verification:
+          - New endpoint returns the canonical shape.
+          - Existing page-builder page route remains unchanged.
+        acceptance_criteria:
+          - Global layout can be fetched independently of page schemas.
+          - Footer content is normalized server-side from the shared footer page block.
+        failure_modes:
+          - scenario: The new route leaks raw footer page schema instead of normalized footer data.
+            likelihood: medium
+            impact: high
+            mitigation: Keep the route output constrained to the T1 contract and validate shape before response.
+    verification:
+      - GET /wp-json/bulwar/v1/layout/global returns success with a canonical global layout payload.
+      - The endpoint resolves internal footerPageId into normalized footer content using the dedicated footer block on the shared footer page.
+      - The public endpoint payload excludes footerPageId and other storage-only details.
+      - The existing /page-builder/pages/{slug} route behavior does not regress.
+    acceptance_criteria:
+      - Bridge exposes one public global-layout endpoint.
+      - Navbar data comes from a documented global settings object.
+      - Footer data is resolved server-side from the referenced shared page-builder page.
+    failure_modes:
+      - scenario: footerPageId points to a page that exists but lacks the dedicated footer block expected by the bridge.
+        likelihood: medium
+        impact: high
+        mitigation: Return a controlled empty footer object or contract error path and document the authoring requirement.
+      - scenario: Route implementation broadens into page-builder endpoint changes that increase blast radius.
+        likelihood: low
+        impact: high
+        mitigation: Keep the work in a dedicated controller/service path and leave PageBuilderController behavior intact.
+    tech_stack:
+      - PHP 8+
+      - WordPress REST API
+      - WordPress options and post meta
+    test_coverage: Endpoint smoke validation via HTTP request and contract-shape inspection.
+
+  - id: T3
+    title: Refactor the React navbar and footer into data-driven presenters
+    description: |
+      Convert the existing React chrome presenters in zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx and zip/src/components/sections/Footer.tsx so they render from external props matching T1 while keeping the current DOM structure, classes, animation behavior, and copy layout as stable as possible. Preserve the current logo rendering, drawer/open-state behavior, and footer block structure. Add stable default/fallback values so RootLayout can adopt bridge data without introducing blank chrome during initial load or partial data states.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-3
+      - scope-5
+      - scope-6
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+        description: Current React navbar implementation whose DOM and motion should stay stable.
+      - path: zip/src/components/sections/Footer.tsx
+        description: Current React footer implementation whose structure should stay stable.
+      - path: zip/src/pages/HomePage.tsx
+        description: Current page-level consumer showing how logoSrc and local duplication are wired today.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Presenter refactor can proceed in parallel with bridge work once the contract is fixed.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 250
+        focus_area: React chrome parameterization
+        verification:
+          - Navbar and Footer accept typed external data.
+          - Existing DOM/class structure remains recognizably stable.
+        acceptance_criteria:
+          - React chrome is no longer hardcoded to inline arrays and strings only.
+          - Default/fallback data preserves current rendering expectations.
+        failure_modes:
+          - scenario: Parameterization silently changes class structure or motion timing.
+            likelihood: medium
+            impact: medium
+            mitigation: Preserve existing JSX structure and only lift data dependencies.
+    verification:
+      - NavbarBigSpaceBetweenElements and Footer render fully from props plus stable fallback defaults.
+      - Existing mobile drawer and footer section structure remain intact.
+    acceptance_criteria:
+      - React presenters no longer depend on file-local hardcoded site data.
+      - React presenters can render the bridge payload without layout redesign.
+    failure_modes:
+      - scenario: One presenter keeps hidden hardcoded data paths, so RootLayout still cannot fully own layout content.
+        likelihood: medium
+        impact: high
+        mitigation: Remove all site-data constants from the component body except explicit fallback fixtures matching T1.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Framer Motion
+      - Tailwind CSS v4
+    test_coverage: Component compile validation and route-level smoke through RootLayout in later tasks.
+
+  - id: T4
+    title: Move HomePage and shared cart drawer ownership into RootLayout
+    description: |
+      Make RootLayout the active shared shell for HomePage first, without yet moving TemplatePage or TestowaBlueprintPage under it. Update zip/src/App.tsx so HomePage is nested under RootLayout while TemplatePage, TestowaBlueprintPage, and the catering routes stay mounted directly until their cleanup step. In zip/src/layouts/RootLayout.tsx, fetch the bridge global layout payload once, own navbar/footer rendering plus StickyCartControls and CheckoutDrawer state, and pass normalized data into the refactored React presenters from T3. Remove inline Navbar/Footer/cart chrome duplication from zip/src/pages/HomePage.tsx so the page only owns its main content sections. This keeps one live shell owner for HomePage while avoiding any intermediate duplicate navbar/footer/cart state on the other shared pages.
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-2
+      - scope-3
+      - scope-5
+      - scope-6
+    priority: high
+    status: pending
+    dependencies:
+      - T2
+      - T3
+    conflicts_with: []
+    context_files:
+      - path: zip/src/App.tsx
+        description: Current direct route composition that does not use RootLayout.
+      - path: zip/src/layouts/RootLayout.tsx
+        description: Existing inactive shell that hardcodes Navbar and Footer.
+      - path: zip/src/pages/HomePage.tsx
+        description: Current page-level duplication surface for Navbar, Footer, cart controls, and drawer.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The React architecture change is not complete until RootLayout becomes the active owner of shared chrome.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: shared React shell activation
+        verification:
+          - HomePage renders through RootLayout with one shell owner.
+          - TemplatePage and TestowaBlueprintPage stay out of RootLayout until their local cleanup task.
+        acceptance_criteria:
+          - RootLayout owns navbar/footer and cart chrome for HomePage.
+          - Catering routes remain isolated.
+        failure_modes:
+          - scenario: Route grouping accidentally wraps catering pages and changes their chrome.
+            likelihood: medium
+            impact: high
+            mitigation: Create an explicit shared-chrome route branch and keep catering routes as direct siblings.
+    verification:
+      - App.tsx mounts HomePage through RootLayout while TemplatePage and TestowaBlueprintPage remain direct routes.
+      - RootLayout fetches and applies the bridge global-layout payload.
+      - HomePage no longer renders Navbar/Footer/StickyCartControls/CheckoutDrawer directly.
+      - Opening and closing the checkout drawer on HomePage uses one RootLayout-owned state path with no duplicate StickyCartControls or duplicate drawer mounts.
+    acceptance_criteria:
+      - Shared React chrome is owned centrally by RootLayout for HomePage.
+      - The home route renders with one navbar, one footer, and one cart/drawer owner only.
+      - TemplatePage and TestowaBlueprintPage are not yet mounted under RootLayout, so no intermediate duplicate chrome state is introduced.
+      - Catering routes keep their current page-scoped chrome behavior.
+    failure_modes:
+      - scenario: RootLayout introduces duplicate cart controls because page-level state remains in HomePage.
+        likelihood: medium
+        impact: high
+        mitigation: Remove page-level cart/drawer ownership from HomePage in the same task.
+      - scenario: TemplatePage or TestowaBlueprintPage are included in the RootLayout route branch before their local chrome is removed.
+        likelihood: medium
+        impact: critical
+        mitigation: Restrict the initial RootLayout route branch to HomePage only.
+    tech_stack:
+      - React 19
+      - React Router v7
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: Route-level smoke plus later lint/build verification.
+
+  - id: T5
+    title: Cut TemplatePage and TestowaBlueprintPage over to RootLayout without duplicate chrome
+    description: |
+      Finish the React cleanup by removing local Navbar/Footer usage from zip/src/pages/TemplatePage.tsx and zip/src/pages/TestowaBlueprintPage.tsx and, in the same task, expand zip/src/App.tsx so both pages move under RootLayout only after their local chrome has been removed. Preserve the role of TemplatePage as the visual reference surface and preserve page content ordering, but stop importing or rendering shared chrome directly inside these pages. Keep single cart/drawer ownership in RootLayout and verify that navigation across the shared routes does not reintroduce duplicate controls or unexpected drawer-state loss.
+    wave: 4
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-3
+      - scope-5
+      - scope-6
+    priority: medium
+    status: pending
+    dependencies:
+      - T4
+    conflicts_with: []
+    context_files:
+      - path: zip/src/pages/TemplatePage.tsx
+        description: Visual reference page currently rendering Navbar2 and Footer inline.
+      - path: zip/src/pages/TestowaBlueprintPage.tsx
+        description: Shared-chrome page currently rendering Navbar2 and Footer inline.
+      - path: zip/src/App.tsx
+        description: Route composition file where TemplatePage and TestowaBlueprintPage should join the RootLayout branch only after cleanup.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Cleanup must follow RootLayout activation so these pages have an active shell to inherit from.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 180
+        focus_area: React duplication removal
+        verification:
+          - Shared pages stop importing Navbar/Footer before the route branch expands.
+          - TemplatePage remains visually usable as a reference page.
+        acceptance_criteria:
+          - No page-level Navbar/Footer duplication remains on the standard shared routes.
+          - TemplatePage and TestowaBlueprintPage still render their main content correctly.
+        failure_modes:
+          - scenario: TemplatePage loses intended reference content because shared chrome removal also deletes section wrappers.
+            likelihood: low
+            impact: medium
+            mitigation: Remove only chrome imports/renders and keep section content unchanged.
+    verification:
+      - TemplatePage and TestowaBlueprintPage no longer import shared Navbar/Footer components.
+      - App.tsx expands the RootLayout route branch only after both pages stop rendering local chrome.
+      - Both pages render exactly one navbar and one footer through RootLayout.
+      - Navigating among HomePage, TemplatePage, and TestowaBlueprintPage keeps a single RootLayout-owned drawer/cart instance without duplicate mounts or unexpected state resets.
+    acceptance_criteria:
+      - Standard shared routes no longer duplicate navbar/footer or cart chrome at page level.
+      - The design reference page remains intact apart from shared shell ownership.
+      - Shared-route navigation does not regress drawer persistence behavior after shell ownership moves into RootLayout.
+    failure_modes:
+      - scenario: A page still imports shared chrome for a logo override path.
+        likelihood: low
+        impact: medium
+        mitigation: Move any needed logo/default handling into RootLayout presenter props instead of page components.
+      - scenario: App.tsx expands the RootLayout branch before one page is fully cleaned, recreating duplicate chrome.
+        likelihood: medium
+        impact: high
+        mitigation: Keep App.tsx branch expansion and both page cleanups inside the same task and verify no local chrome imports remain before route changes.
+      - scenario: Moving drawer ownership into RootLayout causes the drawer to reset unexpectedly or duplicate on shared-route navigation.
+        likelihood: medium
+        impact: high
+        mitigation: Validate single-instance drawer ownership during shared-route navigation before considering the cutover complete.
+    tech_stack:
+      - React 19
+      - TypeScript
+    test_coverage: Manual route smoke plus later lint/build verification.
+
+  - id: T6
+    title: Refactor the Astro navbar and footer into data-driven presenters
+    description: |
+      Convert astro-site/src/components/Navbar.astro and astro-site/src/components/Footer.astro so they render from external props shaped by T1 instead of hardcoded placeholder/demo values. Preserve the current Astro DOM and class names as closely as possible so BaseLayout integration is a data-source change rather than a visual redesign.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-4
+      - scope-5
+      - scope-6
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/components/Navbar.astro
+        description: Current Astro navbar with hardcoded placeholder/demo links.
+      - path: astro-site/src/components/Footer.astro
+        description: Current Astro footer with hardcoded content and links.
+      - path: astro-site/src/layouts/BaseLayout.astro
+        description: Current shell that consumes Navbar and Footer with no data props.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Astro presenters can be parameterized in parallel with React once the contract is fixed.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 220
+        focus_area: Astro chrome parameterization
+        verification:
+          - Astro Navbar/Footer accept external data props.
+          - DOM/class structure remains stable.
+        acceptance_criteria:
+          - Astro chrome stops depending on placeholder/demo content.
+          - Props map directly to the shared contract.
+        failure_modes:
+          - scenario: Astro component prop changes silently alter class names or markup structure.
+            likelihood: medium
+            impact: medium
+            mitigation: Preserve current template structure and replace only embedded data.
+    verification:
+      - Astro Navbar and Footer render from props plus stable fallback defaults.
+      - Current class names and overall structure remain stable.
+    acceptance_criteria:
+      - Astro chrome is ready to consume the bridge payload without a redesign.
+      - No hardcoded placeholder/demo links remain in the Astro presenters.
+    failure_modes:
+      - scenario: The Astro navbar uses a different field breakdown than the React contract.
+        likelihood: medium
+        impact: high
+        mitigation: Drive props from the T1 contract module instead of ad hoc per-component shapes.
+    tech_stack:
+      - Astro 5
+      - TypeScript-friendly frontmatter props
+      - CSS class preservation
+    test_coverage: Build-time template validation in later tasks.
+
+  - id: T7
+    title: Wire Astro BaseLayout to the bridge global-layout payload
+    description: |
+      Extend the Astro WordPress fetch layer so BaseLayout consumes the same bridge payload introduced in T2. Add a global-layout fetch helper alongside the existing WordPress page-builder helper, pass the result through astro-site/src/pages/[slug].astro into astro-site/src/layouts/BaseLayout.astro, and render the refactored Astro presenters from T6 with live data. Keep the existing page-builder section fetch path for the page body unchanged except for the additional global-layout request.
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - scope-2
+      - scope-4
+      - scope-5
+      - scope-6
+    priority: high
+    status: pending
+    dependencies:
+      - T2
+      - T6
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/wordpress.ts
+        description: Existing WordPress fetch helper pattern to extend for global layout.
+      - path: astro-site/src/layouts/BaseLayout.astro
+        description: Astro shell that should own navbar/footer from shared data.
+      - path: "astro-site/src/pages/[slug].astro"
+        description: Current integration seam between page-builder data and BaseLayout.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Astro should consume the same bridge contract without changing page-body rendering responsibilities.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 200
+        focus_area: Astro bridge integration
+        verification:
+          - Astro fetches the new global-layout endpoint.
+          - BaseLayout renders live shared chrome.
+        acceptance_criteria:
+          - Astro shared chrome uses the bridge payload.
+          - Existing page-builder section rendering remains intact.
+        failure_modes:
+          - scenario: The extra bridge request is wired into the wrong layer and duplicates requests per section.
+            likelihood: low
+            impact: medium
+            mitigation: Fetch global layout once per page render and pass it into BaseLayout.
+    verification:
+      - Astro page builds or renders with one shared global-layout fetch and one page-builder fetch.
+      - BaseLayout renders Navbar and Footer from live bridge data.
+      - Existing [slug].astro section rendering remains unchanged aside from the new layout prop plumbing.
+    acceptance_criteria:
+      - Astro consumes the same normalized layout payload as React.
+      - BaseLayout owns shared chrome from bridge data.
+    failure_modes:
+      - scenario: BaseLayout integration works, but Astro body page rendering regresses because page-builder fetch code is entangled with layout changes.
+        likelihood: medium
+        impact: high
+        mitigation: Keep layout fetching in a distinct helper and pass it as a separate prop into BaseLayout.
+    tech_stack:
+      - Astro 5
+      - TypeScript
+      - Fetch-based WordPress integration
+    test_coverage: Astro build validation plus route smoke in T8.
+
+  - id: T8
+    title: Validate bridge, React, and Astro behavior end to end
+    description: |
+      Run the implementation review and validation pass once bridge, React, and Astro wiring are complete. Inspect the final diff for unintended blast radius, then run the concrete validation commands and smoke checks required by this change set: request GET /wp-json/bulwar/v1/layout/global and confirm it exposes public layout data without footerPageId, run npm run lint and npm run build in zip, run npm run build in astro-site, confirm /react/, /react/template, and /react/<page-slug> render with exactly one shared navbar and footer from RootLayout, open the checkout drawer on a shared React route and navigate among the RootLayout-backed pages to confirm one persistent drawer/cart owner with no duplicate mounts or regressions, confirm catering routes still keep page-scoped chrome, and confirm Astro [slug] output builds with the shared bridge data in BaseLayout.
+    wave: 5
+    agent: gem-reviewer
+    prototype: false
+    covers:
+      - scope-7
+    priority: high
+    status: pending
+    dependencies:
+      - T5
+      - T7
+    conflicts_with: []
+    context_files:
+      - path: zip/src/App.tsx
+        description: Confirms shared-route grouping versus direct catering routes.
+      - path: zip/src/layouts/RootLayout.tsx
+        description: Confirms React shared shell ownership and endpoint consumption.
+      - path: astro-site/src/layouts/BaseLayout.astro
+        description: Confirms Astro shared shell ownership and bridge payload consumption.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: The refactor spans PHP, React, and Astro, so build and route validation are explicit release gates.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 0
+        focus_area: validation and regression containment
+        verification:
+          - Bridge payload shape is stable.
+          - React and Astro both build and render the shared chrome correctly.
+        acceptance_criteria:
+          - Required commands pass.
+          - Route scope and duplication cleanup are verified.
+        failure_modes:
+          - scenario: Static builds pass, but a shared route still renders duplicate chrome because one page kept a local import.
+            likelihood: medium
+            impact: high
+            mitigation: Add route-level smoke checks for all shared pages, not only HomePage.
+    verification:
+      - GET /wp-json/bulwar/v1/layout/global returns the canonical payload shape expected by both runtimes and excludes footerPageId.
+      - In zip: npm run lint and npm run build succeed.
+      - In astro-site: npm run build succeeds.
+      - Shared React routes render one navbar and one footer only.
+      - Shared React routes keep one drawer/cart owner only, and shared-route navigation does not introduce duplicate mounts or unexpected drawer resets.
+      - Catering routes remain outside the shared shell.
+      - Astro [slug] output renders shared chrome from bridge data without breaking body section rendering.
+    acceptance_criteria:
+      - All required validation commands succeed.
+      - No page-level duplication remains on the standard React shared routes.
+      - Drawer persistence behavior across RootLayout-backed shared routes is explicitly checked and does not regress.
+      - Bridge, React, and Astro agree on one payload shape.
+    failure_modes:
+      - scenario: Build passes but the bridge endpoint returns slightly different field nullability than one frontend expects.
+        likelihood: medium
+        impact: high
+        mitigation: Inspect a real endpoint response during validation and compare it against both contract parsers before sign-off.
+      - scenario: A catering route is accidentally wrapped by RootLayout during route cleanup.
+        likelihood: low
+        impact: high
+        mitigation: Include direct route-scope inspection for catering pages in the validation checklist.
+      - scenario: Shared-route rendering looks correct, but checkout drawer state duplicates or resets unexpectedly after navigation because RootLayout now owns the state.
+        likelihood: medium
+        impact: high
+        mitigation: Include an explicit open-drawer then navigate smoke test across the RootLayout-backed pages before sign-off.
+    requires_review: true
+    review_depth: full
+    review_security_sensitive: false
+
+  - id: T9
+    title: Document the global layout authoring and validation workflow
+    description: |
+      Write the operator/developer documentation for the new shared layout system after validation passes. Document the canonical public global-layout payload, the WordPress option shape for navbar settings plus internal footerPageId storage, the shared footer page authoring requirement for one dedicated footer block in page_builder_schema.sections, the new bridge endpoint, the duplicate-safe React route-scope sequence that keeps catering pages outside RootLayout, the drawer persistence expectation and validation check, the Astro integration path, and the exact validation/build commands used in T8.
+    wave: 6
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - scope-7
+    priority: medium
+    status: pending
+    dependencies:
+      - T8
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        description: Existing operator workflow doc to extend or reference for shared layout authoring.
+      - path: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+        description: Existing page-builder contract doc that may need cross-reference for footer page storage.
+      - path: docs/setup/
+        description: Candidate documentation location if an operator-facing setup/update note is needed.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: New shared layout architecture needs a reproducible authoring and validation workflow in repo docs.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 180
+        focus_area: operator documentation
+        verification:
+          - Docs include the new endpoint and authoring rules.
+          - Docs include the exact validation commands.
+        acceptance_criteria:
+          - Developers can reproduce navbar/footer authoring and validation from repo docs.
+          - The route-scope and footer storage decisions are explicit.
+        failure_modes:
+          - scenario: Docs describe the endpoint but omit the footer page storage rule, leaving future edits inconsistent.
+            likelihood: medium
+            impact: medium
+            mitigation: Include an explicit section for shared footer page authoring and bridge resolution semantics.
+    verification:
+      - Documentation identifies where navbar settings live, where footer content lives, and how the bridge resolves both without exposing footerPageId to clients.
+      - Documentation includes the exact validation/build commands and route-scope guardrails.
+    acceptance_criteria:
+      - Repo contains one clear workflow for editing and validating global layout data.
+      - Future operators can update navbar/footer sources without reverse-engineering the implementation.
+    failure_modes:
+      - scenario: Docs stop at architecture overview and omit actionable authoring or validation steps.
+        likelihood: medium
+        impact: medium
+        mitigation: Write the doc as an operator workflow, not only a design note.
+    task_type: documentation
+    audience: developers
+    coverage_matrix:
+      - Canonical global-layout payload fields
+      - Navbar WordPress option shape and ownership
+      - Internal footerPageId storage versus public runtime contract
+      - Shared footer page dedicated footer block authoring rule
+      - GET /wp-json/bulwar/v1/layout/global endpoint behavior
+      - React shared-route versus catering-route scope
+      - Drawer persistence validation across RootLayout-backed shared routes
+      - Astro BaseLayout integration path
+      - Validation commands and smoke checks
+

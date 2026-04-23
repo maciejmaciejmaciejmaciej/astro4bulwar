@@ -1,0 +1,247 @@
+plan_id: none
+objective: Investigate the current mobile regression in BULWAR APP for image/text product category panels, identify the likely root cause, and isolate the smallest safe fix that preserves the existing design system.
+focus_area: zip/src mobile category image panels
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The active category panels are rendered by zip/src/components/sections/CateringProductListAlt.tsx and are fed from zip/src/pages/CateringWielkanocnyPage.tsx.
+  - On mobile, the component still uses the legacy overlap value -mt-[140px], while the title and description are not positioned inside the image band; they remain in the same flow stack as the white product panel.
+  - Because the overlay copy is flow content rather than an absolutely positioned image overlay, it cannot stay vertically centered around half the image height and the product panel overlaps the image far more than the requested ~40px.
+  - The smallest safe fix is to keep the existing card, typography, and spacing tokens, move the mobile overlay copy into the image container using page-margin padding, and reduce only the mobile overlap from -mt-[140px] to about -mt-10 while preserving md:-mt-[220px].
+  - The same mobile overlap pattern also exists in CateringProductSpecialMenuFor2.tsx, but the mapped category panels themselves are isolated to CateringProductListAlt.tsx.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic search for the affected UI, regex grep for exact overlap and overlay classes, targeted file reads of the active route and section components, and metadata verification against the workspace CSS utilities.
+  scope: Focused inspection of the active Easter catering route, the category panel renderer, the shared spacing utility, and the adjacent special-product section that uses the same overlap pattern.
+  confidence: high
+  coverage: 88
+
+files_analyzed:
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Active renderer for image-backed product category panels with title, description, and the white positions list.
+    key_elements:
+      - element: CateringProductListAlt
+        type: function
+        location: zip/src/components/sections/CateringProductListAlt.tsx:38
+        description: Renders the image band, the text copy, and the product list card for each mapped category.
+      - element: image band wrapper
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:61
+        description: Applies page-margin around the image band and sets the 280px mobile / 400px desktop image height.
+      - element: overlap wrapper
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:78
+        description: Pulls the entire text and panel stack upward with relative z-20 -mt-[140px] md:-mt-[220px].
+      - element: overlay typography classes
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:82
+        description: Styles title and description as white overlay copy but keeps them in normal document flow above the panel.
+    language: TSX
+    lines: 118
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Route-level composition that maps normalized catering categories into the active panel component.
+    key_elements:
+      - element: CateringWielkanocnyPage
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:26
+        description: Composes the catering-only page shell and maps each category to CateringProductListAlt.
+      - element: category mapping
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:228
+        description: Passes title, description, products, and bgImage into CateringProductListAlt for every category.
+    language: TSX
+    lines: 233
+  - file: CateringProductSpecialMenuFor2.tsx
+    path: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+    purpose: Adjacent catering section using the same image-band plus negative-overlap layout pattern.
+    key_elements:
+      - element: overlap wrapper
+        type: pattern
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:173
+        description: Uses the same mobile overlap value -mt-[140px] with desktop -mt-[220px].
+      - element: overlay typography classes
+        type: pattern
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:181
+        description: Uses the same white headline and white/90 description treatment above the panel.
+    language: TSX
+    lines: 309
+  - file: index.css
+    path: zip/src/index.css
+    purpose: Defines shared spacing utilities used by the category panels.
+    key_elements:
+      - element: page-margin
+        type: variable
+        location: zip/src/index.css:45
+        description: Provides 5rem horizontal padding by default and 2rem horizontal padding on screens up to 768px.
+      - element: mobile page-margin override
+        type: pattern
+        location: zip/src/index.css:50
+        description: Reduces page-margin horizontal padding to 2rem on mobile.
+    language: CSS
+    lines: 189
+
+patterns_found:
+  - category: structure
+    pattern: Image band and panel stack are split into two separate wrappers.
+    description: The image is rendered first, then a second page-margin wrapper is pulled upward with a negative top margin to create the overlap effect.
+    examples:
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:61
+        snippet: div.page-margin for the image band followed by a separate motion.div.page-margin for the text and panel stack
+      - file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:172
+        snippet: page-margin wrapper with relative z-20 -mt-[140px] pb-16 md:-mt-[220px] md:pb-24
+    prevalence: common
+  - category: structure
+    pattern: Overlay styling without overlay positioning.
+    description: Title and description receive white/drop-shadow classes associated with image overlays, but they are not absolutely positioned within the image container.
+    examples:
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:82
+        snippet: bgImage ? text-white relative z-30 drop-shadow-md : ""
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:90
+        snippet: bgImage ? relative z-30 text-white/90 : text-zinc-600
+    prevalence: common
+  - category: layout
+    pattern: Mobile overlap depth is much larger than requested.
+    description: The current mobile negative margin is 140px, while the requested mobile overlap is about 40px.
+    examples:
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:78
+        snippet: relative z-20 -mt-[140px] md:-mt-[220px] pb-16 md:pb-24
+      - file: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:173
+        snippet: relative z-20 -mt-[140px] pb-16 md:-mt-[220px] md:pb-24
+    prevalence: common
+  - category: design_system
+    pattern: Shared spacing token should govern horizontal inset.
+    description: Mobile horizontal padding is already standardized via page-margin, so a safe fix can reuse that token instead of introducing new layout utilities.
+    examples:
+      - file: zip/src/index.css
+        location: zip/src/index.css:45
+        snippet: .page-margin { padding-left: 5rem; padding-right: 5rem; }
+      - file: zip/src/index.css
+        location: zip/src/index.css:50
+        snippet: @media (max-width: 768px) { .page-margin { padding-left: 2rem; padding-right: 2rem; } }
+    prevalence: common
+  - category: architecture
+    pattern: Category panels are data-driven at the page layer.
+    description: The route maps normalized category contracts into a single reusable panel component, so one scoped component fix affects all category panels.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:228
+        snippet: cateringWielkanocnyCategories.map((category) => <CateringProductListAlt ... />)
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Composes the Easter catering page and maps categories into reusable panels.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain root
+    - component: CateringProductListAlt
+      responsibility: Renders each image-backed category panel and the positions list beneath it.
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: domain core renderer
+    - component: ProductItemAlt
+      responsibility: Renders the individual product rows inside the white positions panel.
+      location: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: used by domain outputs
+    - component: CateringProductSpecialMenuFor2
+      responsibility: Adjacent section using the same overlap mechanics, relevant for pattern parity.
+      location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      relationship_to_domain: shares the same layout pattern
+  interfaces_used_by_domain:
+    - interface: CateringProductListAltProps
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      usage_pattern: Receives title, description, products, bgImage, cartQuantities, and onAddToCart.
+  data_flow_involving_domain: cateringWielkanocnyCategories are mapped in CateringWielkanocnyPage, each category passes title, description, products, and bgImage into CateringProductListAlt, and that component renders ProductItemAlt rows inside the overlapped white panel.
+  key_relationships_to_domain:
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship: imports
+    - from: zip/src/components/sections/CateringProductListAlt.tsx
+      to: zip/src/components/sections/ProductItemAlt.tsx
+      relationship: imports
+    - from: zip/src/components/sections/CateringProductListAlt.tsx
+      to: zip/src/index.css
+      relationship: consumes page-margin utility indirectly through class usage
+    - from: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      to: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship: shares layout pattern
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - CSS
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Functional components compose the category panels and route mapping.
+    - name: Tailwind CSS
+      usage_in_domain: Controls overlap, spacing, typography, z-index, and responsive behavior.
+  libraries_used_in_domain:
+    - name: framer-motion
+      purpose_in_domain: Applies the parallax y transform to the overlapped panel stack.
+    - name: react-router-dom
+      purpose_in_domain: Hosts the route that renders the category panels.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Section components use descriptive PascalCase names with catering-specific prefixes when scoped to the Easter flow.
+  structure_of_domain: The page maps normalized data into reusable presentational sections; shared spacing is centralized in index.css via page-margin.
+  error_handling_in_domain: The category panel components are presentational and do not contain custom runtime error handling.
+  testing_in_domain: Existing tests cover page shell branding and special-product image rendering, but not the mobile overlap or overlay geometry of CateringProductListAlt.
+  documentation_in_domain: No source-level documentation describes the intended overlap amount; the current requirement comes from the user request.
+
+related_dependencies:
+  internal:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: passes normalized category data into the panel component
+      direction: inbound
+    - component: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: renders panel row content
+      direction: outbound
+    - component: zip/src/index.css
+      relationship_to_domain: supplies shared horizontal spacing token used by the panel layout
+      direction: bidirectional
+  external:
+    - name: framer-motion
+      purpose_for_domain: Moves the overlapped stack with a vertical transform.
+    - name: react-router-dom
+      purpose_for_domain: Hosts the route that renders the category panels.
+
+domain_security_considerations:
+  sensitive_areas: []
+  authentication_patterns_in_domain: None in this presentational domain.
+  authorization_patterns_in_domain: None in this presentational domain.
+  data_validation_in_domain: None inside the panel renderer; it consumes already normalized category data.
+
+testing_patterns:
+  framework: node:test with react-dom/server renderToStaticMarkup
+  coverage_areas:
+    - Route shell branding in CateringWielkanocnyPage.test.tsx
+    - Special-product image rendering in CateringProductSpecialMenuFor2.test.tsx
+  test_organization: Lightweight render assertions live next to the components or pages they cover.
+  mock_patterns:
+    - MemoryRouter wrapper for route rendering
+    - Static seed data import for section rendering
+
+open_questions:
+  - question: Should the special product section keep the deeper mobile overlap while only the mapped category panels are corrected?
+    context: CateringProductSpecialMenuFor2.tsx uses the same -mt-[140px] mobile class, but the user request names product category panels specifically.
+  - question: Is the intended overlay copy on desktop also meant to move inside the image band, or is the requirement mobile-only?
+    context: The request explicitly calls out mobile behavior and preserves the approximate 220px desktop overlap already present in the component.
+
+gaps:
+  - area: visual verification
+    description: No browser rendering or screenshot diff was used in this research pass, so the diagnosis is based on code structure and the explicit mobile spacing values.
+    impact: The structural cause is clear, but final pixel alignment would still need runtime verification after implementation.
+  - area: automated regression coverage
+    description: There is no test asserting mobile overlap depth, overlay centering, or page-margin-respecting copy placement in CateringProductListAlt.
+    impact: This regression can recur without failing the current test suite.

@@ -1,0 +1,718 @@
+plan_id: astro-wordpress-page-builder
+objective: >-
+  Audit the actual implementation state for the Astro/WordPress reusable-block
+  and page-builder workflow, distinguishing concrete code and artifacts from
+  plans and narrow proofs of concept.
+focus_area: implementation_audit
+created_at: 2026-04-15
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+historical_snapshot: true
+current_state_reference: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+historical_note: >-
+  This implementation audit captures the state observed on 2026-04-15.
+  It predates the current runtime-assisted publish flow and automatic Astro
+  build-time slug discovery. Use it as historical audit evidence only.
+
+tldr: |
+  - Repo zawiera realny, dzialajacy lancuch POC: WordPress meta + endpoint, React runtime page-builder, Astro build-time fetch, seed JSON oraz deploy Astro.
+  - Implementacja produkcyjna jest jednak bardzo waska: dwa blockKey, jeden testowy slug `testowa-blueprint`, reczne seedowanie i reczny/CI deploy statycznego outputu.
+  - AI-oriented schema istnieje jako generator i transport do WordPressa, ale nie ma repo-side konsumenta runtime ani pelnego compile/publish workflow.
+  - Firebase draft model, compile step, repo-side runtime korzystajacy z docs/block-registry oraz automatyczny rebuild po zmianach WordPress nie sa widoczne w wykonywalnym kodzie.
+  - Najmocniejszy rozjazd docs vs kod: kontrakt galerii w docs seed registry opisuje `images[]` jako stringi, podczas gdy rzeczywiste schematy i payloady uzywaja obiektow `{ src, alt }` i dodatkowych pol prezentacyjnych.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval over the workspace: instruction/PRD review, `file_search`
+    for scoped inventory, `grep_search` for exact symbols and workflow terms,
+    `semantic_search` for pattern discovery, targeted `read_file` on runtime,
+    plugin, script, workflow, registry, and documentation files, plus a small
+    terminal pass for verified line counts.
+  scope: >-
+    Examined the requested domains `astro-site`, `wordpress-plugin/bulwar-bridge`,
+    `SCRIPTS`, `.github/workflows`, `docs/block-registry`, and also the live
+    React registry/runtime under `zip/src/blocks/registry` because it is the
+    only code-side block registry implementation currently present.
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: package.json
+    path: astro-site/package.json
+    purpose: Defines the Astro POC runtime and its direct package dependencies.
+    key_elements:
+      - element: scripts
+        type: variable
+        location: astro-site/package.json:5
+        description: Exposes only `dev`, `build`, and `preview` commands for the Astro site.
+      - element: astro dependency
+        type: variable
+        location: astro-site/package.json:10
+        description: Pins Astro runtime to `^5.14.2`.
+      - element: zod dependency
+        type: variable
+        location: astro-site/package.json:11
+        description: Uses `zod` for schema parsing in the Astro POC.
+    language: json
+    lines: 15
+
+  - file: [slug].astro
+    path: astro-site/src/pages/[slug].astro
+    purpose: Static Astro route that renders page-builder sections during build.
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:9
+        description: Restricts generated routes to the hardcoded test slug list.
+      - element: section switch for gallery and menu blocks
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:39
+        description: Renders only `gallery-masonry-style1` and `menu-category-photo-parallax-full-width`.
+    language: astro
+    lines: 58
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Holds the WordPress base URL and the finite Astro test route list.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: Hardcodes the WordPress origin to `https://client.example`.
+      - element: TEST_PAGE_SLUGS
+        type: variable
+        location: astro-site/src/lib/config.ts:3
+        description: Limits Astro static generation to `testowa-blueprint`.
+    language: typescript
+    lines: 3
+
+  - file: pageBuilder.ts
+    path: astro-site/src/lib/pageBuilder.ts
+    purpose: Astro build-time orchestration from WordPress schema fetch to Woo data resolution.
+    key_elements:
+      - element: buildStaticPage
+        type: function
+        location: astro-site/src/lib/pageBuilder.ts:5
+        description: Fetches the render schema and resolves Woo-backed menu sections before render.
+      - element: menu block resolver branch
+        type: pattern
+        location: astro-site/src/lib/pageBuilder.ts:13
+        description: Only menu category blocks receive source resolution; all other blocks pass through unchanged.
+    language: typescript
+    lines: 19
+
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Fetches page-builder JSON from WordPress and normalizes shape anomalies before Zod parsing.
+    key_elements:
+      - element: normalizeSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:17
+        description: Coerces `meta`, `seo`, `build`, and per-section `meta` into objects.
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:50
+        description: Calls `/wp-json/bulwar/v1/page-builder/pages/{slug}` and parses only the render schema.
+    language: typescript
+    lines: 48
+
+  - file: woo.ts
+    path: astro-site/src/lib/woo.ts
+    purpose: Resolves Woo Store API product/category sources into renderable menu data during Astro build.
+    key_elements:
+      - element: fetchProductsByIds
+        type: function
+        location: astro-site/src/lib/woo.ts:57
+        description: Loads explicit product ids from Woo Store API preserving request order.
+      - element: fetchProductsByCategory
+        type: function
+        location: astro-site/src/lib/woo.ts:79
+        description: Resolves category slug or id and fetches products for that category.
+      - element: resolveMenuBlock
+        type: function
+        location: astro-site/src/lib/woo.ts:125
+        description: Rewrites `heroTitle` and `menuColumns` from Woo-backed source data.
+    language: typescript
+    lines: 123
+
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Registers page-builder meta fields and exposes REST read/write operations for page schemas.
+    key_elements:
+      - element: registerMeta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:13
+        description: Registers both `page_builder_schema` and `page_builder_schema_for_ai` for pages.
+      - element: show
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:19
+        description: Returns the normalized render schema and optional AI schema for a page slug.
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:56
+        description: Accepts authenticated POST updates and writes both meta fields.
+      - element: coerceSchemaPayload
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:147
+        description: Validates only that payloads are arrays or valid JSON strings, not that they match the block registry.
+    language: php
+    lines: 179
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Declares the REST routes exposed by the WordPress bridge plugin.
+    key_elements:
+      - element: GET page-builder route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:39
+        description: Publishes `/wp-json/bulwar/v1/page-builder/pages/{slug}`.
+      - element: POST page-builder route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:45
+        description: Protects page schema updates behind `current_user_can('edit_pages')`.
+    language: php
+    lines: 44
+
+  - file: generate-page-builder-ai-schema.js
+    path: SCRIPTS/generate-page-builder-ai-schema.js
+    purpose: Generates `page_builder_schema_for_ai` from `page_builder_schema` in a repo-side CLI flow.
+    key_elements:
+      - element: buildGalleryBlock
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:100
+        description: Creates AI-editable gallery payload with description and edit guidance.
+      - element: buildMenuBlock
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:128
+        description: Creates AI-editable menu payload with different guidance for Woo-backed and static content modes.
+      - element: buildAiBlock
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:210
+        description: Supports only two block keys and errors on anything else.
+    language: javascript
+    lines: 221
+
+  - file: seed-testowa-blueprint-schema.php
+    path: SCRIPTS/seed-testowa-blueprint-schema.php
+    purpose: Seeds WordPress page meta for the single test page directly through `wp-load.php`.
+    key_elements:
+      - element: schema path constants
+        type: variable
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:6
+        description: Reads local JSON files for both render and AI schema from the operator HOME directory.
+      - element: test page bootstrap
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:51
+        description: Creates or updates only the `testowa-blueprint` page.
+      - element: update_post_meta calls
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:77
+        description: Writes `page_builder_schema` and optionally `page_builder_schema_for_ai` to WordPress.
+    language: php
+    lines: 66
+
+  - file: deploy-astro-dhosting.yml
+    path: .github/workflows/deploy-astro-dhosting.yml
+    purpose: CI workflow building Astro and deploying the static output to dhosting.
+    key_elements:
+      - element: push trigger scope
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:5
+        description: Runs on `main` changes under `.github/workflows/deploy-astro-dhosting.yml` and `astro-site/**`.
+      - element: Build Astro site
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:41
+        description: Performs `npm ci` and `npm run build` in `astro-site`.
+      - element: dhosting deploy with permission fix
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:68
+        description: Uploads a tarball, rotates backups, extracts to `/public_html/astro`, and resets permissions to 755/644.
+    language: yaml
+    lines: 82
+
+  - file: registry.machine.json
+    path: docs/block-registry/registry.machine.json
+    purpose: Machine-readable seed registry describing the currently documented business blocks.
+    key_elements:
+      - element: registryStatus
+        type: variable
+        location: docs/block-registry/registry.machine.json:3
+        description: Marks the registry as `seed`, not finalized.
+      - element: menu block entry
+        type: pattern
+        location: docs/block-registry/registry.machine.json:7
+        description: Documents the menu block with React renderer path and Woo source modes.
+      - element: gallery block entry
+        type: pattern
+        location: docs/block-registry/registry.machine.json:197
+        description: Documents the gallery block with `wordpress_media_gallery` marked as planned.
+    language: json
+    lines: 283
+
+  - file: index.ts
+    path: zip/src/blocks/registry/index.ts
+    purpose: Code-side React block registry that maps block keys to runtime schemas and defaults.
+    key_elements:
+      - element: blockRegistry
+        type: variable
+        location: zip/src/blocks/registry/index.ts:15
+        description: Registers exactly two blocks in code.
+      - element: getBlock
+        type: function
+        location: zip/src/blocks/registry/index.ts:26
+        description: Runtime lookup for block definitions by `blockKey`.
+      - element: createDefaultBlockInstance
+        type: function
+        location: zip/src/blocks/registry/index.ts:62
+        description: Builds typed section instances with generated ids and default data.
+    language: typescript
+    lines: 68
+
+  - file: pageBuilderSchema.ts
+    path: zip/src/blocks/registry/pageBuilderSchema.ts
+    purpose: Validates page-builder render payloads in the React runtime against the code registry.
+    key_elements:
+      - element: parsePageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:47
+        description: Enforces unique section ids, known block keys, version matches, and typed block data/source.
+    language: typescript
+    lines: 62
+
+  - file: blueprint.ts
+    path: zip/src/blocks/registry/blueprint.ts
+    purpose: Converts a simpler blueprint structure into a validated `page_builder_schema` in the React runtime.
+    key_elements:
+      - element: createPageBuilderSchemaFromBlueprint
+        type: function
+        location: zip/src/blocks/registry/blueprint.ts:62
+        description: Expands block defaults, assigns ids, validates data and source, and returns a parsed render schema.
+    language: typescript
+    lines: 79
+
+  - file: resolvePageBuilderSources.ts
+    path: zip/src/blocks/registry/resolvePageBuilderSources.ts
+    purpose: Resolves external block sources in the React runtime before render.
+    key_elements:
+      - element: resolvePageBuilderSchemaSources
+        type: function
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:9
+        description: Resolves only the Woo-backed menu block and re-validates the resulting schema.
+    language: typescript
+    lines: 38
+
+  - file: TestowaBlueprintPage.tsx
+    path: zip/src/pages/TestowaBlueprintPage.tsx
+    purpose: Proof route that pulls a page schema from WordPress and renders it in React runtime.
+    key_elements:
+      - element: PAGE_BUILDER_SLUG
+        type: variable
+        location: zip/src/pages/TestowaBlueprintPage.tsx:12
+        description: Hardcodes the route to the same single slug `testowa-blueprint`.
+      - element: WordPress fetch + source resolution chain
+        type: pattern
+        location: zip/src/pages/TestowaBlueprintPage.tsx:22
+        description: Fetches render schema from WordPress, resolves sources, then renders sections.
+    language: typescriptreact
+    lines: 61
+
+  - file: schema.ts
+    path: zip/src/blocks/gallery-masonry-style1/schema.ts
+    purpose: Real gallery block contract used by the React runtime registry.
+    key_elements:
+      - element: galleryMasonryStyle1DataSchema
+        type: variable
+        location: zip/src/blocks/gallery-masonry-style1/schema.ts:6
+        description: Requires image objects with `src` and `alt`, plus `layoutStyle` and `motionPreset`.
+    language: typescript
+    lines: 58
+
+  - file: schema.ts
+    path: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts
+    purpose: Real menu block contract used by the React runtime registry.
+    key_elements:
+      - element: menuCategoryPhotoParallaxFullWidthSourceSchema
+        type: variable
+        location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:10
+        description: Supports both `woo_category` and `woo_products` as validated source modes.
+      - element: block definition
+        type: variable
+        location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:72
+        description: Declares the existing React component renderer and Woo resolver metadata.
+    language: typescript
+    lines: 102
+
+  - file: react-wordpress-poc-status.md
+    path: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md
+    purpose: Documents the current milestone explicitly as a proof of concept and execution log.
+    key_elements:
+      - element: proof of concept status
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:5
+        description: States that the document records the current proof and remaining work, not the final architecture.
+      - element: live proof summary
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:23
+        description: Describes the live React route using `woo_category` resolution from WordPress data.
+    language: markdown
+    lines: 169
+
+  - file: firebase-page-draft-mvp.md
+    path: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+    purpose: Specifies a planned Firebase draft and compile/publish model.
+    key_elements:
+      - element: Firebase draft model
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:5
+        description: Defines one Firebase document per page draft.
+      - element: compile step
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:176
+        description: Declares a compile phase that should emit both WordPress meta payloads.
+    language: markdown
+    lines: 163
+
+patterns_found:
+  - category: architecture
+    pattern: Parallel implementations for the same domain
+    description: >-
+      The repo currently contains three separate page-builder layers: a React
+      runtime registry and renderer in `zip`, a smaller Astro build-time POC in
+      `astro-site`, and WordPress transport/storage in `bulwar-bridge`.
+    examples:
+      - file: zip/src/blocks/registry/index.ts
+        location: zip/src/blocks/registry/index.ts:15
+        snippet: export const blockRegistry = { ...two block definitions... }
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:45
+        snippet: sections: z.array(z.union([galleryBlockSchema, menuBlockSchema]))
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:86
+        snippet: update_post_meta($page->ID, 'page_builder_schema', ...)
+    prevalence: common
+
+  - category: structure
+    pattern: Scope is hard-limited to one test page and two block types
+    description: >-
+      The executable workflow repeatedly anchors on `testowa-blueprint` and only
+      supports `gallery-masonry-style1` plus `menu-category-photo-parallax-full-width`.
+    examples:
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:3
+        snippet: export const TEST_PAGE_SLUGS = ['testowa-blueprint'] as const;
+      - file: zip/src/pages/TestowaBlueprintPage.tsx
+        location: zip/src/pages/TestowaBlueprintPage.tsx:12
+        snippet: const PAGE_BUILDER_SLUG = "testowa-blueprint";
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:228
+        snippet: throw new Error(`Unsupported blockKey in AI schema generator: ...`)
+    prevalence: common
+
+  - category: data_contract
+    pattern: Real contracts are enforced in React and Astro code with Zod, but not in WordPress write path
+    description: >-
+      Frontend runtimes validate schemas against code definitions, while the
+      WordPress update endpoint only checks JSON shape and persists it.
+    examples:
+      - file: zip/src/blocks/registry/pageBuilderSchema.ts
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:47
+        snippet: export const parsePageBuilderSchema = (value: unknown): PageBuilderSchema => {
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:50
+        snippet: return pageBuilderSchema.parse(normalizeSchema(payload.data.schema));
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:147
+        snippet: private static function coerceSchemaPayload($value, string $field)
+    prevalence: common
+
+  - category: source_resolution
+    pattern: Woo source resolution exists only for the menu block
+    description: >-
+      Both React and Astro implement source resolution for the menu category
+      block using Woo Store API, while gallery and other planned blocks have no
+      resolver code.
+    examples:
+      - file: astro-site/src/lib/pageBuilder.ts
+        location: astro-site/src/lib/pageBuilder.ts:13
+        snippet: if (section.blockKey === 'menu-category-photo-parallax-full-width') { ... }
+      - file: zip/src/blocks/registry/resolvePageBuilderSources.ts
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:17
+        snippet: case "menu-category-photo-parallax-full-width":
+      - file: docs/block-registry/registry.machine.json
+        location: docs/block-registry/registry.machine.json:271
+        snippet: "sourceType": "wordpress_media_gallery", "status": "planned"
+    prevalence: occasional
+
+  - category: deployment
+    pattern: Build-and-upload static Astro deployment with backup rotation exists
+    description: >-
+      Astro static output can be built locally or in CI and deployed to dhosting
+      with backup snapshots and permissions repair.
+    examples:
+      - file: .github/workflows/deploy-astro-dhosting.yml
+        location: .github/workflows/deploy-astro-dhosting.yml:41
+        snippet: working-directory: ${{ env.ASTRO_ROOT }}; run: npm run build
+      - file: SCRIPTS/deploy-astro-static.ps1
+        location: SCRIPTS/deploy-astro-static.ps1:34
+        snippet: scp ... astro-dist-deploy.zip ...; unzip ...; chmod 755/644
+    prevalence: occasional
+
+  - category: docs_vs_code
+    pattern: Seed registry documentation is partially out of sync with code contracts
+    description: >-
+      The gallery registry docs still describe an array of string image URLs,
+      while the implemented block schemas and sample page payload use `{ src, alt }`
+      image objects plus extra presentation fields.
+    examples:
+      - file: docs/block-registry/gallery-masonry-style1.md
+        location: docs/block-registry/gallery-masonry-style1.md:53
+        snippet: - `images[]` is an ordered string array of image URLs
+      - file: zip/src/blocks/gallery-masonry-style1/schema.ts
+        location: zip/src/blocks/gallery-masonry-style1/schema.ts:10
+        snippet: images: z.array(imageAssetSchema).default([])
+      - file: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:12
+        snippet: "images": [ { "src": ..., "alt": ... } ]
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: WordPress bridge REST transport
+      responsibility: Stores and serves page-builder schemas from page post meta.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: domain depends on this
+    - component: React page-builder registry runtime
+      responsibility: Validates schemas, builds schemas from blueprints, resolves sources, and renders sections in React.
+      location: zip/src/blocks/registry/
+      relationship_to_domain: domain depends on this
+    - component: Astro build-time renderer
+      responsibility: Fetches WordPress schema, resolves Woo sources during build, and emits static HTML for known slugs.
+      location: astro-site/src/
+      relationship_to_domain: domain depends on this
+    - component: Repo-side AI schema generator
+      responsibility: Generates AI-editable page payloads from render-oriented schema JSON.
+      location: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: domain depends on this
+    - component: Block registry docs seed
+      responsibility: Documents seed block contracts and intended registry rules.
+      location: docs/block-registry/
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: WordPress REST endpoint `/wp-json/bulwar/v1/page-builder/pages/{slug}`
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      usage_pattern: React runtime and Astro build both fetch render schema from the same route.
+    - interface: Woo Store API `/wp-json/wc/store/v1/products` and `/products/categories`
+      location: astro-site/src/lib/woo.ts
+      usage_pattern: Used to resolve Woo-backed menu content from category or explicit product ids.
+  data_flow_involving_domain: >-
+    Repo-side JSON or runtime-generated schemas are seeded into WordPress page
+    meta; the WordPress bridge exposes them over REST; React runtime or Astro
+    build fetch the render schema; Woo source resolution enriches menu data;
+    sections are rendered either client-side in React or build-time in Astro.
+    Separately, `generate-page-builder-ai-schema.js` can derive an AI-oriented
+    payload from the render schema, and the plugin can persist both meta fields.
+  key_relationships_to_domain:
+    - from: SCRIPTS/seed-testowa-blueprint-schema.php
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship: writes data later served by
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/wordpress.ts
+      relationship: calls
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/woo.ts
+      relationship: calls
+    - from: zip/src/pages/TestowaBlueprintPage.tsx
+      to: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      relationship: calls
+    - from: zip/src/blocks/registry/pageBuilderSchema.ts
+      to: zip/src/blocks/registry/index.ts
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - Astro
+    - JavaScript
+    - PHP
+    - YAML
+    - JSON
+    - Markdown
+  frameworks_used_in_domain:
+    - name: Astro 5.14.2
+      usage_in_domain: Static build-time page rendering for the Astro POC.
+    - name: React 19.0.0
+      usage_in_domain: Runtime proof route and code-side block registry under `zip`.
+    - name: Vite 6.2.0
+      usage_in_domain: Build/dev runtime for the React side where the registry code currently lives.
+    - name: WordPress REST API
+      usage_in_domain: Public and authenticated transport for page-builder schema reads and writes.
+    - name: WooCommerce Store API
+      usage_in_domain: Source resolution for menu blocks from live Woo data.
+  libraries_used_in_domain:
+    - name: zod 4.3.6
+      purpose_in_domain: Schema validation in both Astro and React page-builder code.
+    - name: framer-motion 12.38.0
+      purpose_in_domain: Mentioned by current gallery block implementation/registry notes for motion behavior on the React side.
+  external_apis_used_in_domain:
+    - name: WordPress page-builder REST endpoint
+      integration_point: astro-site/src/lib/wordpress.ts and zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+    - name: Woo Store API
+      integration_point: astro-site/src/lib/woo.ts and zip/src/blocks/registry/wooStoreApi.ts
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Stable kebab-case `blockKey` names, meta field names `page_builder_schema`
+    and `page_builder_schema_for_ai`, and page ids/slugs centered on the test
+    page name `testowa-blueprint`.
+  structure_of_domain: >-
+    WordPress transport/storage in `wordpress-plugin/bulwar-bridge`, Astro POC
+    in `astro-site`, React registry/runtime in `zip/src/blocks/registry`,
+    seed/deploy/generator tooling in `SCRIPTS`, and human/machine registry docs
+    under `docs/block-registry`.
+  error_handling_in_domain: >-
+    Frontend runtimes throw on schema/API failures; WordPress controller returns
+    structured error envelopes; generator scripts throw on unsupported block keys
+    or invalid CLI input.
+  testing_in_domain: >-
+    No page-builder-specific automated tests were found in the audited areas.
+    Existing plugin tests cover checkout-related services, not page-builder flow.
+  documentation_in_domain: >-
+    Documentation is extensive and more ambitious than the current executable
+    code. Several documents explicitly mark the current state as POC or seed.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: Source of truth for REST read/write transport and meta registration.
+      direction: inbound
+    - component: zip/src/blocks/registry/
+      relationship_to_domain: Current code-side registry, parser, blueprint expansion, and source resolution.
+      direction: bidirectional
+    - component: astro-site/src/lib/
+      relationship_to_domain: Astro-specific duplicate of page-builder typing and source resolution.
+      direction: bidirectional
+    - component: docs/block-registry/
+      relationship_to_domain: Human and machine seed registry used as documentation, not as runtime input.
+      direction: outbound
+  external:
+    - name: WordPress
+      purpose_for_domain: Stores page schemas in post meta and serves the custom REST endpoint.
+    - name: WooCommerce
+      purpose_for_domain: Resolves live product/category content for menu blocks.
+    - name: GitHub Actions
+      purpose_for_domain: Builds and deploys Astro static output to dhosting.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Public page-builder read endpoint
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      concern: Published page schemas are intentionally public over REST, so any sensitive content embedded in schema JSON would be exposed.
+    - area: Page-builder write endpoint
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      concern: POST is capability-gated, but payload validation is limited to JSON/object coercion rather than registry-level schema enforcement.
+    - area: Hardcoded production origin
+      location: astro-site/src/lib/config.ts
+      concern: Astro POC is tied directly to the live WordPress origin rather than environment-driven configuration.
+  authentication_patterns_in_domain: >-
+    GET page-builder route is public; non-published pages require `edit_post`; POST
+    updates require `current_user_can('edit_pages')` through the route permission callback.
+  authorization_patterns_in_domain: >-
+    The bridge authorizes updates at the WordPress capability level, but does not
+    authorize by block or field granularity.
+  data_validation_in_domain: >-
+    Strong validation exists in React/Astro code via Zod. WordPress write-path
+    validation does not currently enforce block registry membership, section-id
+    uniqueness, version alignment, or AI/render mapping rules.
+
+testing_patterns:
+  framework: ad hoc PHP script tests for plugin services; no page-builder-specific test harness found
+  coverage_areas:
+    - Checkout Make webhook notifier
+    - Slot availability service
+    - Page-builder flow has no dedicated automated tests in the audited repo areas
+  test_organization: >-
+    Plugin tests live under `wordpress-plugin/bulwar-bridge/tests`, but none of the
+    surfaced test files target `PageBuilderController`, schema parsing, AI schema
+    generation, or Astro build-time rendering.
+  mock_patterns:
+    - Service-level constructor injection for HTTP/logging in checkout notifier tests
+
+audit_sections:
+  "Co faktycznie istnieje w repo": |
+    - WordPress plugin rejestruje oba meta pola `page_builder_schema` i `page_builder_schema_for_ai` oraz wystawia endpoint GET/POST `/wp-json/bulwar/v1/page-builder/pages/{slug}`.
+    - Istnieje realny runtime rejestru blokow w React pod `zip/src/blocks/registry/`: lookup po `blockKey`, walidacja Zod, parser render-schema, konwersja blueprint -> schema i resolver Woo.
+    - Istnieje proof route React `zip/src/pages/TestowaBlueprintPage.tsx`, ktora pobiera render schema z WordPressa, rozwiazuje Woo source i renderuje sekcje.
+    - Istnieje Astro build-time POC: `astro-site/src/pages/[slug].astro` + `astro-site/src/lib/*` pobieraja schema z WordPressa podczas builda i renderuja statyczny HTML.
+    - Istnieje build-time resolver Woo dla menu z `woo_category` i `woo_products` zarowno po stronie React runtime, jak i Astro.
+    - Istnieje repo-side generator `SCRIPTS/generate-page-builder-ai-schema.js`, ktory buduje `page_builder_schema_for_ai` z opisu renderowego i zachowuje ids blokow.
+    - Istnieja artefakty seedowania jednej strony: JSON render schema, JSON AI schema, skrypt PHP seedujacy WordPress oraz shell helper do tego samego celu.
+    - Istnieje CI deploy Astro do dhosting z buildem, backupem i naprawa uprawnien, a w repo jest tez lokalny PowerShell deploy/rollback.
+    - Istnieje repo-side seed registry blokow w `docs/block-registry/registry.machine.json` oraz dwa seedowe opisy blokow.
+
+  "Co jest tylko proof of concept": |
+    - Cala sciezka renderowania jest zawiezona na jednej stronie testowej `testowa-blueprint`; slug jest zahardkodowany w Astro configu, w React proof route i w seed scriptach.
+    - Obslugiwane sa tylko dwa `blockKey`: `gallery-masonry-style1` i `menu-category-photo-parallax-full-width`.
+    - `astro-site/README.md` samo nazywa ten obszar "first Astro build-time proof of concept", a `react-wordpress-poc-status.md` opisuje stan jako execution log POC, nie finalna architekture.
+    - Seed registry w docs ma status `seed`, a nie zatwierdzony runtime registry dla calego systemu.
+    - Seedowanie strony do WordPressa jest jednostkowe i reczne: skrypty operuja na konkretnych plikach `testowa-blueprint.*.json` i konkretnym slug-u, a nie na ogolnym mechanizmie publikacji wielu stron.
+    - AI schema generator nie jest ogolny dla przyszlych blokow; przerywa wykonanie na nieznanym `blockKey`.
+    - Astro generuje tylko to, co trafi do `TEST_PAGE_SLUGS`, czyli obecnie jeden route.
+
+  "Czego nie widac w implementacji": |
+    - Nie widac zadnego wykonywalnego kodu Firebase / Firestore dla draftow stron ani zadnego MCP-backed workflow zapisujacego draft do Firebase.
+    - Nie widac compile pipeline, ktory czyta draft Firebase i generuje oba WordPress payloady; taki compile step istnieje tylko w dokumentach.
+    - Nie widac runtime'u, ktory konsumuje `docs/block-registry/registry.machine.json` jako zrodlo prawdy; aktualny kod React importuje definicje blokow recznie, a Astro ma osobny, zdublowany kontrakt.
+    - Nie widac automatycznego triggera rebuild/deploy Astro po zmianie page-builder danych w WordPressie; jest tylko sam workflow deploy dla zmian w repo.
+    - Nie widac konsumenta `page_builder_schema_for_ai` po stronie Astro ani React runtime; plugin potrafi je zapisac/zwrocic, generator potrafi je stworzyc, ale renderer korzysta tylko z render schema.
+    - Nie widac server-side walidacji page-builder payloadow wzgledem rejestru blokow przy POST do WordPressa.
+    - Nie widac dedykowanych testow automatycznych dla page-builder endpointu, parserow, generatora AI schema ani build-time renderu Astro.
+
+  "Najwazniejsze rozjazdy docs vs kod": |
+    - Docs seed registry dla galerii opisuje `images[]` jako tablice string URL, ale realny kod blokow i realny przykladowy page schema uzywaja obiektow `{ src, alt }`; dodatkowo kod ma pola `layoutStyle` i `motionPreset`, ktorych docs seed nie modeluje.
+    - Dokumentacja page-builder workflow zaklada repo-side registry jako zrodlo prawdy, ale w kodzie nie ma runtime'u czytajacego `docs/block-registry/registry.machine.json`; zamiast tego istnieje osobny rejestr TypeScript w `zip/src/blocks/registry/index.ts` i osobny kontrakt Astro w `astro-site/src/lib/types.ts`.
+    - Docs Firebase draft MVP opisuje `needsCompile`, `needsPublish` i obowiazkowy compile step; w repo nie ma odpowiadajacej implementacji kodowej ani integracji z Firebase.
+    - Dokumenty mowia o walidacji obu payloadow wzgledem rejestru i kontraktow, ale WordPress write path w `PageBuilderController` sprawdza tylko, czy dostal obiekt / poprawny JSON, po czym zapisuje meta bez walidacji blokow.
+    - Dokumentacja wskazuje kierunek wielostronicowego systemu page-builder, ale wykonywalny kod nadal operuje na pojedynczym demo-route i pojedynczym demo-page seed.
+
+  "Dowody": |
+    - `astro-site/src/lib/config.ts:3` ogranicza Astro do `TEST_PAGE_SLUGS = ['testowa-blueprint']`.
+    - `astro-site/src/pages/[slug].astro:39` i `:53` renderuje tylko dwa blockKey.
+    - `wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:15-16` rejestruje oba meta pola, a `:86-87` zapisuje oba do WordPressa.
+    - `zip/src/blocks/registry/index.ts:15` definiuje runtime block registry w kodzie, a `zip/src/blocks/registry/pageBuilderSchema.ts:47` waliduje page schema wzgledem tego rejestru.
+    - `zip/src/pages/TestowaBlueprintPage.tsx:12` i `:22-23` pokazuje proof route pobierajacy `testowa-blueprint` z WordPressa i rozwiazujacy Woo source.
+    - `SCRIPTS/generate-page-builder-ai-schema.js:220-228` wspiera tylko dwa blockKey i rzuca blad dla reszty.
+    - `SCRIPTS/seed-testowa-blueprint-schema.php:51-80` seeduje tylko strone `testowa-blueprint` i zapisuje oba meta pola.
+    - `.github/workflows/deploy-astro-dhosting.yml:41-68` buduje Astro i publikuje statyczny output na dhosting.
+    - `docs/block-registry/registry.machine.json:3` ma `registryStatus: seed`, a `:271` oznacza `wordpress_media_gallery` jako `planned`.
+    - `docs/block-registry/gallery-masonry-style1.md:53` opisuje galerie jako string-array, podczas gdy `zip/src/blocks/gallery-masonry-style1/schema.ts:10` wymaga `images: z.array(imageAssetSchema)`.
+    - `docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:5-24` opisuje Firebase draft i compile step, ale wyszukiwanie po katalogach kodu nie pokazalo odpowiadajacej implementacji.
+
+open_questions:
+  - question: Ktora warstwa ma byc kanonicznym runtime registry: `zip/src/blocks/registry`, `docs/block-registry`, czy przyszly shared package dla Astro i React?
+    context: Obecny stan ma przynajmniej dwa rozne kodowe kontrakty i jeden kontrakt dokumentacyjny.
+    type: research
+    affects: [implementation_audit]
+  - question: Czy istnieje poza repo jakikolwiek live-only mechanizm compile/publish lub Firebase project obslugujacy drafty stron?
+    context: Dokumenty opisują taki model, ale w repo nie ma jego implementacji.
+    type: research
+    affects: [implementation_audit]
+  - question: Czy `page_builder_schema_for_ai` ma miec repo-side konsumenta przed produkcyjnym wdrozeniem, czy ma byc jedynie payloadem operatorskim?
+    context: Generator i transport istnieja, ale rendererzy go nie uzywaja.
+    type: nice_to_know
+    affects: [implementation_audit]
+
+gaps:
+  - area: Firebase draft system
+    description: Repo nie zawiera wykonywalnego kodu dla draft storage, compile orchestration ani publish flow opisanego w `firebase-page-draft-mvp.md`.
+    impact: research_blocker
+    affects: [implementation_audit]
+  - area: Unified registry source of truth
+    description: Brak jednego wspolnego runtime source of truth dla kontraktow blokow; docs, React i Astro utrzymuja je osobno.
+    impact: research_blocker
+    affects: [implementation_audit]
+  - area: Automated validation and tests for page-builder writes
+    description: WordPress write path nie waliduje payloadow wzgledem registry, a dedykowanych testow page-builder nie znaleziono.
+    impact: research_blocker
+    affects: [implementation_audit]

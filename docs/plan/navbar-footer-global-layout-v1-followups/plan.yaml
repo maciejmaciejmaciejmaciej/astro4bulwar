@@ -1,0 +1,398 @@
+plan_id: navbar-footer-global-layout-v1-followups
+objective: |
+  Implement the two remaining non-blocking follow-ups for the navbar/footer global layout rollout: add resilience to the React global layout shell so transient fetch failures do not permanently remove navbar/footer for the session, and remove placeholder runtime defaults from production-facing layout components while moving fixtures/defaults to tests/helpers only.
+created_at: 2026-04-18T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 3
+  total_dependencies: 5
+  risk_score: medium
+
+tldr: |
+  The current React shared shell in zip/src/layouts/RootLayout.tsx fetches global layout once on mount and only renders Navbar2/Footer when globalLayout is non-null, so an initial transient failure leaves shared chrome absent for the entire browser session. At the same time, the React presenters in zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx and zip/src/components/sections/Footer.tsx still import DEFAULT_GLOBAL_LAYOUT_DATA from zip/src/lib/fetchWordPressGlobalLayout.ts, and the Astro layout presenters in astro-site/src/layouts/BaseLayout.astro, astro-site/src/components/Navbar.astro, and astro-site/src/components/Footer.astro still default props from astro-site/src/lib/wordpress.ts even though astro-site/src/pages/[slug].astro already owns the gated build-time fallback boundary. Extend the existing rollout from docs/plan/navbar-footer-global-layout-v1/ with minimal changes: add unresolved-state recovery in RootLayout without reintroducing fake initial chrome, make React and Astro layout presenters fully prop-driven, remove the leftover React runtime fixture export once presenters stop consuming it, and update operator documentation to match the implemented behavior.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: A retry or revalidation path in zip/src/layouts/RootLayout.tsx keeps firing after repeated failures, causing noisy logs or unnecessary requests while the shell remains unresolved.
+      likelihood: medium
+      impact: medium
+      mitigation: Keep the recovery policy bounded and state-aware so retries only run while the layout is unresolved or when a deliberate revalidation trigger occurs, and never clear already resolved chrome on failure.
+    - scenario: Removing presenter-level defaults from zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx, zip/src/components/sections/Footer.tsx, astro-site/src/layouts/BaseLayout.astro, astro-site/src/components/Navbar.astro, or astro-site/src/components/Footer.astro exposes a caller that was accidentally relying on placeholder props.
+      likelihood: medium
+      impact: high
+      mitigation: Limit the change to the known shared-shell entrypoints in zip/src/layouts/RootLayout.tsx and astro-site/src/pages/[slug].astro, and verify with focused tests plus astro check that all production call sites now pass explicit layout data.
+  assumptions:
+    - RootLayout remains the sole React shared-shell owner for navbar/footer/cart chrome, as already mounted in zip/src/App.tsx.
+    - The bridge payload contract and meta-status gate stay unchanged; this follow-up does not modify wordpress-plugin/bulwar-bridge or the public endpoint contract.
+    - The gated Astro fallback owned by astro-site/src/pages/[slug].astro remains in place because this follow-up only removes placeholder defaults from production-facing layout components, not the existing build-entry fallback policy.
+
+implementation_specification:
+  code_structure: |
+    Keep the bridge contract unchanged and preserve current ownership boundaries. React work should stay inside the shared-shell layer by adding a small recovery/revalidation policy around fetchWordPressGlobalLayout() in zip/src/layouts/RootLayout.tsx while continuing to fail closed before the first successful payload resolves. React and Astro navbar/footer presenters should stop importing runtime placeholder layout data and instead require explicit props from their callers. Any sample layout fixtures that remain necessary should live in test files or test helpers only, not in production-facing presenters. Astro should continue to treat astro-site/src/pages/[slug].astro as the only place allowed to substitute local fallback layout data when the existing environment gate permits it.
+  affected_areas:
+    - zip/src/layouts/RootLayout.tsx
+    - zip/src/layouts/RootLayout.test.tsx
+    - zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+    - zip/src/components/sections/Footer.tsx
+    - zip/src/components/sections/globalLayoutChrome.test.tsx
+    - zip/src/lib/fetchWordPressGlobalLayout.ts
+    - astro-site/src/layouts/BaseLayout.astro
+    - astro-site/src/components/Navbar.astro
+    - astro-site/src/components/Footer.astro
+    - docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+  component_details:
+    - component: ReactGlobalLayoutShellRecovery
+      responsibility: Preserve fail-closed initial rendering in zip/src/layouts/RootLayout.tsx while allowing the unresolved shell to recover later in the same session and retaining the last successful layout across transient revalidation failures.
+      interfaces:
+        - RootLayout layout state distinguishes unresolved, resolved, and retry/revalidation behavior.
+        - fetchWordPressGlobalLayout() remains the single React runtime source for layout payloads.
+    - component: ReactGlobalLayoutPresenters
+      responsibility: Render navbar/footer only from explicit props in zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx and zip/src/components/sections/Footer.tsx, with no embedded placeholder business data.
+      interfaces:
+        - NavbarBigSpaceBetweenElementsProps.navbar
+        - FooterProps.footer
+    - component: AstroGlobalLayoutPresenters
+      responsibility: Render BaseLayout/Navbar/Footer only from explicit props in astro-site/src/layouts/BaseLayout.astro, astro-site/src/components/Navbar.astro, and astro-site/src/components/Footer.astro, leaving astro-site/src/pages/[slug].astro as the sole fallback boundary.
+      interfaces:
+        - BaseLayout globalLayout prop
+        - Navbar navbar prop
+        - Footer footer prop
+    - component: ReactRuntimeFixtureBoundary
+      responsibility: Remove unused runtime placeholder layout exports from zip/src/lib/fetchWordPressGlobalLayout.ts once production presenters stop consuming them, so example layout data exists only in tests.
+      interfaces:
+        - fetchWordPressGlobalLayout(signal?) returns parsed live data only
+    - component: GlobalLayoutRolloutDocs
+      responsibility: Keep docs/plan/navbar-footer-global-layout-v1/operator-reference.md aligned with the actual failure semantics, retry behavior, and presenter contract after the follow-up lands.
+      interfaces:
+        - Operator reference behavior notes for React and Astro consumers
+  dependencies:
+    - component: ReactGlobalLayoutShellRecovery
+      relationship: Depends on the existing RootLayout ownership boundary in zip/src/App.tsx and must continue to gate Navbar2/Footer rendering on resolved data.
+    - component: ReactGlobalLayoutPresenters
+      relationship: Supplies the explicit prop-only contract that allows runtime placeholder fixtures to be removed from the React fetch helper.
+    - component: AstroGlobalLayoutPresenters
+      relationship: Depends on astro-site/src/pages/[slug].astro continuing to pass explicit globalLayout data into BaseLayout.
+    - component: ReactRuntimeFixtureBoundary
+      relationship: Can only be completed after React presenters stop importing DEFAULT_GLOBAL_LAYOUT_DATA.
+    - component: GlobalLayoutRolloutDocs
+      relationship: Depends on the behavior and boundaries finalized by the React and Astro follow-up tasks.
+  integration_points:
+    - zip/src/App.tsx shared route group that mounts RootLayout
+    - zip/src/layouts/RootLayout.tsx shared shell fetch and render flow
+    - zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx current React navbar presenter
+    - zip/src/components/sections/Footer.tsx current React footer presenter
+    - astro-site/src/pages/[slug].astro current Astro fallback owner
+    - astro-site/src/layouts/BaseLayout.astro current Astro shell entrypoint
+
+contracts:
+  - from_task: T2
+    to_task: T4
+    interface: React layout presenters no longer import or depend on DEFAULT_GLOBAL_LAYOUT_DATA.
+    format: Explicit prop-only Navbar/Footer components with test coverage proving runtime placeholder content is gone.
+  - from_task: T1
+    to_task: T5
+    interface: Final React shell failure semantics.
+    format: RootLayout behavior summary covering fail-closed initial load, recovery after transient unresolved failures, and retention of the last resolved layout.
+  - from_task: T2
+    to_task: T5
+    interface: Final React presenter contract.
+    format: Navbar/Footer require explicit layout props and keep any fixtures in tests only.
+  - from_task: T3
+    to_task: T5
+    interface: Final Astro presenter contract.
+    format: BaseLayout/Navbar/Footer receive explicit props while [slug].astro remains the fallback gate.
+  - from_task: T4
+    to_task: T5
+    interface: Final React runtime fixture boundary.
+    format: fetchWordPressGlobalLayout.ts no longer exports placeholder layout data for production runtime use.
+
+tasks:
+  - id: T1
+    title: Add same-session recovery to the React shared shell
+    description: |
+      RootLayout currently performs one mount-time fetch and renders no navbar/footer until globalLayout is non-null in zip/src/layouts/RootLayout.tsx. Implement a minimal recovery policy that keeps the initial render fail-closed but allows the unresolved shell to recover later in the same session after a transient network or endpoint failure. The policy should also preserve the last successful layout if a later revalidation attempt fails, and it must keep RootLayout as the shared-shell owner without changing route composition in zip/src/App.tsx. If the existing static-markup test in zip/src/layouts/RootLayout.test.tsx cannot cover the retry state directly, extract only the recovery state machine or trigger policy into a small helper under zip/src/layouts/ so it can be regression-tested with the repo's node:test plus tsx pattern.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - objective-1
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/src/layouts/RootLayout.tsx
+        description: Current single-fetch shared shell that fails closed and never retries after an unresolved failure.
+      - path: zip/src/layouts/RootLayout.test.tsx
+        description: Existing shared-shell regression coverage that currently checks only initial fail-closed behavior.
+      - path: zip/src/App.tsx
+        description: Confirms RootLayout ownership and route scope must remain unchanged.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Add resilience at the actual ownership seam instead of reintroducing placeholder chrome in presenters.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 140
+        focus_area: React shared-shell recovery
+        verification:
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npx tsx --test src/layouts/RootLayout.test.tsx
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npm run lint
+        acceptance_criteria:
+          - Initial unresolved renders still show no fake navbar/footer.
+          - A transient unresolved failure can recover without a full page reload.
+          - A failed revalidation does not clear already resolved navbar/footer.
+        failure_modes:
+          - scenario: Recovery logic relies on a browser-only trigger that never fires in common navigation paths.
+            likelihood: medium
+            impact: high
+            mitigation: Use a deterministic retry or explicit revalidation trigger that does not depend solely on rare browser lifecycle events.
+    tech_stack:
+      - React 19
+      - React Router 7
+      - TypeScript
+    test_coverage: Add a focused node:test plus tsx regression for unresolved-to-resolved recovery and last-good-layout retention.
+    verification:
+      - RootLayout still renders nested route content and cart controls while the first layout fetch is unresolved.
+      - Recovery logic allows navbar/footer to appear after a later successful fetch without a full reload.
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npx tsx --test src/layouts/RootLayout.test.tsx` passes.
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npm run lint` passes.
+    acceptance_criteria:
+      - Fail-closed initial-load semantics remain intact.
+      - Transient fetch failures no longer permanently remove navbar/footer for the session.
+      - RootLayout remains the owner of the shared navbar/footer/cart shell.
+    failure_modes:
+      - scenario: The new recovery path accidentally resets globalLayout to null before each retry.
+        likelihood: medium
+        impact: high
+        mitigation: Separate unresolved state from resolved payload state so retries never wipe already good data.
+
+  - id: T2
+    title: Remove React presenter-level placeholder defaults
+    description: |
+      The React navbar and footer presenters still import DEFAULT_GLOBAL_LAYOUT_DATA from zip/src/lib/fetchWordPressGlobalLayout.ts and default missing props to placeholder business content in zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx and zip/src/components/sections/Footer.tsx. Remove those runtime defaults so the presenters render only from explicit props supplied by RootLayout, keep the current DOM/classes/animation behavior intact, and update zip/src/components/sections/globalLayoutChrome.test.tsx so coverage uses explicit test fixtures and no longer asserts a no-prop fallback path.
+    wave: 1
+    agent: gem-code-simplifier
+    prototype: false
+    covers:
+      - objective-2
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with:
+      - T4
+    context_files:
+      - path: zip/src/components/sections/NavbarBigSpaceBetweenElements.tsx
+        description: React navbar presenter currently defaulting to runtime placeholder layout data.
+      - path: zip/src/components/sections/Footer.tsx
+        description: React footer presenter currently defaulting to runtime placeholder layout data.
+      - path: zip/src/components/sections/globalLayoutChrome.test.tsx
+        description: Existing presenter tests, including a fallback-content assertion that must be replaced.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Remove fake business chrome at the component boundary while preserving the existing shell structure.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 90
+        focus_area: React chrome presenters
+        verification:
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npx tsx --test src/components/sections/globalLayoutChrome.test.tsx
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npm run lint
+        acceptance_criteria:
+          - React navbar/footer presenters no longer import DEFAULT_GLOBAL_LAYOUT_DATA.
+          - Tests cover only explicit fixture-driven rendering.
+          - DOM and classes remain stable.
+        failure_modes:
+          - scenario: Removing default props changes optional prop types but a hidden caller still omits navbar or footer.
+            likelihood: medium
+            impact: medium
+            mitigation: Restrict the change to production callers that are already known and verify all shared-shell call sites compile.
+    verification:
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npx tsx --test src/components/sections/globalLayoutChrome.test.tsx` passes.
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npm run lint` passes.
+      - No React layout presenter imports DEFAULT_GLOBAL_LAYOUT_DATA.
+    acceptance_criteria:
+      - NavbarBigSpaceBetweenElements and Footer are prop-driven only.
+      - Placeholder business defaults are removed from React production-facing layout components.
+      - Fixture content lives only in test code for these presenters.
+    failure_modes:
+      - scenario: Presenter cleanup subtly changes rendered copy structure or menu toggling behavior.
+        likelihood: low
+        impact: medium
+        mitigation: Keep the cleanup scoped to prop defaults and preserve the existing DOM and interaction code paths.
+
+  - id: T3
+    title: Remove Astro presenter-level placeholder defaults
+    description: |
+      BaseLayout, Navbar, and Footer still default props from DEFAULT_GLOBAL_LAYOUT_DATA in astro-site/src/layouts/BaseLayout.astro, astro-site/src/components/Navbar.astro, and astro-site/src/components/Footer.astro even though astro-site/src/pages/[slug].astro already owns the gated fallback path. Remove those presenter-level defaults, require explicit props through the Astro shell boundary, and keep the current markup and styling unchanged. Leave astro-site/src/pages/[slug].astro responsible for any allowed non-production fallback so this task stays focused on production-facing layout components only.
+    wave: 1
+    agent: gem-code-simplifier
+    prototype: false
+    covers:
+      - objective-2
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/layouts/BaseLayout.astro
+        description: Astro shell entrypoint currently defaulting globalLayout to placeholder data.
+      - path: astro-site/src/components/Navbar.astro
+        description: Astro navbar presenter currently defaulting navbar props to placeholder data.
+      - path: astro-site/src/components/Footer.astro
+        description: Astro footer presenter currently defaulting footer props to placeholder data.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Keep the Astro fallback boundary centralized in [slug].astro and remove placeholder defaults from production-facing presenters.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 60
+        focus_area: Astro layout presenters
+        verification:
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\astro-site'; npx astro check
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\astro-site'; npx tsx --test src/lib/globalLayout.test.ts
+        acceptance_criteria:
+          - BaseLayout, Navbar, and Footer stop importing DEFAULT_GLOBAL_LAYOUT_DATA.
+          - [slug].astro remains the only Astro fallback owner.
+          - Astro shell compilation remains green.
+        failure_modes:
+          - scenario: BaseLayout is hardened to require props but [slug].astro or another caller omits globalLayout.
+            likelihood: medium
+            impact: high
+            mitigation: Use astro check to catch every caller and keep the fallback wiring centralized in [slug].astro.
+    verification:
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\astro-site'; npx astro check` passes.
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\astro-site'; npx tsx --test src/lib/globalLayout.test.ts` passes.
+      - No Astro production-facing layout component imports DEFAULT_GLOBAL_LAYOUT_DATA.
+    acceptance_criteria:
+      - Placeholder business defaults are removed from Astro production-facing layout components.
+      - BaseLayout receives explicit globalLayout data from [slug].astro.
+      - Astro runtime fallback ownership stays centralized at the page entrypoint.
+    failure_modes:
+      - scenario: The cleanup accidentally removes the only source of navbar/footer props for Astro pages.
+        likelihood: low
+        impact: high
+        mitigation: Keep [slug].astro unchanged except where strictly needed to satisfy explicit prop passing.
+
+  - id: T4
+    title: Remove the leftover React runtime fixture export
+    description: |
+      After T2 removes all React presenter imports of DEFAULT_GLOBAL_LAYOUT_DATA, delete that placeholder layout export from zip/src/lib/fetchWordPressGlobalLayout.ts so the React fetch helper becomes a pure fetch-and-parse module. Keep any remaining sample layout data in tests only, and do not change endpoint parsing, meta-status validation, or the live bridge contract already covered by zip/src/lib/fetchWordPressGlobalLayout.test.ts.
+    wave: 2
+    agent: gem-code-simplifier
+    prototype: false
+    covers:
+      - objective-2
+    priority: medium
+    status: pending
+    dependencies:
+      - T2
+    conflicts_with: []
+    context_files:
+      - path: zip/src/lib/fetchWordPressGlobalLayout.ts
+        description: React runtime fetch helper that currently exports placeholder layout data.
+      - path: zip/src/lib/fetchWordPressGlobalLayout.test.ts
+        description: Confirms the fetch helper's real responsibility is endpoint parsing and meta-status validation.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Finish the runtime-fixture cleanup only after React presenters no longer depend on it.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 40
+        focus_area: React runtime cleanup
+        verification:
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npx tsx --test src/lib/fetchWordPressGlobalLayout.test.ts
+          - Set-Location 'c:\Users\macie\Documents\BULWAR APP'; rg "DEFAULT_GLOBAL_LAYOUT_DATA" zip/src
+        acceptance_criteria:
+          - fetchWordPressGlobalLayout.ts exports no placeholder layout fixture.
+          - Remaining React runtime files do not reference DEFAULT_GLOBAL_LAYOUT_DATA.
+        failure_modes:
+          - scenario: A stale runtime import remains and breaks TypeScript after the export is deleted.
+            likelihood: medium
+            impact: medium
+            mitigation: Use a repo grep as part of validation before closing the task.
+    verification:
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP\zip'; npx tsx --test src/lib/fetchWordPressGlobalLayout.test.ts` passes.
+      - `Set-Location 'c:\Users\macie\Documents\BULWAR APP'; rg "DEFAULT_GLOBAL_LAYOUT_DATA" zip/src` shows no production React layout consumers.
+    acceptance_criteria:
+      - React runtime layout fixtures are removed from fetchWordPressGlobalLayout.ts.
+      - The fetch helper is limited to live data fetching, parsing, and error propagation.
+    failure_modes:
+      - scenario: Test data was implicitly relying on the runtime export and becomes duplicated or inconsistent.
+        likelihood: low
+        impact: low
+        mitigation: Keep test fixtures explicit in test files or dedicated test helpers rather than rebuilding a shared runtime default.
+
+  - id: T5
+    title: Update rollout docs to match the new shell and fixture boundaries
+    description: |
+      Update docs/plan/navbar-footer-global-layout-v1/operator-reference.md so it no longer claims that React keeps a local default fallback in the browser, and document the actual follow-up behavior after T1 through T4: initial load stays fail-closed, RootLayout can recover within the same session after transient unresolved failures, last-known-good layout is retained across failed revalidation, Astro fallback ownership remains in astro-site/src/pages/[slug].astro, and runtime placeholder fixtures are removed from production-facing layout components. If the wording in docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md still implies presenter-level fallback defaults, tighten that note as part of the same update.
+    wave: 3
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - objective-1
+      - objective-2
+    priority: low
+    status: pending
+    dependencies:
+      - T1
+      - T2
+      - T3
+      - T4
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+        description: Current operator note still mentions a React browser-side local default fallback.
+      - path: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md
+        description: Contract note that may still imply presenter-level fallback defaults.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: Keep rollout documentation aligned with the final behavior so future follow-ups do not reintroduce stale assumptions.
+        timestamp: 2026-04-18T00:00:00Z
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 50
+        focus_area: rollout documentation
+        verification:
+          - Operator notes reflect the implemented React and Astro behavior.
+          - No stale mention of browser-side placeholder fallback remains.
+        acceptance_criteria:
+          - React failure semantics are documented accurately.
+          - Fixture/default boundaries are documented accurately.
+        failure_modes:
+          - scenario: Documentation preserves the old fallback wording and misleads the next rollout task.
+            likelihood: medium
+            impact: medium
+            mitigation: Update both operator and contract notes in the same wave if either still references presenter-level defaults.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - React RootLayout failure semantics
+      - React presenter fixture boundary
+      - Astro presenter fixture boundary
+      - Astro fallback ownership boundary
+    verification:
+      - Operator and contract notes describe the same runtime behavior as the implemented code.
+      - No stale React local-default-fallback wording remains in rollout docs.
+    acceptance_criteria:
+      - docs/plan/navbar-footer-global-layout-v1/operator-reference.md matches the final follow-up behavior.
+      - Any contract wording about presenter defaults is corrected.
+    failure_modes:
+      - scenario: Docs are updated only partially and leave contradictory instructions between operator and contract notes.
+        likelihood: low
+        impact: medium
+        mitigation: Treat operator and contract notes as one documentation surface for this follow-up.

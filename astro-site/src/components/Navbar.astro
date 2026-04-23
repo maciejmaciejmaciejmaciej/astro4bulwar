@@ -1,0 +1,76 @@
+---
+import type { GlobalLayoutNavbar, GlobalLayoutNavigationItem } from '../lib/globalLayoutContract';
+import { splitNavbarPrimaryItems } from '../lib/globalLayoutPresentation';
+
+interface Props {
+  navbar: GlobalLayoutNavbar;
+}
+
+const { navbar } = Astro.props;
+const brandLogoAlt = navbar.brand.logoAlt ?? navbar.brand.name;
+const reserveLink = navbar.companyLinks[0] ?? null;
+const { leading, trailing } = splitNavbarPrimaryItems(navbar.primaryItems);
+---
+
+<nav class="site-navbar">
+  <div class="site-navbar__inner page-margin">
+    <div class="site-navbar__side">
+      {reserveLink ? <a class="reserve-button" href={reserveLink.href}>{reserveLink.label}</a> : null}
+    </div>
+
+    <div class="site-navbar__center">
+      <div class="site-navbar__menu">
+        {leading.map((item: GlobalLayoutNavigationItem) => (
+          <div class="site-navbar__item">
+            <a class="site-navbar__link" href={item.href}>{item.label}</a>
+            {item.children.length > 0 ? (
+              <div class="site-navbar__dropdown-shell">
+                <div class="site-navbar__dropdown">
+                  <ul>
+                    {item.children.map((childItem: GlobalLayoutNavigationItem) => (
+                      <li><a href={childItem.href}>{childItem.label}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      <div class="site-navbar__brand">
+        {navbar.brand.logoSrc ? (
+          <img src={navbar.brand.logoSrc} alt={brandLogoAlt} />
+        ) : (
+          <span class="site-navbar__brand-text">{navbar.brand.name}</span>
+        )}
+      </div>
+
+      <div class="site-navbar__menu">
+        {trailing.map((item: GlobalLayoutNavigationItem) => (
+          <div class="site-navbar__item">
+            <a class="site-navbar__link" href={item.href}>{item.label}</a>
+            {item.children.length > 0 ? (
+              <div class="site-navbar__dropdown-shell">
+                <div class="site-navbar__dropdown">
+                  <ul>
+                    {item.children.map((childItem: GlobalLayoutNavigationItem) => (
+                      <li><a href={childItem.href}>{childItem.label}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div class="site-navbar__side site-navbar__side--end">
+      <button class="site-navbar__toggle" type="button" aria-label="Open menu">
+        <span class="site-navbar__toggle-line"></span>
+        <span class="site-navbar__toggle-line"></span>
+      </button>
+    </div>
+  </div>
+</nav>

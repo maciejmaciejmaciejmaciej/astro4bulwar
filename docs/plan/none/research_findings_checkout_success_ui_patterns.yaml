@@ -1,0 +1,370 @@
+plan_id: none
+objective: Research existing checkbox and confirmation-summary UI patterns to reuse for a checkout success state.
+focus_area: checkout_success_ui_patterns
+created_at: 2026-03-25
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+	- No dedicated checkbox component or true checkbox pattern was found in the scoped folders; the only existing selection pattern is card-style hidden-radio UI in CheckoutDrawer.
+	- The strongest confirmation-summary patterns already exist in CheckoutDrawer: summary card, dashed empty states, bordered completion panels with CheckCircle2, and uppercase headline/label typography.
+	- Primary CTA styling is consistent across TemplatePage sections: bg-primary/text-on-primary filled buttons and border-primary outline buttons, both with font-label uppercase tracking.
+	- TemplatePage and RootLayout establish the global page shell for this design language: bg-white, text-on-surface, font-body, selection:bg-primary-fixed.
+
+research_metadata:
+	methodology: Hybrid retrieval using semantic_search and grep_search, followed by targeted read_file inspection of scoped files.
+	scope: zip/src/pages/TemplatePage.tsx, zip/components, zip/src/components, and shared UI styling relevant to checkout success presentation.
+	confidence: high
+	coverage: 88
+
+files_analyzed:
+	- file: TemplatePage.tsx
+		path: zip/src/pages/TemplatePage.tsx
+		purpose: Template reference page that establishes the base page shell and imports the current checkout drawer.
+		key_elements:
+			- element: page shell classes
+				type: pattern
+				location: zip/src/pages/TemplatePage.tsx:38
+				description: Uses bg-white text-on-surface font-body selection:bg-primary-fixed min-h-screen pb-16 as the top-level design baseline.
+		language: TSX
+		lines: 63
+
+	- file: CheckoutDrawer.tsx
+		path: zip/components/CheckoutDrawer.tsx
+		purpose: Existing checkout UI containing current order summary, completion-like panels, selector cards, and primary submit CTA.
+		key_elements:
+			- element: special item summary card
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:206
+				description: Compact bordered white summary block for configured items.
+			- element: summary badge
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:211
+				description: Inline badge with font-label uppercase styling for special cart metadata.
+			- element: expanded summary typography
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:216
+				description: Small muted stacked content with person labels and bullet lists.
+			- element: order summary panel
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:593
+				description: Large light card used for Podsumowanie with dashed separators and totals rows.
+			- element: completion panel shell
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:658
+				description: Reusable bordered content box that swaps to green-tinted confirmed state.
+			- element: selection card pattern
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:714
+				description: Hidden-radio card selector with rounded border and primary active state.
+			- element: selector control dot
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:718
+				description: Circular custom radio indicator built from border and filled dot.
+			- element: submit CTA
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:851
+				description: Full-width black confirmation-style action button using headline typography.
+		language: TSX
+		lines: 860
+
+	- file: button.tsx
+		path: zip/components/ui/button.tsx
+		purpose: Shared Button primitive and base variants used across the repo.
+		key_elements:
+			- element: buttonVariants
+				type: pattern
+				location: zip/components/ui/button.tsx:6
+				description: Base button primitive with rounded-[4px], inline-flex layout, transitions, focus states, and variant system.
+			- element: default variant
+				type: pattern
+				location: zip/components/ui/button.tsx:11
+				description: Shared filled primary button variant.
+			- element: outline variant
+				type: pattern
+				location: zip/components/ui/button.tsx:12
+				description: Shared outline variant that can be extended with project-specific border-primary/text-primary classes.
+		language: TSX
+		lines: 58
+
+	- file: About28.tsx
+		path: zip/src/components/sections/About28.tsx
+		purpose: Template section with representative heading, body text, and filled CTA classes.
+		key_elements:
+			- element: section heading
+				type: pattern
+				location: zip/src/components/sections/About28.tsx:141
+				description: Headline treatment with uppercase tracking and foreground color.
+			- element: body copy
+				type: pattern
+				location: zip/src/components/sections/About28.tsx:146
+				description: Muted body paragraph styling used in template sections.
+			- element: filled CTA
+				type: pattern
+				location: zip/src/components/sections/About28.tsx:151
+				description: Primary filled action button matching template section language.
+		language: TSX
+		lines: 157
+
+	- file: Navbar.tsx
+		path: zip/src/components/sections/Navbar.tsx
+		purpose: Contains a prominent filled primary CTA consistent with TemplatePage styling.
+		key_elements:
+			- element: reserve button
+				type: pattern
+				location: zip/src/components/sections/Navbar.tsx:14
+				description: Filled primary CTA with label typography and rounded corners.
+		language: TSX
+		lines: 78
+
+	- file: ProductItem.tsx
+		path: zip/src/components/sections/ProductItem.tsx
+		purpose: Product row using outline action button and compact quantity control.
+		key_elements:
+			- element: outline add-to-cart CTA
+				type: pattern
+				location: zip/src/components/sections/ProductItem.tsx:59
+				description: Compact outline action style suitable for secondary success actions.
+		language: TSX
+		lines: 67
+
+	- file: OfertaSection.tsx
+		path: zip/src/components/sections/OfertaSection.tsx
+		purpose: Section with list-row summary structure and outline CTA.
+		key_elements:
+			- element: item title
+				type: pattern
+				location: zip/src/components/sections/OfertaSection.tsx:61
+				description: Large uppercase headline used inside summary-like list rows.
+			- element: item description
+				type: pattern
+				location: zip/src/components/sections/OfertaSection.tsx:64
+				description: Muted body copy for descriptive support text.
+			- element: outline CTA with icon
+				type: pattern
+				location: zip/src/components/sections/OfertaSection.tsx:71
+				description: Outline action button with arrow icon and label typography.
+		language: TSX
+		lines: 79
+
+	- file: OurServices.tsx
+		path: zip/src/components/sections/OurServices.tsx
+		purpose: Repeated card block pattern used by the template.
+		key_elements:
+			- element: service card shell
+				type: pattern
+				location: zip/src/components/sections/OurServices.tsx:23
+				description: Surface card with hover state and generous padding.
+			- element: service card heading
+				type: pattern
+				location: zip/src/components/sections/OurServices.tsx:27
+				description: Compact uppercase headline within cards.
+			- element: service card body text
+				type: pattern
+				location: zip/src/components/sections/OurServices.tsx:28
+				description: Muted small body text used inside cards.
+			- element: text-link action
+				type: pattern
+				location: zip/src/components/sections/OurServices.tsx:31
+				description: Lightweight inline label action with uppercase tracking.
+		language: TSX
+		lines: 103
+
+	- file: index.css
+		path: zip/src/index.css
+		purpose: Defines the core typography tokens and page-margin utility used by template sections.
+		key_elements:
+			- element: font tokens
+				type: variable
+				location: zip/src/index.css:21
+				description: Maps headline/body/label roles to Space Grotesk, Inter, and Work Sans.
+			- element: page-margin utility
+				type: pattern
+				location: zip/src/index.css:45
+				description: Shared horizontal page spacing utility used by template sections.
+		language: CSS
+		lines: 203
+
+patterns_found:
+	- category: structure
+		pattern: Template shell baseline
+		description: Template-aligned pages use a white surface, on-surface text, body font, and primary-fixed text selection at the root container.
+		examples:
+			- file: zip/src/pages/TemplatePage.tsx
+				location: zip/src/pages/TemplatePage.tsx:38
+				snippet: bg-white text-on-surface font-body selection:bg-primary-fixed min-h-screen pb-16
+		prevalence: common
+
+	- category: architecture
+		pattern: Confirmation panels reuse checkout step boxes
+		description: The closest existing success-state pattern is the bordered p-8 rounded step box that swaps to green-tinted confirmed state and adds CheckCircle2.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:658
+				snippet: relative p-8 rounded-[4px] border-2 transition-colors duration-300
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:662
+				snippet: absolute top-6 right-6 text-green-500
+		prevalence: common
+
+	- category: structure
+		pattern: Summary cards use pale surfaces, thin borders, dashed separators
+		description: Summary-like content is presented in light cards with rounded-[4px], zinc borders, dashed separators, and muted totals text.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:593
+				snippet: bg-zinc-50 p-8 rounded-[4px] border border-zinc-100
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:628
+				snippet: rounded-[4px] border border-dashed border-zinc-300 bg-white px-4 py-6 text-sm text-zinc-500
+		prevalence: common
+
+	- category: structure
+		pattern: Selector cards use hidden radio inputs with card wrappers
+		description: No checkbox primitive was found; selection UI is built from sr-only radio inputs inside clickable rounded cards with primary active state.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:714
+				snippet: flex items-center p-4 border rounded-[4px] cursor-pointer transition-all
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:718
+				snippet: w-5 h-5 rounded-full border flex items-center justify-center mr-3
+		prevalence: occasional
+
+	- category: naming
+		pattern: Filled primary CTAs use label typography and rounded-[4px]
+		description: Prominent actions consistently use bg-primary/text-on-primary or black/white overrides with uppercase font-label or font-headline text.
+		examples:
+			- file: zip/src/components/sections/About28.tsx
+				location: zip/src/components/sections/About28.tsx:151
+				snippet: bg-primary text-on-primary px-8 py-4 font-label tracking-[0.1em] uppercase text-sm hover:opacity-80 transition-opacity rounded-[4px]
+			- file: zip/src/components/sections/Navbar.tsx
+				location: zip/src/components/sections/Navbar.tsx:14
+				snippet: bg-primary text-on-primary px-8 py-4 text-sm font-label tracking-[0.1em] uppercase hover:opacity-70 transition-opacity rounded-[4px]
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:851
+				snippet: w-full py-8 text-lg font-headline tracking-widest uppercase rounded-[4px] bg-black text-white hover:bg-zinc-800
+		prevalence: common
+
+	- category: naming
+		pattern: Secondary actions use outline primary buttons or muted text links
+		description: Secondary actions rely on border-primary/text-primary outline buttons or small uppercase text links in zinc tones.
+		examples:
+			- file: zip/src/components/sections/ProductItem.tsx
+				location: zip/src/components/sections/ProductItem.tsx:59
+				snippet: border-primary text-primary hover:bg-primary hover:text-on-primary px-4 py-1.5 font-label font-bold tracking-[0.05em] text-xs rounded-[4px] transition-colors h-8
+			- file: zip/src/components/sections/OfertaSection.tsx
+				location: zip/src/components/sections/OfertaSection.tsx:71
+				snippet: border-primary text-primary hover:bg-primary hover:text-on-primary px-4 py-1.5 font-label font-bold tracking-[0.05em] text-xs rounded-[4px] flex items-center gap-2 transition-colors w-fit
+			- file: zip/src/components/sections/OurServices.tsx
+				location: zip/src/components/sections/OurServices.tsx:31
+				snippet: inline-flex items-center text-xs font-label uppercase tracking-widest text-zinc-500 hover:text-black transition-colors
+		prevalence: common
+
+	- category: typography
+		pattern: Success-compatible text hierarchy is headline plus muted body plus uppercase labels
+		description: Headings use font-headline uppercase tracking, supporting copy uses font-body with zinc-500, and metadata uses font-label uppercase with wide tracking.
+		examples:
+			- file: zip/src/components/sections/About28.tsx
+				location: zip/src/components/sections/About28.tsx:141
+				snippet: font-headline text-4xl tracking-[0.2rem] uppercase leading-tight text-foreground
+			- file: zip/src/components/sections/About28.tsx
+				location: zip/src/components/sections/About28.tsx:146
+				snippet: font-body text-sm leading-relaxed text-zinc-500
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:597
+				snippet: text-xs font-label tracking-widest uppercase text-zinc-500
+		prevalence: common
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: TemplatePage
+			responsibility: Establishes the reference page shell and imports the checkout drawer.
+			location: zip/src/pages/TemplatePage.tsx
+			relationship_to_domain: domain depends on this
+		- component: CheckoutDrawer
+			responsibility: Contains current summary, completion, and selector patterns closest to a checkout success state.
+			location: zip/components/CheckoutDrawer.tsx
+			relationship_to_domain: domain depends on this
+		- component: Button
+			responsibility: Shared primitive for filled and outline action buttons.
+			location: zip/components/ui/button.tsx
+			relationship_to_domain: domain depends on this
+	interfaces_used_by_domain:
+		- interface: ButtonPrimitive.Props with VariantProps<typeof buttonVariants>
+			location: zip/components/ui/button.tsx
+			usage_pattern: Button styling is extended through className rather than custom per-page button implementations.
+	data_flow_involving_domain: TemplatePage mounts CheckoutDrawer; CheckoutDrawer renders cart summary and checkout step state; section components provide the canonical surrounding typography and CTA styles.
+	key_relationships_to_domain:
+		- from: zip/src/pages/TemplatePage.tsx
+			to: zip/components/CheckoutDrawer.tsx
+			relationship: imports
+		- from: zip/src/components/sections/About28.tsx
+			to: zip/components/ui/button.tsx
+			relationship: imports
+		- from: zip/src/components/sections/Navbar.tsx
+			to: zip/components/ui/button.tsx
+			relationship: imports
+		- from: zip/src/components/sections/ProductItem.tsx
+			to: zip/components/ui/button.tsx
+			relationship: imports
+		- from: zip/src/components/sections/OfertaSection.tsx
+			to: zip/components/ui/button.tsx
+			relationship: imports
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+		- CSS
+	frameworks_used_in_domain:
+		- name: React
+			usage_in_domain: Component composition for pages, sections, and checkout drawer flow.
+		- name: Tailwind CSS v4
+			usage_in_domain: Primary styling mechanism through utility classes and theme tokens.
+	libraries_used_in_domain:
+		- name: @base-ui/react/button
+			purpose_in_domain: Underlying accessible button primitive.
+		- name: class-variance-authority
+			purpose_in_domain: Shared button variant system.
+		- name: lucide-react
+			purpose_in_domain: CheckCircle2, ArrowRight, Calendar, and Clock iconography.
+		- name: react-hook-form
+			purpose_in_domain: Form state for checkout selector cards and inputs.
+
+related_conventions:
+	naming_patterns_in_domain: Typography roles are semantic via font-headline, font-body, and font-label; actions distinguish filled primary vs outline secondary via className overrides on the shared Button.
+	structure_of_domain: Template sections commonly use page-margin, max-w-7xl wrappers, uppercase headlines, muted zinc body copy, and rounded-[4px] surfaces.
+	error_handling_in_domain: Form errors render as small red inline helper text, typically text-red-500 text-xs mt-1.
+	testing_in_domain: No checkout-success-specific UI tests found in the scoped files.
+	documentation_in_domain: No inline design documentation in the scoped files; conventions are expressed directly in component class strings.
+
+related_dependencies:
+	internal:
+		- component: zip/components/ui/button.tsx
+			relationship_to_domain: Shared action primitive used by template sections and checkout.
+			direction: outbound
+		- component: zip/src/index.css
+			relationship_to_domain: Defines font and spacing tokens consumed by template classes.
+			direction: outbound
+	external:
+		- name: @base-ui/react/button
+			purpose_for_domain: Base button behavior.
+		- name: class-variance-authority
+			purpose_for_domain: Variant composition.
+		- name: lucide-react
+			purpose_for_domain: Status and action icons.
+
+open_questions:
+	- question: Should the checkout success state live inside CheckoutDrawer or as a full page using the TemplatePage shell?
+		context: Both patterns exist indirectly in scope, but no existing dedicated success component was found.
+	- question: If a true checkbox is needed, should it intentionally mirror the existing hidden-radio card selector pattern?
+		context: No checkbox primitive or checkbox-specific styling was found in the requested folders.
+
+gaps:
+	- area: Dedicated checkbox UI
+		description: No reusable checkbox component or checkbox-specific class pattern was found in zip/components, zip/src/components, or TemplatePage.
+		impact: Reuse options for checkbox styling are limited to adapting the existing hidden-radio card selector treatment.
+	- area: Existing success-state screen
+		description: No standalone checkout success page or success block was found in the scoped domain.
+		impact: Reuse must come from adjacent confirmation-like patterns in CheckoutDrawer and section cards rather than from a direct success-state implementation.

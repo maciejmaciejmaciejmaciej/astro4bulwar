@@ -1,0 +1,96 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageBuilderSection from '../components/PageBuilderSection.astro';
+import { getWordPressBaseUrl } from '../lib/config';
+import { buildStaticPage } from '../lib/pageBuilder';
+import { resolvePageSeo } from '../lib/pageSeo';
+import {
+  DEFAULT_GLOBAL_LAYOUT_DATA,
+  fetchWordPressBuildablePages,
+  fetchWordPressGlobalLayout,
+  GLOBAL_LAYOUT_FALLBACK_OVERRIDE_ENV_VAR,
+  shouldAllowGlobalLayoutFallback,
+} from '../lib/wordpress';
+import type {
+  PageBuilderSchema,
+} from '../lib/types';
+
+export async function getStaticPaths() {
+  const pages = await fetchWordPressBuildablePages();
+
+  return pages.map(({ slug }) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+
+const allowGlobalLayoutFallback = shouldAllowGlobalLayoutFallback({
+  prod: import.meta.env.PROD,
+  allowFallback: import.meta.env.ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK,
+});
+
+if (!slug) {
+  throw new Error('Missing slug param');
+}
+
+const loadGlobalLayout = async () => {
+  try {
+    return await fetchWordPressGlobalLayout();
+  } catch (error) {
+    if (!allowGlobalLayoutFallback) {
+      throw new Error(
+        `Failed to load global layout for Astro build. Fallback is disabled outside local development. Set ${GLOBAL_LAYOUT_FALLBACK_OVERRIDE_ENV_VAR}=true to override.`,
+        { cause: error },
+      );
+    }
+
+    console.warn('Falling back to default global layout for Astro build.', error);
+
+    return DEFAULT_GLOBAL_LAYOUT_DATA;
+  }
+};
+
+const [page, globalLayout] = await Promise.all([
+  buildStaticPage(slug),
+  loadGlobalLayout(),
+]);
+const sections = page.sections as PageBuilderSchema['sections'];
+const wordPressBaseUrl = getWordPressBaseUrl();
+const siteUrl = Astro.site ?? new URL(wordPressBaseUrl);
+const pageUrl = new URL(Astro.url.pathname, siteUrl);
+
+const toAbsoluteAssetUrl = (src: string) => {
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+
+  return `${wordPressBaseUrl}${src.startsWith('/') ? '' : '/'}${src}`;
+};
+
+const toAbsoluteImageAssets = (images: Array<{ src: string; alt: string }>) => images.map((image) => ({
+  ...image,
+  src: toAbsoluteAssetUrl(image.src),
+}));
+const seo = resolvePageSeo({
+  page,
+  sections,
+  siteUrl,
+  pagePath: pageUrl.pathname,
+  wordPressBaseUrl,
+});
+---
+
+<BaseLayout seo={seo} globalLayout={globalLayout}>
+  {sections.map((section) => {
+    if (!section.enabled) {
+      return null;
+    }
+
+    return (
+      <PageBuilderSection
+        section={section}
+        toAbsoluteAssetUrl={toAbsoluteAssetUrl}
+        toAbsoluteImageAssets={toAbsoluteImageAssets}
+      />
+    );
+  })}
+</BaseLayout>

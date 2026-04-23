@@ -1,0 +1,778 @@
+plan_id: "client-bootstrap-2026-04-22"
+objective: >
+  Make this repo fast and safe to reuse for a new client by replacing scattered
+  client-specific literals with one local source of truth plus automation,
+  while preserving the current WordPress + React + Astro + bridge topology.
+created_at: "2026-04-22T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 12
+  risk_score: "medium"
+
+tldr: |
+  The smallest proper long-term solution is to standardize on one repo-root,
+  gitignored client env file and one bootstrap CLI that validates it and emits
+  the runtime/deploy artifacts each surface already wants: repo-root
+  .env.page-builder.local, astro-site/.env.local, zip/.env.local, and one
+  sourceable local deploy/bridge env fragment. This matches the repo's existing
+  env-first runtime patterns in .env.example, zip/.env.example, and
+  SCRIPTS/page-builder-runtime/cli.ts, while removing hardcoded current-client
+  values from astro-site/astro.config.mjs, astro-site/src/lib/config.ts,
+  zip/components/CheckoutDrawer.tsx, deploy-react.sh,
+  SCRIPTS/deploy-astro-static.ps1, .github/workflows/deploy-astro-dhosting.yml,
+  and set-bridge-config.sh.
+
+  Phase 1 should fully convert the high-leverage surfaces that block safe reuse:
+  Astro runtime URL config, React runtime URL config, page-builder runtime env,
+  local deploy scripts, GitHub Actions deploy paths, and bridge secret/path
+  injection. It should not try to fully normalize every legacy one-off ops
+  script in the same pass. Files such as get_db.js, import.php, verify-*.sh,
+  wpcli-create-test-order.php, SCRIPTS/run_upload.js,
+  SCRIPTS/upload_products.js, and SCRIPTS/sync_catering_category.js should only
+  be converted where a shared WP_ROOT or WORDPRESS_BASE_URL helper is cheap; a
+  full rewrite of all of them would widen scope disproportionately because they
+  mix deployment paths, WordPress bootstrapping, and client content/migration
+  logic. Sources: /memories/repo/deployment-setup-audit.md,
+  docs/setup/repo-do-klonowania-plan-parametryzacji.md,
+  docs/setup/template-manifest-nowej-instancji.md,
+  .env.example, zip/.env.example, SCRIPTS/page-builder-runtime/cli.ts,
+  astro-site/astro.config.mjs, astro-site/src/lib/config.ts,
+  zip/components/CheckoutDrawer.tsx, deploy-react.sh,
+  SCRIPTS/deploy-astro-static.ps1, SCRIPTS/rollback-astro-static.ps1,
+  .github/workflows/deploy-astro-dhosting.yml, set-bridge-config.sh.
+
+open_questions:
+  - >
+    Should the first pass also push non-secret values into GitHub repository
+    variables automatically, or only align the workflow to consume
+    vars/secrets with a generated copy-ready mapping? Minimal safe scope is to
+    align the workflow contract now and keep GitHub-side sync as a documented
+    operator step, because no existing GitHub automation helper is present in
+    this repo. Source: .github/workflows/deploy-astro-dhosting.yml.
+  - >
+    Which legacy ops scripts must be converted in the first pass beyond the
+    setup-critical path? Minimal safe scope is to convert only the scripts used
+    repeatedly during bootstrap/deploy and document the remainder as an
+    explicit manual boundary until a second pass. Sources:
+    docs/setup/template-manifest-nowej-instancji.md,
+    docs/setup/repo-do-klonowania-plan-parametryzacji.md,
+    /memories/repo/deployment-setup-audit.md.
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: >
+        The repo gains a new root config file, but Astro/React/deploy scripts
+        still keep silent Bulwar fallbacks, so operators believe bootstrap is
+        authoritative while the old domain can still leak into runtime or
+        deploy behavior.
+      likelihood: "medium"
+      impact: "critical"
+      mitigation: >
+        Every converted consumer must fail closed on missing required values and
+        remove the hardcoded client.example fallback entirely. Verify
+        this with targeted build/tests and focused grep checks. Sources:
+        astro-site/astro.config.mjs, astro-site/src/lib/config.ts,
+        zip/components/CheckoutDrawer.tsx,
+        zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts,
+        zip/src/blocks/registry/wordpressApi.ts,
+        zip/src/blocks/registry/wooStoreApi.ts,
+        zip/src/lib/fetchWordPressGlobalLayout.ts.
+    - scenario: >
+        The bootstrap CLI writes generated files, but operators edit those
+        generated files manually later, causing drift between the intended local
+        source of truth and what builds/deploys actually consume.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Emit generated files with clear do-not-edit headers, keep generation
+        idempotent, and document the root client env as the only editable input.
+        Add a --check mode so drift is detectable before build/deploy. Sources:
+        SCRIPTS/page-builder-runtime/cli.ts, .env.example,
+        docs/setup/klonowanie-astro-wordpress-woocommerce.md.
+    - scenario: >
+        Secret hygiene work on set-bridge-config.sh becomes a half-migration:
+        client secrets leave the tracked script, but the local secret/loading
+        boundary is unclear, or wp-config write behavior regresses.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Keep set-bridge-config.sh focused on backup + inject, but make it read
+        all values from a generated local env fragment and preserve explicit
+        backup-before-write semantics. Do not broaden it into a general remote
+        provisioner in this pass. Sources: set-bridge-config.sh,
+        /memories/repo/deployment-setup-audit.md.
+  assumptions:
+    - >
+      The architecture remains unchanged: WordPress backend/API on the client
+      domain, React frontend in zip/, Astro frontend in astro-site/, and the WP
+      bridge/page-builder runtime preserved as-is. Source:
+      c:/Users/macie/Documents/BULWAR APP - kopia/.github/copilot-instructions.md.
+    - >
+      A repo-root env contract is the least invasive shared source of truth,
+      because the repo already uses env examples and the page-builder runtime
+      already auto-loads repo-root .env.page-builder.local. Sources:
+      .env.example, zip/.env.example,
+      SCRIPTS/page-builder-runtime/cli.ts,
+      /memories/repo/deployment-setup-audit.md.
+    - >
+      Secrets must stay out of tracked files; tracked examples and gitignored
+      local files are acceptable, and CI can use GitHub vars/secrets for the
+      same contract. Sources: .gitignore,
+      /memories/repo/deployment-setup-audit.md,
+      .github/workflows/deploy-astro-dhosting.yml.
+
+implementation_specification:
+  code_structure: |
+    Use four layers. Layer 1 is one repo-root local client env contract, for
+    example .env.client.local as the only editable source of truth, with a
+    tracked example file that documents required keys for WordPress, React,
+    Astro, deploy, CI, and bridge injection. Layer 2 is a small Node/TypeScript
+    bootstrap CLI under SCRIPTS/ that validates the root env, fails fast on
+    missing values, and emits generated artifacts for each consumer surface.
+    Layer 3 is consumer wiring: Astro, React, and local deploy scripts stop
+    using hardcoded literals and instead read generated env/config artifacts.
+    Layer 4 is operations: the GitHub workflow consumes repo/environment
+    vars/secrets with the same names, setup docs point operators to bootstrap
+    instead of manual find-and-replace, and legacy one-off scripts are called
+    out as partially converted or deferred rather than silently left ambiguous.
+  affected_areas:
+    - ".gitignore"
+    - ".env.example"
+    - ".env.page-builder.local.example"
+    - "SCRIPTS/**"
+    - "astro-site/astro.config.mjs"
+    - "astro-site/src/lib/config.ts"
+    - "zip/src/**"
+    - "deploy-react.sh"
+    - ".github/workflows/deploy-astro-dhosting.yml"
+    - "set-bridge-config.sh"
+    - "docs/setup/**"
+  component_details:
+    - component: "Repo-root client env contract"
+      responsibility: >
+        Define all required client-specific values once, including WordPress
+        base URL, Astro site/base path, React bridge/WordPress origins, SSH and
+        remote deploy paths, and local-only bridge secret inputs.
+      interfaces:
+        - "Tracked example file for the root client contract."
+        - "Clear required vs optional key list with fail-fast semantics."
+        - "Gitignore rules that keep local variants untracked while keeping examples tracked."
+    - component: "Client bootstrap CLI"
+      responsibility: >
+        Parse the root client env, validate it, emit generated runtime/deploy
+        files, and support a check-only mode for CI/operator preflight.
+      interfaces:
+        - "bootstrapClientConfig({ inputPath, mode: 'write' | 'check' })"
+        - "writeGeneratedEnvArtifacts()"
+        - "printCiVariableMapping()"
+    - component: "Astro runtime adapter"
+      responsibility: >
+        Read required env values for Astro site and WordPress base URL, so Astro
+        build and runtime never silently target the previous client.
+      interfaces:
+        - "Required env read in astro.config.mjs for site/base values."
+        - "Required env read in astro-site/src/lib/config.ts for WordPress base URL."
+    - component: "React runtime adapter"
+      responsibility: >
+        Centralize Vite env reads for WordPress/bridge origins and remove all
+        current-client fallback literals from page-builder/global-layout/
+        checkout paths.
+      interfaces:
+        - "Shared getRequiredClientRuntimeConfig() helper or equivalent."
+        - "Consumers throw or fail clearly when expected Vite env is missing."
+    - component: "Deploy and bridge adapter"
+      responsibility: >
+        Make local deploy scripts, the GitHub workflow, and set-bridge-config.sh
+        consume the same contract instead of embedding remote paths, users, and
+        live secrets in tracked files.
+      interfaces:
+        - "Generated local deploy env fragment for bash/PowerShell consumers."
+        - "GitHub workflow vars/secrets names aligned with the bootstrap contract."
+        - "Local bridge injection script reads all values from env."
+    - component: "Bootstrap operator docs"
+      responsibility: >
+        Replace manual parameterization steps with a short bootstrap-first flow
+        and explicitly document the scripts that remain partially converted.
+      interfaces:
+        - "Bootstrap usage guide."
+        - "Updated new-client manifest/checklist language."
+        - "Deferred legacy-script boundary and rationale."
+  dependencies:
+    - component: "Client bootstrap CLI"
+      relationship: >
+        Depends on the repo-root client env contract to know canonical key names,
+        tracked example paths, and which artifacts to generate.
+    - component: "Astro runtime adapter"
+      relationship: >
+        Depends on the bootstrap CLI output contract for astro-site/.env.local
+        or equivalent generated env values.
+    - component: "React runtime adapter"
+      relationship: >
+        Depends on the bootstrap CLI output contract for zip/.env.local and the
+        canonical runtime key names.
+    - component: "Deploy and bridge adapter"
+      relationship: >
+        Depends on the bootstrap CLI output contract for local deploy fragments
+        and on the same canonical names being mirrored into GitHub vars/secrets.
+    - component: "Bootstrap operator docs"
+      relationship: >
+        Depend on the final artifact names and command shape produced by the
+        contract, bootstrap, and consumer-wiring tasks.
+  integration_points:
+    - "repo-root client env file and tracked example"
+    - "repo-root .env.page-builder.local"
+    - "astro-site/.env.local"
+    - "zip/.env.local"
+    - "deploy-react.sh"
+    - "SCRIPTS/deploy-astro-static.ps1"
+    - "SCRIPTS/rollback-astro-static.ps1"
+    - ".github/workflows/deploy-astro-dhosting.yml"
+    - "set-bridge-config.sh"
+    - "docs/setup/**"
+
+contracts:
+  - from_task: "define_client_env_contract"
+    to_task: "build_client_bootstrap_cli"
+    interface: "Canonical root env keys, required/optional rules, and generated artifact paths."
+    format: "Tracked env example plus typed bootstrap validation contract"
+  - from_task: "build_client_bootstrap_cli"
+    to_task: "wire_astro_runtime_to_generated_env"
+    interface: "Generated Astro env values for site URL, base path, and WordPress origin."
+    format: "astro-site/.env.local key-value contract"
+  - from_task: "build_client_bootstrap_cli"
+    to_task: "wire_react_registry_clients_to_generated_env"
+    interface: "Generated Vite env values for React WordPress runtime access."
+    format: "zip/.env.local key-value contract"
+  - from_task: "build_client_bootstrap_cli"
+    to_task: "wire_react_checkout_and_global_layout_to_generated_env"
+    interface: "Generated Vite env values for bridge/global-layout runtime access."
+    format: "zip/.env.local key-value contract"
+  - from_task: "build_client_bootstrap_cli"
+    to_task: "wire_local_deploy_scripts_to_generated_config"
+    interface: "Generated local deploy env fragment for bash and PowerShell."
+    format: "Sourceable env file or equivalent generated config"
+  - from_task: "wire_local_deploy_scripts_to_generated_config"
+    to_task: "wire_ci_and_bridge_secret_input_contract"
+    interface: "Shared deploy variable names for remote roots, backups, SSH host/user, and key path."
+    format: "Stable deploy variable naming contract"
+  - from_task: "wire_ci_and_bridge_secret_input_contract"
+    to_task: "document_bootstrap_flow_and_partial_conversion_boundary"
+    interface: "Final CI secret/var names and local bridge secret flow."
+    format: "Operator-facing bootstrap and secret-hygiene instructions"
+
+tasks:
+  - id: "define_client_env_contract"
+    title: "Codify one repo-root client env contract and example files"
+    description: |
+      Create one explicit client bootstrap contract at the repo root and make it
+      the only editable local source of truth for client/domain/deploy values.
+      This task should add the tracked example file for the new root contract,
+      add the missing tracked .env.page-builder.local example that docs already
+      reference, and adjust .gitignore so tracked examples remain versioned
+      while local filled-in variants stay untracked. The contract must separate
+      non-secret deploy/runtime values from local-only secrets and must not
+      preserve any implicit fallback to the Bulwar live domain. Sources:
+      .env.example, zip/.env.example, .gitignore,
+      SCRIPTS/page-builder-runtime/cli.ts,
+      /memories/repo/deployment-setup-audit.md,
+      /memories/session/bulwar-credentials-audit.md.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "single-local-source-of-truth"
+      - "tracked-example-and-secret-boundary"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: ".env.example"
+        description: "Existing repo-root env example for page-builder runtime secrets."
+      - path: "zip/.env.example"
+        description: "Existing Vite env example pattern already used in the React app."
+      - path: ".gitignore"
+        description: "Current ignore rules already hide .env.* but need tracked-example exceptions."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Without an explicit shared contract, the bootstrap CLI and the runtime
+          conversions will drift on key names and artifact ownership.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 140
+        focus_area: "root client env contract"
+        verification:
+          - "A tracked example exists for the new root client config and for .env.page-builder.local."
+          - "Local filled-in files remain ignored while examples remain tracked."
+          - "The example clearly distinguishes required values from optional overrides."
+        acceptance_criteria:
+          - "Operators can fill one root client env instead of manually editing multiple runtime/deploy files."
+          - "The page-builder example file referenced by docs exists in the repo."
+          - "The contract comments or structure make secret vs non-secret boundaries explicit."
+        failure_modes:
+          - scenario: "The new example omits keys later required by bootstrap or deploy consumers."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Derive the contract from the already-known runtime/deploy surfaces before wiring consumers."
+        tech_stack:
+          - "dotenv-style env files"
+          - "TypeScript/Node support scripts"
+        test_coverage: "Bootstrap parser and generator tests in the next task should validate the contract end to end."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: true
+
+  - id: "build_client_bootstrap_cli"
+    title: "Build a validating bootstrap CLI that emits runtime and deploy artifacts"
+    description: |
+      Implement a small Node/TypeScript bootstrap command under SCRIPTS/ that
+      reads the root client env, validates required keys, fails fast with clear
+      missing-key errors, and emits the generated artifacts consumed by the repo:
+      repo-root .env.page-builder.local, astro-site/.env.local, zip/.env.local,
+      and one generated local deploy/bridge config fragment for bash/PowerShell.
+      Reuse or extract the existing env parsing behavior from
+      SCRIPTS/page-builder-runtime/cli.ts instead of inventing a second parser,
+      and add a check-only mode for preflight validation without writes.
+      Sources: SCRIPTS/page-builder-runtime/cli.ts,
+      SCRIPTS/page-builder-runtime/cli.test.ts,
+      /memories/repo/deployment-setup-audit.md.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "bootstrap-automation"
+      - "fail-fast-validation"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "define_client_env_contract"
+    conflicts_with: []
+    context_files:
+      - path: "SCRIPTS/page-builder-runtime/cli.ts"
+        description: "Existing env parser and default .env.page-builder.local loading behavior to reuse."
+      - path: "SCRIPTS/page-builder-runtime/cli.test.ts"
+        description: "Existing node:test pattern and env parser coverage style."
+      - path: "SCRIPTS/package.json"
+        description: "Current scripts package where a bootstrap command can be registered."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          The bootstrap CLI is the leverage point that turns a static contract
+          into repeatable operator automation and keeps generated files in sync.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 240
+        focus_area: "bootstrap generator and tests"
+        verification:
+          - "The CLI can validate a complete client env without writing files."
+          - "The CLI emits stable generated outputs for page-builder, Astro, React, and deploy surfaces."
+          - "Missing required keys fail with actionable error messages."
+        acceptance_criteria:
+          - "A single command can materialize local config artifacts from the root client env."
+          - "The bootstrap command is idempotent and safe to rerun."
+          - "Generated file contents include clear ownership/do-not-edit guidance."
+        failure_modes:
+          - scenario: "Bootstrap writes files with a format that some consumers cannot parse consistently."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Emit standard dotenv/plain-text formats and cover them with focused node:test assertions."
+        tech_stack:
+          - "TypeScript"
+          - "node:test"
+          - "dotenv-style env parsing"
+        test_coverage: "Add focused node:test coverage for parsing, missing-key failures, and emitted file snapshots."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: true
+
+  - id: "wire_astro_runtime_to_generated_env"
+    title: "Remove Astro hardcoded client values and require generated env"
+    description: |
+      Replace the hardcoded current-client site and WordPress values in Astro
+      with required env reads wired to the generated Astro env artifact. The
+      change should cover astro-site/astro.config.mjs and
+      astro-site/src/lib/config.ts so the existing Astro consumers continue to
+      work without preserving the Bulwar literal as a fallback. The build should
+      fail clearly when the generated env is missing rather than silently using
+      the old domain. Sources: astro-site/astro.config.mjs,
+      astro-site/src/lib/config.ts, astro-site/src/pages/[slug].astro,
+      astro-site/src/lib/wordpress.ts, astro-site/src/lib/woo.ts.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "astro-runtime-config"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "build_client_bootstrap_cli"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/astro.config.mjs"
+        description: "Current hardcoded Astro site/base config."
+      - path: "astro-site/src/lib/config.ts"
+        description: "Current hardcoded WordPress origin for Astro data fetches."
+      - path: "astro-site/src/pages/[slug].astro"
+        description: "Primary Astro page consumer that relies on the shared config exports."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Astro currently hardcodes the current client in the two most central configuration files."
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 2
+        estimated_lines: 80
+        focus_area: "Astro site and WordPress env"
+        verification:
+          - "Astro build succeeds when generated env exists."
+          - "Astro build fails with a clear message when generated env is missing."
+          - "No hardcoded client.example literal remains in Astro config files."
+        acceptance_criteria:
+          - "Astro site URL and WordPress base URL come only from generated env."
+          - "No runtime fallback silently points to the previous client domain."
+        failure_modes:
+          - scenario: "Astro config and runtime config read different key names and drift."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Use one shared naming contract from the bootstrap task and keep the keys minimal."
+        tech_stack:
+          - "Astro"
+          - "JavaScript"
+        test_coverage: "Use a focused astro-site build validation with and without generated env."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: false
+
+  - id: "wire_react_registry_clients_to_generated_env"
+    title: "Remove hardcoded WordPress fallbacks from React registry/API clients"
+    description: |
+      Convert the React page-builder and API registry clients to read the
+      generated Vite env instead of falling back to the current client domain.
+      Keep the change scoped to the core registry/API fetch surfaces first:
+      zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts,
+      zip/src/blocks/registry/wordpressApi.ts, and
+      zip/src/blocks/registry/wooStoreApi.ts. If a tiny shared helper is needed,
+      keep it within this slice and avoid widening the task into unrelated UI
+      content changes. Sources:
+      zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts,
+      zip/src/blocks/registry/wordpressApi.ts,
+      zip/src/blocks/registry/wooStoreApi.ts,
+      zip/src/vite-env.d.ts.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "react-wordpress-runtime-config"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "build_client_bootstrap_cli"
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts"
+        description: "Current React page-builder schema fetch with hardcoded fallback."
+      - path: "zip/src/blocks/registry/wordpressApi.ts"
+        description: "Current React WordPress API wrapper with hardcoded fallback."
+      - path: "zip/src/blocks/registry/wooStoreApi.ts"
+        description: "Current Woo store API wrapper with hardcoded fallback."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          These three files are the highest-leverage React runtime fetch layer
+          and should be converted before touching more peripheral UI consumers.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 150
+        focus_area: "React API fetch config"
+        verification:
+          - "zip typecheck/lint passes after the env conversion."
+          - "No hardcoded Bulwar fallback remains in the three converted API clients."
+          - "Missing Vite env produces a clear failure path during local dev/build."
+        acceptance_criteria:
+          - "Registry/API clients read WordPress origin from generated env only."
+          - "The current client domain is no longer used as a runtime fallback."
+        failure_modes:
+          - scenario: "One React fetch surface stays on the old fallback, creating split runtime behavior."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Keep this task tightly scoped to all three core registry/API clients and validate with targeted grep."
+        tech_stack:
+          - "React"
+          - "TypeScript"
+          - "Vite"
+        test_coverage: "Use zip lint/typecheck plus targeted runtime-config unit coverage if a helper is introduced."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: false
+
+  - id: "wire_react_checkout_and_global_layout_to_generated_env"
+    title: "Convert React checkout and global-layout surfaces to generated env"
+    description: |
+      Finish the React runtime cleanup for the user-facing surfaces that still
+      embed the current client domain: zip/components/CheckoutDrawer.tsx and
+      zip/src/lib/fetchWordPressGlobalLayout.ts. If the final env contract needs
+      one additional Vite key declaration, update zip/src/vite-env.d.ts in this
+      same slice. The local-dev path must fail fast or use explicit generated env
+      values; it must not silently route localhost traffic to the Bulwar live
+      domain anymore. Sources: zip/components/CheckoutDrawer.tsx,
+      zip/src/lib/fetchWordPressGlobalLayout.ts,
+      zip/src/vite-env.d.ts.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "react-checkout-and-layout-config"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "build_client_bootstrap_cli"
+    conflicts_with: []
+    context_files:
+      - path: "zip/components/CheckoutDrawer.tsx"
+        description: "Checkout bridge base URL logic currently falls back to the Bulwar domain on localhost/server."
+      - path: "zip/src/lib/fetchWordPressGlobalLayout.ts"
+        description: "Global layout fetch currently falls back to the Bulwar domain."
+      - path: "zip/src/vite-env.d.ts"
+        description: "Typed declaration surface for any final Vite env additions."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Checkout and global layout are the remaining user-visible React
+          surfaces that could still leak the old client if left unconverted.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 120
+        focus_area: "React checkout/global layout env"
+        verification:
+          - "zip lint/typecheck passes."
+          - "Checkout/local-dev logic no longer points localhost to the Bulwar domain."
+          - "Global layout fetch uses generated env only."
+        acceptance_criteria:
+          - "User-facing React runtime surfaces consume generated env."
+          - "No silent old-domain fallback remains in checkout/global-layout logic."
+        failure_modes:
+          - scenario: "Local dev becomes ambiguous because bridge and WordPress origins are not modeled clearly."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Keep the env contract explicit and document exactly which generated key checkout/global-layout consume."
+        tech_stack:
+          - "React"
+          - "TypeScript"
+          - "Vite"
+        test_coverage: "Use zip lint/typecheck and add narrow config tests only if a new helper or env key branch is introduced."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: false
+
+  - id: "wire_local_deploy_scripts_to_generated_config"
+    title: "Refactor local deploy scripts to consume generated deploy config"
+    description: |
+      Replace the embedded remote roots, SSH values, and repo-root assumptions in
+      local deploy tooling with the generated deploy config emitted by the
+      bootstrap CLI. Scope this task to deploy-react.sh,
+      SCRIPTS/deploy-astro-static.ps1, and SCRIPTS/rollback-astro-static.ps1.
+      Preserve the existing dhosting permission-fix behavior after deploy, and
+      keep Windows-friendly path handling in mind. Sources: deploy-react.sh,
+      SCRIPTS/deploy-astro-static.ps1, SCRIPTS/rollback-astro-static.ps1,
+      docs/setup/repo-do-klonowania-plan-parametryzacji.md,
+      /memories/devops.md.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "local-deploy-config"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "build_client_bootstrap_cli"
+    conflicts_with: []
+    context_files:
+      - path: "deploy-react.sh"
+        description: "Current bash deploy script with hardcoded live public_html path."
+      - path: "SCRIPTS/deploy-astro-static.ps1"
+        description: "Current local Astro deploy script with hardcoded repo root, key path, SSH host/user, and remote roots."
+      - path: "SCRIPTS/rollback-astro-static.ps1"
+        description: "Current rollback script with hardcoded Astro remote roots."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Local deploy is part of day-1 client bootstrap and currently hardcodes
+          too many current-client values to be safely reusable.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "local deploy consumers"
+        verification:
+          - "The scripts abort clearly when the generated deploy config is missing."
+          - "The dhosting 755/644 post-deploy fix remains intact."
+          - "No current-client remote path remains embedded in the three local deploy files."
+        acceptance_criteria:
+          - "Local React and Astro deploy scripts read shared generated deploy values."
+          - "Rollback uses the same shared remote root/backups contract as deploy."
+        failure_modes:
+          - scenario: "PowerShell and bash consumers parse the generated deploy config differently."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Emit one simple, sourceable format per shell or keep the generated payload intentionally minimal and covered by focused dry-run checks."
+        tech_stack:
+          - "Bash"
+          - "PowerShell"
+          - "Node-generated env artifacts"
+        test_coverage: "Use syntax-safe dry-run/preflight checks and a focused generated-output test from the bootstrap task."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: true
+
+  - id: "wire_ci_and_bridge_secret_input_contract"
+    title: "Align CI deploy and bridge injection with the new config contract"
+    description: |
+      Remove tracked client-specific deploy paths from the GitHub workflow and
+      remove tracked live secret/address values from set-bridge-config.sh. The
+      workflow should read non-secret path values from GitHub vars and sensitive
+      credentials from GitHub secrets using the same canonical names established
+      by the bootstrap contract. set-bridge-config.sh should keep its backup and
+      wp-config mutation semantics, but source all path and bridge values from a
+      generated local env fragment instead of embedding the live Google Maps key
+      and Bulwar address data. Sources:
+      .github/workflows/deploy-astro-dhosting.yml,
+      set-bridge-config.sh,
+      /memories/repo/deployment-setup-audit.md.
+    wave: 4
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "ci-deploy-contract"
+      - "bridge-secret-hygiene"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "build_client_bootstrap_cli"
+      - "wire_local_deploy_scripts_to_generated_config"
+    conflicts_with: []
+    context_files:
+      - path: ".github/workflows/deploy-astro-dhosting.yml"
+        description: "Current CI deploy already uses SSH secrets but still hardcodes remote paths."
+      - path: "set-bridge-config.sh"
+        description: "Current bridge injection script hardcodes both path and live secret/address values."
+      - path: "docs/setup/template-manifest-nowej-instancji.md"
+        description: "Current manual setup checklist identifies this script and workflow as client-specific surfaces."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          CI and bridge secret handling are the last tracked surfaces that can
+          still leak client-specific deploy paths or live secrets after local
+          bootstrap is introduced.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 2
+        estimated_lines: 170
+        focus_area: "CI vars and bridge secret loading"
+        verification:
+          - "The GitHub workflow contains no tracked client-specific remote path literals."
+          - "set-bridge-config.sh contains no embedded client secret or address value."
+          - "The workflow contract clearly identifies which values belong in GitHub vars vs secrets."
+        acceptance_criteria:
+          - "CI deploy is parameterized by vars/secrets instead of tracked path literals."
+          - "Bridge injection reads all mutable client values from local env, not from the script body."
+        failure_modes:
+          - scenario: "The workflow and local deploy scripts diverge on variable names and operators must maintain both manually."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Make the CI variable names a direct projection of the bootstrap contract and reuse the naming from the local deploy task."
+        tech_stack:
+          - "GitHub Actions"
+          - "Bash"
+        test_coverage: "Use workflow lint/readability review plus a focused bootstrap mapping check for the emitted non-secret CI values."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: true
+
+  - id: "document_bootstrap_flow_and_partial_conversion_boundary"
+    title: "Update setup docs to use bootstrap first and call out deferred legacy scripts"
+    description: |
+      Replace the current manual parameterization narrative with a bootstrap-first
+      operator flow: fill one root client env, run the bootstrap command, then
+      run local deploy/runtime commands. Update the setup docs so they stop
+      implying that broad manual find-and-replace is the intended long-term
+      method. Also add an explicit boundary for the first pass: setup-critical
+      surfaces are fully converted, while legacy one-off scripts such as
+      get_db.js, import.php, verify-*.sh, wpcli-create-test-order.php,
+      SCRIPTS/run_upload.js, SCRIPTS/upload_products.js,
+      SCRIPTS/sync_catering_category.js, and
+      SCRIPTS/seed-testowa-blueprint-schema.* are only partially converted or
+      deferred because they mix environment config with client-specific content
+      and operational logic. Sources:
+      docs/setup/klonowanie-astro-wordpress-woocommerce.md,
+      docs/setup/repo-do-klonowania-plan-parametryzacji.md,
+      docs/setup/template-manifest-nowej-instancji.md,
+      /memories/repo/deployment-setup-audit.md.
+    wave: 5
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers:
+      - "operator-docs"
+      - "partial-conversion-boundary"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "wire_astro_runtime_to_generated_env"
+      - "wire_react_registry_clients_to_generated_env"
+      - "wire_react_checkout_and_global_layout_to_generated_env"
+      - "wire_local_deploy_scripts_to_generated_config"
+      - "wire_ci_and_bridge_secret_input_contract"
+    conflicts_with: []
+    context_files:
+      - path: "docs/setup/klonowanie-astro-wordpress-woocommerce.md"
+        description: "Main operator setup flow that currently centers manual manifest editing and manual parameter changes."
+      - path: "docs/setup/repo-do-klonowania-plan-parametryzacji.md"
+        description: "Current file-by-file manual parameterization guide to replace or downscope."
+      - path: "docs/setup/template-manifest-nowej-instancji.md"
+        description: "Existing human manifest that should become a checklist/approval aid rather than the only source of truth."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          The repo already documents cloning well, but still teaches the manual
+          process the new implementation is supposed to retire.
+        timestamp: "2026-04-22T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 160
+        focus_area: "bootstrap-first operator docs"
+        verification:
+          - "Docs describe one root client config plus bootstrap as the default operator path."
+          - "Docs explain which values belong in local files versus GitHub vars/secrets."
+          - "Docs explicitly list the deferred or partially converted legacy scripts."
+        acceptance_criteria:
+          - "A new-client operator can follow the docs without manual repo-wide parameter edits as the primary method."
+          - "The docs make the first-pass conversion boundary explicit instead of implying full unification."
+        failure_modes:
+          - scenario: "Docs over-promise that every old ops script is automated when some remain manual."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Keep a named deferred list in the docs and tie it to the task scope and rationale."
+        task_type: "update"
+        audience: "developers"
+        coverage_matrix:
+          - "Bootstrap input file and example ownership"
+          - "Bootstrap command usage and generated outputs"
+          - "Local deploy/runtime flow after bootstrap"
+          - "GitHub vars/secrets mapping expectations"
+          - "Deferred legacy script boundary"

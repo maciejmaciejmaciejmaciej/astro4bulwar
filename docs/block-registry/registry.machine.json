@@ -1,0 +1,2219 @@
+{
+  "version": 1,
+  "registryStatus": "seed",
+  "updatedAt": "2026-04-22",
+  "readiness": {
+    "lifecycle": [
+      "draft",
+      "refining",
+      "ready",
+      "blocked"
+    ],
+    "requiredCapabilitiesForReady": [
+      "reactRuntime",
+      "astroRenderer",
+      "aiDescriptor",
+      "docs",
+      "tests"
+    ],
+    "workflow1": {
+      "requestFields": [
+        "blockKey",
+        "sourceComponent",
+        "designReference",
+        "targetStatus"
+      ],
+      "supportedTargetStatuses": [
+        "ready"
+      ],
+      "readinessOutcomes": [
+        "ready",
+        "blocked",
+        "refining"
+      ],
+      "requiredArtifactsForReady": [
+        "businessBlock",
+        "designReference",
+        "reactRuntime",
+        "astroRenderer",
+        "aiDescriptor",
+        "docs",
+        "tests"
+      ],
+      "designSystemReferences": [
+        "zip/src/pages/TemplatePage.tsx",
+        "zip/src/index.css",
+        "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md"
+      ]
+    },
+    "blocks": {
+      "about_2_simple": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/ModernInterior.tsx",
+            "notes": "ModernInterior is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/about_2_simple.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "about-1": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/AboutSection.tsx",
+            "notes": "AboutSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/AboutSection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/about-1.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "big_img_and_bolded_tex_editorial_style_block": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/components/Promo3.tsx",
+            "notes": "Promo3 is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "block_download": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx",
+            "notes": "OccasionalMenuPdfDownloadSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/BlockDownloadSection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/block_download.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "gallery-masonry-style1": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/GallerySection.tsx",
+            "notes": "GallerySection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/GallerySection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/gallery-masonry-style1.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "hero_simple_no_text_normal_wide": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/hero_simple_no_text_normal_wide.tsx",
+            "notes": "HeroSimpleNoTextNormalWide is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/hero_simple_no_text_normal_wide.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "hero_simple_no_text_py32": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/hero_simple_no_text_py32.tsx",
+            "notes": "HeroSimpleNoTextPy32 is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/hero_simple_no_text_py32.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "just_pralax_img_horizontal": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/JustPralaxImgHorizontalSection.tsx",
+            "notes": "JustPralaxImgHorizontalSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/just_pralax_img_horizontal.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "menu_three_columns_with_with_heading_no_img": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/PageBuilderMenuSection.tsx",
+            "notes": "PageBuilderMenuSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/menu_three_columns_with_with_heading_no_img.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "menu_two_columns_with_no_heading_no_img": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/PageBuilderMenuSection.tsx",
+            "notes": "PageBuilderMenuSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/menu_two_columns_with_no_heading_no_img.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "menu_two_columns_with_with_heading_no_img": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/PageBuilderMenuSection.tsx",
+            "notes": "PageBuilderMenuSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/menu_two_columns_with_with_heading_no_img.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "menu_two_columns_with_with_heading_with_img_fullwidth_paralax": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx",
+            "notes": "MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/menu_two_columns_with_with_heading_with_img_fullwidth_paralax.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "menu-category-photo-parallax-full-width": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/BreakfastSection.tsx",
+            "notes": "BreakfastSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/MenuCategorySection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/menu-category-photo-parallax-full-width.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "oferta_posts_section": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/OfertaSection.tsx",
+            "notes": "OfertaSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/oferta_posts_section.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "our-services": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/OurServices.tsx",
+            "notes": "OurServices is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/OurServicesSection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/our-services.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "premium_call_to_action_with_image_carousel": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/CateringSection.tsx",
+            "notes": "CateringSection is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/premium_call_to_action_with_image_carousel.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "promo2": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/components/Promo2.tsx",
+            "notes": "Promo2 is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/promo2.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "promo3": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/components/Promo3.tsx",
+            "notes": "Promo3 is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/promo3.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "simple_heading_and_paragraph": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/SimpleHeadingAndParagraph.tsx",
+            "notes": "SimpleHeadingAndParagraph is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/simple_heading_and_paragraph.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "story-team-showcase": {
+        "lifecycle": "refining",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/components/PROMOCJA_sezonowa.tsx",
+            "notes": "PROMOCJA_sezonowa is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": false,
+            "notes": "Astro renderer is not wired into the Astro projection yet."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/story-team-showcase.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "universal_header_block_1": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/Project5c.tsx",
+            "notes": "Project5c is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/UniversalHeaderBlock1Section.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/universal_header_block_1.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "universal_header_block_2": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/Project10.tsx",
+            "notes": "Project10 is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/UniversalHeaderBlock2Section.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/universal_header_block_2.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      },
+      "universal_multilink_block": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/Feature18.tsx",
+            "notes": "Feature18 is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/UniversalMultilinkBlockSection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/universal_multilink_block.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
+      }
+    }
+  },
+  "blocks": [
+    {
+      "blockKey": "about-1",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "About 1",
+      "category": "editorial",
+      "summary": "Editorial two-column about section with narrative text groups and supporting image stacks.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/AboutSection.tsx",
+        "exportName": "AboutSection"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/about-1.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell and editorial two-column composition.",
+          "Preserve the stacked image groups instead of collapsing the block into a single hero image.",
+          "Preserve the alternating text and image rhythm unless the block is explicitly redesigned."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "leftText",
+          "rightText"
+        ],
+        "properties": {
+          "leftImages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "src",
+                "alt"
+              ],
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "leftText": {
+            "type": "object",
+            "required": [
+              "paragraphs"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "paragraphs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ctaButton": {
+                "type": "object",
+                "required": [
+                  "href",
+                  "text"
+                ],
+                "properties": {
+                  "href": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "rightText": {
+            "type": "object",
+            "required": [
+              "paragraphs"
+            ],
+            "properties": {
+              "paragraphs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "rightImages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "src",
+                "alt"
+              ],
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "leftImages": [],
+        "leftText": {
+          "paragraphs": []
+        },
+        "rightText": {
+          "paragraphs": []
+        },
+        "rightImages": []
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "leftImages[].src",
+          "leftImages[].alt",
+          "leftText.title",
+          "leftText.paragraphs[]",
+          "leftText.ctaButton.text",
+          "leftText.ctaButton.href",
+          "rightText.paragraphs[]",
+          "rightImages[].src",
+          "rightImages[].alt"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This seed entry is based on the current AboutSection implementation.",
+        "The documentation-level contract is locked and runtime registration is implemented in the zip pagebuilder.",
+        "The block is content-only in MVP and does not define external source resolution."
+      ]
+    },
+    {
+      "blockKey": "our-services",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Our Services",
+      "category": "editorial",
+      "summary": "Sticky-intro services section with a masonry-like grid of editorial service cards.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/OurServices.tsx",
+        "exportName": "OurServices"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/our-services.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell and sticky intro column.",
+          "Preserve the multi-column card layout instead of flattening the section into a simple list.",
+          "Preserve one service per card with the existing card shell and CTA treatment unless the block is explicitly redesigned."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "cards"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "primaryCta": {
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string"
+              }
+            }
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "icon",
+                "title",
+                "description",
+                "ctaText",
+                "ctaHref"
+              ],
+              "properties": {
+                "icon": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "ctaText": {
+                  "type": "string"
+                },
+                "ctaHref": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "title": "Our Services",
+        "description": "From intimate chef's table experiences to grand private events, we offer a range of bespoke culinary services designed to elevate your dining experience. Every detail is meticulously crafted to ensure unforgettable moments.",
+        "primaryCta": {
+          "text": "VIEW ALL SERVICES"
+        },
+        "cards": [
+          {
+            "icon": "restaurant",
+            "title": "FINE DINING",
+            "description": "Experience our meticulously crafted tasting menus in an elegant setting, where every dish tells a story of local terroir and culinary innovation.",
+            "ctaText": "Explore Menu",
+            "ctaHref": "#"
+          },
+          {
+            "icon": "wine_bar",
+            "title": "WINE PAIRING",
+            "description": "Expertly curated wine selections from our master sommelier to perfectly complement every dish on our tasting menu, featuring rare vintages and local discoveries.",
+            "ctaText": "View Cellar",
+            "ctaHref": "#"
+          },
+          {
+            "icon": "celebration",
+            "title": "PRIVATE EVENTS",
+            "description": "Exclusive spaces and tailored menus for your most important celebrations and corporate gatherings. Our dedicated events team ensures flawless execution.",
+            "ctaText": "Book Event",
+            "ctaHref": "#"
+          },
+          {
+            "icon": "ramen_dining",
+            "title": "CHEF'S TABLE",
+            "description": "An intimate, interactive dining experience directly overlooking our kitchen. Watch our culinary team at work and interact directly with the executive chef.",
+            "ctaText": "Reserve Seat",
+            "ctaHref": "#"
+          },
+          {
+            "icon": "eco",
+            "title": "ORGANIC SOURCING",
+            "description": "We partner exclusively with local, sustainable farms to bring the freshest organic ingredients to your table, supporting our community and environment.",
+            "ctaText": "Our Partners",
+            "ctaHref": "#"
+          }
+        ]
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "title",
+          "description",
+          "primaryCta.text",
+          "primaryCta.href",
+          "cards[].icon",
+          "cards[].title",
+          "cards[].description",
+          "cards[].ctaText",
+          "cards[].ctaHref"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This entry is based on the current OurServices implementation.",
+        "The runtime schema and zip pagebuilder registration are implemented.",
+        "The block is content-only in MVP and keeps source set to null."
+      ]
+    },
+    {
+      "blockKey": "story-team-showcase",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Story Team Showcase",
+      "category": "editorial",
+      "summary": "Editorial story section with crew highlights, narrative copy, and a full-width supporting image.",
+      "renderer": {
+        "componentPath": "zip/components/PROMOCJA_sezonowa.tsx",
+        "exportName": "PROMOCJA_sezonowa"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/story-team-showcase.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell and top title row inside the six-column grid.",
+          "Preserve the left-side team highlight stack and right-side narrative copy split on larger breakpoints.",
+          "Preserve the single full-width supporting image below the text grid unless the block is explicitly redesigned."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "eyebrow",
+          "title",
+          "members",
+          "story",
+          "image"
+        ],
+        "properties": {
+          "eyebrow": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "icon",
+                "name",
+                "role"
+              ],
+              "properties": {
+                "icon": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "story": {
+            "type": "string"
+          },
+          "image": {
+            "type": "object",
+            "required": [
+              "src",
+              "alt"
+            ],
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "eyebrow": "Our Crew, Our story",
+        "title": "Our story",
+        "members": [
+          {
+            "icon": "calendar-days",
+            "name": "John Doe1",
+            "role": "Creative Director1"
+          },
+          {
+            "icon": "utensils-crossed",
+            "name": "John Doe2",
+            "role": "Creative Director2"
+          }
+        ],
+        "story": "We are a team of creators, thinkers, and builders who believe in crafting experiences that truly connect. Our story is built on passion, innovation, and the drive to bring meaningful ideas to life.",
+        "image": {
+          "src": "https://deifkwefumgah.cloudfront.net/shadcnblocks/block/guri4/img10.png",
+          "alt": "about us image"
+        }
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "eyebrow",
+          "title",
+          "members[].icon",
+          "members[].name",
+          "members[].role",
+          "story",
+          "image.src",
+          "image.alt"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This entry is based on the refactored PROMOCJA_sezonowa component kept for backwards-compatible imports.",
+        "The runtime schema, AI schema descriptor, and homepage pagebuilder integration are implemented.",
+        "The block is content-only in MVP and keeps source set to null."
+      ]
+    },
+    {
+      "blockKey": "promo2",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Promo 2",
+      "category": "editorial",
+      "summary": "Story-led promo section with an attached lower menu panel that can resolve items from a WooCommerce category.",
+      "renderer": {
+        "componentPath": "zip/components/Promo2.tsx",
+        "exportName": "Promo2"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/promo2.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the current story/promo top section geometry and page-margin shell.",
+          "Preserve the single wide image below the text grid and attach the lower menu panel directly below it with no gap.",
+          "Preserve the image width and the attached panel width as identical, while keeping image bottom corners square."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "eyebrow",
+          "title",
+          "members",
+          "story",
+          "image"
+        ],
+        "properties": {
+          "eyebrow": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "icon",
+                "name",
+                "role"
+              ],
+              "properties": {
+                "icon": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "story": {
+            "type": "string"
+          },
+          "image": {
+            "type": "object",
+            "required": [
+              "src",
+              "alt"
+            ],
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            }
+          },
+          "menuColumns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "items"
+              ],
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "title",
+                      "priceLabel"
+                    ],
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "priceLabel": {
+                        "type": "string"
+                      },
+                      "tagSlugs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "emptyStateText": {
+            "type": "string"
+          }
+        }
+      },
+      "defaultData": {
+        "eyebrow": "Our Crew, Our story",
+        "title": "Our story",
+        "members": [
+          {
+            "icon": "calendar-days",
+            "name": "John Doe1",
+            "role": "Creative Director1"
+          },
+          {
+            "icon": "utensils-crossed",
+            "name": "John Doe2",
+            "role": "Creative Director2"
+          }
+        ],
+        "story": "We are a team of creators, thinkers, and builders who believe in crafting experiences that truly connect. Our story is built on passion, innovation, and the drive to bring meaningful ideas to life.",
+        "image": {
+          "src": "https://deifkwefumgah.cloudfront.net/shadcnblocks/block/guri4/img10.png",
+          "alt": "about us image"
+        },
+        "menuColumns": [
+          {
+            "items": [
+              {
+                "title": "Spring asparagus",
+                "description": "Brown butter, hazelnut",
+                "priceLabel": "42 zł",
+                "tagSlugs": []
+              },
+              {
+                "title": "Charred cabbage",
+                "description": "Apple glaze, dill oil",
+                "priceLabel": "36 zł",
+                "tagSlugs": []
+              }
+            ]
+          },
+          {
+            "items": [
+              {
+                "title": "Burnt cheesecake",
+                "description": "Cherry, vanilla",
+                "priceLabel": "28 zł",
+                "tagSlugs": []
+              },
+              {
+                "title": "Smoked trout",
+                "description": "Cucumber, cultured cream",
+                "priceLabel": "44 zł",
+                "tagSlugs": []
+              }
+            ]
+          }
+        ],
+        "emptyStateText": "Brak pozycji w tej kategorii."
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "eyebrow",
+          "title",
+          "members[].icon",
+          "members[].name",
+          "members[].role",
+          "story",
+          "image.src",
+          "image.alt",
+          "menuColumns[].items[].title",
+          "menuColumns[].items[].description",
+          "menuColumns[].items[].priceLabel",
+          "source.sourceValue",
+          "emptyStateText"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry",
+          "resolved menuColumns when source is woo_category"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        },
+        {
+          "sourceType": "woo_category",
+          "status": "supported",
+          "notes": "Supported data mode for the attached lower menu panel. Top editorial content and image remain page-schema driven, while the menu items resolve from the specified Woo category."
+        }
+      ],
+      "notes": [
+        "This block is a separate sibling of story-team-showcase and does not change homepage behavior by itself.",
+        "The lower menu panel intentionally keeps no standalone heading and uses normal-case typography.",
+        "Woo category resolution is limited to the attached menu items; the upper story section remains manual page content."
+      ]
+    },
+    {
+      "blockKey": "promo3",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Promo 3",
+      "category": "editorial",
+      "summary": "Simplified promo/story section with a centered portrait image on the left and one editorial copy block on the right.",
+      "renderer": {
+        "componentPath": "zip/components/Promo3.tsx",
+        "exportName": "Promo3"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/promo3.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell and current large editorial title row.",
+          "Preserve the two-column desktop layout with a centered portrait image on the left and editorial copy on the right.",
+          "Preserve the mobile stack order with image first and copy second."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "title",
+          "story",
+          "image"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "story": {
+            "type": "string"
+          },
+          "image": {
+            "type": "object",
+            "required": [
+              "src",
+              "alt"
+            ],
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "title": "Our story",
+        "story": "We are a team of creators, thinkers, and builders who believe in crafting experiences that truly connect. Our story is built on passion, innovation, and the drive to bring meaningful ideas to life.",
+        "image": {
+          "src": "https://deifkwefumgah.cloudfront.net/shadcnblocks/block/guri4/img10.png",
+          "alt": "Portrait editorial image"
+        }
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "title",
+          "story",
+          "image.src",
+          "image.alt"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This entry is based on the Promo3 component created as a simplified sibling of the story section.",
+        "The runtime schema and AI schema descriptor are implemented.",
+        "The block is content-only in MVP and keeps source set to null."
+      ]
+    },
+    {
+      "blockKey": "block_download",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Block Download",
+      "category": "editorial",
+      "summary": "Direct-edit PDF download section with editorial intro copy, feature list, and a two-CTA download card.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx",
+        "exportName": "OccasionalMenuPdfDownloadSection"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/block_download.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell and contained max-w-screen-2xl wrapper.",
+          "Preserve the left editorial intro plus feature stack and the right PDF card composition.",
+          "Preserve one primary CTA, one secondary text CTA, and helper text inside the card."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "title",
+          "subtitle",
+          "primaryCta",
+          "secondaryCta",
+          "helperText",
+          "versionLabel",
+          "fileMeta",
+          "panelCaption",
+          "features"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "primaryCta": {
+            "type": "object",
+            "required": [
+              "label",
+              "href"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string"
+              }
+            }
+          },
+          "secondaryCta": {
+            "type": "object",
+            "required": [
+              "label",
+              "href"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string"
+              }
+            }
+          },
+          "helperText": {
+            "type": "string"
+          },
+          "versionLabel": {
+            "type": "string"
+          },
+          "fileMeta": {
+            "type": "string"
+          },
+          "panelCaption": {
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "icon",
+                "title"
+              ],
+              "properties": {
+                "icon": {
+                  "type": "string",
+                  "enum": [
+                    "groups",
+                    "quality",
+                    "format",
+                    "events"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "title": "Menu okolicznosciowe",
+        "subtitle": "Pobierz aktualne menu w PDF i sprawdz propozycje na przyjecia rodzinne, bankiety oraz spotkania firmowe.",
+        "primaryCta": {
+          "label": "Pobierz PDF",
+          "href": "#"
+        },
+        "secondaryCta": {
+          "label": "Zobacz online",
+          "href": "/menu-okolicznosciowe-2025-skrocone"
+        },
+        "helperText": "Bez logowania • Szybki podglad • Gotowe do wyslania gosciom",
+        "versionLabel": "PDF 2025",
+        "fileMeta": "2.3 MB",
+        "panelCaption": "Aktualne menu okolicznosciowe restauracji",
+        "features": [
+          {
+            "icon": "quality",
+            "title": "Jasno rozpisane zestawy, dodatki i serwis w standardzie Bulwar"
+          },
+          {
+            "icon": "format",
+            "title": "Wygodny plik PDF do wysylki, druku i szybkiej konsultacji z gosciami"
+          }
+        ]
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "title",
+          "subtitle",
+          "primaryCta.label",
+          "primaryCta.href",
+          "secondaryCta.label",
+          "secondaryCta.href",
+          "helperText",
+          "versionLabel",
+          "fileMeta",
+          "panelCaption",
+          "features[].icon",
+          "features[].title"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This entry is based on the existing OccasionalMenuPdfDownloadSection implementation.",
+        "The block is direct-edit only and keeps source set to null.",
+        "Secondary CTA and helper text are visible parts of the current runtime contract."
+      ]
+    },
+    {
+      "blockKey": "big_img_and_bolded_tex_editorial_style_block",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Big Img And Bolded Text Editorial Style Block",
+      "category": "editorial",
+      "summary": "Direct-edit editorial block with one tall portrait image and one bold lead text block using the Promo3 composition.",
+      "renderer": {
+        "componentPath": "zip/components/Promo3.tsx",
+        "exportName": "Promo3"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell and contained max-w-screen-2xl composition.",
+          "Preserve the portrait image on the left and one lead copy block on the right.",
+          "Preserve the mobile stack order with image first and copy second."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "title",
+          "story",
+          "image"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "story": {
+            "type": "string"
+          },
+          "image": {
+            "type": "object",
+            "required": [
+              "src",
+              "alt"
+            ],
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "title": "Our story",
+        "story": "We are a team of creators, thinkers, and builders who believe in crafting experiences that truly connect. Our story is built on passion, innovation, and the drive to bring meaningful ideas to life.",
+        "image": {
+          "src": "https://deifkwefumgah.cloudfront.net/shadcnblocks/block/guri4/img10.png",
+          "alt": "Portrait editorial image"
+        }
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "title",
+          "story",
+          "image.src",
+          "image.alt"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This entry reuses the existing Promo3 component under the requested business key.",
+        "The block is direct-edit only and keeps source set to null.",
+        "The visible composition stays limited to one portrait image and one bold editorial copy block."
+      ]
+    },
+    {
+      "blockKey": "premium_call_to_action_with_image_carousel",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Premium Call To Action With Image Carousel",
+      "category": "editorial",
+      "summary": "Contained CTA section with one lead message, one button, and a marquee-style image carousel.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/CateringSection.tsx",
+        "exportName": "CateringSection"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/premium_call_to_action_with_image_carousel.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the page-margin shell with a contained max-w-screen-2xl wrapper.",
+          "Preserve the two-column desktop composition with copy left and image carousel right.",
+          "Preserve the marquee-based image motion pattern and omit decorative lower-right graphics."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "heading",
+          "description",
+          "buttonText",
+          "buttonHref",
+          "images"
+        ],
+        "properties": {
+          "heading": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "buttonText": {
+            "type": "string"
+          },
+          "buttonHref": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "src",
+                "alt"
+              ],
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "heading": "Catering Wielkanocny",
+        "description": "Zamow z dostawa lub odbiorem w contained sekcji zgodnej z rytmem Promo2. Najwyzsza jakosc i starannie wyselekcjonowane swiateczne propozycje trafiaja prosto na stol.",
+        "buttonText": "ZAMOW ONLINE",
+        "buttonHref": "/catering-wielkanocny",
+        "images": [
+          {
+            "src": "/react/images/zupy-catering.jpg",
+            "alt": "Zupy cateringowe"
+          },
+          {
+            "src": "/react/images/sniadanie-wielkanocne.jpg",
+            "alt": "Sniadanie wielkanocne"
+          },
+          {
+            "src": "/react/images/ciasta-catering.jpg",
+            "alt": "Ciasta cateringowe"
+          },
+          {
+            "src": "/react/images/dla-dzieci.jpg",
+            "alt": "Menu dla dzieci"
+          },
+          {
+            "src": "/react/images/chleb-pieczywo.jpg",
+            "alt": "Chleb i pieczywo"
+          },
+          {
+            "src": "/react/images/dania-glowne.jpg",
+            "alt": "Dania glowne"
+          }
+        ]
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "heading",
+          "description",
+          "buttonText",
+          "buttonHref",
+          "images[].src",
+          "images[].alt"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This entry uses CateringSection with an opt-in contained width mode aligned to Promo2.",
+        "Seeded defaults intentionally use six images, while the schema keeps images as a direct-edit array.",
+        "The decorative lower-right graphic from source inspiration is intentionally excluded from this block contract."
+      ]
+    },
+    {
+      "blockKey": "simple_heading_and_paragraph",
+      "blockVersion": 1,
+      "status": "implemented",
+      "name": "Simple Heading And Paragraph",
+      "category": "editorial",
+      "summary": "Single-column editorial/legal block with eyebrow, large heading, darker divider, and one rich-text HTML body.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/SimpleHeadingAndParagraph.tsx",
+        "exportName": "SimpleHeadingAndParagraph"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/simple_heading_and_paragraph.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the single-column header shell derived from the left side of Project10.",
+          "Preserve the darker divider under the header instead of restoring the right-side metadata layout.",
+          "Preserve one rich-text content column below the divider unless the block is explicitly redesigned."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "eyebrow",
+          "title",
+          "richTextHtml"
+        ],
+        "properties": {
+          "eyebrow": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "richTextHtml": {
+            "type": "string",
+            "description": "Allowlist HTML field supporting strong, b, em, i, u, p, br, ul, ol, and li tags."
+          }
+        }
+      },
+      "defaultData": {
+        "eyebrow": "Polityka prywatności",
+        "title": "Jak przetwarzamy dane osobowe",
+        "richTextHtml": "<p><strong>Administrator danych</strong> przetwarza dane osobowe w zakresie niezbednym do obslugi kontaktu, zapytan oraz zamowien skladanych przez klientow.</p><p>W tej sekcji mozna opisac cele przetwarzania danych, okres ich przechowywania oraz prawa osob, ktorych dane dotycza.</p><ul><li>kontakt telefoniczny i mailowy</li><li>realizacja zamowien</li><li>obsluga formularzy i zapytan</li></ul>"
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "eyebrow",
+          "title",
+          "richTextHtml"
+        ],
+        "restrictedFields": [
+          "layout",
+          "className",
+          "geometry"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        }
+      ],
+      "notes": [
+        "This implemented entry is derived from universal_header_block_2 and Project10, but it intentionally removes the right-side metadata column, CTA, hero image, and story rows.",
+        "The runtime renderer sanitizes the direct-edit HTML body against a small allowlist before rendering.",
+        "This block is intended for policies, regulations, and other informational editorial sections with source = null."
+      ]
+    },
+    {
+      "blockKey": "menu-category-photo-parallax-full-width",
+      "blockVersion": 1,
+      "status": "seed",
+      "name": "Menu Category Photo Parallax Full Width",
+      "category": "menu",
+      "summary": "Full-width parallax menu section with a hero image header and a contained menu list body.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/BreakfastSection.tsx",
+        "exportName": "BreakfastSection"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/menu-category-photo-parallax-full-width.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the full-width hero image header.",
+          "Preserve the contained menu body inside page-margin and max-w-5xl shell unless explicitly redesigned.",
+          "Preserve the desktop two-column menu presentation unless explicitly redesigned."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "heroTitle",
+          "backgroundImage"
+        ],
+        "properties": {
+          "heroTitle": {
+            "type": "string"
+          },
+          "backgroundImage": {
+            "type": "object",
+            "required": [
+              "src",
+              "alt"
+            ],
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            }
+          },
+          "overlayOpacity": {
+            "type": "number"
+          },
+          "layout": {
+            "type": "object",
+            "required": [
+              "columns",
+              "heroHeight"
+            ],
+            "properties": {
+              "columns": {
+                "type": "number"
+              },
+              "heroHeight": {
+                "type": "string"
+              }
+            }
+          },
+          "menuColumns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "items"
+              ],
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "title",
+                      "priceLabel"
+                    ],
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "priceLabel": {
+                        "type": "string"
+                      },
+                      "tagSlugs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "menuAnchorId": {
+            "type": "string"
+          },
+          "emptyStateText": {
+            "type": "string"
+          }
+        }
+      },
+      "defaultData": {
+        "heroTitle": "Breakfast",
+        "backgroundImage": {
+          "src": "https://picsum.photos/seed/breakfast/1920/1080",
+          "alt": "Breakfast menu hero image"
+        },
+        "overlayOpacity": 0.2,
+        "layout": {
+          "columns": 2,
+          "heroHeight": "400px"
+        },
+        "menuColumns": [],
+        "emptyStateText": "Brak pozycji w tej kategorii."
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "heroTitle",
+          "backgroundImage.src",
+          "backgroundImage.alt",
+          "emptyStateText",
+          "menuColumns[].items[].title",
+          "menuColumns[].items[].description",
+          "menuColumns[].items[].priceLabel",
+          "menuColumns[].items[].tagSlugs[]",
+          "source.sourceValue"
+        ],
+        "restrictedFields": [
+          "layout.columns",
+          "layout.heroHeight",
+          "overlayOpacity"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_content",
+          "status": "supported"
+        },
+        {
+          "sourceType": "woo_category",
+          "status": "supported",
+          "notes": "Supported real-data mode. Source value may be a Woo category slug or id. Heading should resolve from category name, while the parallax image stays in block data."
+        },
+        {
+          "sourceType": "woo_products",
+          "status": "supported",
+          "notes": "Secondary source mode for explicitly selected Woo product ids."
+        }
+      ],
+      "notes": [
+        "This is the first seed registry entry.",
+        "It is based on the current BreakfastSection implementation.",
+        "Demo defaults are intentionally kept as filler content for static and preview usage.",
+        "In real Woo-driven mode, the preferred path is category-based resolution by Woo category slug or id."
+      ]
+    },
+    {
+      "blockKey": "gallery-masonry-style1",
+      "blockVersion": 1,
+      "status": "seed",
+      "name": "Gallery Masonry Style 1",
+      "category": "gallery",
+      "summary": "Masonry-style image gallery with staggered columns and subtle scroll-driven motion.",
+      "renderer": {
+        "componentPath": "zip/src/components/sections/GallerySection.tsx",
+        "exportName": "GallerySection"
+      },
+      "docs": {
+        "humanReadablePath": "docs/block-registry/gallery-masonry-style1.md"
+      },
+      "designContract": {
+        "styleSourcePath": "zip/src/index.css",
+        "visualReferencePath": "zip/src/pages/TemplatePage.tsx",
+        "adaptationContractPath": "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
+        "whitelistPath": "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
+        "geometryRules": [
+          "Preserve the staggered masonry column composition.",
+          "Preserve the section shell using page-margin and max-w-screen-2xl unless explicitly redesigned.",
+          "Preserve the image-count assumption that fills the gallery shape with seven image slots unless the block is structurally redesigned."
+        ]
+      },
+      "dataContract": {
+        "type": "object",
+        "required": [
+          "images"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "layoutStyle": {
+            "type": "string",
+            "enum": [
+              "masonry-style1"
+            ]
+          },
+          "motionPreset": {
+            "type": "string",
+            "enum": [
+              "parallax-columns-soft"
+            ]
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "src",
+                "alt"
+              ],
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "defaultData": {
+        "title": "Galeria",
+        "layoutStyle": "masonry-style1",
+        "motionPreset": "parallax-columns-soft",
+        "images": []
+      },
+      "aiEditing": {
+        "safeEditableFields": [
+          "title",
+          "images[].src",
+          "images[].alt"
+        ],
+        "restrictedFields": [
+          "layoutStyle",
+          "motionPreset"
+        ]
+      },
+      "sourceSupport": [
+        {
+          "sourceType": "static_assets",
+          "status": "supported"
+        },
+        {
+          "sourceType": "wordpress_media_gallery",
+          "status": "planned",
+          "notes": "Future refinement can allow gallery images to resolve from structured media bindings instead of only raw image arrays."
+        }
+      ],
+      "notes": [
+        "This seed entry is based on the current GallerySection implementation.",
+        "The current component uses Framer Motion and scroll transforms as part of the visual treatment.",
+        "Alt text is already part of the stored contract even though the current React adapter only maps image src values into the legacy component prop shape.",
+        "A later refinement pass should decide whether captions or media bindings need to become first-class content fields."
+      ]
+    }
+  ]
+}

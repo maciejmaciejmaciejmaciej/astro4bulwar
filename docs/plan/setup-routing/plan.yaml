@@ -1,0 +1,134 @@
+plan_id: setup-routing
+objective: Create a plan to implement React Router routing for the scraped WP pages using simple placeholder components instead of fully designing the subpages yet.
+created_at: "2026-03-22T00:00:00Z"
+created_by: gem-planner
+status: approved
+research_confidence: high
+
+tldr: |
+  We will introduce React Router to handle navigation.
+  A RootLayout (with the existing Navbar and Footer) will wrap all routes via `<Outlet />`.
+  Placeholder components will be generated for the ~21 scraped WordPress pages.
+  `main.tsx` or `App.tsx` will be updated to render the Router hierarchy.
+
+open_questions:
+  - Do all subpages currently use the identical Navbar and Footer layout with the same styling?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Layout breaking when switching from single-page scroll sections to separated pages
+      likelihood: medium
+      impact: high
+      mitigation: Ensure RootLayout correctly mimics the structure that originally wrapped Navbar and Footer in App.tsx.
+  assumptions:
+    - The `zip` folder uses standard Vite+React setup.
+    - React Router v6 or v7 will be used.
+
+implementation_specification:
+  code_structure: |
+    - Add `react-router-dom`.
+    - Create `src/layouts/RootLayout.tsx` for Navbar + `<Outlet />` + Footer.
+    - Create `src/pages/` directory containing placeholders (e.g., `O_RestauracjiPage.tsx`, `MenuDaniaGlownePage.tsx`).
+    - Move `App.tsx`'s main landing page content to `src/pages/HomePage.tsx`.
+    - Create `src/Router.tsx` encompassing all routes.
+    - Adjust `src/main.tsx` or `App.tsx` to mount the `RouterProvider` or `BrowserRouter`.
+  affected_areas:
+    - zip/package.json
+    - zip/src/App.tsx
+    - zip/src/main.tsx
+    - zip/src/pages/*
+    - zip/src/layouts/*
+  component_details:
+    - component: RootLayout
+      responsibility: Display global Navbar/Footer and render child route pages.
+      interfaces: []
+    - component: HomePage
+      responsibility: Maintain the current landing page experience (hero, sections).
+      interfaces: []
+    - component: Placeholders
+      responsibility: Temporary functional components displaying basic heading for routing verification.
+      interfaces: []
+
+dependencies: []
+integration_points:
+  - zip/src/main.tsx
+
+contracts:
+  - from_task: install-router
+    to_task: implement-placeholders
+    interface: react-router-dom installed
+    format: package.json updated
+  - from_task: implement-placeholders
+    to_task: setup-app-router
+    interface: Page components
+    format: Default exports of page components
+
+tasks:
+  - id: install-router
+    title: Install React Router DOM
+    description: |
+      Install `react-router-dom` via npm/yarn in the `zip` directory.
+    wave: 1
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies: []
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 10
+    focus_area: zip/package.json
+    verification:
+      - check if react-router-dom exists in dependencies
+    acceptance_criteria:
+      - App builds successfully without missing dependencies.
+
+  - id: implement-placeholders
+    title: Create placeholder pages and HomePage
+    description: |
+      Move all the landing page specific sections from App.tsx into a `Home.tsx` page component.
+      Generate basic functional React components for every scraped WP page (e.g. galeria, o-restauracji, menu-dania-glowne) inside `zip/src/pages/`.
+      Each placeholder just needs a wrapper div and an `<h1>` with the page name.
+    wave: 2
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies:
+      - install-router
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 100
+    focus_area: zip/src/pages
+    verification:
+      - check if components can be imported
+    acceptance_criteria:
+      - Placeholder components export properly.
+      - Home composes all existing section components like it used to.
+
+  - id: setup-app-router
+    title: Set up App Router and RootLayout
+    description: |
+      Create a `RootLayout.tsx` which includes `Navbar`, `Outlet`, and `Footer`.
+      Create an `AppRouter` or update `App.tsx` to configure `createBrowserRouter` or explicit standard `<Routes>`.
+      Map routes to their respective placeholder components.
+      Update `main.tsx` or `App.tsx` to render the router provider.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - implement-placeholders
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 100
+    focus_area: zip/src/
+    verification:
+      - ensure no typescript errors
+      - ensure Navbar and Footer are in RootLayout
+    acceptance_criteria:
+      - Users can navigate to subpages and see the placeholders wrapped in Navbar and Footer.
+    failure_modes:
+      - scenario: Circular dependency between Layout and router
+        likelihood: low
+        impact: high
+        mitigation: Keep RootLayout decoupled from standard Section imports besides Navbar and Footer.

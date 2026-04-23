@@ -1,0 +1,183 @@
+plan_id: none
+objective: "Confirm current source of the heading 'SAŁATKI NA WYNOS' and identify the wrapper layer controlling image, heading, and panel width/position"
+focus_area: quick_heading_source
+created_at: "2026-03-24"
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The active route /catering-wielkanocny renders CateringWielkanocnyPage.
+  - The visible heading text 'SAŁATKI NA WYNOS' is passed as the title prop in CateringWielkanocnyPage, then rendered by CateringProductListAlt.
+  - A legacy SalatkiNaWynosSection also contains the literal heading, but it is only referenced by TemplatePage and App.backup.tsx, not the active route.
+  - The shared width constraint for the image block and the heading/panel content is the max-w-7xl mx-auto wrapper.
+  - Panel position relative to the image is driven by the page-margin motion wrapper with negative top margin, while panel width itself remains constrained by the inner max-w-7xl mx-auto wrapper.
+
+research_metadata:
+  methodology: "Targeted hybrid lookup: exact grep for heading and component names, followed by focused reads of App.tsx, CateringWielkanocnyPage.tsx, SalatkiNaWynosSection.tsx, and CateringProductListAlt.tsx."
+  scope: "Only files directly involved in the active route and heading rendering path."
+  confidence: high
+  coverage: 95
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: "Defines active application routes."
+    key_elements:
+      - element: "Route /catering-wielkanocny"
+        type: function
+        location: "zip/src/App.tsx:9"
+        description: "Maps the active route to CateringWielkanocnyPage."
+    language: TypeScript
+    lines: 11
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: "Builds the active catering page and passes section props."
+    key_elements:
+      - element: "CateringProductListAlt usage"
+        type: pattern
+        location: "zip/src/pages/CateringWielkanocnyPage.tsx:59"
+        description: "Renders CateringProductListAlt with title='SAŁATKI NA WYNOS'."
+      - element: "title prop"
+        type: variable
+        location: "zip/src/pages/CateringWielkanocnyPage.tsx:60"
+        description: "Literal source of the heading string for the active page."
+    language: TypeScript
+    lines: 69
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: "Renders the heading, background image block, and product panel."
+    key_elements:
+      - element: "title render"
+        type: pattern
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:45"
+        description: "Outputs the heading via {title}."
+      - element: "image width wrapper"
+        type: pattern
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:28"
+        description: "Uses max-w-7xl mx-auto around the background image block."
+      - element: "content width wrapper"
+        type: pattern
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:39"
+        description: "Uses max-w-7xl mx-auto around the heading and panel."
+      - element: "position wrapper"
+        type: pattern
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:37"
+        description: "The motion wrapper adds relative z-20 and negative top margin when bgImage exists."
+    language: TypeScript
+    lines: 63
+  - file: SalatkiNaWynosSection.tsx
+    path: zip/src/components/sections/SalatkiNaWynosSection.tsx
+    purpose: "Legacy standalone section with hardcoded heading text."
+    key_elements:
+      - element: "hardcoded heading"
+        type: pattern
+        location: "zip/src/components/sections/SalatkiNaWynosSection.tsx:12"
+        description: "Contains literal 'SAŁATKI NA WYNOS' in an h2."
+    language: TypeScript
+    lines: 39
+
+patterns_found:
+  - category: architecture
+    pattern: "Page passes literal title prop into reusable section"
+    description: "The active page owns the literal heading value and the section component renders it."
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: "zip/src/pages/CateringWielkanocnyPage.tsx:59"
+        snippet: "<CateringProductListAlt title=\"SAŁATKI NA WYNOS\" ... />"
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:45"
+        snippet: "{title}"
+    prevalence: occasional
+  - category: structure
+    pattern: "Shared max-width container wrappers"
+    description: "Image and content blocks each use a max-w-7xl mx-auto container to align widths."
+    examples:
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:28"
+        snippet: "<div className=\"max-w-7xl mx-auto\">"
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:39"
+        snippet: "<div className=\"max-w-7xl mx-auto space-y-8 md:space-y-10\">"
+    prevalence: common
+  - category: structure
+    pattern: "Negative top margin overlap"
+    description: "The content wrapper overlaps the image using a negative top margin when bgImage is present."
+    examples:
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: "zip/src/components/sections/CateringProductListAlt.tsx:37"
+        snippet: "className={cn(\"page-margin\", bgImage ? \"relative z-20 -mt-[140px] md:-mt-[220px] pb-16 md:pb-24\" : ...)}"
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: "CateringWielkanocnyPage"
+      responsibility: "Supplies the heading string and product data"
+      location: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      relationship_to_domain: "domain depends on this"
+    - component: "CateringProductListAlt"
+      responsibility: "Renders image, heading, and product panel"
+      location: "zip/src/components/sections/CateringProductListAlt.tsx"
+      relationship_to_domain: "domain depends on this"
+    - component: "SalatkiNaWynosSection"
+      responsibility: "Legacy alternative implementation with hardcoded heading"
+      location: "zip/src/components/sections/SalatkiNaWynosSection.tsx"
+      relationship_to_domain: "alternative, not on active route"
+  interfaces_used_by_domain:
+    - interface: "CateringProductListAltProps"
+      location: "zip/src/components/sections/CateringProductListAlt.tsx"
+      usage_pattern: "Receives title, products, optional bgImage, optional className"
+  data_flow_involving_domain: "App routes to CateringWielkanocnyPage; the page passes title='SAŁATKI NA WYNOS' to CateringProductListAlt; the section renders the heading from the title prop and lays out image plus panel."
+  key_relationships_to_domain:
+    - from: "zip/src/App.tsx"
+      to: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      relationship: "imports"
+    - from: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      to: "zip/src/components/sections/CateringProductListAlt.tsx"
+      relationship: "imports"
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: "Component rendering and route composition"
+  libraries_used_in_domain:
+    - name: react-router-dom
+      purpose_in_domain: "Active route selection"
+    - name: framer-motion
+      purpose_in_domain: "Parallax/positioned motion wrapper in the section"
+    - name: clsx-style utility via cn
+      purpose_in_domain: "Conditional class composition"
+
+related_conventions:
+  naming_patterns_in_domain: "Page components pass content into reusable section components via props; section components use PascalCase filenames and exported functions."
+  structure_of_domain: "Routing in App.tsx -> page in pages/ -> section in components/sections/."
+  error_handling_in_domain: "No explicit error handling in the examined rendering path."
+  testing_in_domain: "No tests observed in the examined path."
+  documentation_in_domain: "No inline documentation beyond brief JSX comments."
+
+related_dependencies:
+  internal:
+    - component: "zip/src/pages/CateringWielkanocnyPage.tsx"
+      relationship_to_domain: "Provides title and data to the section"
+      direction: inbound
+    - component: "zip/src/App.tsx"
+      relationship_to_domain: "Activates the page through routing"
+      direction: inbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: "Route activation"
+    - name: framer-motion
+      purpose_for_domain: "Parallax positioning"
+
+open_questions:
+  - question: "Does the user mean the literal text origin or the component that currently renders it on the active route?"
+    context: "The literal exists in both a legacy section and the active page prop, but only one path is live."
+  - question: "Should 'single wrapper/class layer' be interpreted as width constraint only, or also overlap positioning?"
+    context: "Width alignment comes from max-w-7xl mx-auto, while overlap positioning comes from the motion wrapper with negative margin."
+
+gaps:
+  - area: "Runtime DOM verification"
+    description: "No live browser inspection was performed; findings are based on source analysis only."
+    impact: "Very low; source clearly defines the current active route and render path."

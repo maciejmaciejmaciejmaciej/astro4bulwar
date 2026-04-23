@@ -1,0 +1,322 @@
+plan_id: none
+objective: inspect the provided catering JSON source and current public images structure for category background images
+focus_area: catering_json_and_public_images
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Główny JSON źródłowy dla kategorii wielkanocnych istnieje poza aplikacją w source_data.json oraz w wersji rozszerzonej z id i pustym image_url w result_with_ids.json.
+  - Jedyny obecny wzorzec pliku danych w zip/src/data to ofertaData.ts, eksportujący tablicę TS i importowany bezpośrednio do komponentu strony.
+  - Publiczne obrazy kategorii znajdują się w zip/public/images i obejmują m.in. pieczywo, dodatki, sosy, swiateczny obiad, wypieki, dla dzieci oraz plik z literówką zypy dla kategorii Zupy.
+  - Bieżący frontend używa stringowych ścieżek assetów publicznych w formie /react/images/... zgodnych z vite base '/react/'.
+  - Na stronie cateringowej tło kategorii jest podawane przez prop bgImage jako pojedynczy string, więc najbezpieczniejsze mapowanie image_url to przypisanie gotowych publicznych ścieżek per kategoria bez zmiany komponentowego wzorca.
+
+research_metadata:
+  methodology: hybrid retrieval using semantic_search and grep_search, followed by targeted read_file and list_dir inspection of data sources, page components, image directories, and Vite base path configuration
+  scope: medium-depth inspection of catering JSON source files, src/data conventions, Easter catering page components, and public image assets relevant to category background images
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: source_data.json
+    path: source_data.json
+    purpose: Raw source JSON for Easter catering categories before ids and image_url fields were added
+    key_elements:
+      - element: category array
+        type: pattern
+        location: source_data.json:1
+        description: Array of category objects with nazwa_kategorii, opis_kategorii, and pozycje
+    language: json
+    lines: 218
+  - file: result_with_ids.json
+    path: result_with_ids.json
+    purpose: Current enriched catering JSON including category ids, product ids, and image_url placeholders
+    key_elements:
+      - element: image_url
+        type: variable
+        location: result_with_ids.json:6
+        description: Existing per-category placeholder field intended for category image mapping
+      - element: category names
+        type: pattern
+        location: result_with_ids.json:1
+        description: Categories include Pieczywo, Zupy, Przystawki, Świąteczny obiad, Dodatki, Sosy, Desery, Menu dziecięce
+    language: json
+    lines: 329
+  - file: ofertaData.ts
+    path: zip/src/data/ofertaData.ts
+    purpose: Existing app-side data module pattern for section content used on the home page
+    key_elements:
+      - element: portfolioItems
+        type: variable
+        location: zip/src/data/ofertaData.ts:3
+        description: Exported typed array of OfertaItem objects
+      - element: OfertaItem import
+        type: pattern
+        location: zip/src/data/ofertaData.ts:1
+        description: Data module imports component type and exports static content
+    language: typescript
+    lines: 56
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: Demonstrates current use of public asset strings and imported data modules in page composition
+    key_elements:
+      - element: portfolioItems import
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:8
+        description: Page imports data from src/data module
+      - element: CateringSection images
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:48
+        description: Easter teaser section passes string paths like /react/images/... as image sources
+    language: typescript
+    lines: 67
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Current Easter catering page and present category section usage
+    key_elements:
+      - element: salatkiData
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:10
+        description: Inline page-local product data array
+      - element: CateringProductListAlt bgImage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:59
+        description: Category section receives background image through a string prop
+    language: typescript
+    lines: 69
+  - file: CateringWielkanocnyHero.tsx
+    path: zip/src/components/sections/CateringWielkanocnyHero.tsx
+    purpose: Uses public images and remote image URLs in the Easter page hero section
+    key_elements:
+      - element: /react/images paths
+        type: pattern
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:129
+        description: Public images are referenced as string literals under /react/images/
+      - element: hero remote image
+        type: pattern
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:79
+        description: Main hero currently uses a remote URL instead of a local asset
+    language: typescript
+    lines: 146
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Category/product list component with optional background image overlay block
+    key_elements:
+      - element: bgImage prop
+        type: variable
+        location: zip/src/components/sections/CateringProductListAlt.tsx:13
+        description: Optional string prop for background image URL
+      - element: backgroundImage style
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:36
+        description: Inline style uses supplied bgImage directly as CSS background image
+    language: typescript
+    lines: 60
+  - file: GallerySection.tsx
+    path: zip/src/components/sections/GallerySection.tsx
+    purpose: Confirms stable pattern of keeping public image paths as hardcoded strings under /react/images/gallery/
+    key_elements:
+      - element: DEFAULT_IMAGES
+        type: variable
+        location: zip/src/components/sections/GallerySection.tsx:10
+        description: Default public image path array used directly in component state
+    language: typescript
+    lines: 69
+  - file: vite.config.ts
+    path: zip/vite.config.ts
+    purpose: Defines Vite public base path for static assets
+    key_elements:
+      - element: base
+        type: variable
+        location: zip/vite.config.ts:8
+        description: App is served from /react/, which explains /react/images/... asset paths
+    language: typescript
+    lines: 18
+  - file: public images directory
+    path: zip/public/images
+    purpose: Holds current public image assets relevant to Easter category backgrounds
+    key_elements:
+      - element: category-like filenames
+        type: pattern
+        location: zip/public/images
+        description: Files include pieczywo, zypy, dodatki, sosy, swiateczny obiad, wypieki, dla dzieci, and catering wielkanoscny (1)
+    language: directory
+    lines: 0
+
+patterns_found:
+  - category: structure
+    pattern: Single src/data module exporting typed static arrays
+    description: The app currently keeps reusable data in TypeScript modules under src/data and imports them into page components.
+    examples:
+      - file: zip/src/data/ofertaData.ts
+        location: zip/src/data/ofertaData.ts:1
+        snippet: import { OfertaItem } from '../components/sections/OfertaSection'; export const portfolioItems: OfertaItem[] = [...]
+      - file: zip/src/pages/HomePage.tsx
+        location: zip/src/pages/HomePage.tsx:8
+        snippet: import { portfolioItems } from "../data/ofertaData";
+    prevalence: common
+  - category: architecture
+    pattern: Page-local inline data for unfinished or page-specific sections
+    description: The Easter catering page currently keeps section product data inline instead of in a dedicated src/data module.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:10
+        snippet: const salatkiData = [ ... ]
+    prevalence: occasional
+  - category: structure
+    pattern: Public image assets referenced as string paths under /react/images/
+    description: Components use literal string paths for static assets rather than imported image modules.
+    examples:
+      - file: zip/src/pages/HomePage.tsx
+        location: zip/src/pages/HomePage.tsx:19
+        snippet: <Navbar logoSrc="/react/images/logo.png" />
+      - file: zip/src/components/sections/GallerySection.tsx
+        location: zip/src/components/sections/GallerySection.tsx:10
+        snippet: const DEFAULT_IMAGES = ["/react/images/gallery/12-1024x680-1-640x640.webp", ...]
+      - file: zip/src/components/sections/CateringWielkanocnyHero.tsx
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:129
+        snippet: src="/react/images/zupy-catering.jpg"
+    prevalence: common
+  - category: architecture
+    pattern: Background images injected through component props
+    description: Category/section background imagery is passed as a URL string prop and consumed via inline CSS backgroundImage.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:59
+        snippet: <CateringProductListAlt title="SAŁATKI NA WYNOS" products={salatkiData} bgImage="https://picsum.photos/seed/salad/1920/1080" />
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:36
+        snippet: style={{ backgroundImage: `url('${bgImage}')` }}
+    prevalence: common
+  - category: naming
+    pattern: Public image filenames approximate category names, sometimes with spelling or labeling mismatches
+    description: Existing asset names largely map to category labels but not always exactly.
+    examples:
+      - file: zip/public/images
+        location: zip/public/images
+        snippet: zypy.webp vs category name Zupy
+      - file: zip/public/images
+        location: zip/public/images
+        snippet: wypieki.webp vs category name Desery
+      - file: zip/public/images
+        location: zip/public/images
+        snippet: dla dzieci.webp vs category name Menu dziecięce
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      responsibility: Composes the Easter catering page and injects product data plus background image props
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: this page would consume any imported catering category data
+    - component: zip/src/components/sections/CateringProductListAlt.tsx
+      responsibility: Renders a titled product list with optional top background image
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: domain depends on this for per-category image display
+    - component: zip/src/data/ofertaData.ts
+      responsibility: Existing shared data module pattern
+      location: zip/src/data/ofertaData.ts
+      relationship_to_domain: domain can follow this structure for imported static content
+  interfaces_used_by_domain:
+    - interface: OfertaItem
+      location: zip/src/components/sections/OfertaSection.tsx
+      usage_pattern: Existing src/data module imports a UI type and exports typed content objects
+    - interface: ProductDefAlt
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      usage_pattern: Category lists on the Easter page are shaped to match this interface
+  data_flow_involving_domain: Raw Easter menu data exists in root JSON files, page-level components currently use inline arrays and string asset paths, and category background imagery flows into CateringProductListAlt via the bgImage prop and CSS backgroundImage style.
+  key_relationships_to_domain:
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/data/ofertaData.ts
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship: composes
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      relationship: composes
+    - from: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      to: zip/public/images
+      relationship: uses public asset paths
+    - from: zip/src/components/sections/GallerySection.tsx
+      to: zip/public/images/gallery
+      relationship: uses public asset paths
+
+related_technology_stack:
+  languages_used_in_domain:
+    - JSON
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Page and section composition for Easter catering views
+    - name: Vite
+      usage_in_domain: Serves public assets under the configured /react/ base path
+  libraries_used_in_domain:
+    - name: framer-motion
+      purpose_in_domain: Animated hero and parallax product-list sections
+    - name: react-router-dom
+      purpose_in_domain: Navigation and route mounting for the Easter catering page
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Data uses Polish business keys in JSON like nazwa_kategorii and pozycje, while app-side TS modules use English prop names like image, title, products, and bgImage.
+  structure_of_domain: Shared reusable content lives in zip/src/data as exported constants; page-specific experimental data may live inline in the page component.
+  error_handling_in_domain: No explicit error handling is present around static data or static image usage; components assume provided strings are valid.
+  testing_in_domain: No test files were found for the Easter catering page or its data mapping.
+  documentation_in_domain: Conventions are inferred from code rather than local documentation.
+
+related_dependencies:
+  internal:
+    - component: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: consumes category products and a background image string
+      direction: outbound
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: mounts domain data into the page
+      direction: outbound
+    - component: zip/src/data/ofertaData.ts
+      relationship_to_domain: demonstrates reusable data storage pattern
+      direction: bidirectional
+  external:
+    - name: React
+      purpose_for_domain: Page composition and prop passing
+    - name: Framer Motion
+      purpose_for_domain: Animated rendering of hero and product list sections
+    - name: Vite
+      purpose_for_domain: Static asset serving with public base path handling
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Remote image URLs
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      concern: Remote assets introduce an external dependency and are less controlled than local public assets
+    - area: Root JSON source files outside app bundle structure
+      location: source_data.json and result_with_ids.json
+      concern: These files are not yet inside the app module graph, so any manual sync into the frontend would be procedural rather than enforced
+  authentication_patterns_in_domain: none observed
+  authorization_patterns_in_domain: none observed
+  data_validation_in_domain: none observed for the examined static JSON and image path strings
+
+testing_patterns:
+  framework: none observed
+  coverage_areas:
+    - Static content rendering only; no dedicated tests found for JSON-to-category mapping or image selection
+  test_organization: No tests found in the examined Easter catering page/domain files
+  mock_patterns: []
+
+open_questions:
+  - question: Which public image should represent the Przystawki category?
+    context: Existing public image filenames map clearly to most categories, but no exact przystawki-named file was found.
+  - question: Whether category Desery should intentionally map to wypieki assets?
+    context: The filename suggests baked goods rather than the broader category label used in JSON.
+  - question: Whether the current /react/images references for zupy-catering.jpg and related Easter teaser files are missing locally or expected to come from deployment-only assets?
+    context: The code references several Easter images that were not found in the workspace file listing.
+
+gaps:
+  - area: Deployment asset parity
+    description: Several /react/images/*.jpg files referenced in code were not present in the inspected public/images directory.
+    impact: Limits certainty about which existing local assets are actually available in the current deployed build.
+  - area: Category-to-image business mapping
+    description: No dedicated mapping table or existing config was found for assigning per-category image_url values.
+    impact: The workspace shows available assets and current component patterns, but not the intended final editorial mapping for every category.

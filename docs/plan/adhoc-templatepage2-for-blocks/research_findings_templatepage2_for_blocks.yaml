@@ -1,0 +1,561 @@
+plan_id: adhoc-templatepage2-for-blocks
+objective: Determine what is needed to add every TSX block from for_blocks/ to zip/src/pages/TemplatePage2.tsx as preview sections, following the repo's established translation-only workflow.
+focus_area: for_blocks to TemplatePage2 preview readiness
+created_at: 2026-04-21
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - TemplatePage2 is the sanctioned preview sandbox, while TemplatePage remains the visual reference and translation-only workflow source of truth. Sources: zip/src/pages/TemplatePage2.tsx, .github/instructions/design-system.instructions.md.
+  - The requested for_blocks preview set now lands as About1, Feature285, Logos10, and Testimonial7 integrated into TemplatePage2 plus About28 satisfied by reuse of the existing translated sibling in zip/src/components/sections/About28.tsx.
+  - The carousel path is now implemented through a shared local primitive in zip/components/ui/carousel.tsx, which is consumed by both zip/src/components/sections/Logos10.tsx and zip/src/components/sections/Testimonial7.tsx and rendered on TemplatePage2. About3 remains clear-for-follow-up because the remaining gap is a source-compatible marquee composition and fade-wrapper surface; Hero166 is still blocked by the missing zip/public/images/hero166/cooking-1.jpg through cooking-8.jpg asset bundle. Sources: for_blocks/*.tsx, zip/components/ui/carousel.tsx, zip/src/components/sections/Logos10.tsx, zip/src/components/sections/Testimonial7.tsx, zip/src/pages/TemplatePage2.tsx, zip/public/.
+  - Button usage itself is not a blocker for this task: the repo already typechecks sections using render plus nativeButton={false} and asChild patterns against the current Button wrapper. Sources: zip/components/ui/button.tsx, zip/src/components/sections/About28.tsx, zip/src/components/sections/Feature314.tsx, zip/src/components/sections/AboutSection.tsx.
+  - Validation recorded here is preview integration validation only for TemplatePage2, not reusable production-block approval. The passing command set for this completion is TemplatePage2 test plus zip frontend lint.
+
+execution_outcomes:
+  scope_note: This outcome record is intentionally limited to the requested for_blocks preview set. Previously added TemplatePage2 previews such as CTA, Hero45, Hero214, and Feature314 remain on the page but are out of scope for this document update.
+  remaining_scope_note: Interactive carousel behavior for Logos10 and Testimonial7 is still only browser-verified if manually checked; this document records no automated browser test coverage for that interaction path.
+  final_templatepage2_for_blocks_inventory:
+    - block: About1
+      source: for_blocks/about1.tsx
+      status: integrated
+      implementation_note: Added as a translated preview section in TemplatePage2.
+    - block: About28
+      source: for_blocks/about28.tsx
+      status: reused-existing
+      implementation_note: Reuses the existing translated sibling in zip/src/components/sections/About28.tsx instead of duplicating the raw block translation.
+    - block: Feature285
+      source: for_blocks/feature285.tsx
+      status: integrated
+      implementation_note: Added as a translated preview section in TemplatePage2.
+    - block: Logos10
+      source: for_blocks/logos10.tsx
+      status: integrated
+      implementation_note: Added as a translated preview section in TemplatePage2 using the shared local carousel primitive in zip/components/ui/carousel.tsx.
+    - block: Testimonial7
+      source: for_blocks/testimonial7.tsx
+      status: integrated
+      implementation_note: Added as a translated preview section in TemplatePage2 using the shared local carousel primitive in zip/components/ui/carousel.tsx.
+  gate_outcomes:
+    - block: About3
+      status: clear-for-follow-up
+      blocker_summary: Missing source-compatible marquee composition and fade-wrapper surface.
+    - block: Hero166
+      status: blocked
+      blocker_summary: Missing zip/public/images/hero166/cooking-1.jpg through cooking-8.jpg asset bundle.
+  validation:
+    scope: Preview integration only for TemplatePage2. This does not grant production approval, reusable block-registry readiness, or page-builder readiness.
+    commands:
+      - command: npx tsx --test src/pages/TemplatePage2.test.tsx
+        working_directory: zip/
+        result: passed
+      - command: npm run lint
+        working_directory: zip/
+        result: passed
+
+research_metadata:
+  methodology: Hybrid retrieval using memory view, targeted file reads, file_search, grep_search, and directory listing across for_blocks, zip/src/pages, zip/src/components/sections, zip/components/ui, zip/public, package.json, tsconfig, and project instructions.
+  scope: Medium-depth inspection of the requested seven raw TSX blocks plus the preview surface, translated sibling patterns, UI wrapper availability, package availability, and routing/test coverage for TemplatePage2.
+  confidence: high
+  coverage: 92
+  decision_blockers: 2
+  research_blockers: 0
+
+files_analyzed:
+  - file: about1.tsx
+    path: for_blocks/about1.tsx
+    purpose: Raw imported About block candidate for TemplatePage2 preview.
+    key_elements:
+      - element: About1
+        type: function
+        location: for_blocks/about1.tsx:9
+        description: Exports the About1 section with only lucide-react icons and cn as non-native dependencies.
+    language: TypeScript React
+    lines: 82
+  - file: about3.tsx
+    path: for_blocks/about3.tsx
+    purpose: Raw imported About block candidate with marquee and CTA usage.
+    key_elements:
+      - element: About3
+        type: function
+        location: for_blocks/about3.tsx:30
+        description: Exports the About3 section with props-driven content, marquee logo strip, and CTA button rendered as a link.
+    language: TypeScript React
+    lines: 195
+  - file: about28.tsx
+    path: for_blocks/about28.tsx
+    purpose: Raw imported About block candidate with mirrored text-image layout.
+    key_elements:
+      - element: About28
+        type: function
+        location: for_blocks/about28.tsx:25
+        description: Exports the About28 section using Button and cn only; structurally close to a translatable business block.
+      - element: TextSection
+        type: function
+        location: for_blocks/about28.tsx:101
+        description: Uses Button with render plus nativeButton=false for CTA rendering.
+    language: TypeScript React
+    lines: 118
+  - file: feature285.tsx
+    path: for_blocks/feature285.tsx
+    purpose: Raw imported feature block candidate using animated vertical marquees.
+    key_elements:
+      - element: Feature285
+        type: function
+        location: for_blocks/feature285.tsx:15
+        description: Exports the Feature285 section with framer-motion hover blur effects and local CSS import for marquee keyframes.
+    language: TypeScript React
+    lines: 124
+  - file: hero166.tsx
+    path: for_blocks/hero166.tsx
+    purpose: Raw imported hero block candidate with animated image collage.
+    key_elements:
+      - element: Hero166
+        type: function
+        location: for_blocks/hero166.tsx:10
+        description: Exports the Hero166 section and depends on a local AspectRatio wrapper plus local image assets under /images/hero166.
+    language: TypeScript React
+    lines: 128
+  - file: logos10.tsx
+    path: for_blocks/logos10.tsx
+    purpose: Raw imported logo carousel candidate.
+    key_elements:
+      - element: Logos10
+        type: function
+        location: for_blocks/logos10.tsx:13
+        description: Exports the Logos10 section using a local Carousel wrapper and dynamic embla-carousel-auto-scroll plugin import.
+    language: TypeScript React
+    lines: 105
+  - file: testimonial7.tsx
+    path: for_blocks/testimonial7.tsx
+    purpose: Raw imported testimonial carousel candidate.
+    key_elements:
+      - element: Testimonial7
+        type: function
+        location: for_blocks/testimonial7.tsx:89
+        description: Exports the Testimonial7 section using Avatar, Badge, Card, Carousel, and embla-carousel-auto-scroll.
+    language: TypeScript React
+    lines: 180
+  - file: TemplatePage2.tsx
+    path: zip/src/pages/TemplatePage2.tsx
+    purpose: Preview sandbox where translated sections are rendered in sequence with simple labeled wrappers.
+    key_elements:
+      - element: TemplatePage2
+        type: function
+        location: zip/src/pages/TemplatePage2.tsx:11
+        description: Renders a heading plus preview blocks in a repeated label-then-section pattern, including Logos10 and Testimonial7.
+    language: TypeScript React
+    lines: 108
+  - file: TemplatePage2.test.tsx
+    path: zip/src/pages/TemplatePage2.test.tsx
+    purpose: Current preview-page regression check.
+    key_elements:
+      - element: TemplatePage2 renders the ready-now previews after the existing sections
+        type: test
+        location: zip/src/pages/TemplatePage2.test.tsx:7
+        description: Confirms TemplatePage2 content order and the presence of Logos10 and Testimonial7 via static markup assertions.
+    language: TypeScript React
+    lines: 29
+  - file: carousel.tsx
+    path: zip/components/ui/carousel.tsx
+    purpose: Shared local carousel primitive used by translated preview sections that need Embla-based layout wiring.
+    key_elements:
+      - element: Carousel
+        type: function
+        location: zip/components/ui/carousel.tsx:21
+        description: Provides the shared viewport and plugin wiring used by the Logos10 and Testimonial7 preview sections.
+      - element: CarouselContent
+        type: function
+        location: zip/components/ui/carousel.tsx:33
+        description: Supplies the overflow-hidden viewport wrapper required by the section-level carousel layouts.
+      - element: CarouselItem
+        type: function
+        location: zip/components/ui/carousel.tsx:49
+        description: Provides the shared slide shell for translated carousel items.
+    language: TypeScript React
+    lines: 60
+  - file: button.tsx
+    path: zip/components/ui/button.tsx
+    purpose: Current Button wrapper exposed through the @ alias used by raw blocks and translated sections.
+    key_elements:
+      - element: Button
+        type: function
+        location: zip/components/ui/button.tsx:53
+        description: Wraps @base-ui/react/button and supports current repo button patterns.
+    language: TypeScript React
+    lines: 70
+  - file: marquee.tsx
+    path: zip/components/ui/marquee.tsx
+    purpose: Existing marquee wrapper available in the repo.
+    key_elements:
+      - element: Marquee
+        type: function
+        location: zip/components/ui/marquee.tsx:31
+        description: Provides horizontal or vertical marquee behavior without the kibo-ui subcomponents used by raw About3.
+    language: TypeScript React
+    lines: 61
+  - file: About28.tsx
+    path: zip/src/components/sections/About28.tsx
+    purpose: Existing translated sibling demonstrating raw block adaptation into project design vocabulary.
+    key_elements:
+      - element: About28
+        type: function
+        location: zip/src/components/sections/About28.tsx:26
+        description: Already adapts the raw About28 layout into the repo's typography, spacing, and CTA treatment.
+    language: TypeScript React
+    lines: 155
+  - file: Feature314.tsx
+    path: zip/src/components/sections/Feature314.tsx
+    purpose: Existing translated preview block used on TemplatePage2.
+    key_elements:
+      - element: Feature314
+        type: function
+        location: zip/src/components/sections/Feature314.tsx:19
+        description: Demonstrates current preview-section import pattern and Button render/nativeButton usage.
+    language: TypeScript React
+    lines: 118
+  - file: AboutSection.tsx
+    path: zip/src/components/sections/AboutSection.tsx
+    purpose: Existing business-block translation example using current project tokens and asChild button pattern.
+    key_elements:
+      - element: AboutSection
+        type: function
+        location: zip/src/components/sections/AboutSection.tsx:22
+        description: Shows the repo's reusable-section translation approach for text-image layouts.
+    language: TypeScript React
+    lines: 109
+  - file: package.json
+    path: zip/package.json
+    purpose: Dependency inventory for the zip frontend.
+    key_elements:
+      - element: dependencies
+        type: variable
+        location: zip/package.json:10
+        description: Lists available frontend packages; embla-carousel-auto-scroll is not present.
+    language: JSON
+    lines: 39
+  - file: tsconfig.json
+    path: zip/tsconfig.json
+    purpose: Alias and include configuration for the zip frontend.
+    key_elements:
+      - element: compilerOptions.paths
+        type: variable
+        location: zip/tsconfig.json:17
+        description: Maps @/* to the zip workspace root, so raw imports resolve into zip/components or zip/lib rather than zip/src.
+    language: JSON
+    lines: 32
+  - file: design-system.instructions.md
+    path: .github/instructions/design-system.instructions.md
+    purpose: Governing workflow for TemplatePage and TemplatePage2 adaptation.
+    key_elements:
+      - element: Translation-Only Rule
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:28
+        description: Requires technical translation into repo primitives without redesign.
+      - element: Preview Workflow
+        type: pattern
+        location: .github/instructions/design-system.instructions.md:40
+        description: Directs new imported blocks to TemplatePage2 for preview.
+    language: Markdown
+    lines: 98
+
+patterns_found:
+  - category: architecture
+    pattern: TemplatePage2 preview sections follow a simple label plus component sequence.
+    description: Existing previews are imported from zip/src/components/sections and rendered in order with a small heading block before each section.
+    examples:
+      - file: zip/src/pages/TemplatePage2.tsx
+        location: zip/src/pages/TemplatePage2.tsx:1
+        snippet: import Template2Cta / Hero45 / Hero214 / Feature314 and render each beneath a small uppercase label.
+    prevalence: common
+  - category: structure
+    pattern: Raw for_blocks files assume the @ alias resolves to root-level zip/components and zip/lib.
+    description: Because zip/tsconfig.json maps @/* to ./*, imports like @/components/ui/button resolve to zip/components/ui/button.tsx, not zip/src/components.
+    examples:
+      - file: zip/tsconfig.json
+        location: zip/tsconfig.json:17
+        snippet: '"@/*": ["./*"]'
+      - file: for_blocks/about3.tsx
+        location: for_blocks/about3.tsx:1
+        snippet: imports from @/components/kibo-ui/marquee and @/components/ui/button.
+    prevalence: common
+  - category: architecture
+    pattern: Translation flow already exists from raw block geometry into project section components.
+    description: zip/src/components/sections/About28.tsx preserves the rough two-column geometry of the raw About28 block while swapping typography, spacing, and CTA styling to project tokens.
+    examples:
+      - file: for_blocks/about28.tsx
+        location: for_blocks/about28.tsx:25
+        snippet: raw About28 exports mirrored text-image layout.
+      - file: zip/src/components/sections/About28.tsx
+        location: zip/src/components/sections/About28.tsx:26
+        snippet: translated About28 keeps mirrored layout but uses project labels, headline styles, and CTA treatment.
+    prevalence: occasional
+  - category: dependencies
+    pattern: Current Button wrapper is compatible with existing repo link-button patterns.
+    description: The repo already contains sections using render plus nativeButton=false and asChild, so these API shapes are not unique to the raw blocks under review.
+    examples:
+      - file: zip/src/components/sections/About28.tsx
+        location: zip/src/components/sections/About28.tsx:151
+        snippet: Button render={<a href={ctaButton.href} />} nativeButton={false}
+      - file: zip/src/components/sections/Feature314.tsx
+        location: zip/src/components/sections/Feature314.tsx:75
+        snippet: Button render={<a href={button.url} />} nativeButton={false}
+      - file: zip/src/components/sections/AboutSection.tsx
+        location: zip/src/components/sections/AboutSection.tsx:96
+        snippet: Button asChild with Link wrapper.
+    prevalence: common
+  - category: dependencies
+    pattern: The major integration risk is missing local wrappers and missing package/assets, not core React or Tailwind compatibility.
+    description: Several raw blocks import local UI wrappers that do not exist under zip/components/ui and one raw block expects local public images that are absent from zip/public.
+    examples:
+      - file: for_blocks/hero166.tsx
+        location: for_blocks/hero166.tsx:3
+        snippet: imports @/components/ui/aspect-ratio and references /images/hero166/*.jpg
+      - file: for_blocks/logos10.tsx
+        location: for_blocks/logos10.tsx:5
+        snippet: imports @/components/ui/carousel and embla-carousel-auto-scroll
+      - file: for_blocks/testimonial7.tsx
+        location: for_blocks/testimonial7.tsx:5
+        snippet: imports avatar, badge, card, carousel, and embla-carousel-auto-scroll
+      - file: for_blocks/about3.tsx
+        location: for_blocks/about3.tsx:1
+        snippet: imports @/components/kibo-ui/marquee subcomponents absent from the repo.
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: TemplatePage2 preview page
+      responsibility: Hosts newly translated blocks for quick visual validation under /template2.
+      location: zip/src/pages/TemplatePage2.tsx
+      relationship_to_domain: domain depends on this
+    - component: TemplatePage reference page
+      responsibility: Canonical visual reference for spacing, typography, and approved section tone.
+      location: zip/src/pages/TemplatePage.tsx
+      relationship_to_domain: domain depends on this
+    - component: sections directory
+      responsibility: Stores translated business or preview sections imported into pages.
+      location: zip/src/components/sections/
+      relationship_to_domain: domain depends on this
+    - component: root-level UI wrappers
+      responsibility: Supplies primitives resolved by @ alias for raw blocks and translated sections.
+      location: zip/components/ui/
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: About3Props
+      location: for_blocks/about3.tsx
+      usage_pattern: Props-driven content contract already suitable for later business-block extraction.
+    - interface: About28Props
+      location: for_blocks/about28.tsx
+      usage_pattern: Props-driven mirrored layout that has already been translated once in the repo.
+    - interface: Hero166Props
+      location: for_blocks/hero166.tsx
+      usage_pattern: Minimal surface but coupled to missing AspectRatio and local image assets.
+  data_flow_involving_domain: Raw block JSX from for_blocks is translated into section components under zip/src/components/sections, then imported into zip/src/pages/TemplatePage2.tsx for preview rendering under the existing /template2 route.
+  key_relationships_to_domain:
+    - from: for_blocks/*.tsx
+      to: zip/components/ui/*
+      relationship: imports
+    - from: translated section files
+      to: zip/src/pages/TemplatePage2.tsx
+      relationship: imports
+    - from: zip/src/App.tsx
+      to: zip/src/pages/TemplatePage2.tsx
+      relationship: routes to
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - CSS
+  frameworks_used_in_domain:
+    - name: React 19.0.0
+      usage_in_domain: All requested blocks are React function components rendered through the zip frontend.
+    - name: Vite 6.2.0
+      usage_in_domain: Provides the zip frontend build and module resolution environment.
+    - name: Tailwind CSS 4.1.14
+      usage_in_domain: Raw blocks and translated sections use Tailwind utility classes throughout.
+  libraries_used_in_domain:
+    - name: "@base-ui/react 1.3.0"
+      purpose_in_domain: Underlies the current Button wrapper used by raw blocks and existing sections.
+    - name: class-variance-authority 0.7.1
+      purpose_in_domain: Styles the current Button variant system.
+    - name: clsx 2.1.1
+      purpose_in_domain: Supports class composition through cn utilities.
+    - name: tailwind-merge 3.5.0
+      purpose_in_domain: Supports merged utility class generation through cn utilities.
+    - name: lucide-react 0.546.0
+      purpose_in_domain: Provides icons used in About1, Feature285, and Hero166.
+    - name: framer-motion 12.38.0
+      purpose_in_domain: Drives Feature285 and Hero214 animation patterns and would support Hero166's animation logic.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Raw block component names are PascalCase numeric imports such as About28 or Feature285; translated sections in zip/src/components/sections preserve PascalCase exports and are imported directly into preview pages.
+  structure_of_domain: Preview pages import sections from zip/src/components/sections, while low-level reusable UI primitives resolve from root-level zip/components/ui via the @ alias.
+  error_handling_in_domain: Dynamic imports in carousel-based blocks catch plugin load failures and degrade to empty plugin arrays; no broader error-boundary pattern was found in the requested files.
+  testing_in_domain: TemplatePage2 uses a node:test plus renderToStaticMarkup smoke test that asserts preview labels and content ordering.
+  documentation_in_domain: The governing workflow is documented in .github/instructions/design-system.instructions.md, which explicitly defines TemplatePage as reference and TemplatePage2 as preview sandbox.
+
+related_dependencies:
+  internal:
+    - component: zip/components/ui/button.tsx
+      relationship_to_domain: Existing Button wrapper consumed by raw and translated sections.
+      direction: outbound
+    - component: zip/components/ui/marquee.tsx
+      relationship_to_domain: Existing marquee wrapper partially overlaps with raw Feature285 needs but not About3's kibo-ui API.
+      direction: outbound
+    - component: zip/src/components/sections/About28.tsx
+      relationship_to_domain: Existing translated sibling proves the adaptation workflow for one requested raw block.
+      direction: bidirectional
+    - component: zip/src/pages/TemplatePage2.tsx
+      relationship_to_domain: Preview host that would need imports/render slots for additional translated sections.
+      direction: inbound
+  external:
+    - name: embla-carousel-auto-scroll
+      purpose_for_domain: Required by raw Logos10 and Testimonial7 but absent from zip/package.json.
+
+domain_security_considerations:
+  sensitive_areas: []
+  authentication_patterns_in_domain: No authentication behavior is present in the requested blocks.
+  authorization_patterns_in_domain: No authorization behavior is present in the requested blocks.
+  data_validation_in_domain: The requested blocks are presentational and rely on TypeScript prop shapes rather than runtime validation.
+
+testing_patterns:
+  framework: node:test with react-dom/server static rendering checks
+  coverage_areas:
+    - TemplatePage2 preview content presence
+    - TemplatePage2 preview ordering
+  test_organization: Preview-page tests sit beside the page file in zip/src/pages.
+  mock_patterns:
+    - No mocking in the current TemplatePage2 test; assertions inspect rendered markup directly.
+
+open_questions:
+  - question: Should the work reuse the already translated zip/src/components/sections/About28.tsx or create a second fresh translation from for_blocks/about28.tsx for parity checking?
+    context: The repo already contains a translated About28 sibling, so preview coverage can be achieved either by reusing that file or by rebuilding from the raw source for stricter side-by-side parity.
+    type: decision_blocker
+    affects:
+      - adhoc-templatepage2-for-blocks
+  - question: For Hero166, should the preview preserve the raw local asset contract under /images/hero166, or should image sources be swapped during translation to existing repo-hosted/public assets?
+    context: No matching hero166 images were found under zip/public, so exact geometric translation depends on whether those assets must be added.
+    type: decision_blocker
+    affects:
+      - adhoc-templatepage2-for-blocks
+
+gaps:
+  - area: Missing local UI wrappers
+    description: No local files were found for zip/components/ui/aspect-ratio.tsx, avatar.tsx, badge.tsx, card.tsx, or carousel.tsx, and no kibo-ui marquee directory exists under zip/components.
+    impact: decision_blocker
+    affects:
+      - adhoc-templatepage2-for-blocks
+  - area: Missing Hero166 preview assets
+    description: No hero166-specific cooking images were found under zip/public, even though the raw block references /images/hero166/cooking-*.jpg.
+    impact: decision_blocker
+    affects:
+      - adhoc-templatepage2-for-blocks
+  - area: Missing carousel plugin dependency
+    description: embla-carousel-auto-scroll is dynamically imported by Logos10 and Testimonial7 but is not declared in zip/package.json.
+    impact: decision_blocker
+    affects:
+      - adhoc-templatepage2-for-blocks
+
+concise_report:
+  per_file:
+    - file: for_blocks/about1.tsx
+      exported_component: About1
+      major_dependencies:
+        - "lucide-react icons: CircleArrowRight, Files, Settings"
+        - "@/lib/utils cn"
+      likely_direct_copy_adaptation: yes
+      rationale: No missing local wrappers; only standard img tags, icons, and utility classes need translation into project section styling.
+    - file: for_blocks/about3.tsx
+      exported_component: About3
+      major_dependencies:
+        - "@/components/kibo-ui/marquee: Marquee, MarqueeContent, MarqueeFade, MarqueeItem"
+        - "@/components/ui/button"
+        - "@/lib/utils cn"
+      likely_direct_copy_adaptation: no
+      rationale: The kibo-ui marquee API used here does not exist in the repo; the existing marquee wrapper has a different API and would require structural adaptation.
+    - file: for_blocks/about28.tsx
+      exported_component: About28
+      major_dependencies:
+        - "@/components/ui/button"
+        - "@/lib/utils cn"
+      likely_direct_copy_adaptation: yes
+      rationale: Uses only existing primitives; the repo already contains an adapted About28 sibling under zip/src/components/sections/About28.tsx.
+    - file: for_blocks/feature285.tsx
+      exported_component: Feature285
+      major_dependencies:
+        - framer-motion motion
+        - lucide-react Forward
+        - "@/components/ui/marquee"
+        - "@/components/ui/button"
+        - "@/lib/utils cn"
+        - "@/components/feature285.css"
+      likely_direct_copy_adaptation: yes_with_small_asset_move
+      rationale: Core React and marquee/button dependencies exist, but the imported CSS file is absent from zip/components and would need to be added or inlined during translation.
+    - file: for_blocks/hero166.tsx
+      exported_component: Hero166
+      major_dependencies:
+        - lucide-react ArrowRight
+        - "@/components/ui/button"
+        - "@/components/ui/aspect-ratio"
+        - "@/lib/utils cn"
+        - local public assets under /images/hero166
+      likely_direct_copy_adaptation: no
+      rationale: Missing AspectRatio wrapper and missing image assets block a direct translation.
+    - file: for_blocks/logos10.tsx
+      exported_component: Logos10
+      major_dependencies:
+        - "@/components/ui/carousel: Carousel, CarouselContent, CarouselItem"
+        - embla-carousel-auto-scroll dynamic import
+        - "@/lib/utils cn"
+      likely_direct_copy_adaptation: no
+      rationale: Both the carousel wrapper and the embla auto-scroll package are missing from the repo.
+    - file: for_blocks/testimonial7.tsx
+      exported_component: Testimonial7
+      major_dependencies:
+        - "@/components/ui/avatar"
+        - "@/components/ui/badge"
+        - "@/components/ui/card"
+        - "@/components/ui/carousel"
+        - embla-carousel-auto-scroll dynamic import
+        - "@/lib/utils cn"
+      likely_direct_copy_adaptation: no
+      rationale: Depends on four missing local UI wrappers plus the missing embla auto-scroll package.
+  blockers:
+    - "Missing repo primitives: aspect-ratio, avatar, badge, card, carousel, and the specific kibo-ui marquee API used by About3 are absent from zip/components."
+    - "Missing package dependency: embla-carousel-auto-scroll is not listed in zip/package.json."
+    - "Missing local asset path: Hero166 expects /images/hero166/cooking-*.jpg, which is not present in zip/public."
+    - "Missing CSS asset path: Feature285 imports @/components/feature285.css, which is not present under zip/components."
+    - Button usage is not a primary blocker; current repo sections already use the same link-button API shapes.
+  recommended_batching_strategy:
+    recommendation: staged
+    rationale: Three blocks are low-friction and can validate the preview workflow quickly (About1, About28, Feature285 after CSS placement), while four blocks require new primitives, assets, or dependencies and should be isolated to avoid mixing preview translation with UI-kit/package expansion.
+    likely_stage_1:
+      - About1
+      - About28
+      - Feature285
+    likely_stage_2:
+      - About3
+      - Hero166
+      - Logos10
+      - Testimonial7
+  minimum_file_set_likely_needing_edits:
+    - zip/src/pages/TemplatePage2.tsx
+    - zip/src/pages/TemplatePage2.test.tsx
+    - zip/src/components/sections/About1.tsx
+    - zip/src/components/sections/About28.tsx or reuse existing About28.tsx if no fresh translation is required
+    - zip/src/components/sections/Feature285.tsx
+    - zip/components/feature285.css if CSS remains separate
+    - zip/src/components/sections/About3.tsx if the marquee API is translated
+    - zip/src/components/sections/Hero166.tsx if the hero is translated
+    - zip/src/components/sections/Logos10.tsx if the logo carousel is translated
+    - zip/src/components/sections/Testimonial7.tsx if the testimonial carousel is translated
+    - zip/components/ui/aspect-ratio.tsx if Hero166 is kept close to raw structure
+    - zip/components/ui/carousel.tsx if Logos10 or Testimonial7 are kept close to raw structure
+    - zip/components/ui/avatar.tsx if Testimonial7 is kept close to raw structure
+    - zip/components/ui/badge.tsx if Testimonial7 is kept close to raw structure
+    - zip/components/ui/card.tsx if Testimonial7 is kept close to raw structure
+    - zip/components/kibo-ui/marquee.tsx or equivalent adaptation path if About3 is kept close to raw structure
+    - zip/package.json if Logos10 or Testimonial7 keep embla-carousel-auto-scroll
+    - zip/public/images/hero166/* if Hero166 keeps the raw local image contract

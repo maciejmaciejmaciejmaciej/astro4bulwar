@@ -1,0 +1,227 @@
+plan_id: refactor-app-tsx
+objective: Extract all sections from zip/src/App.tsx into individual components inside zip/src/components/sections/ and refactor App.tsx to import them, grouping by waves of 4-5 components to avoid merge conflicts.
+created_at: '2026-03-22T00:00:00Z'
+created_by: gem-planner
+status: approved
+research_confidence: high
+
+tldr: |
+  - App.tsx is currently a monolithic file containing ~20 inline sections and subcomponents.
+  - The plan is to extract these sections into separate files in `zip/src/components/sections/`.
+  - The extraction is divided into waves, 4-5 components each, to prevent massive merge conflicts.
+  - Finally, App.tsx will be refactored to import and use the new components instead of inline code.
+
+open_questions:
+  - Should we keep the duplicated 'Wielkanoc w Bulwarze Section (Copied)' or use the same component twice? (Plan assumes using the same component twice).
+  - Are there any shared local states in App.tsx that need to be passed down as props to these sections?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Extracted components depend on local state in App.tsx that isn't passed down.
+      likelihood: medium
+      impact: high
+      mitigation: Implementers must carefully check for missing variables/props when extracting each section.
+    - scenario: Merge conflicts if multiple implementers touch App.tsx simultaneously.
+      likelihood: high
+      impact: medium
+      mitigation: The execution is strictly sequenced by waves. App.tsx is only modified marginally in the early waves or fully in the final wave.
+  assumptions:
+    - zip/src/components/sections/ directory can be created.
+    - Tailwind classes and UI components from zip/src/components/ui will resolve correctly from the new file locations.
+
+implementation_specification:
+  code_structure: Each section becomes a self-contained exported React component in `zip/src/components/sections/`.
+  affected_areas:
+    - zip/src/App.tsx
+    - zip/src/components/sections/*
+  component_details:
+    - component: ProductItem
+      responsibility: Display product
+    - component: Sub-sections
+      responsibility: Modularized UI parts like Navbar, Hero, Menu, Footer
+  dependencies:
+    - component: zip/src/App.tsx
+      relationship: Composes all the subcomponents.
+  integration_points:
+    - App.tsx will be the main integration point importing everything.
+
+contracts: []
+
+tasks:
+  - id: extract-wave-1
+    title: Extract Group 1 components (ProductItem, Project5a, About28, Navbar, HeroSection)
+    description: |
+      Extract the first 5 sections/components from App.tsx into individual files inside zip/src/components/sections/:
+      - ProductItem.tsx
+      - Project5a.tsx
+      - About28.tsx
+      - Navbar.tsx
+      - HeroSection.tsx
+      Update App.tsx to import and use these instead of inline definitions.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/App.tsx
+    estimated_effort: medium
+    estimated_files: 6
+    estimated_lines: 400
+    focus_area: zip/src/components/sections/
+    verification:
+      - Ensure the app compiles successfully after extracting.
+    acceptance_criteria:
+      - 5 new components exist and are imported into App.tsx.
+    failure_modes:
+      - scenario: Missing imports for UI components (e.g., button, icons) in the new files.
+        likelihood: high
+        impact: medium
+        mitigation: Run type checker or linter to ensure all imports are present.
+    tech_stack:
+      - react
+      - typescript
+      - tailwind
+    test_coverage: null
+
+  - id: extract-wave-2
+    title: Extract Group 2 components (ReservationQuickBar, ModernInterior, TheSelection, ServicesHighlights, EasterEvent)
+    description: |
+      Extract the next 5 sections from App.tsx into individual files inside zip/src/components/sections/:
+      - ReservationQuickBar.tsx
+      - ModernInteriorSection.tsx
+      - TheSelection.tsx
+      - ServicesHighlights.tsx
+      - EasterEventSection.tsx
+      Update App.tsx to import and use them.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - extract-wave-1
+    context_files:
+      - zip/src/App.tsx
+    estimated_effort: medium
+    estimated_files: 6
+    estimated_lines: 350
+    focus_area: zip/src/components/sections/
+    verification:
+      - Ensure the app compiles successfully.
+    acceptance_criteria:
+      - 5 new components exist and are imported into App.tsx.
+    failure_modes:
+      - scenario: Missing local assets/images.
+        likelihood: low
+        impact: low
+        mitigation: Ensure relative paths for imports are correct.
+    tech_stack:
+      - react
+      - typescript
+      - tailwind
+    test_coverage: null
+
+  - id: extract-wave-3
+    title: Extract Group 3 components (Breakfast, Menu, Gallery, Offer, Quote)
+    description: |
+      Extract 5 sections from App.tsx into zip/src/components/sections/:
+      - BreakfastSection.tsx
+      - MenuSection.tsx
+      - GallerySection.tsx
+      - OfferSection.tsx
+      - QuoteSection.tsx
+      Update App.tsx to import and use them.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - extract-wave-2
+    context_files:
+      - zip/src/App.tsx
+    estimated_effort: medium
+    estimated_files: 6
+    estimated_lines: 300
+    focus_area: zip/src/components/sections/
+    verification:
+      - Ensure the app compiles successfully.
+    acceptance_criteria:
+      - 5 new components exist and are imported into App.tsx.
+    failure_modes:
+      - scenario: Props mismatch when extracting the components.
+        likelihood: medium
+        impact: medium
+        mitigation: Verify React props and type definitions align.
+    tech_stack:
+      - react
+      - typescript
+      - tailwind
+    test_coverage: null
+
+  - id: extract-wave-4
+    title: Extract Group 4 components (Blog, SpecialOffer, SaladMenu, Footer, StickyCartBar)
+    description: |
+      Extract the remaining sections from App.tsx into zip/src/components/sections/:
+      - BlogSection.tsx
+      - SpecialOfferSection.tsx
+      - SaladMenuSection.tsx
+      - Footer.tsx
+      - StickyCartBar.tsx
+      Update App.tsx to import and use them.
+    wave: 4
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - extract-wave-3
+    context_files:
+      - zip/src/App.tsx
+    estimated_effort: medium
+    estimated_files: 6
+    estimated_lines: 200
+    focus_area: zip/src/components/sections/
+    verification:
+      - Ensure the app compiles successfully.
+    acceptance_criteria:
+      - 5 new components exist and are imported into App.tsx.
+      - App.tsx is now a clean composition of these imported components with minimal inline markup.
+    failure_modes:
+      - scenario: Orphaned state variables left in App.tsx.
+        likelihood: low
+        impact: low
+        mitigation: Cleanup unused imports and state variables in App.tsx.
+    tech_stack:
+      - react
+      - typescript
+      - tailwind
+    test_coverage: null
+
+  - id: review-app-tsx-refactor
+    title: Review App.tsx Refactoring
+    description: |
+      Perform a review of the refactoring to ensure App.tsx is clean, components are correctly named, there are no unused imports, and the application renders the same as before. Include checking if 'Wielkanoc w Bulwarze Section (Copied)' was handled properly as a single reusable component used twice.
+    wave: 5
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - extract-wave-4
+    context_files:
+      - zip/src/App.tsx
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 0
+    focus_area: zip/src/App.tsx
+    verification:
+      - App.tsx contains no large inline markup sections.
+    acceptance_criteria:
+      - Code is clean, maintainable, and duplicate code blocks are removed.
+    failure_modes:
+      - scenario: Regression in visual layout.
+        likelihood: medium
+        impact: high
+        mitigation: Visual verification or snapshot testing if available.
+    requires_review: true
+    review_depth: standard
+    security_sensitive: false

@@ -1,0 +1,344 @@
+plan_id: "astro-build-time-slug-discovery-20260420"
+objective: >
+  Replace manual Astro TEST_PAGE_SLUGS with a build-time slug discovery flow
+  sourced from WordPress page-builder, with minimal and safe changes that keep
+  the current topology: WordPress on /, React on /react, Astro on /astro.
+created_at: "2026-04-20T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 3
+  risk_score: "medium"
+
+tldr: |
+  The smallest safe replacement for TEST_PAGE_SLUGS is a new public WordPress
+  list endpoint next to the existing per-slug page-builder route, plus one
+  Astro build-time helper that fetches that list and feeds getStaticPaths().
+  The list should return only already-buildable public pages instead of full
+  schemas, so Astro still uses the existing GET /page-builder/pages/{slug}
+  contract for page content. This keeps topology unchanged, removes manual slug
+  editing from astro-site/src/lib/config.ts, and avoids over-engineering such
+  as repo manifests or authenticated preview discovery in phase 1. Sources:
+  astro-site/src/lib/config.ts, astro-site/src/pages/[slug].astro,
+  astro-site/src/lib/wordpress.ts,
+  wordpress-plugin/bulwar-bridge/src/Http/Routes.php,
+  wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+  docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md.
+
+open_questions:
+  - >
+    Whether pages marked with page_builder_schema.seo.noindex should be omitted
+    from the Astro build entirely or still built for non-indexed public use.
+    This plan recommends omitting them from the buildable list for the first
+    pass to keep sitemap/indexation behavior simple.
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: >
+        The new list endpoint returns slugs for pages that still fail the
+        existing per-slug schema fetch because page_builder_schema is missing or
+        invalid JSON.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >
+        Reuse the same page_builder_schema presence and decode checks already
+        performed in PageBuilderController::show() before a page is included in
+        the list, and cover that behavior with a focused controller test.
+        Sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+    - scenario: >
+        Draft, private, test, or explicitly noindex pages leak into Astro
+        static generation and later into production crawl surfaces.
+      likelihood: "medium"
+      impact: "critical"
+      mitigation: >
+        Make the list endpoint fail closed: include only published WordPress
+        pages with valid page_builder_schema and without explicit seo.noindex,
+        and keep getStaticPaths() dependent on that endpoint only. Sources:
+        PageBuilderController.php mapPostStatus(), astro-site/src/pages/[slug].astro,
+        docs/setup/checklista-migracji-seo-wordpress-do-astro.md.
+    - scenario: >
+        The change grows into a second source of truth for publication state,
+        for example by introducing a separate manifest or manual Astro-only flag
+        while WordPress already stores the page instance and schema.
+      likelihood: "medium"
+      impact: "medium"
+      mitigation: >
+        Keep WordPress page status plus page_builder_schema as the only phase-1
+        source of truth; reserve schema.build for later refinement only if a
+        real need appears. Sources: astro-site/src/lib/types.ts,
+        wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+        /memories/repo/page-builder-wordpress-page-creation.md.
+  assumptions:
+    - >
+      The current per-slug page-builder GET endpoint remains the canonical data
+      source for actual page rendering, and the new list endpoint should expose
+      only lightweight discovery data. Sources: astro-site/src/lib/wordpress.ts,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+    - >
+      Topology must stay unchanged: WordPress on /, React on /react, Astro on
+      /astro. Source: /memories/repo/astro-wp-clone-workflow.md.
+    - >
+      Manual TEST_PAGE_SLUGS is currently a temporary proof-of-concept gate and
+      not the intended long-term source of publishable pages. Sources:
+      astro-site/src/lib/config.ts,
+      docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md.
+
+implementation_specification:
+  code_structure: |
+    Keep the content flow split into two layers: a lightweight public discovery
+    endpoint in bulwar-bridge for buildable slugs, and the existing per-slug
+    schema endpoint for full page payloads. In Astro, move static path
+    generation into a dedicated fetch helper in src/lib/wordpress.ts or a small
+    adjacent helper, and make [slug].astro consume that helper inside
+    getStaticPaths(). Remove TEST_PAGE_SLUGS from config.ts rather than keeping
+    two parallel discovery mechanisms.
+  affected_areas:
+    - "wordpress-plugin/bulwar-bridge/src/Http/Routes.php"
+    - "wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php"
+    - "wordpress-plugin/bulwar-bridge/tests/**"
+    - "astro-site/src/lib/config.ts"
+    - "astro-site/src/lib/wordpress.ts"
+    - "astro-site/src/pages/[slug].astro"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+  component_details:
+    - component: "Public buildable-pages endpoint"
+      responsibility: >
+        Expose a public REST list for Astro build discovery without returning
+        full page schemas.
+      interfaces:
+        - "GET /wp-json/bulwar/v1/page-builder/pages returns success.data.pages[]."
+        - "Each item includes at least slug, pageId, title, status, and optional canonical/noindex summary fields if needed for filtering/debugging."
+    - component: "Buildable page filter"
+      responsibility: >
+        Decide which WordPress pages are allowed into Astro static generation
+        using only public-safe, already-existing signals.
+      interfaces:
+        - "Phase-1 rule: page post_status must be publish, page_builder_schema must exist and decode to an array, normalized schema.page.status must resolve to published, and seo.noindex must not be true."
+    - component: "Astro slug discovery helper"
+      responsibility: >
+        Fetch the buildable page list at build time and convert it to static
+        params for [slug].astro.
+      interfaces:
+        - "fetchWordPressBuildablePages(): Promise<Array<{ slug: string } & Record<string, unknown>>>"
+        - "getStaticPaths() maps discovery results to { params: { slug } }."
+    - component: "Operator documentation update"
+      responsibility: >
+        Replace the old operator step that says to edit TEST_PAGE_SLUGS when a
+        new page should be statically generated.
+      interfaces:
+        - "Docs describe that publishable WordPress/page-builder state now drives Astro build discovery automatically."
+  dependencies:
+    - component: "PageBuilderController"
+      relationship: >
+        Already normalizes per-page schema and can host the new public list logic
+        without creating a separate controller for one small route.
+    - component: "Response helper"
+      relationship: >
+        Provides the existing success/error payload envelope that the new list
+        endpoint should reuse for consistency.
+    - component: "[slug].astro"
+      relationship: >
+        Continues to render full page data from GET /page-builder/pages/{slug},
+        but stops enumerating slugs locally.
+  integration_points:
+    - "GET /wp-json/bulwar/v1/page-builder/pages"
+    - "GET /wp-json/bulwar/v1/page-builder/pages/{slug}"
+    - "astro-site build-time getStaticPaths()"
+
+contracts:
+  - from_task: "add_wordpress_buildable_pages_endpoint"
+    to_task: "switch_astro_to_build_time_slug_discovery"
+    interface: >
+      Public REST payload with the buildable page list used by Astro during
+      static path generation.
+    format: |
+      {
+        "success": true,
+        "data": {
+          "pages": [
+            {
+              "pageId": 122,
+              "slug": "testowa-blueprint",
+              "title": "Testowa Blueprint",
+              "status": "published"
+            }
+          ]
+        },
+        "meta": {
+          "request_id": "...",
+          "timestamp": "...",
+          "total": 1
+        }
+      }
+  - from_task: "switch_astro_to_build_time_slug_discovery"
+    to_task: "document_new_slug_discovery_workflow"
+    interface: >
+      Astro no longer requires manual TEST_PAGE_SLUGS editing; statically built
+      pages are discovered from WordPress/page-builder state.
+    format: "Operator-facing workflow note"
+
+tasks:
+  - id: "add_wordpress_buildable_pages_endpoint"
+    title: "Add a public page-builder list endpoint for Astro build discovery"
+    description: |
+      Extend bulwar-bridge with a sibling GET route at /page-builder/pages that
+      returns only buildable public page summaries. Keep the existing per-slug
+      GET/POST route unchanged. Reuse PageBuilderController and Response::success
+      so the new route stays consistent with the current bridge style, and apply
+      the same fail-closed checks needed to ensure Astro will not receive slugs
+      for invalid or non-public pages. Sources:
+      wordpress-plugin/bulwar-bridge/src/Http/Routes.php,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+      wordpress-plugin/bulwar-bridge/src/Support/Response.php.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers: ["api-contract", "filtering-rules"]
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "wordpress-plugin/bulwar-bridge/src/Http/Routes.php"
+        description: "Current public route registration for layout/global and page-builder pages/{slug}."
+      - path: "wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php"
+        description: "Existing page resolution, schema normalization, and post-status mapping logic."
+      - path: "wordpress-plugin/bulwar-bridge/src/Support/Response.php"
+        description: "Current REST response envelope helper."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Introduce the smallest backend contract needed to replace TEST_PAGE_SLUGS without changing page rendering payloads."
+        timestamp: "2026-04-20T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "public slug discovery contract"
+        verification:
+          - "GET /wp-json/bulwar/v1/page-builder/pages returns only expected published, schema-valid pages."
+          - "Existing GET /wp-json/bulwar/v1/page-builder/pages/{slug} behavior does not regress."
+        acceptance_criteria:
+          - "A new public list route exists and uses the standard success envelope."
+          - "Pages without valid page_builder_schema are excluded from the list."
+          - "Draft/private/non-public pages are excluded from the list."
+        failure_modes:
+          - scenario: "List logic diverges from existing schema validation assumptions."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Share or mirror the same schema-read/JSON-decode checks already used in show()."
+        tech_stack:
+          - "PHP"
+          - "WordPress REST API"
+        test_coverage: "Add or extend a focused controller/route test covering route registration and filtering behavior."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: false
+
+  - id: "switch_astro_to_build_time_slug_discovery"
+    title: "Replace TEST_PAGE_SLUGS with build-time WordPress discovery in Astro"
+    description: |
+      Remove the manual slug array from Astro config and switch [slug].astro
+      getStaticPaths() to a build-time helper that fetches the new list endpoint.
+      Keep the existing full-schema fetch path for actual rendering, so only the
+      static-path discovery changes. This preserves the current topology and
+      minimizes Astro-side churn to config.ts, wordpress.ts, and [slug].astro.
+      Sources: astro-site/src/lib/config.ts, astro-site/src/lib/wordpress.ts,
+      astro-site/src/pages/[slug].astro,
+      /memories/repo/astro-wp-clone-workflow.md.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers: ["astro-code-changes"]
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "add_wordpress_buildable_pages_endpoint"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/lib/config.ts"
+        description: "Current WORDPRESS_BASE_URL and TEST_PAGE_SLUGS constants."
+      - path: "astro-site/src/lib/wordpress.ts"
+        description: "Existing build-time WordPress fetch helper for per-slug schema."
+      - path: "astro-site/src/pages/[slug].astro"
+        description: "Current getStaticPaths() implementation using TEST_PAGE_SLUGS."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Limit Astro changes to path discovery while preserving full-page schema rendering behavior."
+        timestamp: "2026-04-20T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 120
+        focus_area: "getStaticPaths build-time discovery"
+        verification:
+          - "Astro build requests the new list endpoint once and then fetches each listed slug via the existing per-slug endpoint."
+          - "No manual TEST_PAGE_SLUGS editing remains in the Astro path-generation flow."
+        acceptance_criteria:
+          - "astro-site/src/lib/config.ts no longer exports TEST_PAGE_SLUGS."
+          - "A helper fetches buildable pages from WordPress at build time."
+          - "[slug].astro getStaticPaths() is driven by the new helper."
+        failure_modes:
+          - scenario: "Build fails unclearly when the list endpoint is unavailable."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Surface a direct fetch error naming the list endpoint and expected payload shape."
+        tech_stack:
+          - "TypeScript"
+          - "Astro"
+        test_coverage: "At minimum add a small helper test or smoke-check the build against a representative endpoint response."
+        requires_review: false
+        review_depth: null
+        review_security_sensitive: false
+
+  - id: "document_new_slug_discovery_workflow"
+    title: "Update operator docs to remove the old manual slug step"
+    description: |
+      Refresh the page-builder authoring workflow so operators no longer treat
+      TEST_PAGE_SLUGS editing as part of making a page visible under /astro/.
+      The doc should explain that once a page is published in WordPress and has
+      valid page_builder_schema, Astro build discovery picks it up automatically
+      through the new list endpoint. Sources:
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md.
+    wave: 3
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers: ["docs-update"]
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "switch_astro_to_build_time_slug_discovery"
+    conflicts_with: []
+    context_files:
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Current operator sequence still includes adding a slug to TEST_PAGE_SLUGS."
+      - path: "docs/plan/astro-wordpress-page-builder/seo-ai-visibility-roadmap.md"
+        description: "Already notes replacing TEST_PAGE_SLUGS with a build-time source."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Keep operational docs in sync with the new automatic discovery behavior."
+        timestamp: "2026-04-20T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 1
+        estimated_lines: 40
+        focus_area: "operator workflow parity"
+        verification:
+          - "No operator-facing doc still instructs users to edit TEST_PAGE_SLUGS for new Astro pages in the updated workflow."
+        acceptance_criteria:
+          - "The primary page-builder authoring doc reflects automatic Astro slug discovery."
+          - "The new buildability rules are stated plainly for operators."
+        failure_modes:
+          - scenario: "Docs lag the implementation and operators keep following the old manual step."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Update the canonical workflow doc in the same pass as implementation."
+        task_type: "update"
+        audience: "developers"
+        coverage_matrix:
+          - "WordPress/page-builder publish state -> Astro build discovery"
+          - "Removal of TEST_PAGE_SLUGS from operator workflow"

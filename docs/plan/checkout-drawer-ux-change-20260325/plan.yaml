@@ -1,0 +1,248 @@
+plan_id: checkout-drawer-ux-change-20260325
+objective: >-
+  Update the checkout drawer UX so the submit CTA uses the new approval wording,
+  submission is gated by a required sales-regulations consent checkbox, and a
+  successful order keeps the drawer open while rendering an inline confirmation
+  summary with copyable order details.
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Implement the urgent checkout UX change entirely inside the existing checkout drawer.
+  Keep the current design system and class vocabulary, reuse the established card-style control pattern for consent, and replace the alert-plus-close success path with an inline confirmation state that preserves a post-submit order snapshot.
+
+open_questions:
+  - Should the live cart badge clear immediately after success once the drawer stores its own immutable confirmation snapshot? Current plan assumes yes.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Success view renders after onClearCart without preserving a local snapshot, causing the purchased-products summary to disappear.
+      likelihood: medium
+      impact: high
+      mitigation: Capture all success-display data in a dedicated local success-state object before invoking any cart-clearing callback.
+    - scenario: The new consent control uses ad hoc styles that drift from the existing drawer controls and violate the current design system.
+      likelihood: medium
+      impact: medium
+      mitigation: Reuse existing border, spacing, typography, rounded-[4px], and selected-card patterns already present in CheckoutDrawer.
+    - scenario: Closing behavior or form reset logic regresses, leaving the drawer stuck in success mode on the next open.
+      likelihood: medium
+      impact: high
+      mitigation: Reset the success snapshot and consent field only on explicit drawer close or fresh open initialization.
+  assumptions:
+    - The bridge order response remains limited to the documented fields in wordpress-plugin/bulwar-bridge/docs/contracts.md.
+    - The confirmation view can derive purchased products and fulfillment labels from existing drawer props and local form state without backend changes.
+    - Clipboard support will use the browser navigator.clipboard API with a fallback message if unavailable.
+
+implementation_specification:
+  code_structure: >-
+    Keep the change scoped to the CheckoutDrawer component by introducing a small
+    local success snapshot type/state, a required consent form field, and a
+    conditional render branch for the submit section versus the post-success
+    confirmation view.
+  affected_areas:
+    - zip/components/CheckoutDrawer.tsx
+  component_details:
+    - component: CheckoutDrawer consent gating
+      responsibility: Add the required sales-regulations acceptance control and make it part of submit readiness and validation messaging.
+      interfaces:
+        - CheckoutFormValues extends with a required consent boolean field.
+        - Submit CTA remains the existing Button primitive with updated label text.
+    - component: CheckoutDrawer success snapshot
+      responsibility: Persist all data needed for the inline confirmation view after a successful order response.
+      interfaces:
+        - Local success state stores order number, cart snapshot, totals, payment label, fulfillment label, selected slot/date, email, and copy payload text.
+    - component: CheckoutDrawer confirmation view
+      responsibility: Replace the current alert-close path with an inline success panel rendered inside the drawer while keeping the drawer open.
+      interfaces:
+        - Confirmation view exposes a copy action and a user-facing note about the confirmation email.
+  dependencies:
+    - component: CheckoutDrawer form state
+      relationship: Supplies customer, consent, fulfillment, and selected slot data to the success snapshot creator.
+    - component: CheckoutDrawer cart props
+      relationship: Supply purchased product names, quantities, prices, and totals for the confirmation summary.
+    - component: bulwar bridge order response
+      relationship: Supplies order_number, payment_method, totals, and fulfillment response fields used in the confirmation snapshot.
+  integration_points:
+    - Existing react-hook-form schema and defaultValues in CheckoutDrawer.
+    - Existing onSubmit success branch in CheckoutDrawer.
+    - Existing drawer open/close lifecycle effects in CheckoutDrawer.
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: Consent and success snapshot state shape added to CheckoutDrawer form and local component state.
+    format: TypeScript local types and react-hook-form field paths.
+  - from_task: T1
+    to_task: T3
+    interface: Success snapshot payload definition with cart items, totals, payment label, fulfillment label, slot/date, and customer email.
+    format: TypeScript object stored in component state.
+
+tasks:
+  - id: T1
+    title: Define drawer-local consent and success-state model
+    description: |
+      Extend the existing checkout form model with a required consent field and
+      define a minimal immutable success snapshot that contains every piece of data
+      the post-submit confirmation view needs after the live cart has been cleared.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Existing form schema, submit flow, and drawer lifecycle.
+      - wordpress-plugin/bulwar-bridge/docs/contracts.md: Documented order success response shape.
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 90
+    focus_area: checkout_drawer_state
+    verification:
+      - Form model includes consent and default state without breaking existing personal/payment/fulfillment validation.
+      - Success snapshot covers products, totals, payment, fulfillment, slot/date, and customer email before any cart reset callback fires.
+    acceptance_criteria:
+      - A dedicated local success-state contract exists for inline confirmation rendering.
+      - Consent is represented in the same form lifecycle as the existing checkout data.
+    failure_modes:
+      - scenario: Snapshot omits a required field and forces the UI to depend on cleared external state.
+        likelihood: medium
+        impact: high
+        mitigation: Enumerate all required confirmation fields up front and populate them before clearing any cart data.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - react-hook-form
+      - Zod
+    test_coverage: Manual success-path validation in the local drawer flow.
+
+  - id: T2
+    title: Update pre-submit UX and consent gating
+    description: |
+      Change the submit CTA label to "POTWIERDZAM ZAMÓWIENIE", insert a required
+      "Akceptuje regulamin sprzedaży" control directly above submission, and gate
+      submission and inline error messaging without introducing any new design
+      system primitives or off-pattern styling.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Existing submit section and card-style selectable controls.
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 110
+    focus_area: checkout_drawer_submit_section
+    verification:
+      - Submit remains blocked until consent is checked.
+      - Consent validation message appears inline using the existing drawer typography/error pattern.
+      - Updated CTA wording is visible in idle state while preserving the loading label.
+    acceptance_criteria:
+      - The drawer shows the required consent control immediately before submission.
+      - The submit CTA text matches the requested wording exactly.
+      - The change reuses existing spacing, border, and typography classes already present in CheckoutDrawer.
+    failure_modes:
+      - scenario: Consent only disables the button visually but can be bypassed through form submission.
+        likelihood: medium
+        impact: high
+        mitigation: Enforce consent in both schema/form validation and submit readiness checks.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - react-hook-form
+      - Zod
+    test_coverage: Manual validation of checked and unchecked submit attempts.
+
+  - id: T3
+    title: Replace success alert with inline confirmation view
+    description: |
+      Remove the browser alert and automatic drawer close from the success branch,
+      render an inline confirmation panel inside the drawer, show purchased
+      products, prices, payment method, fulfillment type, selected term/slot, a
+      copy-information action, and a note that details were sent to the provided
+      email address.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Current success branch and existing summary layout.
+      - zip/src/lib/cateringCart.ts: Cart display-item shape already passed to the drawer.
+      - wordpress-plugin/bulwar-bridge/docs/contracts.md: Successful order response payload.
+    estimated_effort: medium
+    estimated_files: 1
+    estimated_lines: 180
+    focus_area: checkout_drawer_success_view
+    verification:
+      - Successful order creation leaves the drawer open and swaps submit/form completion UI for a confirmation view.
+      - Confirmation content includes products, totals, payment method, fulfillment type, selected date/slot, and provided email.
+      - Copy action produces a single text block with order details appropriate for clipboard copy.
+    acceptance_criteria:
+      - No browser alert is shown after success.
+      - The drawer does not auto-close on success.
+      - The inline success view remains stable even if the external cart is cleared.
+    failure_modes:
+      - scenario: Success view depends on mutable form/watch values that are reset or changed after order creation.
+        likelihood: medium
+        impact: high
+        mitigation: Render from a frozen success snapshot captured inside the success branch.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - navigator.clipboard API
+    test_coverage: Manual success-path validation for pickup and delivery summaries.
+
+  - id: T4
+    title: Validate drawer flow and prepare frontend deployment handoff
+    description: |
+      Run focused validation on the checkout drawer flow to confirm consent gating,
+      inline success rendering, copy behavior, and drawer lifecycle reset, then
+      prepare the frontend-only deployment notes for the existing dhosting React
+      bundle workflow.
+    wave: 3
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - T2
+      - T3
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: Final UX behavior under test.
+      - zip/package.json: Build command for the React bundle.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 40
+    focus_area: checkout_drawer_validation
+    verification:
+      - Local production build completes successfully.
+      - Drawer resets from confirmation state on a fresh reopen.
+      - No regression appears in cart summary totals for pickup or delivery.
+    acceptance_criteria:
+      - Validation covers unchecked consent, successful pickup order, and successful delivery order with quote.
+      - Deployment notes are limited to the React frontend bundle and post-upload permission fix.
+    failure_modes:
+      - scenario: The drawer remains in success mode after closing and reopening.
+        likelihood: medium
+        impact: medium
+        mitigation: Explicitly reset success state on close lifecycle and verify with manual reopen testing.
+    validation_matrix:
+      - scenario: Unchecked consent
+        steps:
+          - Open the drawer with a valid cart and complete personal, payment, and fulfillment fields.
+          - Leave the consent control unchecked and attempt submission.
+        expected_result: Submission is blocked and the consent error is shown inline above the CTA.
+      - scenario: Successful pickup order
+        steps:
+          - Complete the flow for pickup with consent checked and submit.
+          - Wait for the order endpoint to return success.
+        expected_result: The drawer stays open and shows the inline confirmation summary with copy action and email note.
+      - scenario: Successful delivery order
+        steps:
+          - Complete address, delivery quote, date, slot, consent, and submit.
+          - Wait for the order endpoint to return success.
+        expected_result: The confirmation summary shows delivery totals and the selected delivery term/slot without an alert.

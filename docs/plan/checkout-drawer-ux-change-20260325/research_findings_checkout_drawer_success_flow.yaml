@@ -1,0 +1,391 @@
+plan_id: checkout-drawer-ux-change-20260325
+objective: Research the current checkout drawer implementation for an urgent UX change around order submission success.
+focus_area: checkout_drawer_success_flow
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+	- The checkout submit CTA in the drawer is currently labeled "Kontynuuj zamówienie" and switches to "Zapisuję zamówienie..." while the order request is in flight.
+	- Submission is gated by zod validation, derived section-completion booleans, and runtime checks for non-empty cart, manual cash payment, selected slot, and a delivery quote for delivery orders.
+	- There is no existing checkbox component or checkbox usage in the zip frontend; the nearest reusable interaction pattern is the card-style sr-only radio control already used for payment, fulfillment type, date, and time slot.
+	- Successful order creation currently triggers a browser alert, then clears the cart and closes the drawer immediately, so no inline success state exists today.
+	- All data required for an inline success summary already exists locally in CheckoutDrawer state/props or in the bridge response: cart items, subtotal, computed delivery fee, payment method, fulfillment type, selected slot, delivery address, and response totals/order number.
+
+research_metadata:
+	methodology: Hybrid retrieval using semantic_search plus grep_search, followed by targeted read_file examination of the checkout drawer, its page-level state source, cart serialization helpers, shared button component, and bridge order contract documentation.
+	scope: Focused review of the checkout drawer success path, surrounding cart state plumbing, reusable form-control patterns, and the bridge response surface relevant to an inline success summary.
+	confidence: high
+	coverage: 92
+
+files_analyzed:
+	- file: CheckoutDrawer.tsx
+		path: zip/components/CheckoutDrawer.tsx
+		purpose: Bottom-sheet checkout UI that validates form input, fetches delivery quotes and slots, submits bridge orders, and currently handles success/error feedback.
+		key_elements:
+			- element: checkoutSchema
+				type: variable
+				location: zip/components/CheckoutDrawer.tsx:15
+				description: Zod schema that validates personal data, payment method, fulfillment type, and required delivery fields.
+			- element: isPersonalDataComplete
+				type: variable
+				location: zip/components/CheckoutDrawer.tsx:317
+				description: Derived completion gate for the personal data card.
+			- element: isPaymentComplete
+				type: variable
+				location: zip/components/CheckoutDrawer.tsx:323
+				description: Derived completion gate for the payment card.
+			- element: isFulfillmentComplete
+				type: variable
+				location: zip/components/CheckoutDrawer.tsx:325
+				description: Derived completion gate that requires date, time slot, selected slot, and delivery address plus quote when delivery is chosen.
+			- element: fetchDeliveryQuote
+				type: function
+				location: zip/components/CheckoutDrawer.tsx:419
+				description: Calls the bridge delivery-quote endpoint and then fetches delivery slots.
+			- element: onSubmit
+				type: function
+				location: zip/components/CheckoutDrawer.tsx:486
+				description: Performs final runtime checks and posts the order request to the bridge.
+			- element: submit button
+				type: pattern
+				location: zip/components/CheckoutDrawer.tsx:847
+				description: Renders the final CTA and current submit error message.
+		language: TSX
+		lines: 866
+
+	- file: CateringWielkanocnyPage.tsx
+		path: zip/src/pages/CateringWielkanocnyPage.tsx
+		purpose: Source page that owns cart state, derives drawer props, and passes handlers to the drawer.
+		key_elements:
+			- element: cartState
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:95
+				description: Persistent cart state loaded from localStorage and updated by page handlers.
+			- element: handleClearCart
+				type: function
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:179
+				description: Resets the cart state to empty and is passed into CheckoutDrawer as onClearCart.
+			- element: cartItems
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:184
+				description: Drawer-friendly display model built from cart state.
+			- element: cartLinesPayload
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:185
+				description: Bridge request payload lines derived from cart state.
+			- element: subtotal
+				type: variable
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:187
+				description: Current item subtotal passed into the drawer.
+			- element: CheckoutDrawer usage
+				type: pattern
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:252
+				description: Supplies isOpen, onClose, cart items, payload lines, totals, quantity updater, and clear-cart handler.
+		language: TSX
+		lines: 264
+
+	- file: cateringCart.ts
+		path: zip/src/lib/cateringCart.ts
+		purpose: Normalizes cart storage, display items, and bridge checkout payload lines.
+		key_elements:
+			- element: CateringCartDisplayItem
+				type: interface
+				location: zip/src/lib/cateringCart.ts:34
+				description: Display model consumed by CheckoutDrawer, including item name, quantity, price, and special-menu summary lines.
+			- element: BridgeCheckoutCartLine
+				type: interface
+				location: zip/src/lib/cateringCart.ts:45
+				description: Serialized order line payload sent to the bridge.
+			- element: buildCheckoutDrawerItems
+				type: function
+				location: zip/src/lib/cateringCart.ts:368
+				description: Converts cart lines into the display items rendered in the drawer summary.
+			- element: getCateringCartSubtotal
+				type: function
+				location: zip/src/lib/cateringCart.ts:403
+				description: Computes the item subtotal used by the drawer.
+			- element: buildBridgeCheckoutCartLines
+				type: function
+				location: zip/src/lib/cateringCart.ts:407
+				description: Builds the request payload lines used for order submission.
+		language: TypeScript
+		lines: 428
+
+	- file: button.tsx
+		path: zip/components/ui/button.tsx
+		purpose: Shared button primitive used by the drawer CTA and delivery quote action.
+		key_elements:
+			- element: Button
+				type: function
+				location: zip/components/ui/button.tsx:47
+				description: Base UI button wrapper with shared variants and rounded-[4px] visual system.
+			- element: buttonVariants
+				type: variable
+				location: zip/components/ui/button.tsx:5
+				description: Central class-variance-authority definition for button styling.
+		language: TSX
+		lines: 58
+
+	- file: contracts.md
+		path: wordpress-plugin/bulwar-bridge/docs/contracts.md
+		purpose: Documents the order endpoint response shape used after successful checkout submission.
+		key_elements:
+			- element: order success response example
+				type: pattern
+				location: wordpress-plugin/bulwar-bridge/docs/contracts.md:390
+				description: Shows returned order_id, order_number, status, payment_method, currency, totals, and fulfillment slot timestamps.
+		language: Markdown
+		lines: 462
+
+patterns_found:
+	- category: structure
+		pattern: Section-gated checkout form
+		description: The drawer divides checkout into personal data, payment, fulfillment, and submit sections. Later sections are visually and interactively gated with opacity and pointer-events-none until earlier sections are complete.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:650
+				snippet: "Box 2 and Box 3 wrap classes with !isPersonalDataComplete / !isPaymentComplete to lock later steps."
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:840
+				snippet: "The submit section applies opacity-50 pointer-events-none until all three completion booleans are truthy."
+		prevalence: common
+
+	- category: error_handling
+		pattern: Mixed schema validation plus imperative submit guards
+		description: Zod handles field-level validation, while onSubmit adds request-precondition guards for cart presence, currently supported payment type, slot selection, and required delivery quote state.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:15
+				snippet: "checkoutSchema.superRefine adds custom issues for missing date, time slot, and delivery address."
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:487
+				snippet: "onSubmit sets submitError for empty cart, unsupported payment, missing slot, and missing delivery quote."
+		prevalence: common
+
+	- category: architecture
+		pattern: Local-state checkout success handling
+		description: The success path does not create a dedicated success state. It uses the immediate bridge response for a browser alert and then exits the drawer flow by clearing cart state and closing the drawer.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:548
+				snippet: "alert(`Zamówienie zapisane. Numer: ${payload.data.order_number}`); onClearCart?.(); onClose();"
+		prevalence: occasional
+
+	- category: naming
+		pattern: Presentational radio-card controls instead of native-looking inputs
+		description: Selectable options are rendered as label-wrapped bordered cards with sr-only radios and custom filled-circle indicators. This is the only established selectable-control pattern found in the checkout UI.
+		examples:
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:715
+				snippet: "Payment method uses label + sr-only radio + custom w-5 h-5 rounded-full indicator."
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:747
+				snippet: "Fulfillment type uses the same card pattern and classes."
+		prevalence: common
+
+	- category: structure
+		pattern: No existing checkbox implementation in the zip frontend
+		description: The reviewed frontend contains Button and marquee UI primitives, but no checkbox component file and no checkbox usage were found during targeted searches of zip source files.
+		examples:
+			- file: zip/components/ui/button.tsx
+				location: zip/components/ui/button.tsx:1
+				snippet: "The ui folder currently exposes button.tsx and marquee.tsx only."
+			- file: zip/components/CheckoutDrawer.tsx
+				location: zip/components/CheckoutDrawer.tsx:717
+				snippet: "Checkout uses sr-only radio inputs, not checkboxes, for its selectable controls."
+		prevalence: rare
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: CateringWielkanocnyPage
+			responsibility: Owns cart state and passes cart-derived display items, payload lines, totals, close handler, quantity handler, and clear-cart handler into the drawer.
+			location: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship_to_domain: domain depends on this
+		- component: CheckoutDrawer
+			responsibility: Collects checkout inputs, requests quote/slots, submits orders, and currently performs success feedback/exit behavior.
+			location: zip/components/CheckoutDrawer.tsx
+			relationship_to_domain: core domain surface
+		- component: cateringCart helpers
+			responsibility: Provide the display and request-layer cart models that make an inline success summary possible without refetching.
+			location: zip/src/lib/cateringCart.ts
+			relationship_to_domain: domain depends on this
+		- component: bulwar bridge order contract
+			responsibility: Defines the post-submit response payload available after a successful order creation.
+			location: wordpress-plugin/bulwar-bridge/docs/contracts.md
+			relationship_to_domain: domain depends on this
+	interfaces_used_by_domain:
+		- interface: CheckoutDrawerProps
+			location: zip/components/CheckoutDrawer.tsx:63
+			usage_pattern: Receives cart display data, payload lines, totals, close callback, quantity update callback, and clear-cart callback.
+		- interface: QuoteResponseData
+			location: zip/components/CheckoutDrawer.tsx:74
+			usage_pattern: Stores delivery fee, quote token, distance, and expiry for delivery summary/state.
+		- interface: SlotOption
+			location: zip/components/CheckoutDrawer.tsx:80
+			usage_pattern: Provides selected slot label, start/end timestamps, capacity, token, and expiry.
+		- interface: CateringCartDisplayItem
+			location: zip/src/lib/cateringCart.ts:34
+			usage_pattern: Supplies purchased product names, prices, quantities, and special-menu summary lines for rendering.
+		- interface: BridgeCheckoutCartLine
+			location: zip/src/lib/cateringCart.ts:45
+			usage_pattern: Serialized request lines posted to the bridge order endpoint.
+	data_flow_involving_domain: The page builds cartState from localStorage-backed state, derives cartItems, cartLinesPayload, itemCount, and subtotal, and passes them to CheckoutDrawer. CheckoutDrawer combines those props with react-hook-form values, quoteData, slotsData, and selectedSlot to POST /wp-json/bulwar/v1/checkout/orders. On success it currently consumes payload.data.order_number for an alert, then invokes onClearCart and onClose.
+	key_relationships_to_domain:
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/lib/cateringCart.ts
+			relationship: calls
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/components/CheckoutDrawer.tsx
+			relationship: composes
+		- from: zip/components/CheckoutDrawer.tsx
+			to: zip/components/ui/button.tsx
+			relationship: imports
+		- from: zip/components/CheckoutDrawer.tsx
+			to: wordpress-plugin/bulwar-bridge/docs/contracts.md
+			relationship: runtime behavior aligns with documented response shape
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+		- Markdown
+	frameworks_used_in_domain:
+		- name: React 19
+			usage_in_domain: Local component state, effects, and memoized derived values drive the drawer and page cart state.
+		- name: react-hook-form
+			usage_in_domain: Manages drawer form state, validation mode, registration, and submit handling.
+		- name: Zod
+			usage_in_domain: Defines field validation and custom refinement rules for checkout requirements.
+	libraries_used_in_domain:
+		- name: motion/react
+			purpose_in_domain: Animates the backdrop and slide-up drawer container.
+		- name: lucide-react
+			purpose_in_domain: Provides section-complete, date, time, and close icons.
+		- name: @base-ui/react/button
+			purpose_in_domain: Underlies the shared Button component used in checkout actions.
+		- name: class-variance-authority
+			purpose_in_domain: Powers shared button styling variants.
+	external_apis_used_in_domain:
+		- name: Bulwar bridge checkout endpoints
+			integration_point: zip/components/CheckoutDrawer.tsx posts to /checkout/delivery-quote, /checkout/slots, and /checkout/orders.
+
+related_conventions:
+	naming_patterns_in_domain: Human-facing section labels use uppercase, spaced Polish titles. State and handlers follow camelCase names such as quoteData, selectedSlot, handleClearCart, and isFulfillmentComplete.
+	structure_of_domain: The drawer uses a two-column layout with summary on the left and multi-step form on the right. Form choices are implemented as bordered cards, and actions use the shared Button component with rounded-[4px].
+	error_handling_in_domain: Field errors render inline in red text below controls. Submit/async request failures are stored in local string state and rendered near the relevant section or submit button.
+	testing_in_domain: No checkout-drawer-specific test file was found in the reviewed area. Cart derivation helpers are covered in zip/src/lib/cateringCart.test.ts.
+	documentation_in_domain: The bridge order response contract is documented in wordpress-plugin/bulwar-bridge/docs/contracts.md, while the frontend drawer behavior is only documented by source.
+
+related_dependencies:
+	internal:
+		- component: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship_to_domain: Supplies cart and handlers into the drawer.
+			direction: inbound
+		- component: zip/src/lib/cateringCart.ts
+			relationship_to_domain: Supplies display items, totals, and bridge payload lines.
+			direction: inbound
+		- component: zip/src/lib/specialMenuFor2Summary.ts
+			relationship_to_domain: Parses special-menu summary lines for item detail rendering.
+			direction: outbound
+		- component: zip/components/ui/button.tsx
+			relationship_to_domain: Supplies the shared action button primitive.
+			direction: outbound
+	external:
+		- name: react-hook-form
+			purpose_for_domain: Form state and submission orchestration.
+		- name: zod
+			purpose_for_domain: Validation and refinement rules.
+		- name: motion
+			purpose_for_domain: Drawer and backdrop animation.
+		- name: lucide-react
+			purpose_for_domain: Visual affordances for state and navigation.
+
+domain_security_considerations:
+	sensitive_areas:
+		- area: customer PII capture
+			location: zip/components/CheckoutDrawer.tsx:663
+			concern: Full name, phone, email, and delivery address are collected locally and posted to the bridge order endpoint.
+		- area: bridge order submission
+			location: zip/components/CheckoutDrawer.tsx:511
+			concern: The client sends idempotency_key, customer fields, fulfillment tokens, and cart lines directly to the bridge endpoint.
+	authentication_patterns_in_domain: No authenticated frontend session pattern is present in this drawer flow; the bridge endpoints are treated as public checkout endpoints.
+	authorization_patterns_in_domain: The drawer relies on bridge-issued opaque quote_token and slot_token values rather than client-authenticated authorization state.
+	data_validation_in_domain: Zod validates required fields client-side, and the bridge contract documents server-side validation/error envelopes for payment, quote, slot, and product constraints.
+
+testing_patterns:
+	framework: node:test style assertions for cart helpers
+	coverage_areas:
+		- cart display item derivation
+		- cart payload line derivation
+		- special-menu cart behavior
+	test_organization: Helper tests live beside the cart library in zip/src/lib/cateringCart.test.ts rather than next to CheckoutDrawer.
+	mock_patterns:
+		- Pure helper tests validate transformed cart structures without rendering the drawer component.
+
+implementation_surface:
+	current_submit_button_label:
+		location: zip/components/CheckoutDrawer.tsx:853
+		value: Kontynuuj zamówienie
+		loading_value: Zapisuję zamówienie...
+	existing_validation_gates:
+		- location: zip/components/CheckoutDrawer.tsx:15
+			detail: checkoutSchema requires full name, phone, email, paymentMethod, deliveryMethod, date, and time slot; delivery adds required address.
+		- location: zip/components/CheckoutDrawer.tsx:317
+			detail: isPersonalDataComplete requires non-empty personal fields and no personalData errors.
+		- location: zip/components/CheckoutDrawer.tsx:323
+			detail: isPaymentComplete requires a selected payment method.
+		- location: zip/components/CheckoutDrawer.tsx:325
+			detail: isFulfillmentComplete requires date, timeSlot, selectedSlot, and for delivery also address plus quoteData with no deliveryDetails errors.
+		- location: zip/components/CheckoutDrawer.tsx:840
+			detail: submit area is visually and interactively disabled until all three completion booleans are true.
+		- location: zip/components/CheckoutDrawer.tsx:487
+			detail: onSubmit hard-stops for empty cart, non-cash payment, missing selectedSlot, and missing quoteData for delivery.
+	reusable_checkbox_pattern:
+		status: not_found
+		detail: No checkbox component file or checkbox input usage was found in the reviewed zip frontend. The closest reusable control styling is the existing radio-card pattern in CheckoutDrawer.
+		nearest_existing_pattern:
+			location: zip/components/CheckoutDrawer.tsx:715
+			detail: Label-wrapped bordered cards with sr-only inputs, rounded-[4px] borders, and custom indicators are used for payment, fulfillment, date, and time selection.
+	success_behavior_after_order_creation:
+		- location: zip/components/CheckoutDrawer.tsx:548
+			detail: A blocking browser alert displays "Zamówienie zapisane. Numer: {order_number}".
+		- location: zip/components/CheckoutDrawer.tsx:549
+			detail: onClearCart is invoked immediately after the alert.
+		- location: zip/components/CheckoutDrawer.tsx:550
+			detail: onClose is invoked immediately after clearing the cart, so the drawer closes on success.
+	available_data_for_inline_success_summary:
+		- location: zip/components/CheckoutDrawer.tsx:333
+			detail: totalPrice is available from props or derived cartItems reduction.
+		- location: zip/components/CheckoutDrawer.tsx:335
+			detail: deliveryPrice is available from quoteData when delivery is selected.
+		- location: zip/components/CheckoutDrawer.tsx:312
+			detail: selectedSlot exposes slot_token, label, start_at, end_at, remaining capacity, and expires_at.
+		- location: zip/components/CheckoutDrawer.tsx:305
+			detail: values contains paymentMethod, deliveryMethod, personalData, deliveryDetails.address, selected date, and selected time slot label.
+		- location: zip/components/CheckoutDrawer.tsx:614
+			detail: cartItems already contains product names, quantities, prices, and special-menu summary lines for rendering purchased items.
+		- location: zip/src/pages/CateringWielkanocnyPage.tsx:185
+			detail: cartLinesPayload remains available for submitted line context until onClearCart runs.
+		- location: wordpress-plugin/bulwar-bridge/docs/contracts.md:390
+			detail: Successful bridge response includes order_id, order_number, status, payment_method, currency, totals, and fulfillment slot_start_at/slot_end_at.
+	minimal_implementation_approach:
+		detail: The smallest surface area appears to be inside CheckoutDrawer itself: replace the alert-plus-close branch with a dedicated local success state that snapshots current cart/form/slot/price data before calling onClearCart, then render an inline success panel using the drawer's existing card classes and shared Button styling.
+		preserving_existing_design_system:
+			- Reuse the existing rounded-[4px], border-zinc-200, bg-zinc-50/bg-white, font-headline, font-label, and uppercase tracking classes already used by the drawer cards.
+			- Reuse the existing radio-card interaction treatment as the closest available selectable-control pattern if the UX change introduces a consent/toggle-like control.
+			- Keep the shared Button component for primary actions to stay within the current UI primitive set.
+
+open_questions:
+	- question: Should the post-success drawer remain open as a confirmation state, or should it still close after the user acknowledges the inline summary?
+		context: The current implementation closes immediately, so the desired lifecycle of the new inline success state affects whether onClose moves to a later user action.
+	- question: If the urgent UX change includes a consent checkbox, what exact copy and required/optional behavior should that control have?
+		context: No existing checkbox pattern was found, so the semantics of the new control are not derivable from current code.
+
+gaps:
+	- area: Existing checkbox implementation
+		description: No checkbox component or checkbox usage was found in the reviewed zip frontend source.
+		impact: Any checkbox-specific UI introduced for the UX change would need to be created by adapting the existing form-control style rather than reusing a dedicated checkbox primitive.
+	- area: Frontend success-state precedent
+		description: No other inline order-success pattern was found in the reviewed checkout flow.
+		impact: The UX change will establish the first explicit in-drawer success state for this flow.

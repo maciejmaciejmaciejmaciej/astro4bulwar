@@ -1,0 +1,576 @@
+plan_id: bulwar-bridge-checkout
+objective: >-
+  Keep the React app on the same hosting and same domain as WooCommerce,
+  introduce a PHP bridge that owns secrets and checkout authority, add
+  backend-driven delivery quote and slot selection, separate delivery and pickup
+  slot pools, support JSON-configurable slot rules with future CPT ownership,
+  and prepare the path for Woo order creation with special-product order item
+  metadata.
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: in_progress
+research_confidence: high
+
+tldr: |
+  Use WordPress at the main domain and keep the React SPA under /react/.
+  Implement the bridge as a WordPress-loaded PHP module or plugin on the same host so it can read secrets, Woo settings, CPT data, and JSON config without exposing keys to the browser.
+  Build the checkout in phases: first bridge foundations and read-only quote/slot endpoints, then React integration, then authoritative Woo order creation with special-product metadata.
+  MVP payment scope is locked to cash/manual payment only; online payment is explicitly deferred to a later phase.
+
+open_questions:
+  - Should the first release use JSON as the active slot source with CPT added afterward, or must CPT authoring exist from day one?
+  - What is the exact delivery pricing formula after Google Maps returns distance or duration?
+
+pre_mortem:
+  overall_risk_level: high
+  critical_failure_modes:
+    - scenario: Direct Woo order creation is chosen, but the business requires full gateway-native online payment in MVP.
+      likelihood: medium
+      impact: critical
+      mitigation: Confirm payment requirements before implementation and keep the bridge contract compatible with a later Store API or payment-intent handoff if needed.
+    - scenario: Slot capacity is checked in a read-only way and concurrent users overbook the same slot.
+      likelihood: medium
+      impact: high
+      mitigation: Treat slot responses as advisory, revalidate capacity at final submit, and add a short-lived reservation or atomic final-write lock before production traffic grows.
+    - scenario: The frontend sends tampered totals, stale delivery quotes, or invalid special-product configuration.
+      likelihood: high
+      impact: high
+      mitigation: Recompute price, delivery fee, and slot validity fully on the bridge and store only server-authoritative values in Woo.
+  assumptions:
+    - WordPress and WooCommerce remain authoritative on the main domain and are available on the same hosting as the React deployment.
+    - The bridge can run inside WordPress context or bootstrap wp-load.php so it can access Woo APIs and site configuration.
+    - Product IDs used in the React cart correspond to canonical Woo product IDs or server-owned mappings.
+    - Slot capacity can be modeled by fulfillment type, date, and slot start time without per-driver routing logic in MVP.
+    - MVP checkout creates direct Woo orders with manual or cash payment only for both pickup and delivery; online payment is out of scope for today.
+
+implementation_specification:
+  code_structure: >-
+    Implement the bridge as a same-host PHP module loaded by WordPress, ideally a small custom plugin or mu-plugin exposing namespaced REST endpoints under /wp-json/bulwar/v1. Keep business services separated into delivery quote, slot availability, configuration loading, payload validation, and Woo order writing. React should stay a thin client that collects form input, renders server responses, and submits opaque quote and slot tokens back to the bridge.
+  affected_areas:
+    - zip/src checkout/cart integration layer
+    - WordPress/PHP bridge runtime on the same hosting
+    - WooCommerce order creation and order item metadata handling
+    - Slot configuration storage in server-owned JSON and later CPT-backed admin data
+    - Deployment and secret configuration on the target hosting
+  component_details:
+    - component: React checkout client
+      responsibility: Collect customer data, address input, cart lines, and fulfillment choice; call bridge endpoints; render server-authoritative quote and slot results; submit final order intent.
+      interfaces:
+        - POST /wp-json/bulwar/v1/checkout/delivery-quote
+        - POST /wp-json/bulwar/v1/checkout/slots
+        - POST /wp-json/bulwar/v1/checkout/orders
+    - component: Bridge REST controller
+      responsibility: Validate payloads, enforce rate limits and request schema, route requests to quote, slot, and order services, and return normalized error responses.
+      interfaces:
+        - REST namespace bulwar/v1
+        - shared request and response schema with machine-readable error codes
+    - component: Delivery quote service
+      responsibility: Resolve store origin, call Google Maps server-side, apply business pricing rules, and mint a quote token for final checkout revalidation.
+      interfaces:
+        - quote request with address or place identifier
+        - quote response with fee, distance, expiry, and quote token
+    - component: Slot availability service
+      responsibility: Load slot rules from JSON and later CPT, build delivery and pickup pools separately, compute availability by date and interval, and mint a slot selection token.
+      interfaces:
+        - availability request with fulfillment type and optionally accepted quote context
+        - slot response with dates, slots, remaining capacity, expiry, and slot token
+    - component: Woo order writer
+      responsibility: Revalidate cart, quote, and slot at final submit; create Woo orders; attach fees and order item metadata; persist fulfillment data to order meta.
+      interfaces:
+        - order creation service callable from bridge controller
+        - line item metadata contract for special products and fulfillment details
+    - component: Schedule storage adapter
+      responsibility: Read server-owned JSON in MVP and support a CPT-backed source later without changing the React contract.
+      interfaces:
+        - config loader interface returning normalized schedule and capacity rules
+  dependencies:
+    - component: React checkout client
+      relationship: depends on bridge request and response contracts
+    - component: Bridge REST controller
+      relationship: composes validation, quote, slot, and order services
+    - component: Delivery quote service
+      relationship: depends on secrets and store origin configuration
+    - component: Slot availability service
+      relationship: depends on schedule storage adapter and Woo order lookups for capacity consumption
+    - component: Woo order writer
+      relationship: depends on validated bridge payloads, canonical product mapping, and slot availability rechecks
+    - component: Schedule storage adapter
+      relationship: hides whether schedule data comes from JSON or CPT
+  integration_points:
+    - React SPA under /react/ calling same-domain REST endpoints under /wp-json/bulwar/v1
+    - WordPress config or environment constants for Google Maps and Woo secrets
+    - WooCommerce product catalog and order APIs for canonical pricing and order persistence
+    - Server-owned JSON file for initial slot rules
+    - Future CPT editor or admin UI for slot authoring without changing frontend contracts
+
+contracts:
+  - from_task: T1
+    to_task: T4
+    interface: Bridge namespace, endpoint list, request schemas, response envelope, and error-code taxonomy
+    format: JSON over REST under /wp-json/bulwar/v1
+  - from_task: T3
+    to_task: T6
+    interface: Normalized schedule config schema for dates, slot windows, interval, capacity, and fulfillment-type pools
+    format: JSON document plus normalized PHP array contract
+  - from_task: T5
+    to_task: T7
+    interface: Delivery quote response including fee, distance_km, quote_token, expires_at, and user-display diagnostics
+    format: JSON object
+  - from_task: T6
+    to_task: T7
+    interface: Slot availability response including fulfillment_type, available_dates, slots, remaining_capacity, slot_token, and expires_at
+    format: JSON object
+  - from_task: T7
+    to_task: T8
+    interface: Final checkout payload carrying customer fields, cart lines, accepted quote_token, selected slot_token, and payment method intent
+    format: JSON object
+  - from_task: T8
+    to_task: T9
+    interface: Canonical order meta keys and line-item meta structure for fulfillment and special-product configuration
+    format: Woo order meta and line_item meta schema
+
+tasks:
+  - id: T1
+    title: Lock Bridge Architecture And Checkout Contracts
+    description: |
+      Finalize the authoritative checkout architecture so implementation does not branch mid-stream. Confirm the bridge runs in WordPress context on the same domain, define the REST namespace, choose the order-creation strategy for MVP, and freeze the payload contracts for delivery quote, slot availability, and final order submission.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: same-domain bridge findings and direct-order recommendation
+      - docs/plan/none/research_findings_zip_frontend_checkout.yaml: current React checkout ownership and integration seams
+      - docs/plan/none/research_findings_woo_special_product_bridge.yaml: order-meta constraints and Woo integration tradeoffs
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 250
+    focus_area: bridge contracts
+    verification:
+      - Architecture decision document names one MVP order path and one fallback path.
+      - Endpoint contracts include required fields, token lifecycle, and error codes.
+    acceptance_criteria:
+      - React and PHP teams can implement against the same request and response schema.
+      - The plan explicitly states that MVP order creation is direct Woo order creation with manual payment only.
+    deliverables:
+      - docs/plan/bulwar-bridge-checkout/t1-bridge-architecture-and-contracts.md: authoritative runtime decision and frozen request/response contracts for quote, slots, and orders
+    failure_modes:
+      - scenario: Payment and Woo workflow assumptions remain implicit and the endpoint contract has to be rewritten later.
+        likelihood: medium
+        impact: high
+        mitigation: Force an explicit decision on payment scope and order path before bridge coding starts.
+    tech_stack:
+      - WordPress REST API
+      - PHP
+      - JSON schema
+    test_coverage: Contract examples for all three endpoints and failure cases.
+
+  - id: T2
+    title: Audit WooCommerce And WordPress Constraints On The Live Site
+    description: |
+      Gather the live-site facts that affect implementation but are not visible in the repo: payment gateways, shipping and tax assumptions, existing CPT/plugin landscape, available hooks, and whether the other WordPress agent should create CPTs, admin screens, or order-meta displays. Package the outcome as a delegatable brief.
+    wave: 1
+    agent: gem-researcher
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - .github/copilot-instructions.md: project rules and backend intent
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: same-host assumptions and open questions
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 150
+    focus_area: live Woo constraints
+    verification:
+      - Live gateway and plugin constraints are documented.
+      - CPT feasibility and admin ownership are confirmed.
+    acceptance_criteria:
+      - The team knows whether MVP can ship with direct order creation.
+      - The other Woo/WordPress agent receives a task brief that is specific enough to execute independently.
+    failure_modes:
+      - scenario: Hidden gateway or plugin constraints invalidate the selected order path late in the project.
+        likelihood: medium
+        impact: high
+        mitigation: Run the audit before any checkout endpoint implementation and treat the result as a gate.
+    tech_stack:
+      - WooCommerce
+      - WordPress
+      - PHP
+    test_coverage: null
+
+  - id: T3
+    title: Define Schedule And Capacity Model With JSON-First Ownership
+    description: |
+      Design the normalized schedule schema that supports separate delivery and pickup pools, available dates per fulfillment type, slot start and end times, interval length, and max capacity per slot. Default values should encode delivery as 1 order per 15-minute slot and pickup as 3 orders per 15-minute slot, while keeping the adapter open for later CPT-backed authoring.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: fulfillment source-of-truth findings
+      - docs/plan/none/research_findings_zip_frontend_checkout.yaml: current hardcoded dates and slots in React
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 220
+    focus_area: schedule model
+    verification:
+      - JSON schema supports separate delivery and pickup pools.
+      - Capacity and interval defaults are encoded without frontend assumptions.
+    acceptance_criteria:
+      - One normalized format can power both the API response and future CPT storage.
+      - The bridge can answer slot requests without any hardcoded frontend slot arrays.
+    failure_modes:
+      - scenario: The JSON model is too UI-specific and cannot map cleanly to CPT or Woo order validation later.
+        likelihood: medium
+        impact: high
+        mitigation: Model schedule data around business rules, not component state.
+    tech_stack:
+      - JSON
+      - PHP
+      - WordPress data adapter
+    test_coverage: Unit cases for interval generation, separate pools, and capacity calculation.
+
+  - id: T4
+    title: Build The Same-Domain PHP Bridge Skeleton
+    description: |
+      Implement the bridge shell as a WordPress-loaded module exposing the agreed REST namespace, shared validation, secret loading, structured logging, and rate-limit hooks. This task should not yet create orders; it only establishes the secure runtime and endpoint scaffolding needed by later services.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T1
+      - T2
+    context_files:
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: bridge runtime recommendation
+      - temp_wp_config.php: example of PHP-side configuration ownership
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 400
+    focus_area: bridge runtime
+    verification:
+      - Same-domain REST endpoints respond within WordPress context.
+      - Secrets are read only from PHP-side config and never exposed to React.
+    acceptance_criteria:
+      - A secure bridge namespace exists and can host quote, slot, and order services.
+      - Standardized error responses and request validation are reusable across endpoints.
+    failure_modes:
+      - scenario: The bridge is implemented outside WordPress context and duplicates authentication, config, or Woo bootstrap logic.
+        likelihood: low
+        impact: high
+        mitigation: Load bridge code through WordPress or bootstrap wp-load.php directly.
+    tech_stack:
+      - PHP
+      - WordPress REST API
+      - WooCommerce
+    test_coverage: Basic REST route registration and config-loading checks.
+
+  - id: T5
+    title: Implement Delivery Quote Endpoint And Quote Tokens
+    description: |
+      Build the delivery quote service that accepts address input, resolves the canonical origin from Woo settings, calls Google Maps server-side, applies the agreed fee rules, and returns a quote token with expiry. The token must be required later during final order submission so stale or tampered quotes cannot be trusted.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+      - T4
+    context_files:
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: backend Maps guidance and store origin data
+      - wc-settings.txt: merchant origin fields
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 450
+    focus_area: delivery quote
+    verification:
+      - The endpoint returns the same result for equivalent canonical addresses.
+      - Invalid or expired quote tokens are rejected at final submit.
+    acceptance_criteria:
+      - React can request a delivery fee only after the user clicks the cost-calculation action.
+      - The final order path can revalidate the accepted quote without trusting client totals.
+    failure_modes:
+      - scenario: The bridge exposes raw Maps behavior to the client and allows arbitrary proxying.
+        likelihood: medium
+        impact: high
+        mitigation: Accept only narrowed address inputs and return business outputs, not generic proxy results.
+    tech_stack:
+      - PHP
+      - Google Maps Routes API
+      - WooCommerce settings
+    test_coverage: Cases for valid quote, invalid address, out-of-zone address, and expired quote token.
+
+  - id: T6
+    title: Implement Slot Availability Endpoint And Capacity Validation
+    description: |
+      Build the availability service that loads JSON schedule rules, generates slot pools separately for delivery and pickup, counts current usage from Woo orders or a reservation store, and returns only valid options. The same rules must be enforced again during final order creation.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T3
+      - T4
+    context_files:
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: CPT versus JSON source findings
+      - docs/plan/none/research_findings_zip_frontend_checkout.yaml: current hardcoded slot UI
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 450
+    focus_area: slot availability
+    verification:
+      - Delivery and pickup return separate pools.
+      - Capacity defaults are 1 for delivery and 3 for pickup with 15-minute intervals unless config overrides them.
+    acceptance_criteria:
+      - React can render backend-driven dates and slots without any hardcoded availability arrays.
+      - Final order creation rejects a slot that became unavailable after selection.
+    failure_modes:
+      - scenario: Availability is computed without referencing existing orders or reservations, causing overselling.
+        likelihood: medium
+        impact: high
+        mitigation: Count persisted slot usage and reserve a second validation pass at order creation.
+    tech_stack:
+      - PHP
+      - JSON config
+      - WooCommerce order queries
+    test_coverage: Cases for separate pools, capacity exhaustion, blackout dates, and interval generation.
+
+  - id: T7
+    title: Integrate React Checkout With Quote And Slot Endpoints
+    description: |
+      Replace the current static drawer behavior with bridge-backed interactions. The user should calculate delivery cost explicitly, accept the returned quote, then load and choose slots from the backend. The final checkout payload should carry cart lines plus the accepted quote token and selected slot token.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T5
+      - T6
+    context_files:
+      - zip/components/CheckoutDrawer.tsx: current local-only drawer flow
+      - zip/src/pages/CateringWielkanocnyPage.tsx: cart ownership and drawer wiring
+      - zip/src/lib/cateringCart.ts: canonical cart-line payload sources
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 500
+    focus_area: React checkout integration
+    verification:
+      - Delivery cost is no longer hardcoded in the UI.
+      - Available slots come from the backend and react to fulfillment type.
+    acceptance_criteria:
+      - The user cannot proceed to slot selection before accepting a valid delivery quote for delivery orders.
+      - The final submit uses server tokens rather than trusting client-side totals or slot arrays.
+    failure_modes:
+      - scenario: The frontend keeps fallback slot arrays or fee calculations that drift from backend authority.
+        likelihood: medium
+        impact: high
+        mitigation: Remove or isolate UI placeholders and treat the bridge as the sole source for quote and slot state.
+    tech_stack:
+      - React
+      - TypeScript
+      - react-hook-form
+      - zod
+    test_coverage: UI flows for delivery quote, pickup flow, slot refresh, and failed token submit.
+
+  - id: T8
+    title: Implement Authoritative Woo Order Creation With Special-Product Meta
+    description: |
+      Build the final order endpoint that revalidates the cart against canonical product data, rechecks quote and slot tokens, computes the authoritative total, and creates the Woo order. Persist fulfillment details to order meta and store special-product configuration as structured order item meta so staff can fulfill the order without reading frontend payloads.
+    wave: 4
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T5
+      - T6
+      - T7
+    context_files:
+      - docs/plan/none/research_findings_woo_special_product_bridge.yaml: direct order creation and line-item meta guidance
+      - zip/src/lib/cateringCart.ts: special-product cart-line structure
+      - zip/src/data/cateringSpecialMenuFor2.ts: shell product identity and config model
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 500
+    focus_area: Woo order creation
+    verification:
+      - Special products store both readable summary meta and machine-readable config meta.
+      - Final totals and fulfillment details in Woo match server-side calculations.
+    acceptance_criteria:
+      - Woo receives a valid order with delivery fee, fulfillment slot, and special-product metadata.
+      - The bridge rejects tampered price, invalid product IDs, or stale quote and slot tokens.
+    failure_modes:
+      - scenario: The bridge writes order lines without canonical revalidation, allowing client payload drift.
+        likelihood: medium
+        impact: high
+        mitigation: Load server-side product data and recompute every line before persisting the order.
+    tech_stack:
+      - PHP
+      - WooCommerce order APIs
+      - JSON meta structures
+    test_coverage: Integration tests for simple items, special products, tampered payloads, and slot conflicts.
+
+  - id: T9
+    title: Delegate WordPress Admin And CPT Work To The Woo Agent
+    description: |
+      Hand off the WordPress-native pieces that are better done by the Woo/WordPress agent: CPT or admin UI for schedule authoring, optional bridge settings screen, order-admin rendering for fulfillment meta, and any merchant-facing views needed to manage slot rules and inspect special-product metadata.
+    wave: 5
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies:
+      - T2
+      - T3
+      - T8
+    context_files:
+      - docs/plan/none/research_findings_same_domain_react_woo_php_bridge_architecture.yaml: CPT-backed scheduling direction
+      - docs/plan/none/research_findings_woo_special_product_bridge.yaml: order-meta persistence constraints
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 400
+    focus_area: Woo admin and CPT delegation
+    verification:
+      - Merchant-facing schedule and order metadata views are defined.
+      - Delegated work has an explicit schema and acceptance criteria.
+    acceptance_criteria:
+      - The other Woo/WordPress agent can implement admin and CPT work without touching the React contract.
+      - JSON-first MVP can later switch to CPT authoring through the adapter without API changes.
+    failure_modes:
+      - scenario: Admin and CPT work starts before the bridge meta schema is stable and creates incompatible storage.
+        likelihood: medium
+        impact: medium
+        mitigation: Delegate only after T8 defines canonical meta keys and schedule normalization.
+    tech_stack:
+      - WordPress CPT
+      - WooCommerce admin hooks
+      - PHP
+    test_coverage: null
+
+  - id: T10
+    title: Run End-To-End Validation And Security Review
+    description: |
+      Validate the full same-domain checkout path across delivery and pickup, including quote generation, slot selection, final order creation, tamper resistance, and failure handling. Review secret boundaries, replay protection, rate limiting, and operational failure modes before production rollout.
+    wave: 6
+    agent: gem-reviewer
+    priority: high
+    status: pending
+    dependencies:
+      - T8
+      - T9
+    context_files:
+      - docs/plan/bulwar-bridge-checkout/plan.yaml: execution baseline and contracts
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 200
+    focus_area: validation and security
+    verification:
+      - Delivery, pickup, and failure-path scenarios are all exercised.
+      - Key handling and server-authoritative validation are confirmed.
+    acceptance_criteria:
+      - The team has a clear go/no-go checklist for production rollout.
+      - Any remaining risks are documented with mitigation or deferred scope.
+    failure_modes:
+      - scenario: Happy-path tests pass but replay, stale token, or parallel-slot scenarios remain untested.
+        likelihood: medium
+        impact: high
+        mitigation: Include adversarial and concurrency scenarios in the validation matrix, not only standard form submission.
+    tech_stack:
+      - WooCommerce
+      - WordPress REST API
+      - React
+    test_coverage: Security and behavioral regression checklist.
+    requires_review: true
+    review_depth: full
+    security_sensitive: true
+
+  - id: T11
+    title: Validate Browser Flows On The Same Domain
+    description: |
+      Exercise the implemented checkout from the SPA perspective on desktop and mobile: calculate cost, select slots, handle expired responses, and confirm Woo order success. Verify that same-domain deployment, route base, and REST calls behave correctly under the /react deployment model.
+    wave: 6
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - T8
+    context_files:
+      - zip/vite.config.ts: SPA base path
+      - zip/temp_htaccess.txt: /react rewrite model
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 120
+    focus_area: browser validation
+    verification:
+      - Same-domain browser flows work from /react without route or asset issues.
+      - Expired quote and slot states produce recoverable UX.
+    acceptance_criteria:
+      - Delivery and pickup flows both complete from the browser.
+      - Browser behavior matches backend rules with no hidden hardcoded fallback logic.
+    failure_modes:
+      - scenario: The app works in local assumptions but fails under deployed /react path or same-domain REST routing.
+        likelihood: medium
+        impact: medium
+        mitigation: Validate against the real deployment shape, not only local development assumptions.
+    tech_stack:
+      - React
+      - Vite
+      - Browser automation or manual scenario testing
+    test_coverage: Desktop and mobile interaction matrix.
+    validation_matrix:
+      - scenario: Delivery flow with valid quote and available slot
+        steps:
+          - Open the catering route under /react.
+          - Add standard and special products to cart.
+          - Enter delivery address and request delivery cost.
+          - Accept returned quote, load slots, choose one, and submit the order.
+        expected_result: Woo order is created with fee, selected slot, and special-product line metadata.
+      - scenario: Pickup flow with separate slot pool
+        steps:
+          - Open checkout with pickup selected.
+          - Load pickup slots without delivery quote.
+          - Choose an available pickup slot and submit.
+        expected_result: Pickup uses only pickup pool data and creates an order without delivery fee.
+      - scenario: Expired quote or slot token
+        steps:
+          - Obtain a quote and slot token.
+          - Wait until expiry or simulate expiration.
+          - Attempt final submit.
+        expected_result: The bridge rejects the stale token and the UI prompts the user to refresh quote or slot selection.
+
+  - id: T12
+    title: Write Operational Documentation And Handoff Notes
+    description: |
+      Document the bridge architecture, endpoint contracts, JSON schedule schema, secret placement rules, deployment notes for same-domain hosting, and the exact Woo/WordPress tasks delegated externally. This becomes the execution handoff for implementation and later maintenance.
+    wave: 6
+    agent: gem-documentation-writer
+    priority: low
+    status: pending
+    dependencies:
+      - T10
+      - T11
+    context_files:
+      - docs/plan/bulwar-bridge-checkout/plan.yaml: canonical execution plan
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 220
+    focus_area: implementation handoff
+    verification:
+      - Documentation includes endpoint contracts, data ownership, and delegated tasks.
+      - Deployment and security notes are explicit.
+    acceptance_criteria:
+      - A developer or external Woo agent can continue work without rediscovering architecture decisions.
+      - Merchant-facing operational steps are documented.
+    failure_modes: []
+    tech_stack:
+      - Markdown
+      - YAML
+    test_coverage: null
+    task_type: documentation
+    audience: developers
+    coverage_matrix:
+      - bridge architecture on same domain
+      - endpoint request and response contracts
+      - JSON schedule schema and defaults
+      - secret management and deployment rules
+      - delegated Woo and WordPress tasks

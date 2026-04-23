@@ -1,0 +1,1160 @@
+{
+  "mode": "dry-run",
+  "input": {
+    "draftFilePath": "C:\\Users\\macie\\Documents\\BULWAR APP\\docs\\plan\\astro-wordpress-page-builder\\restauracja-na-wesele.firebase-draft.json"
+  },
+  "sourceMappingsPath": "C:\\Users\\macie\\Documents\\BULWAR APP\\docs\\plan\\astro-wordpress-page-builder\\restauracja-na-wesele-source-mappings.json",
+  "result": {
+    "draft": {
+      "pageSlug": "restauracja-na-wesele",
+      "pageKind": "generic_page",
+      "wordpressPostId": null,
+      "title": "Restauracja na wesele",
+      "templateKey": "generic-page",
+      "status": "draft",
+      "blocksOrder": [
+        "simple_heading_and_paragraph-01",
+        "about-1-01",
+        "our-services-01",
+        "gallery-masonry-style1-01",
+        "premium_call_to_action_with_image_carousel-01"
+      ],
+      "blocks": {
+        "simple_heading_and_paragraph-01": {
+          "id": "simple_heading_and_paragraph-01",
+          "blockKey": "simple_heading_and_paragraph",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "eyebrow": "Przyjecia weselne",
+            "title": "Restauracja na wesele",
+            "richTextHtml": "<p>Ta strona jest roboczym szkieletem dla oferty weselnej Bulwar. Na tym etapie ustawiamy uklad sekcji i kierunek komunikacji, bez finalnego copy sprzedazowego.</p><p>Kolejne iteracje doprecyzuja zakres oferty, przebieg wspolpracy, galerie i wezwania do kontaktu.</p>"
+          },
+          "source": null,
+          "meta": {
+            "ai": {
+              "description": "Sekcja otwierajaca strone weselna. Edytuj tylko eyebrow, tytul i richTextHtml; nie zmieniaj geometrii ani nie dodawaj tutaj galerii lub listy uslug."
+            }
+          }
+        },
+        "about-1-01": {
+          "id": "about-1-01",
+          "blockKey": "about-1",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "leftImages": [
+              {
+                "src": "/react/images/about_1.jpg",
+                "alt": "Sala restauracji przygotowana na eleganckie przyjecie"
+              }
+            ],
+            "leftText": {
+              "title": "Miejsce na spokojne wesele w centrum Poznania",
+              "paragraphs": [
+                "Ta sekcja opisuje charakter miejsca, atmosfere sali i styl przyjec, ale jeszcze nie zawiera finalnej obietnicy marketingowej.",
+                "Docelowo bedzie tu mozna pokazac, dla jakiego typu wesel Bulwar jest najlepszym wyborem oraz jak wyglada klimat spotkania na miejscu."
+              ],
+              "ctaButton": {
+                "href": "/kontakt",
+                "text": "Zapytaj o termin"
+              }
+            },
+            "rightText": {
+              "paragraphs": [
+                "Po prawej stronie zostawiamy miejsce na roboczy opis organizacji przyjecia, obslugi oraz mozliwych scenariuszy weselnych.",
+                "Na dalszym etapie mozna tu doprecyzowac liczbe gosci, styl serwisu, ustawienie sali i najwazniejsze przewagi oferty."
+              ]
+            },
+            "rightImages": [
+              {
+                "src": "/react/images/about_front.jpg",
+                "alt": "Detal sali i nastroju przyjecia weselnego"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {
+            "ai": {
+              "description": "Sekcja o miejscu i atmosferze wesela. Edytuj tylko teksty, obrazy i CTA; nie zmieniaj dwukolumnowej kompozycji tego bloku."
+            }
+          }
+        },
+        "our-services-01": {
+          "id": "our-services-01",
+          "blockKey": "our-services",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "title": "Jak mozemy ulozyc oferte weselna",
+            "description": "Ta sekcja porzadkuje przyszla oferte weselna w kilka czytelnych obszarow. Na tym etapie pokazuje roboczy podzial, a nie finalna liste pakietow.",
+            "primaryCta": {
+              "text": "Porozmawiajmy o przyjeciu",
+              "href": "/kontakt"
+            },
+            "cards": [
+              {
+                "icon": "celebration",
+                "title": "SCENARIUSZ PRZYJECIA",
+                "description": "Miejsce na opis ukladu dnia, stylu spotkania i sposobu prowadzenia wesela zgodnie z oczekiwaniami pary mlodej.",
+                "ctaText": "Omow uklad dnia",
+                "ctaHref": "/kontakt"
+              },
+              {
+                "icon": "local_shipping",
+                "title": "MENU I SERWIS",
+                "description": "Miejsce na opis roboczego podejscia do menu weselnego, serwisu, dopasowania potraw i organizacji pracy sali.",
+                "ctaText": "Zapytaj o menu",
+                "ctaHref": "/kontakt"
+              },
+              {
+                "icon": "groups",
+                "title": "OPIEKA NAD GOSCMI",
+                "description": "Miejsce na podkreslenie komunikacji, wsparcia organizacyjnego oraz sposobu prowadzenia gosci podczas przyjecia weselnego.",
+                "ctaText": "Ustalmy szczegoly",
+                "ctaHref": "/kontakt"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {
+            "ai": {
+              "description": "Sekcja z trzema filarami oferty weselnej. Edytuj tylko tytul, opis, glowne CTA i tresc kart; nie zmieniaj siatki kart ani struktury sticky intro."
+            }
+          }
+        },
+        "gallery-masonry-style1-01": {
+          "id": "gallery-masonry-style1-01",
+          "blockKey": "gallery-masonry-style1",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "title": "Galeria miejsca i przyjec",
+            "images": [
+              {
+                "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                "alt": "Ustawienie sali na przyjecie"
+              },
+              {
+                "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                "alt": "Detal wystroju restauracji"
+              },
+              {
+                "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                "alt": "Wnetrze restauracji podczas wydarzenia"
+              },
+              {
+                "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                "alt": "Stol i aranżacja przyjecia"
+              },
+              {
+                "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                "alt": "Sala gotowa na przyjecie weselne"
+              },
+              {
+                "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                "alt": "Nastrojowa przestrzen restauracji"
+              },
+              {
+                "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                "alt": "Detale miejsca i stolow"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {
+            "ai": {
+              "description": "Sekcja galerii dla strony weselnej. Edytuj tylko tytul i zestaw zdjec; do podmiany obrazow uzywaj mediow WordPress, nie zmieniaj geometrii masonry."
+            }
+          }
+        },
+        "premium_call_to_action_with_image_carousel-01": {
+          "id": "premium_call_to_action_with_image_carousel-01",
+          "blockKey": "premium_call_to_action_with_image_carousel",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "heading": "Porozmawiajmy o Twoim przyjeciu",
+            "description": "To finalne CTA zamyka szkic strony weselnej. Na tym etapie prowadzi do kontaktu i zostawia miejsce na doprecyzowanie finalnej obietnicy oraz galerii pomocniczej.",
+            "buttonText": "Zapytaj o termin",
+            "buttonHref": "/kontakt",
+            "images": [
+              {
+                "src": "/react/images/about_1.jpg",
+                "alt": "Sala restauracji"
+              },
+              {
+                "src": "/react/images/about_front.jpg",
+                "alt": "Detale wystroju"
+              },
+              {
+                "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                "alt": "Przyjecie w restauracji"
+              },
+              {
+                "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                "alt": "Nastroj sali"
+              },
+              {
+                "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                "alt": "Strefa spotkania"
+              },
+              {
+                "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                "alt": "Detale przyjecia"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {
+            "ai": {
+              "description": "Konczace CTA dla strony weselnej. Edytuj heading, description, buttonText, buttonHref i obrazy; nie zmieniaj ukladu dwoch kolumn ani zachowania karuzeli."
+            }
+          }
+        }
+      },
+      "compiled": {
+        "page_builder_schema": {
+          "version": 1,
+          "page": {
+            "slug": "restauracja-na-wesele",
+            "title": "Restauracja na wesele",
+            "status": "draft",
+            "templateKey": "generic-page"
+          },
+          "meta": {
+            "pageKind": "generic_page"
+          },
+          "sections": [
+            {
+              "id": "simple_heading_and_paragraph-01",
+              "blockKey": "simple_heading_and_paragraph",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "eyebrow": "Przyjecia weselne",
+                "title": "Restauracja na wesele",
+                "richTextHtml": "<p>Ta strona jest roboczym szkieletem dla oferty weselnej Bulwar. Na tym etapie ustawiamy uklad sekcji i kierunek komunikacji, bez finalnego copy sprzedazowego.</p><p>Kolejne iteracje doprecyzuja zakres oferty, przebieg wspolpracy, galerie i wezwania do kontaktu.</p>"
+              },
+              "source": null,
+              "meta": {
+                "ai": {
+                  "description": "Sekcja otwierajaca strone weselna. Edytuj tylko eyebrow, tytul i richTextHtml; nie zmieniaj geometrii ani nie dodawaj tutaj galerii lub listy uslug."
+                }
+              }
+            },
+            {
+              "id": "about-1-01",
+              "blockKey": "about-1",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "leftImages": [
+                  {
+                    "src": "/react/images/about_1.jpg",
+                    "alt": "Sala restauracji przygotowana na eleganckie przyjecie"
+                  }
+                ],
+                "leftText": {
+                  "title": "Miejsce na spokojne wesele w centrum Poznania",
+                  "paragraphs": [
+                    "Ta sekcja opisuje charakter miejsca, atmosfere sali i styl przyjec, ale jeszcze nie zawiera finalnej obietnicy marketingowej.",
+                    "Docelowo bedzie tu mozna pokazac, dla jakiego typu wesel Bulwar jest najlepszym wyborem oraz jak wyglada klimat spotkania na miejscu."
+                  ],
+                  "ctaButton": {
+                    "href": "/kontakt",
+                    "text": "Zapytaj o termin"
+                  }
+                },
+                "rightText": {
+                  "paragraphs": [
+                    "Po prawej stronie zostawiamy miejsce na roboczy opis organizacji przyjecia, obslugi oraz mozliwych scenariuszy weselnych.",
+                    "Na dalszym etapie mozna tu doprecyzowac liczbe gosci, styl serwisu, ustawienie sali i najwazniejsze przewagi oferty."
+                  ]
+                },
+                "rightImages": [
+                  {
+                    "src": "/react/images/about_front.jpg",
+                    "alt": "Detal sali i nastroju przyjecia weselnego"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {
+                "ai": {
+                  "description": "Sekcja o miejscu i atmosferze wesela. Edytuj tylko teksty, obrazy i CTA; nie zmieniaj dwukolumnowej kompozycji tego bloku."
+                }
+              }
+            },
+            {
+              "id": "our-services-01",
+              "blockKey": "our-services",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "title": "Jak mozemy ulozyc oferte weselna",
+                "description": "Ta sekcja porzadkuje przyszla oferte weselna w kilka czytelnych obszarow. Na tym etapie pokazuje roboczy podzial, a nie finalna liste pakietow.",
+                "primaryCta": {
+                  "text": "Porozmawiajmy o przyjeciu",
+                  "href": "/kontakt"
+                },
+                "cards": [
+                  {
+                    "icon": "celebration",
+                    "title": "SCENARIUSZ PRZYJECIA",
+                    "description": "Miejsce na opis ukladu dnia, stylu spotkania i sposobu prowadzenia wesela zgodnie z oczekiwaniami pary mlodej.",
+                    "ctaText": "Omow uklad dnia",
+                    "ctaHref": "/kontakt"
+                  },
+                  {
+                    "icon": "local_shipping",
+                    "title": "MENU I SERWIS",
+                    "description": "Miejsce na opis roboczego podejscia do menu weselnego, serwisu, dopasowania potraw i organizacji pracy sali.",
+                    "ctaText": "Zapytaj o menu",
+                    "ctaHref": "/kontakt"
+                  },
+                  {
+                    "icon": "groups",
+                    "title": "OPIEKA NAD GOSCMI",
+                    "description": "Miejsce na podkreslenie komunikacji, wsparcia organizacyjnego oraz sposobu prowadzenia gosci podczas przyjecia weselnego.",
+                    "ctaText": "Ustalmy szczegoly",
+                    "ctaHref": "/kontakt"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {
+                "ai": {
+                  "description": "Sekcja z trzema filarami oferty weselnej. Edytuj tylko tytul, opis, glowne CTA i tresc kart; nie zmieniaj siatki kart ani struktury sticky intro."
+                }
+              }
+            },
+            {
+              "id": "gallery-masonry-style1-01",
+              "blockKey": "gallery-masonry-style1",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "title": "Galeria miejsca i przyjec",
+                "images": [
+                  {
+                    "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                    "alt": "Ustawienie sali na przyjecie"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                    "alt": "Detal wystroju restauracji"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                    "alt": "Wnetrze restauracji podczas wydarzenia"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                    "alt": "Stol i aranżacja przyjecia"
+                  },
+                  {
+                    "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                    "alt": "Sala gotowa na przyjecie weselne"
+                  },
+                  {
+                    "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                    "alt": "Nastrojowa przestrzen restauracji"
+                  },
+                  {
+                    "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                    "alt": "Detale miejsca i stolow"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {
+                "ai": {
+                  "description": "Sekcja galerii dla strony weselnej. Edytuj tylko tytul i zestaw zdjec; do podmiany obrazow uzywaj mediow WordPress, nie zmieniaj geometrii masonry."
+                }
+              }
+            },
+            {
+              "id": "premium_call_to_action_with_image_carousel-01",
+              "blockKey": "premium_call_to_action_with_image_carousel",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "heading": "Porozmawiajmy o Twoim przyjeciu",
+                "description": "To finalne CTA zamyka szkic strony weselnej. Na tym etapie prowadzi do kontaktu i zostawia miejsce na doprecyzowanie finalnej obietnicy oraz galerii pomocniczej.",
+                "buttonText": "Zapytaj o termin",
+                "buttonHref": "/kontakt",
+                "images": [
+                  {
+                    "src": "/react/images/about_1.jpg",
+                    "alt": "Sala restauracji"
+                  },
+                  {
+                    "src": "/react/images/about_front.jpg",
+                    "alt": "Detale wystroju"
+                  },
+                  {
+                    "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                    "alt": "Przyjecie w restauracji"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                    "alt": "Nastroj sali"
+                  },
+                  {
+                    "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                    "alt": "Strefa spotkania"
+                  },
+                  {
+                    "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                    "alt": "Detale przyjecia"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {
+                "ai": {
+                  "description": "Konczace CTA dla strony weselnej. Edytuj heading, description, buttonText, buttonHref i obrazy; nie zmieniaj ukladu dwoch kolumn ani zachowania karuzeli."
+                }
+              }
+            }
+          ]
+        },
+        "page_builder_schema_for_ai": {
+          "version": 1,
+          "postId": null,
+          "slug": "restauracja-na-wesele",
+          "title": "Restauracja na wesele",
+          "blocks": [
+            {
+              "id": "simple_heading_and_paragraph-01",
+              "blockKey": "simple_heading_and_paragraph",
+              "variant": null,
+              "description": "Sekcja otwierajaca strone weselna. Edytuj tylko eyebrow, tytul i richTextHtml; nie zmieniaj geometrii ani nie dodawaj tutaj galerii lub listy uslug.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.eyebrow",
+                "content.title",
+                "content.richTextHtml"
+              ],
+              "editRoute": "Zmiany naglowka i tresci rich-text HTML wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Blok jest direct-edit only i nie korzysta z WooCommerce ani z zewnetrznego source.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "eyebrow": "Przyjecia weselne",
+                "title": "Restauracja na wesele",
+                "richTextHtml": "<p>Ta strona jest roboczym szkieletem dla oferty weselnej Bulwar. Na tym etapie ustawiamy uklad sekcji i kierunek komunikacji, bez finalnego copy sprzedazowego.</p><p>Kolejne iteracje doprecyzuja zakres oferty, przebieg wspolpracy, galerie i wezwania do kontaktu.</p>"
+              }
+            },
+            {
+              "id": "about-1-01",
+              "blockKey": "about-1",
+              "variant": null,
+              "description": "Sekcja o miejscu i atmosferze wesela. Edytuj tylko teksty, obrazy i CTA; nie zmieniaj dwukolumnowej kompozycji tego bloku.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.leftImages[].src",
+                "content.leftImages[].alt",
+                "content.leftText.title",
+                "content.leftText.paragraphs[]",
+                "content.leftText.ctaButton.text",
+                "content.leftText.ctaButton.href",
+                "content.rightText.paragraphs[]",
+                "content.rightImages[].src",
+                "content.rightImages[].alt"
+              ],
+              "editRoute": "Zmiany copy wprowadzaj bezposrednio w page_builder_schema_for_ai i odpowiadajacym page_builder_schema. Gdy trzeba podmienic obrazy, uzywaj narzedzi WordPress media. Link CTA powinien pozostac wewnetrzna sciezka strony Bulwaru.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "leftImages": [
+                  {
+                    "src": "/react/images/about_1.jpg",
+                    "alt": "Sala restauracji przygotowana na eleganckie przyjecie"
+                  }
+                ],
+                "leftText": {
+                  "title": "Miejsce na spokojne wesele w centrum Poznania",
+                  "paragraphs": [
+                    "Ta sekcja opisuje charakter miejsca, atmosfere sali i styl przyjec, ale jeszcze nie zawiera finalnej obietnicy marketingowej.",
+                    "Docelowo bedzie tu mozna pokazac, dla jakiego typu wesel Bulwar jest najlepszym wyborem oraz jak wyglada klimat spotkania na miejscu."
+                  ],
+                  "ctaButton": {
+                    "href": "/kontakt",
+                    "text": "Zapytaj o termin"
+                  }
+                },
+                "rightText": {
+                  "paragraphs": [
+                    "Po prawej stronie zostawiamy miejsce na roboczy opis organizacji przyjecia, obslugi oraz mozliwych scenariuszy weselnych.",
+                    "Na dalszym etapie mozna tu doprecyzowac liczbe gosci, styl serwisu, ustawienie sali i najwazniejsze przewagi oferty."
+                  ]
+                },
+                "rightImages": [
+                  {
+                    "src": "/react/images/about_front.jpg",
+                    "alt": "Detal sali i nastroju przyjecia weselnego"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "our-services-01",
+              "blockKey": "our-services",
+              "variant": null,
+              "description": "Sekcja z trzema filarami oferty weselnej. Edytuj tylko tytul, opis, glowne CTA i tresc kart; nie zmieniaj siatki kart ani struktury sticky intro.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.title",
+                "content.description",
+                "content.primaryCta.text",
+                "content.primaryCta.href",
+                "content.cards[].icon",
+                "content.cards[].title",
+                "content.cards[].description",
+                "content.cards[].ctaText",
+                "content.cards[].ctaHref"
+              ],
+              "editRoute": "Zmiany tresci i linkow kart wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie korzystaj z narzedzi WooCommerce dla tego bloku.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "title": "Jak mozemy ulozyc oferte weselna",
+                "description": "Ta sekcja porzadkuje przyszla oferte weselna w kilka czytelnych obszarow. Na tym etapie pokazuje roboczy podzial, a nie finalna liste pakietow.",
+                "primaryCta": {
+                  "text": "Porozmawiajmy o przyjeciu",
+                  "href": "/kontakt"
+                },
+                "cards": [
+                  {
+                    "icon": "celebration",
+                    "title": "SCENARIUSZ PRZYJECIA",
+                    "description": "Miejsce na opis ukladu dnia, stylu spotkania i sposobu prowadzenia wesela zgodnie z oczekiwaniami pary mlodej.",
+                    "ctaText": "Omow uklad dnia",
+                    "ctaHref": "/kontakt"
+                  },
+                  {
+                    "icon": "local_shipping",
+                    "title": "MENU I SERWIS",
+                    "description": "Miejsce na opis roboczego podejscia do menu weselnego, serwisu, dopasowania potraw i organizacji pracy sali.",
+                    "ctaText": "Zapytaj o menu",
+                    "ctaHref": "/kontakt"
+                  },
+                  {
+                    "icon": "groups",
+                    "title": "OPIEKA NAD GOSCMI",
+                    "description": "Miejsce na podkreslenie komunikacji, wsparcia organizacyjnego oraz sposobu prowadzenia gosci podczas przyjecia weselnego.",
+                    "ctaText": "Ustalmy szczegoly",
+                    "ctaHref": "/kontakt"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "gallery-masonry-style1-01",
+              "blockKey": "gallery-masonry-style1",
+              "variant": null,
+              "description": "Sekcja galerii dla strony weselnej. Edytuj tylko tytul i zestaw zdjec; do podmiany obrazow uzywaj mediow WordPress, nie zmieniaj geometrii masonry.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.title",
+                "content.images[].src",
+                "content.images[].alt"
+              ],
+              "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "title": "Galeria miejsca i przyjec",
+                "images": [
+                  {
+                    "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                    "alt": "Ustawienie sali na przyjecie"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                    "alt": "Detal wystroju restauracji"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                    "alt": "Wnetrze restauracji podczas wydarzenia"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                    "alt": "Stol i aranżacja przyjecia"
+                  },
+                  {
+                    "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                    "alt": "Sala gotowa na przyjecie weselne"
+                  },
+                  {
+                    "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                    "alt": "Nastrojowa przestrzen restauracji"
+                  },
+                  {
+                    "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                    "alt": "Detale miejsca i stolow"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "premium_call_to_action_with_image_carousel-01",
+              "blockKey": "premium_call_to_action_with_image_carousel",
+              "variant": null,
+              "description": "Konczace CTA dla strony weselnej. Edytuj heading, description, buttonText, buttonHref i obrazy; nie zmieniaj ukladu dwoch kolumn ani zachowania karuzeli.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.heading",
+                "content.description",
+                "content.buttonText",
+                "content.buttonHref",
+                "content.images[].src",
+                "content.images[].alt"
+              ],
+              "editRoute": "Zmiany copy, linku CTA i kolekcji obrazow wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru obrazow uzywaj narzedzi WordPress media. Nie korzystaj z WooCommerce dla tego bloku.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "heading": "Porozmawiajmy o Twoim przyjeciu",
+                "description": "To finalne CTA zamyka szkic strony weselnej. Na tym etapie prowadzi do kontaktu i zostawia miejsce na doprecyzowanie finalnej obietnicy oraz galerii pomocniczej.",
+                "buttonText": "Zapytaj o termin",
+                "buttonHref": "/kontakt",
+                "images": [
+                  {
+                    "src": "/react/images/about_1.jpg",
+                    "alt": "Sala restauracji"
+                  },
+                  {
+                    "src": "/react/images/about_front.jpg",
+                    "alt": "Detale wystroju"
+                  },
+                  {
+                    "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                    "alt": "Przyjecie w restauracji"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                    "alt": "Nastroj sali"
+                  },
+                  {
+                    "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                    "alt": "Strefa spotkania"
+                  },
+                  {
+                    "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                    "alt": "Detale przyjecia"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "workflow": {
+        "requiresSourceMapping": false,
+        "unresolvedSourceBlockIds": [],
+        "sourceMappingNotes": {},
+        "needsCompile": false,
+        "needsPublish": true,
+        "needsDeploy": false
+      },
+      "needsCompile": false,
+      "needsPublish": true,
+      "needsDeploy": false
+    },
+    "ensuredPage": null,
+    "compiled": {
+      "page_builder_schema": {
+        "version": 1,
+        "page": {
+          "slug": "restauracja-na-wesele",
+          "title": "Restauracja na wesele",
+          "status": "draft",
+          "templateKey": "generic-page"
+        },
+        "meta": {
+          "pageKind": "generic_page"
+        },
+        "sections": [
+          {
+            "id": "simple_heading_and_paragraph-01",
+            "blockKey": "simple_heading_and_paragraph",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "eyebrow": "Przyjecia weselne",
+              "title": "Restauracja na wesele",
+              "richTextHtml": "<p>Ta strona jest roboczym szkieletem dla oferty weselnej Bulwar. Na tym etapie ustawiamy uklad sekcji i kierunek komunikacji, bez finalnego copy sprzedazowego.</p><p>Kolejne iteracje doprecyzuja zakres oferty, przebieg wspolpracy, galerie i wezwania do kontaktu.</p>"
+            },
+            "source": null,
+            "meta": {
+              "ai": {
+                "description": "Sekcja otwierajaca strone weselna. Edytuj tylko eyebrow, tytul i richTextHtml; nie zmieniaj geometrii ani nie dodawaj tutaj galerii lub listy uslug."
+              }
+            }
+          },
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Sala restauracji przygotowana na eleganckie przyjecie"
+                }
+              ],
+              "leftText": {
+                "title": "Miejsce na spokojne wesele w centrum Poznania",
+                "paragraphs": [
+                  "Ta sekcja opisuje charakter miejsca, atmosfere sali i styl przyjec, ale jeszcze nie zawiera finalnej obietnicy marketingowej.",
+                  "Docelowo bedzie tu mozna pokazac, dla jakiego typu wesel Bulwar jest najlepszym wyborem oraz jak wyglada klimat spotkania na miejscu."
+                ],
+                "ctaButton": {
+                  "href": "/kontakt",
+                  "text": "Zapytaj o termin"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Po prawej stronie zostawiamy miejsce na roboczy opis organizacji przyjecia, obslugi oraz mozliwych scenariuszy weselnych.",
+                  "Na dalszym etapie mozna tu doprecyzowac liczbe gosci, styl serwisu, ustawienie sali i najwazniejsze przewagi oferty."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal sali i nastroju przyjecia weselnego"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {
+              "ai": {
+                "description": "Sekcja o miejscu i atmosferze wesela. Edytuj tylko teksty, obrazy i CTA; nie zmieniaj dwukolumnowej kompozycji tego bloku."
+              }
+            }
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Jak mozemy ulozyc oferte weselna",
+              "description": "Ta sekcja porzadkuje przyszla oferte weselna w kilka czytelnych obszarow. Na tym etapie pokazuje roboczy podzial, a nie finalna liste pakietow.",
+              "primaryCta": {
+                "text": "Porozmawiajmy o przyjeciu",
+                "href": "/kontakt"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "SCENARIUSZ PRZYJECIA",
+                  "description": "Miejsce na opis ukladu dnia, stylu spotkania i sposobu prowadzenia wesela zgodnie z oczekiwaniami pary mlodej.",
+                  "ctaText": "Omow uklad dnia",
+                  "ctaHref": "/kontakt"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "MENU I SERWIS",
+                  "description": "Miejsce na opis roboczego podejscia do menu weselnego, serwisu, dopasowania potraw i organizacji pracy sali.",
+                  "ctaText": "Zapytaj o menu",
+                  "ctaHref": "/kontakt"
+                },
+                {
+                  "icon": "groups",
+                  "title": "OPIEKA NAD GOSCMI",
+                  "description": "Miejsce na podkreslenie komunikacji, wsparcia organizacyjnego oraz sposobu prowadzenia gosci podczas przyjecia weselnego.",
+                  "ctaText": "Ustalmy szczegoly",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {
+              "ai": {
+                "description": "Sekcja z trzema filarami oferty weselnej. Edytuj tylko tytul, opis, glowne CTA i tresc kart; nie zmieniaj siatki kart ani struktury sticky intro."
+              }
+            }
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Galeria miejsca i przyjec",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Ustawienie sali na przyjecie"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Detal wystroju restauracji"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Wnetrze restauracji podczas wydarzenia"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Stol i aranżacja przyjecia"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Sala gotowa na przyjecie weselne"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Nastrojowa przestrzen restauracji"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Detale miejsca i stolow"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {
+              "ai": {
+                "description": "Sekcja galerii dla strony weselnej. Edytuj tylko tytul i zestaw zdjec; do podmiany obrazow uzywaj mediow WordPress, nie zmieniaj geometrii masonry."
+              }
+            }
+          },
+          {
+            "id": "premium_call_to_action_with_image_carousel-01",
+            "blockKey": "premium_call_to_action_with_image_carousel",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "heading": "Porozmawiajmy o Twoim przyjeciu",
+              "description": "To finalne CTA zamyka szkic strony weselnej. Na tym etapie prowadzi do kontaktu i zostawia miejsce na doprecyzowanie finalnej obietnicy oraz galerii pomocniczej.",
+              "buttonText": "Zapytaj o termin",
+              "buttonHref": "/kontakt",
+              "images": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Sala restauracji"
+                },
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detale wystroju"
+                },
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Przyjecie w restauracji"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Nastroj sali"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Strefa spotkania"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Detale przyjecia"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {
+              "ai": {
+                "description": "Konczace CTA dla strony weselnej. Edytuj heading, description, buttonText, buttonHref i obrazy; nie zmieniaj ukladu dwoch kolumn ani zachowania karuzeli."
+              }
+            }
+          }
+        ]
+      },
+      "page_builder_schema_for_ai": {
+        "version": 1,
+        "postId": null,
+        "slug": "restauracja-na-wesele",
+        "title": "Restauracja na wesele",
+        "blocks": [
+          {
+            "id": "simple_heading_and_paragraph-01",
+            "blockKey": "simple_heading_and_paragraph",
+            "variant": null,
+            "description": "Sekcja otwierajaca strone weselna. Edytuj tylko eyebrow, tytul i richTextHtml; nie zmieniaj geometrii ani nie dodawaj tutaj galerii lub listy uslug.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.eyebrow",
+              "content.title",
+              "content.richTextHtml"
+            ],
+            "editRoute": "Zmiany naglowka i tresci rich-text HTML wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Blok jest direct-edit only i nie korzysta z WooCommerce ani z zewnetrznego source.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "eyebrow": "Przyjecia weselne",
+              "title": "Restauracja na wesele",
+              "richTextHtml": "<p>Ta strona jest roboczym szkieletem dla oferty weselnej Bulwar. Na tym etapie ustawiamy uklad sekcji i kierunek komunikacji, bez finalnego copy sprzedazowego.</p><p>Kolejne iteracje doprecyzuja zakres oferty, przebieg wspolpracy, galerie i wezwania do kontaktu.</p>"
+            }
+          },
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "variant": null,
+            "description": "Sekcja o miejscu i atmosferze wesela. Edytuj tylko teksty, obrazy i CTA; nie zmieniaj dwukolumnowej kompozycji tego bloku.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.leftImages[].src",
+              "content.leftImages[].alt",
+              "content.leftText.title",
+              "content.leftText.paragraphs[]",
+              "content.leftText.ctaButton.text",
+              "content.leftText.ctaButton.href",
+              "content.rightText.paragraphs[]",
+              "content.rightImages[].src",
+              "content.rightImages[].alt"
+            ],
+            "editRoute": "Zmiany copy wprowadzaj bezposrednio w page_builder_schema_for_ai i odpowiadajacym page_builder_schema. Gdy trzeba podmienic obrazy, uzywaj narzedzi WordPress media. Link CTA powinien pozostac wewnetrzna sciezka strony Bulwaru.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Sala restauracji przygotowana na eleganckie przyjecie"
+                }
+              ],
+              "leftText": {
+                "title": "Miejsce na spokojne wesele w centrum Poznania",
+                "paragraphs": [
+                  "Ta sekcja opisuje charakter miejsca, atmosfere sali i styl przyjec, ale jeszcze nie zawiera finalnej obietnicy marketingowej.",
+                  "Docelowo bedzie tu mozna pokazac, dla jakiego typu wesel Bulwar jest najlepszym wyborem oraz jak wyglada klimat spotkania na miejscu."
+                ],
+                "ctaButton": {
+                  "href": "/kontakt",
+                  "text": "Zapytaj o termin"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Po prawej stronie zostawiamy miejsce na roboczy opis organizacji przyjecia, obslugi oraz mozliwych scenariuszy weselnych.",
+                  "Na dalszym etapie mozna tu doprecyzowac liczbe gosci, styl serwisu, ustawienie sali i najwazniejsze przewagi oferty."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal sali i nastroju przyjecia weselnego"
+                }
+              ]
+            }
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "variant": null,
+            "description": "Sekcja z trzema filarami oferty weselnej. Edytuj tylko tytul, opis, glowne CTA i tresc kart; nie zmieniaj siatki kart ani struktury sticky intro.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.description",
+              "content.primaryCta.text",
+              "content.primaryCta.href",
+              "content.cards[].icon",
+              "content.cards[].title",
+              "content.cards[].description",
+              "content.cards[].ctaText",
+              "content.cards[].ctaHref"
+            ],
+            "editRoute": "Zmiany tresci i linkow kart wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie korzystaj z narzedzi WooCommerce dla tego bloku.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Jak mozemy ulozyc oferte weselna",
+              "description": "Ta sekcja porzadkuje przyszla oferte weselna w kilka czytelnych obszarow. Na tym etapie pokazuje roboczy podzial, a nie finalna liste pakietow.",
+              "primaryCta": {
+                "text": "Porozmawiajmy o przyjeciu",
+                "href": "/kontakt"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "SCENARIUSZ PRZYJECIA",
+                  "description": "Miejsce na opis ukladu dnia, stylu spotkania i sposobu prowadzenia wesela zgodnie z oczekiwaniami pary mlodej.",
+                  "ctaText": "Omow uklad dnia",
+                  "ctaHref": "/kontakt"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "MENU I SERWIS",
+                  "description": "Miejsce na opis roboczego podejscia do menu weselnego, serwisu, dopasowania potraw i organizacji pracy sali.",
+                  "ctaText": "Zapytaj o menu",
+                  "ctaHref": "/kontakt"
+                },
+                {
+                  "icon": "groups",
+                  "title": "OPIEKA NAD GOSCMI",
+                  "description": "Miejsce na podkreslenie komunikacji, wsparcia organizacyjnego oraz sposobu prowadzenia gosci podczas przyjecia weselnego.",
+                  "ctaText": "Ustalmy szczegoly",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "variant": null,
+            "description": "Sekcja galerii dla strony weselnej. Edytuj tylko tytul i zestaw zdjec; do podmiany obrazow uzywaj mediow WordPress, nie zmieniaj geometrii masonry.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.images[].src",
+              "content.images[].alt"
+            ],
+            "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Galeria miejsca i przyjec",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Ustawienie sali na przyjecie"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Detal wystroju restauracji"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Wnetrze restauracji podczas wydarzenia"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Stol i aranżacja przyjecia"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Sala gotowa na przyjecie weselne"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Nastrojowa przestrzen restauracji"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Detale miejsca i stolow"
+                }
+              ]
+            }
+          },
+          {
+            "id": "premium_call_to_action_with_image_carousel-01",
+            "blockKey": "premium_call_to_action_with_image_carousel",
+            "variant": null,
+            "description": "Konczace CTA dla strony weselnej. Edytuj heading, description, buttonText, buttonHref i obrazy; nie zmieniaj ukladu dwoch kolumn ani zachowania karuzeli.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.heading",
+              "content.description",
+              "content.buttonText",
+              "content.buttonHref",
+              "content.images[].src",
+              "content.images[].alt"
+            ],
+            "editRoute": "Zmiany copy, linku CTA i kolekcji obrazow wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru obrazow uzywaj narzedzi WordPress media. Nie korzystaj z WooCommerce dla tego bloku.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "heading": "Porozmawiajmy o Twoim przyjeciu",
+              "description": "To finalne CTA zamyka szkic strony weselnej. Na tym etapie prowadzi do kontaktu i zostawia miejsce na doprecyzowanie finalnej obietnicy oraz galerii pomocniczej.",
+              "buttonText": "Zapytaj o termin",
+              "buttonHref": "/kontakt",
+              "images": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Sala restauracji"
+                },
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detale wystroju"
+                },
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Przyjecie w restauracji"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Nastroj sali"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Strefa spotkania"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Detale przyjecia"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "compileMeta": {
+      "appliedSourceBlockIds": [],
+      "ignoredSourceBlockIds": [],
+      "usedCurrentPageBuilderSchema": false,
+      "usedCurrentPageBuilderSchemaForAi": false
+    },
+    "published": null,
+    "readback": null,
+    "dryRun": true
+  }
+}

@@ -1,0 +1,347 @@
+plan_id: adhoc-radius-contract-refactor
+objective: Identify which suspected React runtime components rendered by zip/src/pages/TemplatePage.tsx still contain hardcoded rounded-* classes instead of using the central radius contract in zip/src/index.css.
+focus_area: zip-template-radius-contract
+created_at: 2026-04-22
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+	- TemplatePage renders Feature18, Project5c, OccasionalMenuPdfDownloadSection, and MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection through page-builder block definitions in zip/src/blocks/**/schema.ts.
+	- Feature20 is not part of /template; it is only imported and rendered by zip/src/pages/TemplatePage2.tsx.
+	- The central radius contract is defined in zip/src/index.css as theme-radius-surface and theme-radius-media -> var(--radius-lg), plus theme-radius-control -> var(--radius-md).
+	- All four live suspect components still contain hardcoded rounded-* classes; most map cleanly to surface, media, or control semantics, while the parallax section uses intentionally asymmetric docking radii and the download card uses an oversized rounded-[24px] special shape.
+
+research_metadata:
+	methodology: hybrid retrieval using file_search, grep_search, targeted read_file, and instruction/memory review; runtime mapping verified from TemplatePage section ids -> block schema runtime renderers -> component files
+	scope: Limited to zip/src/pages/TemplatePage.tsx, the central radius contract in zip/src/index.css, the five user-suspected components, and the four block schema files that connect those components to TemplatePage
+	confidence: high
+	coverage: 95
+	decision_blockers: 0
+	research_blockers: 0
+
+files_analyzed:
+	- file: TemplatePage.tsx
+		path: zip/src/pages/TemplatePage.tsx
+		purpose: Defines the /template preview schema and renders block-driven sections.
+		key_elements:
+			- element: TEMPLATE_PAGE_PREVIEW_SCHEMA
+				type: variable
+				location: zip/src/pages/TemplatePage.tsx:95
+				description: Declares preview sections including universal_multilink, universal_header_block_1, block_download, and the parallax menu block.
+			- element: featureHeaderPreviewSchema
+				type: variable
+				location: zip/src/pages/TemplatePage.tsx:353
+				description: Groups the universal_multilink and universal_header_block_1 sections for rendering.
+			- element: remainingPreviewSchema
+				type: variable
+				location: zip/src/pages/TemplatePage.tsx:366
+				description: Renders the remaining sections, including block_download and the parallax menu block.
+			- element: renderPageBuilderSections
+				type: pattern
+				location: zip/src/pages/TemplatePage.tsx:438
+				description: Executes block runtime renderers for the prepared preview schemas.
+		language: TypeScript
+		lines: 466
+	- file: index.css
+		path: zip/src/index.css
+		purpose: Defines the shared radius contract and underlying radius tokens.
+		key_elements:
+			- element: theme-radius-surface
+				type: pattern
+				location: zip/src/index.css:77
+				description: Surface radius utility bound to var(--radius-lg).
+			- element: theme-radius-media
+				type: pattern
+				location: zip/src/index.css:80
+				description: Media radius utility bound to var(--radius-lg).
+			- element: theme-radius-control
+				type: pattern
+				location: zip/src/index.css:83
+				description: Control radius utility bound to var(--radius-md).
+			- element: --radius-sm/--radius-md/--radius-lg
+				type: variable
+				location: zip/src/index.css:161
+				description: Inline theme tokens used by the contract utilities.
+		language: CSS
+		lines: 260
+	- file: schema.ts
+		path: zip/src/blocks/universal_multilink_block/schema.ts
+		purpose: Maps the universal_multilink_block runtime to Feature18.
+		key_elements:
+			- element: componentName: Feature18
+				type: pattern
+				location: zip/src/blocks/universal_multilink_block/schema.ts:74
+				description: Declares the runtime component used for the universal_multilink block.
+		language: TypeScript
+		lines: 90
+	- file: schema.ts
+		path: zip/src/blocks/universal_header_block_1/schema.ts
+		purpose: Maps the universal_header_block_1 runtime to Project5c.
+		key_elements:
+			- element: componentName: Project5c
+				type: pattern
+				location: zip/src/blocks/universal_header_block_1/schema.ts:78
+				description: Declares the runtime component used for the editorial header block.
+		language: TypeScript
+		lines: 94
+	- file: schema.ts
+		path: zip/src/blocks/block_download/schema.ts
+		purpose: Maps the block_download runtime to OccasionalMenuPdfDownloadSection.
+		key_elements:
+			- element: componentName: OccasionalMenuPdfDownloadSection
+				type: pattern
+				location: zip/src/blocks/block_download/schema.ts:76
+				description: Declares the runtime component used for the PDF download block.
+		language: TypeScript
+		lines: 92
+	- file: schema.ts
+		path: zip/src/blocks/menu_two_columns_with_with_heading_with_img_fullwidth_paralax/schema.ts
+		purpose: Maps the parallax menu block runtime to MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.
+		key_elements:
+			- element: componentName: MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection
+				type: pattern
+				location: zip/src/blocks/menu_two_columns_with_with_heading_with_img_fullwidth_paralax/schema.ts:136
+				description: Declares the runtime component used for the parallax hero plus docked menu panel.
+		language: TypeScript
+		lines: 166
+	- file: Feature18.tsx
+		path: zip/src/components/sections/Feature18.tsx
+		purpose: Two-column feature section with CTA and linked cards.
+		key_elements:
+			- element: rounded-[4px] CTA button
+				type: pattern
+				location: zip/src/components/sections/Feature18.tsx:99
+				description: Hardcoded button corner radius on the primary CTA.
+			- element: rounded-[4px] cards
+				type: pattern
+				location: zip/src/components/sections/Feature18.tsx:110
+				description: Hardcoded card surface radius for the card grid items.
+		language: TypeScript
+		lines: 132
+	- file: Project5c.tsx
+		path: zip/src/components/sections/Project5c.tsx
+		purpose: Editorial header, linked list panel, and two-image gallery section.
+		key_elements:
+			- element: rounded-[4px] links panel
+				type: pattern
+				location: zip/src/components/sections/Project5c.tsx:124
+				description: Hardcoded list-panel surface radius.
+			- element: rounded-[4px] primary image wrapper
+				type: pattern
+				location: zip/src/components/sections/Project5c.tsx:156
+				description: Hardcoded media radius on the large gallery item.
+			- element: rounded-[4px] secondary image wrapper
+				type: pattern
+				location: zip/src/components/sections/Project5c.tsx:166
+				description: Hardcoded media radius on the secondary gallery item.
+		language: TypeScript
+		lines: 202
+	- file: OccasionalMenuPdfDownloadSection.tsx
+		path: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx
+		purpose: Download promo section with intro copy, feature bullets, and a prominent download panel.
+		key_elements:
+			- element: rounded-[4px] outer shell
+				type: pattern
+				location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:79
+				description: Hardcoded section shell radius.
+			- element: rounded-[4px] feature icon tile
+				type: pattern
+				location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:97
+				description: Hardcoded small control-like tile radius.
+			- element: rounded-[24px] download card
+				type: pattern
+				location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:110
+				description: Oversized pill-like panel radius.
+			- element: rounded-[8px] CTA button
+				type: pattern
+				location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:129
+				description: Hardcoded CTA button radius.
+		language: TypeScript
+		lines: 149
+	- file: MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+		path: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+		purpose: Parallax hero section docked to a shared two-column menu panel.
+		key_elements:
+			- element: rounded-t-[4px] rounded-b-none hero
+				type: pattern
+				location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:39
+				description: Asymmetric hero radius used to dock the media block to the panel below.
+			- element: panelClassName rounded-t-none rounded-b-[4px]
+				type: pattern
+				location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:63
+				description: Asymmetric panel radius completing the docked shape.
+		language: TypeScript
+		lines: 65
+	- file: Feature20.tsx
+		path: zip/src/components/sections/Feature20.tsx
+		purpose: TemplatePage2-only card grid section.
+		key_elements:
+			- element: rounded-xl card wrapper
+				type: pattern
+				location: zip/src/components/sections/Feature20.tsx:103
+				description: Hardcoded card radius not used by TemplatePage.
+		language: TypeScript
+		lines: 122
+	- file: TemplatePage2.tsx
+		path: zip/src/pages/TemplatePage2.tsx
+		purpose: Separate preview canvas for newly imported blocks.
+		key_elements:
+			- element: Feature20 import
+				type: pattern
+				location: zip/src/pages/TemplatePage2.tsx:6
+				description: Confirms Feature20 belongs to TemplatePage2, not TemplatePage.
+			- element: Feature20 render
+				type: pattern
+				location: zip/src/pages/TemplatePage2.tsx:127
+				description: Confirms the runtime route where Feature20 is rendered.
+		language: TypeScript
+		lines: 136
+
+patterns_found:
+	- category: architecture
+		pattern: TemplatePage uses block schema ids and renderPageBuilderSections instead of direct section imports for most previewed sections.
+		description: The runtime path is TemplatePage preview schema -> block definition runtime renderSection -> section component.
+		examples:
+			- file: zip/src/pages/TemplatePage.tsx
+				location: zip/src/pages/TemplatePage.tsx:162
+				snippet: id: "template-universal-multilink-01"
+			- file: zip/src/blocks/universal_multilink_block/schema.ts
+				location: zip/src/blocks/universal_multilink_block/schema.ts:74
+				snippet: componentName: "Feature18"
+			- file: zip/src/blocks/registry/renderPageBuilderSections.tsx
+				location: zip/src/blocks/registry/renderPageBuilderSections.tsx:12
+				snippet: return schema.sections.map((section) => renderSection(section));
+		prevalence: common
+	- category: structure
+		pattern: The central radius contract exists as semantic utility classes backed by shared radius tokens.
+		description: zip/src/index.css exposes theme-radius-surface, theme-radius-media, and theme-radius-control, with token values derived from --radius-md and --radius-lg.
+		examples:
+			- file: zip/src/index.css
+				location: zip/src/index.css:77
+				snippet: .theme-radius-surface { border-radius: var(--radius-lg); }
+			- file: zip/src/index.css
+				location: zip/src/index.css:83
+				snippet: .theme-radius-control { border-radius: var(--radius-md); }
+		prevalence: common
+	- category: naming
+		pattern: Remaining hardcoded radii in suspect components are mostly numeric arbitrary values rather than semantic contract classes.
+		description: The live suspects use rounded-[4px], rounded-[8px], rounded-[24px], or side-specific rounded utilities instead of the contract classes.
+		examples:
+			- file: zip/src/components/sections/Feature18.tsx
+				location: zip/src/components/sections/Feature18.tsx:99
+				snippet: rounded-[4px]
+			- file: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx
+				location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:110
+				snippet: rounded-[24px]
+			- file: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+				location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:63
+				snippet: rounded-t-none rounded-b-[4px]
+		prevalence: occasional
+	- category: structure
+		pattern: Some live radii are intentionally asymmetric or oversized special cases rather than standard card/control shapes.
+		description: The docked parallax hero uses split top/bottom radii across two adjacent elements, and the download card uses a much larger 24px radius than the contract defaults.
+		examples:
+			- file: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+				location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:39
+				snippet: rounded-t-[4px] rounded-b-none
+			- file: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx
+				location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:110
+				snippet: rounded-[24px]
+		prevalence: rare
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: TemplatePage preview schema
+			responsibility: Defines which blocks render on /template
+			location: zip/src/pages/TemplatePage.tsx
+			relationship_to_domain: domain depends on this
+		- component: Block schema runtime renderers
+			responsibility: Convert section schema entries into React elements
+			location: zip/src/blocks/**/schema.ts
+			relationship_to_domain: domain depends on this
+		- component: renderPageBuilderSections
+			responsibility: Executes runtime renderSection callbacks for each enabled section
+			location: zip/src/blocks/registry/renderPageBuilderSections.tsx
+			relationship_to_domain: domain depends on this
+		- component: Suspect section components
+			responsibility: Own the remaining rounded-* classes under audit
+			location: zip/src/components/sections
+			relationship_to_domain: this uses domain outputs
+	interfaces_used_by_domain:
+		- interface: PageBuilderSchema
+			location: zip/src/blocks/registry/pageBuilderSchema.ts
+			usage_pattern: TemplatePage builds preview schemas from it and renderPageBuilderSections iterates through sections
+	data_flow_involving_domain: TemplatePage creates TEMPLATE_PAGE_PREVIEW_SCHEMA -> filtered preview schemas are passed to renderPageBuilderSections -> registry block runtime renderers instantiate Feature18, Project5c, OccasionalMenuPdfDownloadSection, and MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection -> those components apply their own hardcoded rounded-* classes at render time.
+	key_relationships_to_domain:
+		- from: zip/src/pages/TemplatePage.tsx
+			to: zip/src/blocks/registry/renderPageBuilderSections.tsx
+			relationship: calls
+		- from: zip/src/blocks/universal_multilink_block/schema.ts
+			to: zip/src/components/sections/Feature18.tsx
+			relationship: imports
+		- from: zip/src/blocks/universal_header_block_1/schema.ts
+			to: zip/src/components/sections/Project5c.tsx
+			relationship: imports
+		- from: zip/src/blocks/block_download/schema.ts
+			to: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx
+			relationship: imports
+		- from: zip/src/blocks/menu_two_columns_with_with_heading_with_img_fullwidth_paralax/schema.ts
+			to: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+			relationship: imports
+
+related_technology_stack:
+	languages_used_in_domain:
+		- TypeScript
+		- TSX
+		- CSS
+	frameworks_used_in_domain:
+		- name: React
+			usage_in_domain: TemplatePage and the section components are React function components rendered through the page-builder registry.
+		- name: Tailwind CSS v4 style system
+			usage_in_domain: Radius handling is encoded as utility classes and semantic utilities in index.css.
+	libraries_used_in_domain:
+		- name: zod
+			purpose_in_domain: Block schema validation for the page-builder definitions.
+		- name: framer-motion
+			purpose_in_domain: Motion wrappers inside Project5c.
+		- name: lucide-react
+			purpose_in_domain: Icons inside Feature18 and OccasionalMenuPdfDownloadSection.
+	external_apis_used_in_domain: []
+
+related_conventions:
+	naming_patterns_in_domain: Block schemas use blockKey plus componentName/componentImportPath runtime metadata; visual utilities in index.css use semantic names such as theme-radius-surface rather than numeric radii.
+	structure_of_domain: TemplatePage is a registry-driven preview surface; blocks own schemas in zip/src/blocks/*/schema.ts and React implementations live in zip/src/components/sections/.
+	error_handling_in_domain: TemplatePage catches source-resolution failures and shows a sourceError fallback, but the radius audit itself is static class inspection.
+	testing_in_domain: TemplatePage2 and page-builder registry have tests, but no focused automated radius-contract audit exists in the inspected scope.
+	documentation_in_domain: The design-system instruction file names TemplatePage as the canonical visual reference and index.css as the style source of truth.
+
+related_dependencies:
+	internal:
+		- component: zip/src/index.css
+			relationship_to_domain: Defines the target radius contract the suspect components should align to.
+			direction: outbound
+		- component: zip/src/blocks/registry/renderPageBuilderSections.tsx
+			relationship_to_domain: Performs runtime rendering for the TemplatePage preview schema.
+			direction: outbound
+		- component: zip/src/components/sections/PageBuilderMenuSection.tsx
+			relationship_to_domain: Receives panelClassName from the parallax section and therefore participates in the final docked shape.
+			direction: outbound
+	external:
+		- name: react
+			purpose_for_domain: Component runtime and createElement-based block rendering.
+		- name: tailwindcss
+			purpose_for_domain: Utility-class-based styling, including rounded-* helpers.
+
+open_questions:
+	- question: Does the shared PageBuilderMenuSection implementation also contain hardcoded rounded-* classes that interact with the parallax section's docked panel shape?
+		context: The suspect parallax component passes asymmetric panelClassName overrides into a shared section component, so final visual ownership may be split across two files.
+		type: research
+		affects:
+			- adhoc-radius-contract-refactor
+
+gaps:
+	- area: Full /template runtime audit outside the suspect list
+		description: This research intentionally audited only the five user-specified suspects plus the schema connections. Other runtime components rendered by TemplatePage were not exhaustively searched for rounded-* classes.
+		impact: nice_to_know
+		affects:
+			- adhoc-radius-contract-refactor

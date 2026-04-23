@@ -1,0 +1,569 @@
+plan_id: sync-catering-category-20260325
+objective: Research the current BULWAR APP codebase to support implementing one script that synchronizes a single catering category payload into both the frontend data file and WooCommerce.
+focus_area: catering_category_sync
+created_at: 2026-03-25
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The active frontend catalog source of truth is zip/src/data/cateringWielkanocny.json, validated and normalized by zip/src/data/cateringWielkanocny.ts, then consumed by zip/src/pages/CateringWielkanocnyPage.tsx.
+  - Frontend product ids are not cosmetic ids; they are treated as canonical Woo product ids in the cart and bridge checkout payload, so any sync process must preserve or write back Woo ids.
+  - Existing Woo import scripts live in SCRIPTS, but they duplicate the catalog inline, create products blindly, do not update the active frontend JSON, and ignore current frontend-only requirements such as image_url and split-name products.
+  - The smallest repo-aligned single-category payload is the current raw frontend category shape plus optional id omission for new records; the smallest safe output target set is the frontend JSON plus Woo product_cat and simple products.
+  - The most practical single-script approach in this repo is a local Node script in SCRIPTS that updates zip/src/data/cateringWielkanocny.json and then upserts the matching Woo term/products, writing canonical ids back into the same JSON file.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic_search and grep_search, followed by targeted read_file inspection of frontend data modules, cart payload code, existing Woo import scripts, and bridge contracts.
+  scope: Focused inspection of the active catering catalog path, the current Woo import utilities, and the bridge/cart coupling points that constrain a future one-category sync script.
+  confidence: high
+  coverage: 88
+
+files_analyzed:
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Normalizes the raw catering JSON into the typed frontend category and product contract used by the page and cart.
+    key_elements:
+      - element: RawCateringProduct
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:5
+        description: Raw product input shape expected from the JSON source, including ids, price, weight, dietary flags, and either combined text or split name plus description fields.
+      - element: RawCateringCategory
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:17
+        description: Raw category input shape with id, Polish content fields, image_url, and pozycje.
+      - element: CateringCategoryContract
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:50
+        description: Normalized frontend category shape with title, description, imageUrl, and normalized products.
+      - element: cateringWielkanocnySource
+        type: variable
+        location: zip/src/data/cateringWielkanocny.ts:213
+        description: Exposes the raw JSON array as the immediate frontend source dataset.
+      - element: cateringWielkanocnyCategories
+        type: variable
+        location: zip/src/data/cateringWielkanocny.ts:215
+        description: Exposes the normalized category list consumed by the page and cart.
+    language: TypeScript
+    lines: 179
+
+  - file: cateringWielkanocny.json
+    path: zip/src/data/cateringWielkanocny.json
+    purpose: Active human-editable frontend catalog data file for catering categories and products.
+    key_elements:
+      - element: root category array
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:1
+        description: Stores categories as an array of raw records matching RawCateringCategory.
+      - element: image_url
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:5
+        description: Category background image path stored as a public asset URL under /react/images/.
+      - element: split product variant
+        type: pattern
+        location: zip/src/data/cateringWielkanocny.json:31
+        description: At least one product uses nazwa_produktu plus opis_produktu instead of a single combined text field.
+    language: JSON
+    lines: 395
+
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active page composition that consumes the catalog and sends product ids into the cart and bridge checkout flow.
+    key_elements:
+      - element: cateringWielkanocnyCategories import
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:12
+        description: Confirms the page reads from the typed data module rather than root staging JSON files.
+      - element: createCateringProductLookup
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:85
+        description: Builds a lookup keyed by product id from the normalized category data.
+      - element: cartLinesPayload
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:140
+        description: Builds the bridge checkout payload from the cart state, preserving frontend product ids.
+      - element: category rendering loop
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:170
+        description: Renders one category section per normalized category.
+    language: TypeScript
+    lines: 182
+
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Defines cart persistence and the bridge checkout line payload sent from the frontend.
+    key_elements:
+      - element: BridgeCheckoutCartLine
+        type: interface
+        location: zip/src/lib/cateringCart.ts:61
+        description: Frozen frontend-to-bridge line shape containing client_line_id, line_type, product_id, quantity, and optional configuration.
+      - element: buildBridgeCheckoutCartLines
+        type: function
+        location: zip/src/lib/cateringCart.ts:407
+        description: Emits product_id from baseProductId, which comes from the frontend catalog id.
+      - element: baseProductId usage
+        type: pattern
+        location: zip/src/lib/cateringCart.ts:208
+        description: Simple products use the normalized product.id as the cart's canonical base product id.
+    language: TypeScript
+    lines: 362
+
+  - file: cateringSpecialMenuFor2.ts
+    path: zip/src/data/cateringSpecialMenuFor2.ts
+    purpose: Defines the special shell Woo product used outside the normal category JSON.
+    key_elements:
+      - element: SpecialMenuFor2ShellProductIdentity
+        type: interface
+        location: zip/src/data/cateringSpecialMenuFor2.ts:37
+        description: Declares the shell product identity contract with a canonical baseProductId.
+      - element: shellProduct
+        type: variable
+        location: zip/src/data/cateringSpecialMenuFor2.ts:82
+        description: Current live shell product uses Woo product id 53 and is not part of the category JSON sync target.
+    language: TypeScript
+    lines: 225
+
+  - file: run_upload.js
+    path: SCRIPTS/run_upload.js
+    purpose: Existing local-to-server bulk upload script for creating Woo categories and products from an inline dataset.
+    key_elements:
+      - element: inline data constant
+        type: variable
+        location: SCRIPTS/run_upload.js:1
+        description: Duplicates the catalog directly inside the script instead of reading the active frontend JSON.
+      - element: source_data.json write
+        type: pattern
+        location: SCRIPTS/run_upload.js:342
+        description: Writes a transient root JSON file before remote execution.
+      - element: term_exists and wp_insert_term
+        type: pattern
+        location: SCRIPTS/run_upload.js:357
+        description: Creates product_cat terms by category name.
+      - element: WC_Product_Simple creation
+        type: pattern
+        location: SCRIPTS/run_upload.js:377
+        description: Always creates a new simple Woo product for each item.
+      - element: result_with_ids.json write
+        type: pattern
+        location: SCRIPTS/run_upload.js:413
+        description: Saves returned ids locally, but outside the active frontend source file.
+    language: JavaScript
+    lines: 412
+
+  - file: upload_products.js
+    path: SCRIPTS/upload_products.js
+    purpose: Duplicate upload script with the same intended workflow as run_upload.js.
+    key_elements:
+      - element: source_data.json write
+        type: pattern
+        location: SCRIPTS/upload_products.js:342
+        description: Same transient source staging step as run_upload.js.
+      - element: malformed PHP interpolation
+        type: pattern
+        location: SCRIPTS/upload_products.js:357
+        description: The current file contains stripped variable symbols and mojibake, indicating it is not a reliable maintained script.
+    language: JavaScript
+    lines: 412
+
+  - file: add_special_product.php
+    path: SCRIPTS/add_special_product.php
+    purpose: Creates the special shell Woo product used by the custom menu-for-2 flow.
+    key_elements:
+      - element: special product creation
+        type: pattern
+        location: SCRIPTS/add_special_product.php:17
+        description: Creates one hidden simple product in category Zestawy specjalne with a fixed slug and price.
+    language: PHP
+    lines: 32
+
+  - file: source_data.json
+    path: source_data.json
+    purpose: Root-level staging catalog produced by the legacy upload workflow.
+    key_elements:
+      - element: category array without ids
+        type: pattern
+        location: source_data.json:1
+        description: Stores raw categories and products without image_url or ids.
+    language: JSON
+    lines: 337
+
+  - file: result_with_ids.json
+    path: result_with_ids.json
+    purpose: Root-level output artifact from the legacy upload workflow.
+    key_elements:
+      - element: enriched ids
+        type: pattern
+        location: result_with_ids.json:1
+        description: Stores returned category and product ids, but image_url values remain empty.
+    language: JSON
+    lines: 394
+
+  - file: QuoteService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+    purpose: Bridge quote logic that re-resolves Woo products from submitted product ids.
+    key_elements:
+      - element: cartSubtotal product lookup
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:96
+        description: Uses wc_get_product(product_id) for every submitted line and rejects unknown ids.
+    language: PHP
+    lines: 258
+
+  - file: OrderService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+    purpose: Bridge order creation logic that turns cart lines into Woo order items.
+    key_elements:
+      - element: UNKNOWN_PRODUCT guard
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:92
+        description: Throws when the submitted product id is not a real Woo product.
+      - element: special_menu_for_2 handling
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:100
+        description: Adds custom order item metadata only for the special shell-product line type.
+    language: PHP
+    lines: 185
+
+  - file: contracts.md
+    path: wordpress-plugin/bulwar-bridge/docs/contracts.md
+    purpose: Documents the bridge checkout contract and the authoritative order-writing strategy.
+    key_elements:
+      - element: direct Woo order creation guidance
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:8
+        description: Declares direct Woo order creation as the authoritative MVP path.
+      - element: canonical product id requirement
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:121
+        description: Requires product_id in checkout payloads to be the canonical Woo product id.
+      - element: UNKNOWN_PRODUCT error contract
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:171
+        description: Documents the bridge failure mode when ids do not match Woo products.
+    language: Markdown
+    lines: 396
+
+patterns_found:
+  - category: structure
+    pattern: Frontend uses a two-step raw JSON plus typed normalizer pipeline
+    description: The active page does not read root-level staging files. It imports normalized data built from zip/src/data/cateringWielkanocny.json through zip/src/data/cateringWielkanocny.ts.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:1
+        snippet: import cateringWielkanocnyJson from "./cateringWielkanocny.json";
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:12
+        snippet: import { cateringWielkanocnyCategories } from "../data/cateringWielkanocny";
+    prevalence: common
+
+  - category: naming
+    pattern: Raw content stays in Polish business keys while normalized frontend contracts switch to English UI keys
+    description: The JSON layer uses nazwa_kategorii, opis_kategorii, image_url, pozycje, gramatura, cena, while the typed layer exposes title, description, imageUrl, products, weight, and price.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:17
+        snippet: export interface RawCateringCategory { id: number; nazwa_kategorii: string; opis_kategorii: string; image_url: string; pozycje: RawCateringProduct[]; }
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:50
+        snippet: export interface CateringCategoryContract { id: number; title: string; description?: string; imageUrl: string; products: CateringProductContract[]; }
+    prevalence: common
+
+  - category: architecture
+    pattern: Product id is a cross-boundary canonical identifier, not a frontend-only key
+    description: The same numeric id powers page rendering, cart persistence, bridge payload generation, Woo price lookup, and final order creation.
+    examples:
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:64
+        snippet: product_id: number;
+      - file: wordpress-plugin/bulwar-bridge/docs/contracts.md
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:121
+        snippet: product_id must always be the canonical Woo product ID
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:92
+        snippet: throw new RuntimeException('UNKNOWN_PRODUCT');
+    prevalence: common
+
+  - category: structure
+    pattern: Existing Woo import workflow is separate from the active frontend data source
+    description: The existing scripts generate source_data.json and result_with_ids.json in the repo root instead of mutating the active catalog file under zip/src/data.
+    examples:
+      - file: SCRIPTS/run_upload.js
+        location: SCRIPTS/run_upload.js:342
+        snippet: fs.writeFileSync('source_data.json', JSON.stringify(data, null, 2));
+      - file: SCRIPTS/run_upload.js
+        location: SCRIPTS/run_upload.js:413
+        snippet: fs.writeFileSync('result_with_ids.json', result);
+    prevalence: common
+
+  - category: error_handling
+    pattern: Frontend data loader validates content shape strictly, while legacy sync scripts mostly assume success
+    description: The normalizer throws on invalid fields and invalid image_url prefixes, but the legacy upload script mostly creates new records and only logs top-level command errors.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:87
+        snippet: if (!imageUrl.startsWith(PUBLIC_IMAGE_PREFIX)) { throw new Error(...) }
+      - file: SCRIPTS/run_upload.js
+        location: SCRIPTS/run_upload.js:419
+        snippet: console.error("Error occurred:", e.message);
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: zip/src/data/cateringWielkanocny.json
+      responsibility: Human-editable raw catalog storage for regular catering categories and products.
+      location: zip/src/data/cateringWielkanocny.json
+      relationship_to_domain: domain source of truth for current frontend category content
+    - component: zip/src/data/cateringWielkanocny.ts
+      responsibility: Validation and normalization boundary between raw catalog JSON and UI/cart contracts.
+      location: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: domain depends on this to turn raw category payloads into typed UI data
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      responsibility: Page-level consumer of the normalized category list and cart payload builder.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: zip/src/lib/cateringCart.ts
+      responsibility: Cart persistence and bridge checkout payload generation.
+      location: zip/src/lib/cateringCart.ts
+      relationship_to_domain: this uses domain outputs
+    - component: wordpress-plugin/bulwar-bridge
+      responsibility: Server-side quote and order creation against canonical Woo products.
+      location: wordpress-plugin/bulwar-bridge
+      relationship_to_domain: this uses domain outputs indirectly through product ids
+  interfaces_used_by_domain:
+    - interface: RawCateringCategory
+      location: zip/src/data/cateringWielkanocny.ts
+      usage_pattern: Matches the raw JSON shape stored in the active frontend catalog file.
+    - interface: CateringCategoryContract
+      location: zip/src/data/cateringWielkanocny.ts
+      usage_pattern: Stable normalized shape passed into category list sections.
+    - interface: BridgeCheckoutCartLine
+      location: zip/src/lib/cateringCart.ts
+      usage_pattern: Serializes product ids into the bridge contract.
+  data_flow_involving_domain: A raw category record lives in zip/src/data/cateringWielkanocny.json, is normalized in zip/src/data/cateringWielkanocny.ts, rendered by CateringWielkanocnyPage, translated into cart lines by cateringCart.ts, and then revalidated server-side by the bridge using Woo product ids.
+  key_relationships_to_domain:
+    - from: zip/src/data/cateringWielkanocny.json
+      to: zip/src/data/cateringWielkanocny.ts
+      relationship: imports
+    - from: zip/src/data/cateringWielkanocny.ts
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: exports catalog consumed by page
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/lib/cateringCart.ts
+      relationship: calls
+    - from: zip/src/lib/cateringCart.ts
+      to: wordpress-plugin/bulwar-bridge/docs/contracts.md
+      relationship: conforms to documented payload
+    - from: zip/src/lib/cateringCart.ts
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship: supplies product_id values validated by server
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JSON
+    - JavaScript
+    - PHP
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Renders the catering page and category sections from normalized data.
+    - name: Vite
+      usage_in_domain: Loads the JSON module and serves public assets under the /react base path.
+    - name: WooCommerce
+      usage_in_domain: Stores canonical product_cat terms, simple products, and receives bridge-created order lines.
+    - name: WordPress
+      usage_in_domain: Runtime context used by the legacy import PHP and the active bridge plugin.
+  libraries_used_in_domain:
+    - name: child_process
+      purpose_in_domain: Existing upload script uses scp and ssh to send files and execute remote PHP.
+    - name: fs
+      purpose_in_domain: Existing upload script writes transient source_data.json and import.php files.
+  external_apis_used_in_domain:
+    - name: SSH plus remote php83 execution
+      integration_point: SCRIPTS/run_upload.js uses scp and ssh to execute a generated PHP importer on the server.
+
+related_conventions:
+  naming_patterns_in_domain: Frontend catalog data keeps Polish business field names at rest and maps them into English UI-facing property names in TypeScript.
+  structure_of_domain: Static catalog content lives under zip/src/data; page composition stays in zip/src/pages; cart and bridge payload logic stays in zip/src/lib; ad hoc import utilities live in SCRIPTS.
+  error_handling_in_domain: The typed frontend loader throws on bad content shape, especially around required strings, booleans, numbers, and image_url prefix rules. The legacy upload scripts do not perform comparable local validation before creating Woo records.
+  testing_in_domain: Automated tests exist for the cart line model in zip/src/lib/cateringCart.test.ts, including migrated product ids and stable simple-line aggregation, but there are no dedicated tests for the import scripts.
+  documentation_in_domain: The most authoritative cross-boundary contract is the bridge documentation in wordpress-plugin/bulwar-bridge/docs/contracts.md.
+
+related_dependencies:
+  internal:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: consumes normalized categories and sends ids into cart and checkout payloads
+      direction: inbound
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: treats product ids from the catalog as canonical checkout ids
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+      relationship_to_domain: validates product ids against Woo products
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship_to_domain: turns canonical product ids into Woo order items
+      direction: inbound
+  external:
+    - name: WooCommerce product_cat taxonomy and WC_Product_Simple
+      purpose_for_domain: Persist category and product records that the frontend ids must match
+    - name: Public image assets under zip/public/images
+      purpose_for_domain: Provide category image_url values compatible with the frontend validator and page background-image usage
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Woo product creation and id authority
+      location: SCRIPTS/run_upload.js and wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      concern: The sync path must preserve canonical Woo ids because the bridge trusts those ids for pricing and order creation.
+    - area: SSH credentials and remote execution
+      location: SCRIPTS/run_upload.js
+      concern: Existing scripts rely on a hardcoded SSH key path and remote code execution pattern.
+  authentication_patterns_in_domain: Current import scripts authenticate through SSH to the dhosting host and run PHP in a WordPress context.
+  authorization_patterns_in_domain: Frontend checkout does not own Woo credentials; the bridge and server-side WordPress context remain the trusted writers.
+  data_validation_in_domain: Frontend catalog validation is strict around required types and image_url prefix. Bridge validation is strict around canonical Woo product ids.
+
+testing_patterns:
+  framework: node:test
+  coverage_areas:
+    - cart migration from legacy productId quantity maps
+    - stable simple-product aggregation by canonical product id
+    - distinct special-menu lines sharing one shell product id
+  test_organization: Tests live next to cart utilities in zip/src/lib.
+  mock_patterns:
+    - Use real normalized catalog fixtures from zip/src/data/cateringWielkanocny
+
+repo_specific_sync_findings:
+  exact_current_frontend_source_of_truth:
+    category_and_product_content:
+      file: zip/src/data/cateringWielkanocny.json
+      shape:
+        root: array of RawCateringCategory
+        category_fields:
+          - id: number
+          - nazwa_kategorii: string
+          - opis_kategorii: string
+          - image_url: string starting with /react/images/
+          - pozycje: RawCateringProduct[]
+        product_fields:
+          required_common:
+            - id: number
+            - gramatura: string
+            - cena: number
+            - vegan: boolean
+            - vegetarian: boolean
+          content_variants:
+            - combined: zespolona_nazwa_z_opisem
+            - split: nazwa_produktu plus opis_produktu or opis_poduktu
+    typed_normalizer:
+      file: zip/src/data/cateringWielkanocny.ts
+      exported_shapes:
+        - cateringWielkanocnySource: raw JSON array
+        - cateringWielkanocnyCategories: normalized array for UI and cart
+    image_source:
+      file: zip/public/images
+      notes:
+        - frontend validator requires image_url to point into /react/images/
+        - current filenames are literal business assets, including the typo-based zypy.webp used by category Zupy
+    active_consumer:
+      file: zip/src/pages/CateringWielkanocnyPage.tsx
+      notes:
+        - maps cateringWielkanocnyCategories directly into rendered category sections
+        - cart and bridge payload depend on category product ids
+
+  exact_existing_import_sync_scripts_and_limitations:
+    - file: SCRIPTS/run_upload.js
+      purpose: Bulk-create Woo categories and simple products from an inline array, then write source_data.json and result_with_ids.json locally.
+      limitations:
+        - does not read zip/src/data/cateringWielkanocny.json
+        - duplicates catalog content inline, so drift is guaranteed
+        - creates products with WC_Product_Simple instead of upserting existing ones
+        - has no stable per-product slug or external sync key for updates
+        - does not write ids back into zip/src/data/cateringWielkanocny.json
+        - does not populate image_url for frontend use
+        - assumes every product can be represented by zespolona_nazwa_z_opisem, so it does not preserve current split-name products
+        - uses hardcoded SSH key path and uploaded PHP file execution
+    - file: SCRIPTS/upload_products.js
+      purpose: Intended duplicate of run_upload.js.
+      limitations:
+        - current file contents are malformed, with broken variable interpolation and mojibake
+        - not a trustworthy maintained sync path in its present state
+    - file: SCRIPTS/add_special_product.php
+      purpose: Creates the separate shell product for the special menu-for-2 flow.
+      limitations:
+        - only handles one fixed special product
+        - not connected to the category JSON sync path
+        - not relevant to regular category product syncing except as evidence that canonical Woo ids matter
+
+  recommended_minimal_input_contract_for_one_category_sync_payload:
+    rationale: This matches the active raw frontend shape as closely as possible while allowing the sync script to create missing Woo ids.
+    payload_shape:
+      id: optional number
+      nazwa_kategorii: string
+      opis_kategorii: string
+      image_url: string
+      pozycje:
+        - id: optional number
+          gramatura: string
+          cena: number
+          vegan: boolean
+          vegetarian: boolean
+          one_of:
+            - zespolona_nazwa_z_opisem: string
+            - nazwa_produktu: string
+              opis_produktu: string
+    repo_specific_notes:
+      - keep id as the canonical Woo term or product id field because the frontend already depends on that convention
+      - keep image_url in the payload because the active frontend JSON requires it and the normalizer validates it
+      - do not introduce a separate woo_product_id field unless the whole frontend and bridge contract are changed
+
+  recommended_output_update_targets:
+    - target: zip/src/data/cateringWielkanocny.json
+      reason: active frontend catalog source of truth that must receive canonical ids and image_url values
+    - target: Woo product_cat term matching the category
+      reason: category page and Woo admin taxonomy should stay aligned
+    - target: Woo simple products belonging to that term
+      reason: bridge checkout validates and prices against real Woo product ids
+    - target: optional sync artifact file only if needed for auditing
+      reason: result_with_ids.json exists today but is not consumed by the app; it should be treated as optional logging, not a source of truth
+    - target: no change to zip/src/data/cateringWielkanocny.ts unless contract changes
+      reason: current typed normalizer already matches the active frontend raw shape
+
+  concrete_implementation_recommendation_for_one_script:
+    minimal_repo_aligned_approach: Use one local Node script that accepts a single-category payload, loads zip/src/data/cateringWielkanocny.json, replaces or inserts exactly one category in memory, performs Woo upsert for the matching term and products, receives canonical ids back from Woo, and writes the final canonical category object back into zip/src/data/cateringWielkanocny.json.
+    why_this_fits_this_repo:
+      - existing sync utilities already live in SCRIPTS and already use Node fs plus SSH plus remote WordPress execution
+      - the active frontend already expects ids in the same shape that Woo returns
+      - bridge checkout already treats those ids as canonical, so one script should own id assignment and write-back
+    practical_upsert_rules_needed_by_that_script:
+      - category match key: existing category id when present, otherwise nazwa_kategorii as fallback
+      - product match key: existing product id when present, otherwise normalized content signature within the category as a fallback only
+      - write back newly created Woo ids into the same category payload before saving frontend JSON
+      - preserve untouched categories in zip/src/data/cateringWielkanocny.json
+      - preserve split-product records in their current raw form instead of flattening them into combined text
+    constraints_from_current_repo:
+      - output ids must remain numeric and canonical Woo ids
+      - image_url must remain a /react/images/... string compatible with current public assets
+      - special shell product id 53 from cateringSpecialMenuFor2.ts is outside the regular category sync scope
+
+  likely_file_path_for_new_script:
+    file: SCRIPTS/sync_catering_category.js
+    basis:
+      - existing import utilities already live in SCRIPTS
+      - existing repo tooling there is plain JavaScript, not TypeScript
+      - the script needs local fs access plus current SSH-based server interaction, which matches the existing SCRIPTS pattern
+
+open_questions:
+  - question: What stable fallback key should be used for product upserts when a payload omits id?
+    context: The current regular catalog has canonical numeric ids, but the legacy import scripts do not maintain slugs or external sync keys, and multiple products can share similar names with different weights.
+  - question: Should the sync process delete Woo products removed from a category payload, or only create and update?
+    context: Current scripts only create new terms and products; no deletion or archival rule exists in the repo.
+  - question: Is wp-cli available and preferred on the target dhosting environment for this workflow?
+    context: Existing scripts use uploaded PHP plus php83 over SSH, while a future single script could potentially be cleaner with wp-cli if the executable path is known and stable.
+
+gaps:
+  - area: Stable Woo-side external identifiers for upsert
+    description: The current repo exposes canonical ids but no separate immutable sync key for categories or regular products.
+    impact: Medium impact on implementation because update-vs-create decisions become ambiguous when ids are absent.
+  - area: Existing script reliability
+    description: upload_products.js is visibly malformed, and run_upload.js is bulk-only and disconnected from the active frontend source file.
+    impact: Medium impact on reuse because the future single-category script should not inherit the broken or drift-prone workflow unchanged.
+  - area: Deletion policy
+    description: No current code or docs define whether missing products in a payload should be deleted, trashed, hidden, or left untouched in Woo.
+    impact: Low to medium impact on the first implementation if the script is limited to upsert-only behavior.

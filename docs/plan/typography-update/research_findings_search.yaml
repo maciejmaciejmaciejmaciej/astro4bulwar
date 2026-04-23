@@ -1,0 +1,250 @@
+plan_id: typography-update
+objective: "Grep for `text-[13px]`, `text-[11px]`, and `text-[10px]` inside `zip/src/components/sections/` and return exact line mappings"
+focus_area: search
+created_at: "2026-03-22"
+created_by: gem-researcher
+status: completed
+
+tldr: |
+  - Successfully retrieved 93 precise mappings for hardcoded typographical sizing (`text-[10px]`, `text-[11px]`, `text-[13px]`) across 16 components in the `zip/src/components/sections/` directory.
+  - The occurrences primarily reflect UI details like meta-tags, minimal navigation items, subtitles, minimal buttons, and timestamps.
+  - Provided exact line numbers mapped to corresponding files to allow the implementer to easily process file-by-file strings replacement.
+
+research_metadata:
+  methodology: grep_search with regex "text-\[(10|11|13)px\]" and recursive includes.
+  scope: zip/src/components/sections/**/*.tsx
+  confidence: high
+  coverage: 100
+
+files_analyzed:
+  - file: ProductItem.tsx
+    path: zip/src/components/sections/ProductItem.tsx
+    purpose: Displaying products with meta info
+    key_elements:
+      - element: text-[13px]
+        type: utility_class
+        location: zip/src/components/sections/ProductItem.tsx:14
+        description: "name"
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/ProductItem.tsx:15,20,34,59
+        description: "descriptions, weight label, tag button"
+    language: tsx
+    lines: 0
+  - file: Project5a.tsx
+    path: zip/src/components/sections/Project5a.tsx
+    purpose: Displaying a project presentation card
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/Project5a.tsx:38,59,65,71,107
+        description: "meta keys/labels (Museum, Year, Medium, etc)"
+      - element: text-[13px]
+        type: utility_class
+        location: zip/src/components/sections/Project5a.tsx:60,66,72
+        description: "meta values"
+    language: tsx
+    lines: 0
+  - file: About28.tsx
+    path: zip/src/components/sections/About28.tsx
+    purpose: About page specific visual block
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/About28.tsx:137
+        description: "label subtitle"
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/About28.tsx:151
+        description: "Button text"
+    language: tsx
+    lines: 0
+  - file: Navbar.tsx
+    path: zip/src/components/sections/Navbar.tsx
+    purpose: Top-level navigation menu
+    key_elements:
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/Navbar.tsx:9
+        description: "CTA Button"
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/Navbar.tsx:17,21,40,48,51,54
+        description: "Main Nav Links (Home, Pages, Portfolio, etc)"
+      - element: text-[13px]
+        type: utility_class
+        location: zip/src/components/sections/Navbar.tsx:27,28,29,30,31,32,33
+        description: "Dropdown Nav Links"
+    language: tsx
+    lines: 0
+  - file: TheSelection.tsx
+    path: zip/src/components/sections/TheSelection.tsx
+    purpose: Displaying menu selections
+    key_elements:
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/TheSelection.tsx:15,23,33,41
+        description: "Menu description labels"
+    language: tsx
+    lines: 0
+  - file: OurServices.tsx
+    path: zip/src/components/sections/OurServices.tsx
+    purpose: Service offerings showcase
+    key_elements:
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/OurServices.tsx:15
+        description: "Action button"
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/OurServices.tsx:31,47,63,79,95
+        description: "Discovery links/anchors"
+    language: tsx
+    lines: 0
+  - file: OfertaSection.tsx
+    path: zip/src/components/sections/OfertaSection.tsx
+    purpose: Offer display
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/OfertaSection.tsx:57
+        description: "Action button link"
+    language: tsx
+    lines: 0
+  - file: BlogSection.tsx
+    path: zip/src/components/sections/BlogSection.tsx
+    purpose: Blog updates view
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/BlogSection.tsx:14,16,22,24,30,32
+        description: "Dates and DISCOVER text indicators"
+    language: tsx
+    lines: 0
+  - file: Footer.tsx
+    path: zip/src/components/sections/Footer.tsx
+    purpose: Layout global footer
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/Footer.tsx:12,17,22,28,29,30,31,33
+        description: "Headers, social links, privacy policy, and copyright tags"
+    language: tsx
+    lines: 0
+  - file: BreakfastSection.tsx
+    path: zip/src/components/sections/BreakfastSection.tsx
+    purpose: Food items presentation
+    key_elements:
+      - element: text-[13px]
+        type: utility_class
+        location: zip/src/components/sections/BreakfastSection.tsx:26,34,42,54,62,70
+        description: "Item Titles"
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/BreakfastSection.tsx:27,35,43,55,63,71
+        description: "Item Descriptions"
+    language: tsx
+    lines: 0
+  - file: ModernInterior.tsx
+    path: zip/src/components/sections/ModernInterior.tsx
+    purpose: Layout sections
+    key_elements:
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/ModernInterior.tsx:16
+        description: "Button classes"
+    language: tsx
+    lines: 0
+  - file: ReservationQuickBar.tsx
+    path: zip/src/components/sections/ReservationQuickBar.tsx
+    purpose: Form shortcut
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/ReservationQuickBar.tsx:9,17,21
+        description: "Input Labels (Guests, Date, Time)"
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/ReservationQuickBar.tsx:24
+        description: "Submit Button"
+    language: tsx
+    lines: 0
+  - file: SpecialOfferSection.tsx
+    path: zip/src/components/sections/SpecialOfferSection.tsx
+    purpose: Deals highlight
+    key_elements:
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/SpecialOfferSection.tsx:12
+        description: "Promotion Call to Action"
+    language: tsx
+    lines: 0
+  - file: StickyCartControls.tsx
+    path: zip/src/components/sections/StickyCartControls.tsx
+    purpose: Hovering navigational utility
+    key_elements:
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/StickyCartControls.tsx:25
+        description: "Cart control labels"
+    language: tsx
+    lines: 0
+  - file: TheMenuSection.tsx
+    path: zip/src/components/sections/TheMenuSection.tsx
+    purpose: Comprehensive food menus
+    key_elements:
+      - element: text-[13px]
+        type: utility_class
+        location: zip/src/components/sections/TheMenuSection.tsx:16,24,32,42,50,58,68,76,84
+        description: "Menu item names"
+      - element: text-[10px]
+        type: utility_class
+        location: zip/src/components/sections/TheMenuSection.tsx:17,25,33,43,51,59,69,77,85
+        description: "Menu item descriptors and sub-ingredients"
+    language: tsx
+    lines: 0
+  - file: WielkanocSection.tsx
+    path: zip/src/components/sections/WielkanocSection.tsx
+    purpose: Seasonal event component
+    key_elements:
+      - element: text-[11px]
+        type: utility_class
+        location: zip/src/components/sections/WielkanocSection.tsx:16,58
+        description: "Season buttons"
+    language: tsx
+    lines: 0
+
+patterns_found:
+  - category: "structure"
+    pattern: "Hardcoded Tailwind sizing text-[10px]"
+    description: "Used primarily for minimal descriptions, labels, meta descriptions (weight/dates) and social links."
+    examples:
+      - file: zip/src/components/sections/Footer.tsx
+        location: "12, 17, 22"
+        snippet: "text-[10px]"
+    prevalence: "common"
+  - category: "structure"
+    pattern: "Hardcoded Tailwind sizing text-[11px]"
+    description: "Used heavily for CTA Buttons spanning across entire section codebase."
+    examples:
+      - file: zip/src/components/sections/ModernInterior.tsx
+        location: "16"
+        snippet: "text-[11px]"
+    prevalence: "common"
+  - category: "structure"
+    pattern: "Hardcoded Tailwind sizing text-[13px]"
+    description: "Used mostly for sub-headers and item name cards."
+    examples:
+      - file: zip/src/components/sections/ProductItem.tsx
+        location: "14"
+        snippet: "text-[13px]"
+    prevalence: "common"
+
+open_questions:
+  - question: "Are we converting these hardcoded pixel sizes to semantic standard classes (like text-xs/text-sm) or keeping pixel-precision using typography tokens?"
+    context: "Useful to know context for the implementer making the textual replacements."
+
+gaps:
+  - area: "Non-sections directory"
+    description: "We limited search exactly to `zip/src/components/sections/` as mandated."
+    impact: "Small pixel sizes might still exist in `ui/` or `shared/` components."

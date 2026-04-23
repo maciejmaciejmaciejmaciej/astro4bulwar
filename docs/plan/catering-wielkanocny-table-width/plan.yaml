@@ -1,0 +1,148 @@
+plan_id: catering-wielkanocny-table-width
+objective: Keep only the requested table-like component on /catering-wielkanocny and align its desktop width to the existing CateringSection width pattern using existing design-system classes only.
+created_at: "2026-03-24T00:00:00Z"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+tldr: |
+  Reduce the /catering-wielkanocny page to the requested table-like product-list section and align that section's desktop width with the width pattern already used by the homepage CateringSection. Keep the existing global page shell, reuse only existing utilities/classes, and treat CateringSection as the width reference rather than inventing a new layout rule.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The implementation matches the wrong layer of the reference section and makes the table block too wide or visually disconnected from the page rhythm.
+      likelihood: medium
+      impact: medium
+      mitigation: Mirror the established page-margin plus inner max-width pattern from CateringSection and verify on desktop before approval.
+    - scenario: Removing extra route sections leaves unused imports, spacing gaps, or dead component usage in the page file.
+      likelihood: medium
+      impact: low
+      mitigation: Clean page composition and imports together, then run the frontend build.
+  assumptions:
+    - The requested change removes Hero24 and other non-table sections from the main route composition, while keeping the existing global shell such as Navbar, breadcrumbs, Footer, and cart controls.
+    - The active table-like block is CateringProductListAlt, with CateringSection serving only as the width reference.
+    - Width alignment should reuse existing page-margin and max-w utility classes already present in the codebase.
+
+implementation_specification:
+  code_structure: Keep the route-level composition in the page file and adjust width only in the active table-like section component; do not add new CSS utilities or create replacement sections.
+  affected_areas:
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+    - zip/src/components/sections/CateringProductListAlt.tsx
+    - zip/src/components/sections/CateringSection.tsx
+    - zip/src/components/sections/Hero24.tsx
+  component_details:
+    - component: CateringWielkanocnyPage
+      responsibility: Compose the route so the main content keeps only the requested table-like section between the existing global layout elements.
+      interfaces:
+        - Renders the existing CateringProductListAlt props contract for title, products, and optional bgImage.
+    - component: CateringProductListAlt
+      responsibility: Provide the retained table-like content block and own the inner width shell that must be widened to match the established desktop pattern.
+      interfaces:
+        - Accepts title, products, bgImage, and className props.
+    - component: CateringSection
+      responsibility: Supply the existing desktop width pattern to mirror without introducing custom layout rules.
+      interfaces:
+        - Reference only: page-margin wrapper plus inner max-width content shell.
+  dependencies:
+    - component: CateringWielkanocnyPage
+      relationship: composes CateringProductListAlt and drops Hero24 from route composition
+    - component: CateringProductListAlt
+      relationship: mirrors the existing width convention observed in CateringSection
+  integration_points:
+    - React Router route /catering-wielkanocny
+    - Existing Tailwind utility classes defined and already used in zip/src
+    - Frontend build in zip/package.json
+
+contracts:
+  - from_task: implement_catering_wielkanocny_table_width
+    to_task: validate_catering_wielkanocny_table_width
+    interface: Updated route composition and widened table-like section shell using only existing classes, with CateringSection retained as the structural width reference.
+    format: TSX component changes in the page and list section, validated against the reference component and build output.
+
+tasks:
+  - id: implement_catering_wielkanocny_table_width
+    title: Keep only the table-like section and align its desktop width to the CateringSection pattern
+    description: |
+      Update the /catering-wielkanocny route composition so the main content keeps only the requested table-like product-list block. Remove Hero24 and any other non-table section usage from the page flow while preserving the existing global shell. In CateringProductListAlt, replace the narrow desktop width wrapper with the same width pattern already used by CateringSection, reusing only existing classes and utilities.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Active route page; likely removal point for Hero24 and other non-table section usage.
+      - zip/src/components/sections/CateringProductListAlt.tsx: Active table-like block; likely location for desktop width-shell adjustment.
+      - zip/src/components/sections/CateringSection.tsx: Width reference; inspect and mirror existing max-width pattern only.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 60
+    focus_area: frontend layout
+    verification:
+      - Confirm the page main content renders only the retained table-like block between existing global layout elements.
+      - Confirm the retained block uses the same desktop width pattern as CateringSection.
+      - Run the frontend build from zip to catch TSX or import regressions.
+    acceptance_criteria:
+      - /catering-wielkanocny keeps only the requested table-like component inside the main content.
+      - Hero24 is no longer part of the route composition.
+      - The retained block follows the CateringSection desktop width pattern using existing classes only.
+      - No new custom CSS classes, tokens, or layout helpers are introduced.
+    failure_modes:
+      - scenario: The width change copies classes mechanically and breaks spacing because the list section has different nested containers than the reference section.
+        likelihood: medium
+        impact: medium
+        mitigation: Apply the width pattern at the equivalent wrapper layer only and validate the final nested spacing.
+      - scenario: Page cleanup removes section imports but leaves stale comments or unused code paths.
+        likelihood: medium
+        impact: low
+        mitigation: Trim page-level imports and comments in the same edit pass.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: null
+
+  - id: validate_catering_wielkanocny_table_width
+    title: Validate retained section width and layout consistency
+    description: |
+      Verify that the implementation keeps only the requested table-like block, uses the established CateringSection width pattern on desktop, and stays within the existing design system. Validate both structure and responsive behavior, then confirm the route still builds cleanly.
+    wave: 2
+    agent: gem-browser-tester
+    priority: medium
+    status: completed
+    dependencies:
+      - implement_catering_wielkanocny_table_width
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Verify final page composition.
+      - zip/src/components/sections/CateringProductListAlt.tsx: Verify final width shell and responsive containment.
+      - zip/src/components/sections/CateringSection.tsx: Compare against the reference width pattern.
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: frontend QA
+    verification:
+      - Compare desktop layout width of the retained block against CateringSection.
+      - Check tablet and mobile spacing for overflow or broken padding.
+      - Confirm the frontend build succeeds.
+    acceptance_criteria:
+      - Desktop width alignment is visually and structurally consistent with the reference section.
+      - Mobile and tablet spacing remain within the existing page-margin behavior.
+      - No new build or type errors are introduced.
+    failure_modes:
+      - scenario: Desktop width is correct but the mobile layout regresses because the widened wrapper also affects narrow breakpoints.
+        likelihood: medium
+        impact: medium
+        mitigation: Validate the route at desktop and narrow widths before approval.
+    validation_matrix:
+      - scenario: Desktop route layout
+        steps:
+          - Open /catering-wielkanocny in a desktop viewport.
+          - Confirm only the table-like block remains in the main content.
+          - Compare the retained block width against the homepage CateringSection reference.
+        expected_result: The retained block stays centered and follows the same desktop width pattern as CateringSection.
+      - scenario: Narrow viewport containment
+        steps:
+          - Open /catering-wielkanocny in a tablet or mobile viewport.
+          - Check horizontal padding, card containment, and overflow behavior.
+        expected_result: The section preserves existing responsive spacing without overflow or custom layout hacks.

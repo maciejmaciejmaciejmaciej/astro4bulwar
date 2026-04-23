@@ -1,0 +1,199 @@
+plan_id: "none"
+objective: "Identify all components/sections in `zip/src/` that use hardcoded utility font sizes like `text-[...px]` instead of standard Tailwind/Shadcn classes."
+focus_area: "zip/src/components/sections/"
+created_at: "2026-03-22T00:00:00Z"
+created_by: "gem-researcher"
+status: "completed"
+
+tldr: |
+  - Analyzed the frontend `zip/src` directory for hardcoded `text-[...px]` classes.
+  - Identified 16 different component files inside `src/components/sections/` using these utility classes.
+  - The most common values used are `text-[10px]`, `text-[11px]`, and `text-[13px]`.
+  - These should be refactored into standard Tailwind classes like `text-xs`, `text-sm`, `text-xs` etc.
+
+research_metadata:
+  methodology: "Programmatic search using Node.js script and regular expressions (/text-\\[\\-?\\d+(?:\\.\\d+)?(?:px|rem|em)?\\]/g) across all React files in the src directory."
+  scope: "All .tsx, .ts, .jsx, .js files within zip/src."
+  confidence: "high"
+  coverage: 100
+
+files_analyzed:
+  - file: "About28.tsx"
+    path: "zip/src/components/sections/About28.tsx"
+    purpose: "About section component"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px] and text-[11px]"
+    language: "tsx"
+    lines: 0
+  - file: "BlogSection.tsx"
+    path: "zip/src/components/sections/BlogSection.tsx"
+    purpose: "Blog listing section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "BreakfastSection.tsx"
+    path: "zip/src/components/sections/BreakfastSection.tsx"
+    purpose: "Menu/Breakfast section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[13px] and text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "Footer.tsx"
+    path: "zip/src/components/sections/Footer.tsx"
+    purpose: "Site footer component"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "ModernInterior.tsx"
+    path: "zip/src/components/sections/ModernInterior.tsx"
+    purpose: "Interior showcase section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[11px]"
+    language: "tsx"
+    lines: 0
+  - file: "Navbar.tsx"
+    path: "zip/src/components/sections/Navbar.tsx"
+    purpose: "Global navigation component"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[11px], text-[10px], and text-[13px]"
+    language: "tsx"
+    lines: 0
+  - file: "OfertaSection.tsx"
+    path: "zip/src/components/sections/OfertaSection.tsx"
+    purpose: "Offers section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "OurServices.tsx"
+    path: "zip/src/components/sections/OurServices.tsx"
+    purpose: "Services section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[11px] and text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "ProductItem.tsx"
+    path: "zip/src/components/sections/ProductItem.tsx"
+    purpose: "Individual product display"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[13px], text-[10px], and text-[9px]"
+    language: "tsx"
+    lines: 0
+  - file: "Project5a.tsx"
+    path: "zip/src/components/sections/Project5a.tsx"
+    purpose: "Project showcase component"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px] and text-[13px]"
+    language: "tsx"
+    lines: 0
+  - file: "ReservationQuickBar.tsx"
+    path: "zip/src/components/sections/ReservationQuickBar.tsx"
+    purpose: "Reservation specific bar"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px] and text-[11px]"
+    language: "tsx"
+    lines: 0
+  - file: "SpecialOfferSection.tsx"
+    path: "zip/src/components/sections/SpecialOfferSection.tsx"
+    purpose: "Special offer focus section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[11px]"
+    language: "tsx"
+    lines: 0
+  - file: "StickyCartControls.tsx"
+    path: "zip/src/components/sections/StickyCartControls.tsx"
+    purpose: "Floating cart controls"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "TheMenuSection.tsx"
+    path: "zip/src/components/sections/TheMenuSection.tsx"
+    purpose: "Detailed menu display"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[13px] and text-[10px]"
+    language: "tsx"
+    lines: 0
+  - file: "TheSelection.tsx"
+    path: "zip/src/components/sections/TheSelection.tsx"
+    purpose: "Selection showcase"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[11px]"
+    language: "tsx"
+    lines: 0
+  - file: "WielkanocSection.tsx"
+    path: "zip/src/components/sections/WielkanocSection.tsx"
+    purpose: "Easter specific section"
+    key_elements:
+      - element: "Hardcoded font sizes"
+        type: "pattern"
+        location: "multiple"
+        description: "Uses text-[11px]"
+    language: "tsx"
+    lines: 0
+
+patterns_found:
+  - category: "structure"
+    pattern: "Hardcoded Tailwind arbitrary values for font-size"
+    description: "Instead of mapping UI concepts to design system tokens (e.g. text-xs), values are defined arbitrarily in templates using text-[...px]."
+    examples:
+      - file: "zip/src/components/sections/ProductItem.tsx"
+        location: "multiple lines"
+        snippet: "<span className=\"font-headline text-[13px] tracking-widest mb-1\">{name}</span>"
+    prevalence: "common"
+
+open_questions:
+  - question: "Are there specific design intentions behind pixel-perfect sizes?"
+    context: "Sometimes custom designs require non-standard 11px or 13px sizes that don't nicely map to Tailwind's default configuration."
+
+gaps:
+  - area: "Tailwind config mapping"
+    description: "No mapping strategy is documented. It's unclear if we should replace text-[13px] with text-sm, or extend the Tailwind theme."
+    impact: "Might lead to slight visual discrepancies post-refactoring if the standard tokens don't perfectly match the original intent."

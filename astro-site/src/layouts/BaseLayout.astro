@@ -1,0 +1,48 @@
+---
+import Footer from '../components/Footer.astro';
+import Navbar from '../components/Navbar.astro';
+import StickyCartControls from '../components/StickyCartControls.astro';
+import type { GlobalLayoutData, ResolvedPageSeo } from '../lib/types';
+import '../styles/global.css';
+
+interface Props {
+  seo: ResolvedPageSeo;
+  globalLayout?: GlobalLayoutData;
+}
+
+const { seo, globalLayout } = Astro.props;
+---
+
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{seo.title}</title>
+    <meta name="description" content={seo.description} />
+    <link rel="canonical" href={seo.canonical} />
+    <meta name="robots" content={seo.robots} />
+    <meta property="og:title" content={seo.og.title} />
+    <meta property="og:description" content={seo.og.description} />
+    <meta property="og:type" content={seo.og.type} />
+    <meta property="og:url" content={seo.og.url} />
+    {seo.og.image ? <meta property="og:image" content={seo.og.image} /> : null}
+    <meta name="twitter:card" content={seo.twitter.card} />
+    <meta name="twitter:title" content={seo.twitter.title} />
+    <meta name="twitter:description" content={seo.twitter.description} />
+    {seo.twitter.image ? <meta name="twitter:image" content={seo.twitter.image} /> : null}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="site-shell">
+      {globalLayout ? <Navbar navbar={globalLayout.navbar} /> : null}
+      <main class="site-main">
+        <slot />
+      </main>
+      {globalLayout ? <Footer footer={globalLayout.footer} /> : null}
+      <StickyCartControls />
+    </div>
+  </body>
+</html>

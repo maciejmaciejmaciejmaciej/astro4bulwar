@@ -1,0 +1,323 @@
+plan_id: none
+objective: Identify the component(s) used on route/page /catering-wielkanocny, specifically the old component containing a table, and identify the reference catering sales component with images whose desktop width should be matched.
+focus_area: zip/src route and section components for catering-wielkanocny
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Route /catering-wielkanocny is mapped directly in App.tsx to CateringWielkanocnyPage.
+  - The active page renders CateringWielkanocnyHero, Hero24, and CateringProductListAlt; the product list is table-like but not a literal HTML table.
+  - The clearest older predecessor is SalatkiNaWynosSection from TemplatePage/App.backup, which renders ProductItem rows in a 3-column grid and uses max-w-4xl.
+  - The image-based reference sales block is HomePage's CateringSection, which uses page-margin plus an inner max-w-7xl grid and padded rounded container.
+  - Width is primarily controlled by the shared page-margin utility in index.css plus per-section inner max width classes like max-w-4xl or max-w-7xl.
+
+research_metadata:
+  methodology: Hybrid retrieval using grep_search and file_search for route/component discovery, then read_file for targeted inspection of active and legacy section components and shared CSS utilities.
+  scope: Medium-depth review of route mapping, page composition, current and legacy catering-related sections, and shared width utilities.
+  confidence: high
+  coverage: 88
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Defines active client-side route mapping.
+    key_elements:
+      - element: CateringWielkanocnyPage route
+        type: pattern
+        location: zip/src/App.tsx:11
+        description: Maps /catering-wielkanocny to CateringWielkanocnyPage.
+    language: TSX
+    lines: 12
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Active page composition for the catering-wielkanocny route.
+    key_elements:
+      - element: CateringWielkanocnyPage
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:62
+        description: Renders Navbar, breadcrumbs, CateringWielkanocnyHero, Hero24, CateringProductListAlt, Footer, StickyCartControls, and CheckoutDrawer.
+      - element: salatkiData
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:30
+        description: Product data passed into CateringProductListAlt.
+    language: TSX
+    lines: 99
+  - file: CateringWielkanocnyHero.tsx
+    path: zip/src/components/sections/CateringWielkanocnyHero.tsx
+    purpose: Active hero/introduction block for the page.
+    key_elements:
+      - element: CateringWielkanocnyHero
+        type: function
+        location: zip/src/components/sections/CateringWielkanocnyHero.tsx:8
+        description: Uses page-margin and max-w-7xl with image content and two square images.
+    language: TSX
+    lines: 143
+  - file: Hero24.tsx
+    path: zip/src/components/sections/Hero24.tsx
+    purpose: Imported mid-page promotional block currently rendered after the hero.
+    key_elements:
+      - element: Hero24
+        type: function
+        location: zip/src/components/sections/Hero24.tsx:9
+        description: Uses page-margin with an inner max-w-4xl container and a four-card grid; contains no table markup.
+    language: TSX
+    lines: 79
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Active product list block rendered on the page.
+    key_elements:
+      - element: CateringProductListAlt
+        type: function
+        location: zip/src/components/sections/CateringProductListAlt.tsx:20
+        description: Uses a parallax background and a centered max-w-4xl list card for products.
+    language: TSX
+    lines: 64
+  - file: ProductItemAlt.tsx
+    path: zip/src/components/sections/ProductItemAlt.tsx
+    purpose: Renders each product row inside the active list block.
+    key_elements:
+      - element: ProductItemAlt
+        type: function
+        location: zip/src/components/sections/ProductItemAlt.tsx:4
+        description: Uses a 3-column grid with dotted leader line, visually table-like but not an HTML table.
+    language: TSX
+    lines: 67
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: Active homepage composition, source of the image-based reference sales component.
+    key_elements:
+      - element: CateringSection usage
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:36
+        description: Renders the image-based CateringSection with buttonHref /catering-wielkanocny.
+    language: TSX
+    lines: 74
+  - file: CateringSection.tsx
+    path: zip/src/components/sections/CateringSection.tsx
+    purpose: Image-heavy promotional sales section used on the homepage.
+    key_elements:
+      - element: CateringSection
+        type: function
+        location: zip/src/components/sections/CateringSection.tsx:23
+        description: Uses page-margin, padded rounded shell, max-w-7xl inner grid, and two vertical marquee image columns.
+    language: TSX
+    lines: 101
+  - file: SalatkiNaWynosSection.tsx
+    path: zip/src/components/sections/SalatkiNaWynosSection.tsx
+    purpose: Older product-list section preserved in the codebase and used in TemplatePage/App.backup.
+    key_elements:
+      - element: SalatkiNaWynosSection
+        type: function
+        location: zip/src/components/sections/SalatkiNaWynosSection.tsx:3
+        description: Older list block with background hero and centered max-w-4xl card; strongest candidate for the old table-like component.
+    language: TSX
+    lines: 41
+  - file: ProductItem.tsx
+    path: zip/src/components/sections/ProductItem.tsx
+    purpose: Older row renderer used by SalatkiNaWynosSection.
+    key_elements:
+      - element: ProductItem
+        type: function
+        location: zip/src/components/sections/ProductItem.tsx:4
+        description: Same 3-column row pattern with menu leader and actions; visually closest to a table row.
+    language: TSX
+    lines: 62
+  - file: TemplatePage.tsx
+    path: zip/src/pages/TemplatePage.tsx
+    purpose: Legacy/compound page showing older section composition.
+    key_elements:
+      - element: SalatkiNaWynosSection usage
+        type: pattern
+        location: zip/src/pages/TemplatePage.tsx:61
+        description: Confirms SalatkiNaWynosSection is part of the earlier page assembly.
+    language: TSX
+    lines: 76
+  - file: index.css
+    path: zip/src/index.css
+    purpose: Defines shared utility classes controlling horizontal layout.
+    key_elements:
+      - element: page-margin
+        type: pattern
+        location: zip/src/index.css:32
+        description: Applies shared left/right padding of 5rem desktop and 2rem mobile.
+      - element: menu-leader
+        type: pattern
+        location: zip/src/index.css:24
+        description: Dotted rule used in product rows to create a menu/table visual.
+    language: CSS
+    lines: 157
+
+patterns_found:
+  - category: structure
+    pattern: Route component imports a page which composes section components directly.
+    description: Active routing is simple and page files explicitly list their section blocks in render order.
+    examples:
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:11
+        snippet: <Route path="/catering-wielkanocny" element={<CateringWielkanocnyPage />} />
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:81
+        snippet: <CateringWielkanocnyHero />
+    prevalence: common
+  - category: architecture
+    pattern: Section width is controlled by page-margin plus an inner max-width wrapper.
+    description: Most sections use page-margin for viewport padding and max-w-* with mx-auto for actual content width.
+    examples:
+      - file: zip/src/components/sections/CateringSection.tsx
+        location: zip/src/components/sections/CateringSection.tsx:41
+        snippet: <section className={cn("page-margin", className)}>
+      - file: zip/src/components/sections/CateringSection.tsx
+        location: zip/src/components/sections/CateringSection.tsx:43
+        snippet: <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:47
+        snippet: <div className="max-w-4xl mx-auto space-y-8 md:space-y-10">
+    prevalence: common
+  - category: structure
+    pattern: Product list rows imitate a table using CSS grid rather than HTML table elements.
+    description: Rows are split into content, dotted leader, and price/actions columns, producing a menu-table look.
+    examples:
+      - file: zip/src/components/sections/ProductItem.tsx
+        location: zip/src/components/sections/ProductItem.tsx:8
+        snippet: <div className="py-8 border-b border-zinc-200 last:border-0 grid grid-cols-1 md:grid-cols-3 items-center gap-4 md:gap-8">
+      - file: zip/src/components/sections/ProductItemAlt.tsx
+        location: zip/src/components/sections/ProductItemAlt.tsx:11
+        snippet: <div className="py-8 border-b border-zinc-200 last:border-0 grid grid-cols-1 md:grid-cols-3 items-center gap-4 md:gap-8">
+    prevalence: common
+  - category: structure
+    pattern: Homepage sales sections use a wider editorial shell than product list sections.
+    description: Promotional blocks use max-w-7xl inner grids while product list sections center a narrower max-w-4xl card.
+    examples:
+      - file: zip/src/components/sections/CateringSection.tsx
+        location: zip/src/components/sections/CateringSection.tsx:43
+        snippet: <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:47
+        snippet: <div className="max-w-4xl mx-auto space-y-8 md:space-y-10">
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CateringWielkanocnyPage
+      responsibility: Active route page composition
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain root
+    - component: CateringWielkanocnyHero
+      responsibility: Page hero and intro imagery
+      location: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      relationship_to_domain: domain depends on this
+    - component: Hero24
+      responsibility: Mid-page promotional placeholder block
+      location: zip/src/components/sections/Hero24.tsx
+      relationship_to_domain: domain depends on this
+    - component: CateringProductListAlt
+      responsibility: Active product-list block
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: domain depends on this
+    - component: ProductItemAlt
+      responsibility: Active row renderer for product entries
+      location: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: domain depends on this
+    - component: SalatkiNaWynosSection
+      responsibility: Older product list section
+      location: zip/src/components/sections/SalatkiNaWynosSection.tsx
+      relationship_to_domain: legacy analog for current domain
+    - component: CateringSection
+      responsibility: Homepage promotional image section linking into the domain
+      location: zip/src/components/sections/CateringSection.tsx
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: ProductDefAlt
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      usage_pattern: Typed list items passed from page-level data into the product list section.
+  data_flow_involving_domain: Route resolution in App.tsx renders CateringWielkanocnyPage, which injects local product data into CateringProductListAlt; that component maps the list into ProductItemAlt rows. HomePage separately renders CateringSection, whose CTA routes users into /catering-wielkanocny.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringWielkanocnyHero.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/Hero24.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship: imports
+    - from: zip/src/components/sections/CateringProductListAlt.tsx
+      to: zip/src/components/sections/ProductItemAlt.tsx
+      relationship: imports
+    - from: zip/src/pages/HomePage.tsx
+      to: zip/src/components/sections/CateringSection.tsx
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - CSS
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Functional page and section components with local state.
+    - name: React Router
+      usage_in_domain: Maps /catering-wielkanocny and internal CTA links.
+    - name: Tailwind CSS
+      usage_in_domain: Utility-class-based width, spacing, grid, and responsive layout.
+    - name: Framer Motion
+      usage_in_domain: Used for marquee image motion and parallax in sections.
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: Icons for supporting UI sections.
+    - name: shadcn/ui Button
+      purpose_in_domain: CTA and action buttons.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Section components use PascalCase names ending in Section, Hero, or Page; route pages live in zip/src/pages and shared blocks live in zip/src/components/sections.
+  structure_of_domain: Pages compose multiple section blocks directly; shared layout width comes from page-margin plus inner max-width containers.
+  error_handling_in_domain: No explicit error handling in these presentational components.
+  testing_in_domain: No test files found for this domain during the review.
+  documentation_in_domain: No inline domain documentation beyond brief comments.
+
+related_dependencies:
+  internal:
+    - component: zip/src/index.css
+      relationship_to_domain: Provides page-margin and menu-leader utilities used by page sections and product rows.
+      direction: outbound
+    - component: zip/src/components/ui/button.tsx
+      relationship_to_domain: Supplies button primitive for CTAs and add-to-cart actions.
+      direction: outbound
+    - component: zip/src/components/ui/marquee.tsx
+      relationship_to_domain: Supplies vertical marquee behavior for homepage CateringSection images.
+      direction: outbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Route mapping and CTA links.
+    - name: framer-motion
+      purpose_for_domain: Motion and parallax effects.
+    - name: lucide-react
+      purpose_for_domain: Icon rendering.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Local quantity/cart interaction
+      location: zip/src/components/sections/ProductItem.tsx and zip/src/components/sections/ProductItemAlt.tsx
+      concern: UI-only state, no backend or payment flow visible in the inspected domain.
+  authentication_patterns_in_domain: None found in the inspected route and section components.
+  authorization_patterns_in_domain: None found in the inspected route and section components.
+  data_validation_in_domain: Minimal client-side numeric coercion for quantity inputs.
+
+open_questions:
+  - question: Does “old component containing a table” refer to a literal historical HTML table outside zip/src, or to the visually table-like product list rows in SalatkiNaWynosSection/ProductItem?
+    context: No literal table markup exists in the inspected active source files, but there is a clear legacy menu-row component.
+  - question: Should the width target match the entire CateringSection shell or only its inner max-w-7xl content area?
+    context: CateringSection width comes from both page-margin and an inner padded rounded container, so matching can be interpreted at two levels.
+
+gaps:
+  - area: App.tmp.tsx legacy state
+    description: The temporary app file appears encoded in UTF-16 and was not required for the active route conclusion.
+    impact: Low impact; active route mapping and legacy analogs were already verified via App.tsx, TemplatePage.tsx, and App.backup.tsx.
+  - area: User intent for “below” reference component
+    description: The phrase may refer either to HomePage's CateringSection or another visual reference outside the inspected route.
+    impact: Medium impact on implementation choice, but the strongest candidate in active code is CateringSection.

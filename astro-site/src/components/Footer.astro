@@ -1,0 +1,56 @@
+---
+import type { GlobalLayoutFooter } from '../lib/globalLayoutContract';
+import { buildFooterWordmark, isExternalHttpHref } from '../lib/globalLayoutPresentation';
+
+interface Props {
+  footer: GlobalLayoutFooter;
+}
+
+const { footer } = Astro.props;
+const wordmark = buildFooterWordmark(footer.brand.name);
+const footerLinks = [...footer.socialLinks, ...footer.legalLinks];
+---
+
+<footer class="site-footer page-margin">
+  <div class="site-footer__inner">
+    <a class="site-footer__brand" href={footer.brand.href}>
+      <span>{wordmark.leading}</span>
+      <div class="site-footer__divider"></div>
+      <span>{wordmark.trailing}</span>
+    </a>
+
+    <div class="site-footer__info">
+      <div class="site-footer__block">
+        <h4 class="site-footer__block-title">{footer.address.heading}</h4>
+        {footer.address.lines.map((line) => <p>{line}</p>)}
+      </div>
+
+      <div class="site-footer__block">
+        <h4 class="site-footer__block-title">{footer.contact.heading}</h4>
+        {footer.contact.items.map((item) => (
+          <p><a href={item.href}>{item.label}</a></p>
+        ))}
+      </div>
+
+      <div class="site-footer__block">
+        <h4 class="site-footer__block-title">{footer.hours.heading}</h4>
+        {footer.hours.lines.map((line) => <p>{line}</p>)}
+      </div>
+    </div>
+
+    <div class="site-footer__socials">
+      {footerLinks.map((item) => (
+        <a
+          class="site-footer__social-link"
+          href={item.href}
+          target={isExternalHttpHref(item.href) ? '_blank' : undefined}
+          rel={isExternalHttpHref(item.href) ? 'noreferrer' : undefined}
+        >
+          {item.label}
+        </a>
+      ))}
+    </div>
+
+    <p class="site-footer__copyright">{footer.copyright}</p>
+  </div>
+</footer>

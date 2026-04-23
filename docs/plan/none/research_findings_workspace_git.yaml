@@ -1,0 +1,189 @@
+plan_id: none
+objective: Determine whether the workspace is a git repository, what remotes are configured, current branch, status, whether there is an existing GitHub remote suitable for pushing the app online, and whether the React app is at the repository root or under zip/.
+focus_area: workspace_git
+created_at: 2026-03-24T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The active git repository root is the workspace root at c:/Users/macie/Documents/BULWAR APP.
+  - A GitHub remote named origin is configured to https://github.com/maciejmaciejmaciejmaciej/BULWAR-APP.git and main tracks origin/main.
+  - The working tree is dirty with modified and untracked files, including changes under zip/.
+  - The React app lives under zip/ inside the repository, not at the repository root.
+  - zip/.git exists but git invoked from zip/ resolves to the parent repository .git directory, so the nested metadata is not the active repository root.
+
+research_metadata:
+  methodology: Hybrid workspace inspection using directory listing, targeted file reads of .git/config and HEAD files, and read-only git CLI commands for remotes, branch, status, upstream, and git-dir resolution.
+  scope: Focused on repository detection, remotes, branch tracking, working tree state, and location of the React application.
+  confidence: high
+  coverage: 95
+
+files_analyzed:
+  - file: .git/config
+    path: c:/Users/macie/Documents/BULWAR APP/.git/config
+    purpose: Root repository git configuration including remotes and branch tracking.
+    key_elements:
+      - element: remote.origin.url
+        type: variable
+        location: .git/config:6
+        description: Configured fetch and push URL for the repository.
+      - element: branch.main.remote
+        type: variable
+        location: .git/config:10
+        description: Confirms main tracks the origin remote.
+    language: ini
+    lines: 11
+  - file: .git/HEAD
+    path: c:/Users/macie/Documents/BULWAR APP/.git/HEAD
+    purpose: Root repository HEAD reference.
+    key_elements:
+      - element: HEAD
+        type: variable
+        location: .git/HEAD:1
+        description: Points to refs/heads/main.
+    language: text
+    lines: 1
+  - file: zip/.git/config
+    path: c:/Users/macie/Documents/BULWAR APP/zip/.git/config
+    purpose: Nested git metadata config found under the app directory.
+    key_elements:
+      - element: core.repositoryformatversion
+        type: variable
+        location: zip/.git/config:2
+        description: Minimal nested git config with no remote definitions.
+    language: ini
+    lines: 5
+  - file: zip/.git/HEAD
+    path: c:/Users/macie/Documents/BULWAR APP/zip/.git/HEAD
+    purpose: Nested git metadata HEAD reference.
+    key_elements:
+      - element: HEAD
+        type: variable
+        location: zip/.git/HEAD:1
+        description: Points to refs/heads/master, but git run from zip resolves to the parent repository instead.
+    language: text
+    lines: 1
+  - file: zip/package.json
+    path: c:/Users/macie/Documents/BULWAR APP/zip/package.json
+    purpose: Confirms the React app is housed in zip/.
+    key_elements:
+      - element: package manifest
+        type: pattern
+        location: zip/package.json:1
+        description: Indicates zip/ is an application directory rather than repository root metadata.
+    language: json
+    lines: 1
+
+patterns_found:
+  - category: structure
+    pattern: Single active repository at workspace root
+    description: Git commands run from both the workspace root and zip/ resolve to the same top-level repository.
+    examples:
+      - file: terminal
+        location: git rev-parse --show-toplevel
+        snippet: C:/Users/macie/Documents/BULWAR APP
+    prevalence: common
+  - category: structure
+    pattern: Application code nested under zip/
+    description: The React/Vite app has its own package.json and source tree under zip/ while remaining part of the root repository.
+    examples:
+      - file: zip/package.json
+        location: zip/package.json:1
+        snippet: package.json present under zip/
+    prevalence: common
+  - category: naming
+    pattern: Standard origin/main setup
+    description: The repository uses a conventional origin remote with main tracking origin/main.
+    examples:
+      - file: .git/config
+        location: .git/config:6
+        snippet: url = https://github.com/maciejmaciejmaciejmaciej/BULWAR-APP.git
+      - file: .git/config
+        location: .git/config:10
+        snippet: remote = origin
+    prevalence: common
+  - category: structure
+    pattern: Stale or incidental nested git metadata under zip/
+    description: zip/.git exists, but git invoked from zip/ uses the parent .git directory and reports ../.git as the common git dir.
+    examples:
+      - file: terminal
+        location: git rev-parse --git-dir
+        snippet: C:/Users/macie/Documents/BULWAR APP/.git
+      - file: terminal
+        location: git rev-parse --git-common-dir
+        snippet: ../.git
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Root git repository
+      responsibility: Source control boundary for the whole workspace project.
+      location: c:/Users/macie/Documents/BULWAR APP/.git
+      relationship_to_domain: domain is defined by this component
+    - component: React app directory
+      responsibility: Frontend application source and package manifest.
+      location: c:/Users/macie/Documents/BULWAR APP/zip
+      relationship_to_domain: domain contains the app content being pushed through the root repository
+  interfaces_used_by_domain:
+    - interface: Git CLI
+      location: terminal
+      usage_pattern: Read-only inspection of repository metadata and working tree status
+  data_flow_involving_domain: Git metadata is read from the root .git directory; status output includes files at the workspace root and within zip/, showing that app changes flow into the same repository state.
+  key_relationships_to_domain:
+    - from: zip/
+      to: .git
+      relationship: resolves to parent repository metadata
+    - from: main
+      to: origin/main
+      relationship: tracks
+    - from: origin
+      to: GitHub repository BULWAR-APP
+      relationship: fetches and pushes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - Git config/INI
+    - Shell/PowerShell command usage
+    - JSON
+  frameworks_used_in_domain:
+    - name: Git
+      usage_in_domain: Repository management and remote tracking
+  libraries_used_in_domain:
+    - name: Git CLI
+      purpose_in_domain: Inspect repository root, remotes, branch, upstream, and dirty state
+  external_apis_used_in_domain:
+    - name: GitHub HTTPS remote
+      integration_point: origin remote URL in root .git/config
+
+related_conventions:
+  naming_patterns_in_domain: Conventional git remote and branch names origin and main.
+  structure_of_domain: Repository metadata is rooted at the workspace root; application source is nested under zip/.
+  error_handling_in_domain: One command required PowerShell-safe quoting for HEAD@{upstream}; subsequent commands succeeded with quoted ref syntax.
+  testing_in_domain: No test framework involved; validation was by repeated read-only git queries.
+  documentation_in_domain: No repository-local git workflow documentation was inspected during this research.
+
+related_dependencies:
+  internal:
+    - component: zip/
+      relationship_to_domain: Contains app code tracked by the root repository
+      direction: inbound
+    - component: docs/plan/
+      relationship_to_domain: Stores research artifacts for planning workflows
+      direction: outbound
+  external:
+    - name: GitHub
+      purpose_for_domain: Hosted remote target for fetch and push operations
+
+open_questions:
+  - question: Why does zip/.git exist if git from zip/ resolves to the parent repository?
+    context: The nested git metadata may be leftover from an earlier standalone clone or copy, and it can create ambiguity for tooling or developers.
+  - question: Does the configured GitHub remote accept pushes from the current machine credentials?
+    context: The remote URL is suitable in structure, but authentication/authorization was not tested because the task was limited to read-only inspection.
+
+gaps:
+  - area: Remote accessibility
+    description: The existence of the GitHub repository and push permissions were inferred from git config and not validated by network operations.
+    impact: Suitability for pushing is high-confidence structurally, but not confirmed operationally.
+  - area: Nested zip/.git provenance
+    description: The reason the zip/.git directory remains present was not fully traced.
+    impact: Low impact for current git status, but it may confuse future repository operations or editor integrations.

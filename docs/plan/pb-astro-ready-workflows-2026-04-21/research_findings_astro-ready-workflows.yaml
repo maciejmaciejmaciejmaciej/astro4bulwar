@@ -1,0 +1,770 @@
+plan_id: pb-astro-ready-workflows-2026-04-21
+objective: >
+  Zbadac obecny stan dwoch docelowych workflow dla page-buildera Astro:
+  1) refinement bloku od surowego komponentu shadcn do gotowego bloku registry
+  z gotowoscia do Astro, 2) skladanie strony wyłącznie z gotowych blokow z
+  automatycznym fallbackiem do subflow refinement, gdy blok nie jest gotowy.
+focus_area: astro-ready-workflows
+created_at: '2026-04-21T00:00:00Z'
+created_by: gem-researcher
+status: completed
+
+tldr: |
+  - Dzisiejszy Workflow 1 istnieje glownie jako rozproszony kontrakt dokumentacyjny: design rules, block-registry spec, block docs i TemplatePage validation, ale nie jako jeden operacyjny workflow z maszynowym statusem ready.
+  - Dzisiejszy Workflow 2 ma realny operator flow repo-first i runtime CLI dla draft -> compile -> publish -> Astro deploy, ale nie ma automatycznego subflow, ktory przy skladaniu strony sam uruchamia refinement niegotowego bloku.
+  - Shared registry w zip ma 23 zarejestrowane bloki i testy pelnego pokrycia React/AI-generatora, podczas gdy Astro parser i renderer obsluguja tylko 4 blockKey, wiec readiness gate nie moze dzis opierac sie wylacznie na samym istnieniu bloku w shared registry.
+  - Status gotowosci jest rozjechany miedzy docs/block-registry/*.md, docs/block-registry/registry.machine.json i samym typem registry w zip, ktory nie przechowuje pola ready ani astroReady.
+  - Najmniejszy realny surface zmian dla docelowego modelu obejmuje jeden wspolny status readiness w zip registry, synchronizacje docs machine index, Astro capability map/parser/renderer oraz dokument operatora i blueprint skill/workflow references.
+
+research_metadata:
+  methodology: >
+    Hybrydowy research read-only: przeglad pamieci repo/session, grep_search,
+    semantic_search, file_search, targeted read_file, list_dir oraz punktowe
+    line-count checks przez terminal dla kluczowych plikow.
+  scope: >
+    Dokumentacja page-builder i block-registry, shared registry React w zip,
+    generator AI schema, compile gate, runtime CLI oraz Astro parser/renderer i
+    testy kontraktowe w obszarze workflow refinement + composition.
+  confidence: high
+  coverage: 88
+  decision_blockers: 2
+  research_blockers: 1
+
+files_analyzed:
+  - file: README.md
+    path: docs/plan/astro-wordpress-page-builder/README.md
+    purpose: Indeksuje aktualne entry points i rozroznia operator workflow od target-state blueprint.
+    key_elements:
+      - element: canonical operator workflow pointer
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/README.md:11
+        description: Wskazuje page-builder-authoring-workflow.md jako workflow operacyjny i runtime CLI jako wykonawce tego flow.
+      - element: target architecture pointer
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/README.md:7
+        description: Wskazuje agentic-page-builder-blueprint.md jako architekture docelowa.
+    language: markdown
+    lines: 101
+
+  - file: implementation-plan.md
+    path: docs/plan/astro-wordpress-page-builder/implementation-plan.md
+    purpose: Ustala planistyczne source of truth dla systemu i etapy delivery.
+    key_elements:
+      - element: repo-first workflow status
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:7
+        description: Potwierdza, ze obecny workflow kanoniczny jest repo-first i odsyla do page-builder-authoring-workflow.md.
+      - element: Stage 2 contract closure
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:160
+        description: Opisuje domkniecie kontraktow blokow i synchronizacje block docs z registry.
+      - element: Stage 4 Astro generalization
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:175
+        description: Opisuje przejscie Astro z proof-of-concept do multi-page static renderer.
+    language: markdown
+    lines: 289
+
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Definiuje dzisiejszy operacyjny workflow skladania i publikacji stron.
+    key_elements:
+      - element: canonical operating workflow
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:7
+        description: Oznacza dokument jako biezacy kanoniczny workflow day-to-day.
+      - element: approved blocks rule
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:130
+        description: Wymaga skladania render schema tylko z approved blocks from the registry.
+      - element: runtime CLI publish path
+        type: function
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:214
+        description: Ustala runtime CLI jako preferowana create-or-update/publish sciezke dla nowych stron.
+      - element: Astro buildable listing gate
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:291
+        description: Okresla warunki, kiedy strona trafia do Astro static build przez listing endpoint.
+    language: markdown
+    lines: 392
+
+  - file: agentic-page-builder-blueprint.md
+    path: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    purpose: Definiuje docelowe procesy agentowe i lifecycle blokow oraz stron.
+    key_elements:
+      - element: Process 1: Block Refinement In VS Code
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:83
+        description: Najblizsza dzisiejsza definicja Workflow 1 jako target-state procesu.
+      - element: Process 2: New Page Composition In VS Code
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:96
+        description: Najblizsza dzisiejsza definicja Workflow 2 jako target-state procesu.
+      - element: skill list
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:499
+        description: Opisuje planowane skills shadcn-block-refinement, page-composer i wordpress-page-publisher, ale bez odpowiadajacych im plikow workflow w repo.
+      - element: block lifecycle
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:547
+        description: Zawiera pelny lifecycle bloku zakonczony etapem approved for page composition.
+    language: markdown
+    lines: 668
+
+  - file: block-registry-spec.md
+    path: docs/plan/astro-wordpress-page-builder/block-registry-spec.md
+    purpose: Definiuje kontrakt shared registry i workflow dodawania bloku.
+    key_elements:
+      - element: required block definition shape
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md:52
+        description: Wymienia wymagane pola kontraktu registry, ale bez pola ready/astroReady/status.
+      - element: current block addition workflow
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md:230
+        description: Ustala, ze nowy blok ma byc zarejestrowany w shared registry i descriptor-driven AI generatorze.
+      - element: runtime.renderSection dispatch rule
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md:233
+        description: Zdejmuje potrzebe recznego switcha w centralnym React rendererze.
+    language: markdown
+    lines: 363
+
+  - file: blueprint-dsl-spec.md
+    path: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md
+    purpose: Definiuje authoring format dla skladania strony z registered blocks.
+    key_elements:
+      - element: lifecycle description
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md:13
+        description: Ustala, ze blueprint parser zamienia DSL na page_builder_schema dla Astro/WordPress.
+      - element: sections.block mapping
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md:100
+        description: Mowi, ze sekcja odwoluje sie do blockKey z registry.
+    language: markdown
+    lines: 506
+
+  - file: index.md
+    path: docs/block-registry/index.md
+    purpose: Definiuje folder block-registry jako repo-side registry i docs repository.
+    key_elements:
+      - element: approved or seeded block rule
+        type: pattern
+        location: docs/block-registry/index.md:21
+        description: Wymaga jawnego oznaczenia seed status dla nie w pelni gotowych blokow.
+      - element: initial registry seed statement
+        type: pattern
+        location: docs/block-registry/index.md:52
+        description: Nadal opisuje caly katalog jako initial registry seed.
+    language: markdown
+    lines: 54
+
+  - file: registry.machine.json
+    path: docs/block-registry/registry.machine.json
+    purpose: Maszynowy indeks block docs i statusow registry.
+    key_elements:
+      - element: registryStatus
+        type: variable
+        location: docs/block-registry/registry.machine.json:3
+        description: Top-level status calego registry pozostaje ustawiony na seed.
+      - element: block entries subset
+        type: pattern
+        location: docs/block-registry/registry.machine.json:7
+        description: Zawiera tylko 11 blockKey entries, mimo ze shared registry i block docs pokrywaja 23 bloki.
+    language: json
+    lines: 1495
+
+  - file: types.ts
+    path: zip/src/blocks/registry/types.ts
+    purpose: Definiuje typ shared registry block definition i instance shape.
+    key_elements:
+      - element: PageBuilderBlockDefinition
+        type: interface
+        location: zip/src/blocks/registry/types.ts:21
+        description: Kontrakt shared registry bez pola readiness/status/astro support.
+      - element: description
+        type: variable
+        location: zip/src/blocks/registry/types.ts:28
+        description: Shared registry przechowuje description biznesowy bloku jako metadata typu.
+    language: typescript
+    lines: 52
+
+  - file: index.ts
+    path: zip/src/blocks/registry/index.ts
+    purpose: Materializuje shared registry React i API list/get/default instance.
+    key_elements:
+      - element: blockRegistry
+        type: variable
+        location: zip/src/blocks/registry/index.ts:89
+        description: Rejestruje 23 bloki jako runtime source of truth dla zip pagebuildera.
+      - element: listBlocks
+        type: function
+        location: zip/src/blocks/registry/index.ts:117
+        description: Udostepnia liste wszystkich zarejestrowanych blokow, wykorzystywana tez przez diagnostyczne preview i testy pokrycia.
+      - element: createDefaultBlockInstance
+        type: function
+        location: zip/src/blocks/registry/index.ts:156
+        description: Tworzy domyslna instancje sekcji tylko na podstawie blockKey i registry contract.
+    language: typescript
+    lines: 201
+
+  - file: pageBuilderSchema.ts
+    path: zip/src/blocks/registry/pageBuilderSchema.ts
+    purpose: Weryfikuje render schema wzgledem shared registry.
+    key_elements:
+      - element: parsePageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:67
+        description: Failuje dla unknown block key i block version mismatch, ale nie rozroznia block readiness ani Astro support.
+    language: typescript
+    lines: 114
+
+  - file: createPageDraftFromScrape.ts
+    path: zip/src/blocks/registry/createPageDraftFromScrape.ts
+    purpose: Bootstrappuje draft z normalizowanego scrape do approved/shared blocks.
+    key_elements:
+      - element: buildRestaurantMenuDraft
+        type: function
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:72
+        description: Tworzy draft dla restaurant_menu z simple_heading_and_paragraph i menu_two_columns_with_with_heading_no_img.
+      - element: buildFallbackDraft
+        type: function
+        location: zip/src/blocks/registry/createPageDraftFromScrape.ts:99
+        description: Brak tu fallbacku do refinement workflow; fallback oznacza tylko prostszy draft generic page.
+    language: typescript
+    lines: 143
+
+  - file: generate-page-builder-ai-schema.js
+    path: SCRIPTS/generate-page-builder-ai-schema.js
+    purpose: Generuje AI schema z render schema na podstawie shared AI descriptors.
+    key_elements:
+      - element: AI_BLOCK_REGISTRY
+        type: variable
+        location: SCRIPTS/generate-page-builder-ai-schema.js:114
+        description: Laduje shared descriptor registry z zip/src/blocks/registry/ai/descriptors.cjs.
+      - element: generic fallback
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:229
+        description: Ma generic fallback dla nieznanego descriptora AI, ale nie tworzy ani nie refinujue bloku runtime/Astro.
+      - element: resolveBlockDescription
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:149
+        description: Preferuje instance-level description z meta.ai.description.
+    language: javascript
+    lines: 317
+
+  - file: make-page-draft-compile-gate.js
+    path: SCRIPTS/make-page-draft-compile-gate.js
+    purpose: Kompiluje draft do obu payloadow WordPress i pilnuje unresolved source mappings.
+    key_elements:
+      - element: compilePageDraft
+        type: function
+        location: SCRIPTS/make-page-draft-compile-gate.js:142
+        description: Blokuje compile przy unresolved source mappings, ale nie przy block readiness/astro readiness.
+    language: javascript
+    lines: 296
+
+  - file: cli.ts
+    path: SCRIPTS/page-builder-runtime/cli.ts
+    purpose: Operacyjny runtime CLI dla dry-run, publish i verify-readback.
+    key_elements:
+      - element: runPageBuilderRuntimeCli
+        type: function
+        location: SCRIPTS/page-builder-runtime/cli.ts:237
+        description: Wykonuje workflow publish, ale nie zawiera orchestracji refinement subflow.
+      - element: loadRuntimeEnv
+        type: function
+        location: SCRIPTS/page-builder-runtime/cli.ts:176
+        description: Auto-laduje .env.page-builder.local dla runtime workflow.
+    language: typescript
+    lines: 366
+
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Typuje Astro page_builder_schema intake.
+    key_elements:
+      - element: pageBuilderSchema union
+        type: variable
+        location: astro-site/src/lib/types.ts:158
+        description: Astro akceptuje tylko 4 block schemas: about-1, our-services, gallery-masonry-style1, menu-category-photo-parallax-full-width.
+    language: typescript
+    lines: 210
+
+  - file: pageBuilder.ts
+    path: astro-site/src/lib/pageBuilder.ts
+    purpose: Rozwiazuje source-backed sekcje dla Astro build.
+    key_elements:
+      - element: buildStaticPage
+        type: function
+        location: astro-site/src/lib/pageBuilder.ts:4
+        description: Ma reczny branch tylko dla menu-category-photo-parallax-full-width i nie dispatchuje przez shared registry.
+    language: typescript
+    lines: 24
+
+  - file: '[slug].astro'
+    path: astro-site/src/pages/[slug].astro
+    purpose: Dynamiczny Astro renderer dla buildable slugs.
+    key_elements:
+      - element: getStaticPaths
+        type: function
+        location: astro-site/src/pages/[slug].astro:24
+        description: Pobiera buildable slugs automatycznie z WordPress listing endpoint.
+      - element: manual block rendering branches
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:206
+        description: Renderuje sekcje przez manualne if branches dla 4 blockKey zamiast przez shared registry contract.
+      - element: SEO defaults
+        type: pattern
+        location: astro-site/src/pages/[slug].astro:108
+        description: Domysly SEO tez sa recznie zwiazane z dwoma blokami gallery/menu.
+    language: astro
+    lines: 266
+
+  - file: README.md
+    path: astro-site/README.md
+    purpose: Krótkie README Astro proof-of-concept.
+    key_elements:
+      - element: current build-time route statement
+        type: pattern
+        location: astro-site/README.md:9
+        description: Nadal opisuje current build-time route jako /testowa-blueprint, mimo ze routing jest dynamiczny po listing endpoint.
+    language: markdown
+    lines: 19
+
+patterns_found:
+  - category: architecture
+    pattern: React shared registry jest runtime-driven, Astro jest manual-branch-driven.
+    description: >
+      Zip pagebuilder dispatchuje render przez runtime.renderSection trzymany na
+      definicji bloku, podczas gdy Astro utrzymuje osobne zod union i osobny
+      manualny renderer w [slug].astro.
+    examples:
+      - file: zip/src/blocks/registry/renderPageBuilderSections.tsx
+        location: zip/src/blocks/registry/renderPageBuilderSections.tsx:4
+        snippet: const block = getBlock(section.blockKey); return block.runtime.renderSection(section);
+      - file: astro-site/src/pages/[slug].astro
+        location: astro-site/src/pages/[slug].astro:206
+        snippet: if (section.blockKey === 'about-1') { ... } if (section.blockKey === 'our-services') { ... }
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:158
+        snippet: sections: z.array(z.union([aboutBlockSchema, ourServicesBlockSchema, galleryBlockSchema, menuBlockSchema]))
+    prevalence: common
+
+  - category: structure
+    pattern: Ready/approved status zyje w docs, nie w shared registry type.
+    description: >
+      Statusy seed, approved seed i implemented sa obecne w markdown docs i
+      registry.machine.json, ale nie w PageBuilderBlockDefinition ani w parserach
+      draft/render schema.
+    examples:
+      - file: docs/block-registry/menu-category-photo-parallax-full-width.md
+        location: docs/block-registry/menu-category-photo-parallax-full-width.md:5
+        snippet: - registry status: seed
+      - file: docs/block-registry/just_pralax_img_horizontal.md
+        location: docs/block-registry/just_pralax_img_horizontal.md:5
+        snippet: - registry status: approved seed
+      - file: zip/src/blocks/registry/types.ts
+        location: zip/src/blocks/registry/types.ts:21
+        snippet: export interface PageBuilderBlockDefinition { blockKey; version; name; description; schema; ... }
+    prevalence: common
+
+  - category: architecture
+    pattern: Workflow skladania strony jest juz operacyjny repo-first + runtime CLI.
+    description: >
+      Nowa strona moze byc bootstrapowana z template draftu albo scrape draftu,
+      skompilowana do dual meta i opublikowana przez runtime CLI z verify-readback.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:88
+        snippet: Default-First Bootstrap When Final Content Is Not Ready Yet
+      - file: SCRIPTS/create-default-page-draft-from-template.ts
+        location: SCRIPTS/create-default-page-draft-from-template.ts:70
+        snippet: createDefaultPageDraftFromTemplate(...)
+      - file: SCRIPTS/page-builder-runtime/cli.ts
+        location: SCRIPTS/page-builder-runtime/cli.ts:237
+        snippet: runPageBuilderRuntimeCli(...)
+    prevalence: common
+
+  - category: error_handling
+    pattern: System ma twarde fail-fast gates dla block identity i source mappings, ale nie dla Astro readiness.
+    description: >
+      Unknown block key, version mismatch i unresolved source mapping blokuja
+      parse/compile, natomiast brak wspolnego Astro support gate oznacza, ze
+      block moze byc legalny dla zip/runtime, ale nieobslugiwany przez Astro.
+    examples:
+      - file: zip/src/blocks/registry/pageBuilderSchema.ts
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:84
+        snippet: throw new Error(`Unknown block key: ${section.blockKey}`)
+      - file: SCRIPTS/make-page-draft-compile-gate.js
+        location: SCRIPTS/make-page-draft-compile-gate.js:158
+        snippet: throw new Error(`Compile blocked: unresolved source mappings remain ...`)
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:563
+        snippet: silent fallback is not allowed for production build
+    prevalence: common
+
+  - category: documentation
+    pattern: Dokumentacja workflow 1 jest target-state, a nie gotowym operacyjnym runbookiem.
+    description: >
+      Blueprint opisuje skill-based refinement workflow i lifecycle bloku, ale
+      odwoluje sie tez do nieistniejacych docs/agent-workflows, wiec operator nie
+      ma jednego wykonywalnego runbooka refinement podobnego do authoring workflow.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:499
+        snippet: Skill: shadcn-block-refinement
+      - file: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+        location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:425
+        snippet: docs/agent-workflows/block-refinement-workflow.md
+      - file: docs/agent-workflows/**/*.md
+        location: workspace search
+        snippet: no files found
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Shared React block registry
+      responsibility: Rejestruje business blocks, ich schema/defaultData/runtime renderer i udostepnia list/get/default instance API.
+      location: zip/src/blocks/registry/
+      relationship_to_domain: domain depends on this
+    - component: Block docs repository
+      responsibility: Przechowuje human-readable status i kontrakty blokow oraz czesciowy machine index.
+      location: docs/block-registry/
+      relationship_to_domain: domain depends on this
+    - component: AI schema generator
+      responsibility: Translacja render schema do page_builder_schema_for_ai przez shared descriptors.
+      location: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: this uses domain outputs
+    - component: Draft compile gate
+      responsibility: Draft -> dual meta compile oraz source-mapping gate.
+      location: SCRIPTS/make-page-draft-compile-gate.js
+      relationship_to_domain: this uses domain outputs
+    - component: Runtime CLI
+      responsibility: ensure page exists, compile, publish and optional verify-readback.
+      location: SCRIPTS/page-builder-runtime/
+      relationship_to_domain: this uses domain outputs
+    - component: Astro parser and renderer
+      responsibility: Pobiera buildable strony z WordPress i renderuje sekcje statycznie.
+      location: astro-site/src/
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: PageBuilderBlockDefinition
+      location: zip/src/blocks/registry/types.ts
+      usage_pattern: Shared code-side contract for registered blocks.
+    - interface: PageBuilderSchema
+      location: zip/src/blocks/registry/pageBuilderSchema.ts and astro-site/src/lib/types.ts
+      usage_pattern: Dual validators exist independently in zip and Astro.
+    - interface: FirebasePageDraft
+      location: zip/src/blocks/registry/firebasePageDraft.ts
+      usage_pattern: Draft working-state for composition/publish workflow.
+  data_flow_involving_domain: >
+    Block refinement results trafiaja do shared registry i docs/block-registry,
+    z czego page composition tworzy page_builder_schema, generator tworzy
+    page_builder_schema_for_ai, runtime publikuje oba payloady do WordPress, a
+    Astro pobiera listing slugow i render schema podczas builda.
+  key_relationships_to_domain:
+    - from: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+      to: SCRIPTS/page-builder-runtime/cli.ts
+      relationship: composes
+    - from: zip/src/blocks/registry/index.ts
+      to: zip/src/blocks/registry/pageBuilderSchema.ts
+      relationship: imports
+    - from: SCRIPTS/generate-page-builder-ai-schema.js
+      to: zip/src/blocks/registry/ai/descriptors.cjs
+      relationship: imports
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/lib/types.ts
+      relationship: imports
+    - from: astro-site/src/pages/[slug].astro
+      to: astro-site/src/lib/pageBuilder.ts
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JavaScript
+    - Astro
+    - Markdown
+    - JSON
+  frameworks_used_in_domain:
+    - name: React 19.0.0
+      usage_in_domain: Zip shared block runtime, TemplatePage validation surface, Block Registry Showcase and runtime renderSection contract. Source: zip/package.json.
+    - name: Astro 5.14.2
+      usage_in_domain: Static build-time renderer for WordPress page_builder_schema. Source: astro-site/package.json.
+    - name: Vite 6.2.0
+      usage_in_domain: Build tooling for zip React app. Source: zip/package.json.
+  libraries_used_in_domain:
+    - name: zod 4.3.6
+      purpose_in_domain: Schema validation for registry blocks and Astro intake. Sources: zip/package.json, astro-site/package.json.
+    - name: firebase-admin 13.8.0
+      purpose_in_domain: Runtime draft persistence support in SCRIPTS. Source: SCRIPTS/package.json.
+    - name: framer-motion 12.38.0
+      purpose_in_domain: Motion-bearing React block implementations such as gallery source component family. Source: zip/package.json.
+  external_apis_used_in_domain:
+    - name: WordPress bulwar/v1 page-builder endpoints
+      integration_point: astro-site/src/lib/wordpress.ts and runtime CLI publish/readback workflow.
+    - name: WooCommerce Store API
+      integration_point: astro-site/src/lib/woo.ts and source-backed menu block resolution.
+
+related_conventions:
+  naming_patterns_in_domain: >
+    Business blocks uzywaja stabilnych blockKey typu kebab-case albo legacy
+    underscore_case, a page instances zawsze maja stabilne id w formie
+    <blockKey>-NN.
+  structure_of_domain: >
+    Shared contracts i runtime dla blokow zyja w zip/src/blocks, dokumentacja
+    kontraktow w docs/block-registry, operacyjne flow w docs/plan/astro-wordpress-page-builder,
+    a Astro utrzymuje osobny parser/renderer w astro-site/src.
+  error_handling_in_domain: >
+    Preferowane sa jawne gates i fail-fast: unknown block key, version mismatch,
+    invalid listing payload i unresolved source mappings koncza workflow bledu,
+    zamiast cichego fallbacku produkcyjnego.
+  testing_in_domain: >
+    React registry ma szerokie invariant coverage dla wszystkich zarejestrowanych
+    blokow i AI generatora; Astro testuje listing endpoint i waski parser coverage
+    dla aktualnie wspieranych blokow.
+  documentation_in_domain: >
+    README i page-builder-authoring-workflow sa operator entry points; blueprint
+    opisuje target-state; block docs niosa statusy i kontrakty pojedynczych blokow.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/ai/descriptors.cjs
+      relationship_to_domain: Shared AI descriptor layer for page_builder_schema_for_ai generation.
+      direction: bidirectional
+    - component: docs/block-registry/*.md
+      relationship_to_domain: Human-readable contract/status layer for each block.
+      direction: bidirectional
+    - component: docs/block-registry/registry.machine.json
+      relationship_to_domain: Machine-readable status/index layer, currently partial.
+      direction: bidirectional
+    - component: astro-site/src/lib/types.ts
+      relationship_to_domain: Astro acceptance surface for page_builder_schema.
+      direction: inbound
+    - component: astro-site/src/pages/[slug].astro
+      relationship_to_domain: Astro render coverage surface for supported blocks.
+      direction: inbound
+  external:
+    - name: WordPress REST API
+      purpose_for_domain: Listing buildable pages, reading page_builder payloads, publishing dual meta fields.
+    - name: WooCommerce Store API
+      purpose_for_domain: Resolving source-backed menu data during Astro build and runtime flows.
+
+testing_patterns:
+  framework: node:test plus React SSR assertions and targeted Astro fetch/schema tests
+  coverage_areas:
+    - Full registered block coverage in zip registry invariants
+    - Block Registry Showcase route coverage against listBlocks()
+    - AI schema generator output coverage across registered blocks and generic fallback
+    - Compile gate source-mapping behavior
+    - Astro buildable-pages listing parsing
+    - Astro schema parsing for currently supported block subset
+  test_organization: >
+    Registry i pagebuilder tests sa kolokowane obok zip runtime, generator i
+    compile gate maja osobne testy w SCRIPTS, a Astro testy sa w astro-site/src/lib.
+  mock_patterns:
+    - Global fetch mocks for WordPress listing endpoint in Astro tests
+    - Temp-file based command execution tests for AI generator
+    - SSR static markup checks for Block Registry Showcase and registry runtime renderers
+
+workflow_definition_surfaces:
+  workflow_1_block_refinement_today:
+    summary: >
+      Dzisiaj Workflow 1 jest zdefiniowany przez target-state blueprint,
+      design-system instructions, block-registry spec, TemplatePage validation
+      rule i pojedyncze block docs ze statusami; brak jednego operacyjnego runbooka
+      rownego authoring workflow dla stron.
+    files:
+      - path: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+        role: Najblizsza definicja procesu block refinement i lifecycle bloku.
+        locations:
+          - '83'
+          - '547'
+      - path: docs/plan/astro-wordpress-page-builder/block-registry-spec.md
+        role: Kontrakt dodawania bloku do shared registry i AI descriptor flow.
+        locations:
+          - '230'
+          - '233'
+      - path: docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md
+        role: Reguly adaptacji imported blocks i TemplatePage validation.
+        locations:
+          - '134'
+          - '173'
+      - path: zip/src/pages/TemplatePage.tsx
+        role: Wizualna powierzchnia walidacji/refinement wedlug docs i blueprint.
+      - path: docs/block-registry/*.md
+        role: Per-block status, kontrakt i informacja czy blok jest seed/implemented/approved seed.
+      - path: docs/block-registry/registry.machine.json
+        role: Czesiowy machine index statusow blokow.
+
+  workflow_2_page_composition_today:
+    summary: >
+      Dzisiaj Workflow 2 jest realnym repo-first flow: draft bootstrap lub reczna
+      kompozycja -> render schema -> AI schema -> runtime compile/publish -> Astro build/deploy.
+      Wymaganie approved blocks only jest udokumentowane, ale fallback do auto-refinement nie istnieje.
+    files:
+      - path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        role: Kanoniczny workflow operatora dla skladania i publikacji strony.
+      - path: docs/plan/astro-wordpress-page-builder/README.md
+        role: Krotki indeks entry pointow i rozroznienie current vs target-state.
+      - path: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md
+        role: Authoring format dla strony z registered blocks.
+      - path: SCRIPTS/create-default-page-draft-from-template.ts
+        role: Bootstrap default-first dla nowej strony.
+      - path: SCRIPTS/generate-page-draft-from-scrape.ts
+        role: Bootstrap structure-only z scrape do Firebase draft.
+      - path: SCRIPTS/generate-page-builder-ai-schema.js
+        role: Render schema -> AI schema.
+      - path: SCRIPTS/make-page-draft-compile-gate.js
+        role: Draft -> dual meta compile z source gate.
+      - path: SCRIPTS/page-builder-runtime/cli.ts
+        role: ensure/create/update/publish/verify-readback.
+      - path: astro-site/src/pages/[slug].astro
+        role: Finalny renderer build-time dla buildable slugs.
+
+shared_registry_vs_astro_drift:
+  summary: >
+    Shared registry jest szerszy i bardziej dojrzaly niz Astro runtime. Dzisiaj
+    blok moze byc implemented w zip i w AI generatorze, a nadal nie byc accepted
+    ani rendered przez Astro.
+  drifts:
+    - area: Block coverage
+      description: Shared registry w zip rejestruje 23 blockKey, a Astro intake union i renderer obsluguja tylko 4 blockKey.
+      evidence:
+        - zip/src/blocks/registry/index.ts:89
+        - astro-site/src/lib/types.ts:158
+        - astro-site/src/pages/[slug].astro:206
+    - area: Render dispatch model
+      description: React dispatchuje przez runtime.renderSection na definicji bloku, Astro utrzymuje reczny if-chain, wiec kazdy nowy Astro-ready blok wymaga duplikacji zmian.
+      evidence:
+        - zip/src/blocks/registry/renderPageBuilderSections.tsx:4
+        - docs/plan/astro-wordpress-page-builder/block-registry-spec.md:233
+        - astro-site/src/pages/[slug].astro:206
+    - area: Readiness state location
+      description: Shared registry type nie ma pola ready/astroReady/status; status istnieje tylko w docs markdown i czesciowo w registry.machine.json.
+      evidence:
+        - zip/src/blocks/registry/types.ts:21
+        - docs/block-registry/about-1.md:5
+        - docs/block-registry/menu-category-photo-parallax-full-width.md:5
+        - docs/block-registry/registry.machine.json:3
+    - area: Machine registry completeness
+      description: docs/block-registry/registry.machine.json zawiera 11 block entries, podczas gdy docs/block-registry/*.md i zip shared registry obejmuja 23 bloki.
+      evidence:
+        - docs/block-registry/registry.machine.json:7
+        - docs/block-registry/index.md:32
+        - zip/src/blocks/registry/index.ts:89
+    - area: Documentation freshness
+      description: Astro README nadal opisuje current build-time route jako /testowa-blueprint, mimo ze routing jest dynamiczny z listing endpoint.
+      evidence:
+        - astro-site/README.md:9
+        - astro-site/src/pages/[slug].astro:24
+
+minimal_change_surface:
+  summary: >
+    Najmniejszy obecnie sprzezony zestaw miejsc, ktore musialyby zostac zmienione,
+    aby Workflow 1 mial output ready w shared registry, a Workflow 2 mogl bazowac
+    na tym jednym gate i odroznic bloki Astro-ready od pozostalych.
+  code:
+    - path: zip/src/blocks/registry/types.ts
+      reason: Tu zyje wspolny typ definicji bloku; brak w nim pola readiness/status/astro support.
+    - path: zip/src/blocks/registry/index.ts
+      reason: To runtime source of truth dla listBlocks/getBlock/createDefaultBlockInstance; readiness gate musialby byc widoczny tutaj.
+    - path: zip/src/blocks/registry/registry-invariants.test.tsx
+      reason: Pilnuje pokrycia calosci registry i AI generatora; zmiana kontraktu registry bedzie tu bezposrednio odczuwalna.
+    - path: SCRIPTS/generate-page-builder-ai-schema.js
+      reason: Generator korzysta ze shared descriptors i generic fallback, ale nie rozroznia gotowosci bloku do compose/Astro.
+    - path: SCRIPTS/make-page-draft-compile-gate.js
+      reason: To obecna bramka compile; tu najblizej technicznego enforcementu workflow 2.
+    - path: SCRIPTS/page-builder-runtime/cli.ts
+      reason: To obecny orchestrator publish flow; brak tu subflow block refinement.
+    - path: astro-site/src/lib/types.ts
+      reason: Astro acceptance surface wymaga synchronizacji z nowym gotowosciowym source of truth.
+    - path: astro-site/src/pages/[slug].astro
+      reason: Manualny renderer blokow wymaga synchronizacji z nowymi Astro-ready blokami.
+    - path: astro-site/src/lib/pageBuilder.ts
+      reason: Tu siedzi reczny source-resolution branch dla menu block i potencjalny capability routing Astro.
+  docs:
+    - path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+      reason: Kanoniczny operator flow 2 musi opisywac gate i fallback behavior.
+    - path: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+      reason: To jedyne miejsce opisujace lifecycle Workflow 1 i target subflow architecture.
+    - path: docs/plan/astro-wordpress-page-builder/block-registry-spec.md
+      reason: Kontrakt shared registry musi odzwierciedlac nowe pole readiness/status.
+    - path: docs/block-registry/registry.machine.json
+      reason: Machine-readable gate ma byc shared source of truth, a dzis index jest czesciowy.
+    - path: docs/block-registry/index.md
+      reason: Definiuje semantyke approved/seed i cala rola folderu jako source of truth.
+    - path: docs/block-registry/*.md
+      reason: Statusy blokow sa dzis rozproszone per markdown i musza pozostac spójne z gate'em.
+    - path: astro-site/README.md
+      reason: README Astro jest przestarzaly wzgledem dynamicznego listing-based build.
+
+regression_risks:
+  - risk: Rozszerzenie shared registry contract moze rozbic invariant tests i narzedzia listujace wszystkie bloki.
+    impact: high
+    evidence:
+      - zip/src/blocks/registry/registry-invariants.test.tsx:24
+      - zip/src/pages/BlockRegistryShowcasePage.tsx:21
+      - zip/src/pages/BlockRegistryShowcasePage.test.tsx:9
+  - risk: Wprowadzenie readiness gate bez synchronizacji docs/block-registry i registry.machine.json utrwali trzeci rozny status source-of-truth.
+    impact: high
+    evidence:
+      - docs/block-registry/index.md:21
+      - docs/block-registry/registry.machine.json:3
+      - docs/block-registry/menu-category-photo-parallax-full-width.md:5
+  - risk: Ograniczenie compose do Astro-ready blokow bez explicit policy moze zablokowac istniejacy runtime zip/AI-generator dla blokow implemented, ale jeszcze nieobslugiwanych przez Astro.
+    impact: high
+    evidence:
+      - zip/src/blocks/registry/index.ts:89
+      - astro-site/src/lib/types.ts:158
+      - SCRIPTS/generate-page-builder-ai-schema.test.js:1
+  - risk: Kazda zmiana readiness dla source-backed blokow moze naruszyc obecne gates unresolved source mappings i routing edycji source-backed content.
+    impact: high
+    evidence:
+      - SCRIPTS/make-page-draft-compile-gate.js:158
+      - zip/src/blocks/registry/ai/descriptors.cjs
+      - docs/block-registry/menu-category-photo-parallax-full-width.md:57
+  - risk: Synchronizacja Astro z shared registry bez zmiany manualnych if-branchy pozostawi ukryte luki render coverage przy nowych blokach.
+    impact: medium
+    evidence:
+      - astro-site/src/pages/[slug].astro:206
+      - astro-site/src/lib/types.ts:158
+      - astro-site/src/lib/types.test.ts:45
+  - risk: Dokumentacyjne references do nieistniejacych docs/agent-workflows moga wprowadzic falszywe zalozenie, ze Workflow 1 ma juz gotowy runbook.
+    impact: medium
+    evidence:
+      - docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:425
+      - workspace search for docs/agent-workflows/**/*.md returned no files
+
+open_questions:
+  - question: Gdzie ma mieszkac jeden kanoniczny status readiness dla blokow: w shared registry type, w registry.machine.json, czy w obu warstwach z jawna synchronizacja?
+    context: Dzisiaj status zyje tylko w docs, a requested readiness gate ma byc shared registry as single source of truth.
+    type: decision_blocker
+    affects: [pb-astro-ready-workflows-2026-04-21]
+  - question: Czy Workflow 2 ma skladac strony wyłącznie z blokow Astro-ready, czy dalej z blokow zip-implemented z osobna polityka render targetu?
+    context: Shared registry ma 23 bloki, Astro wspiera 4; bez tej decyzji gate ready pozostaje niejednoznaczny.
+    type: decision_blocker
+    affects: [pb-astro-ready-workflows-2026-04-21]
+  - question: Czy blueprint references do docs/agent-workflows sa celowo przyszlosciowe, czy dokument jest juz nieaktualny wzgledem repo?
+    context: Brak tych plikow utrudnia traktowanie Workflow 1 jako operacyjnego runbooka.
+    type: research
+    affects: [pb-astro-ready-workflows-2026-04-21]
+
+gaps:
+  - area: Shared machine-readable readiness gate
+    description: PageBuilderBlockDefinition nie ma pola status/ready/astroReady, a parse/compile/runtime nie maja mechanizmu odrozniania refined-ready block od samego registered block.
+    impact: decision_blocker
+    affects: [pb-astro-ready-workflows-2026-04-21]
+  - area: Workflow 2 fallback orchestration
+    description: W repo nie ma kodowego orchestratora, ktory przy skladaniu strony wykrywa blok niegotowy, uruchamia subflow refinement i wraca do compose flow.
+    impact: decision_blocker
+    affects: [pb-astro-ready-workflows-2026-04-21]
+  - area: Astro parity coverage
+    description: Astro acceptance surface jest znacznie wezsza niz shared registry i nie ma testu parity wobec listBlocks()/registry.machine.json.
+    impact: research_blocker
+    affects: [pb-astro-ready-workflows-2026-04-21]
+  - area: Machine registry completeness
+    description: registry.machine.json jest czesciowy i top-level nadal ma registryStatus=seed, wiec nie moze byc samodzielnym single source of truth dla ready gate.
+    impact: research_blocker
+    affects: [pb-astro-ready-workflows-2026-04-21]

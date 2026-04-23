@@ -1,0 +1,530 @@
+plan_id: astro-wordpress-page-builder
+objective: Audit existing Astro + WordPress page-builder documentation and workflow notes.
+focus_area: documentation-audit
+created_at: 2026-04-15
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The documentation is intentionally split into a top-level plan, low-level specs, an operator workflow, and an agent workflow; the clearest top-level anchors are implementation-plan.md, page-builder-authoring-workflow.md, and agentic-page-builder-blueprint.md.
+  - The currently documented runtime model is dual-meta-field WordPress storage with page_builder_schema for rendering and page_builder_schema_for_ai for constrained AI editing, backed by repo-side block definitions and block docs.
+  - The documents consistently describe three connected processes: reusable block refinement in VS Code, page assembly and publication, and production content editing in Make.com.
+  - Several items are explicitly still open or transitional: about-1 mapping, Firebase compile mapping details, per-page creation automation, Astro slug discovery, and Make scenario granularity.
+  - docs/prd.yaml appears unrelated to this domain and should not be treated as a source for the Astro + WordPress page-builder workflow.
+
+research_metadata:
+  methodology: Hybrid retrieval using file_search to enumerate scope, read_file for targeted reading, grep_search for source-of-truth/canonical/open-question markers, and PowerShell line counting for exact file lengths.
+  scope: Requested planning and documentation artifacts under docs/plan/astro-wordpress-page-builder plus docs/prd.yaml and agentic-page-builder-blueprint.md for the Make.com workflow layer.
+  confidence: high
+  coverage: 96
+  decision_blockers: 5
+  research_blockers: 1
+
+files_analyzed:
+- file: prd.yaml
+  path: docs/prd.yaml
+  purpose: Repository PRD file checked for relevance to the Astro + WordPress page-builder domain.
+  key_elements:
+  - element: features list
+    type: pattern
+    location: docs/prd.yaml:6
+    description: The listed features are Rebuild Homepage, Refactor App.tsx, and Font Size Restoration, which are frontend refactor items rather than page-builder workflow artifacts.
+  language: yaml
+  lines: 24
+- file: implementation-plan.md
+  path: docs/plan/astro-wordpress-page-builder/implementation-plan.md
+  purpose: Top-level architecture and phase plan for the Astro + WordPress page-builder initiative.
+  key_elements:
+  - element: source-of-truth declaration
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:5
+    description: The document declares itself as the current source of truth for the planned Astro page-builder workflow.
+  - element: dual references to operational docs
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:9
+    description: It delegates live operational status to react-wordpress-poc-status.md and repeatable operator workflow to page-builder-authoring-workflow.md.
+  - element: MVP scope
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:219
+    description: The MVP scope lists the first-delivered version, including three blocks and one test page type.
+  language: markdown
+  lines: 279
+- file: react-wordpress-poc-status.md
+  path: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md
+  purpose: Execution log for the React + WordPress proof-of-concept milestone.
+  key_elements:
+  - element: non-final-status declaration
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:11
+    description: The document explicitly says it is not the final target architecture document and is an execution log for the current milestone.
+  - element: dual-meta proof status
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:19
+    description: The live proof is documented as already storing both page_builder_schema and page_builder_schema_for_ai in WordPress meta.
+  - element: authenticated POST support
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:80
+    description: The custom route is documented as accepting authenticated POST requests that update both meta fields together.
+  language: markdown
+  lines: 279
+- file: page-builder-authoring-workflow.md
+  path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+  purpose: Repeatable operator workflow for composing, publishing, and deploying page-builder pages.
+  key_elements:
+  - element: current system parts
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:15
+    description: The document lists the current working parts, including both WordPress meta fields, the AI schema generator, WordPress GET/POST endpoints, and Astro deploy workflow.
+  - element: current truths and limits
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:25
+    description: The workflow documents that POST only updates existing pages, the seed script is test-page-specific, and the React proof route remains hardcoded to testowa-blueprint.
+  - element: canonical tools
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:206
+    description: The file identifies the current standard tools for authoring, syncing to WordPress, and Astro deployment.
+  language: markdown
+  lines: 251
+- file: firebase-page-draft-mvp.md
+  path: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+  purpose: Proposed Firebase working-state model for Make-driven page editing.
+  key_elements:
+  - element: one-document draft rule
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:11
+    description: The MVP model is defined as one Firebase document per page draft.
+  - element: workflow sequence
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:24
+    description: The workflow explicitly places Firebase draft creation, Make editing, compile, publish to WordPress, and optional Astro deploy in sequence.
+  - element: compile mapping gap
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:206
+    description: The document says the next implementation design should define exactly how both compiled WordPress JSON payloads are generated from blocks.
+  language: markdown
+  lines: 210
+- file: block-registry-spec.md
+  path: docs/plan/astro-wordpress-page-builder/block-registry-spec.md
+  purpose: Canonical code-side specification for reusable business blocks.
+  key_elements:
+  - element: canonical registry role
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md:5
+    description: The block registry is defined as the canonical code-side definition of reusable business blocks.
+  - element: source-of-truth split
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md:14
+    description: The registry is the source of truth for block definitions, while WordPress stores page instances and content values.
+  - element: unresolved about-1 mapping
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md:326
+    description: The about-1 mapping is still documented as to be finalized.
+  language: markdown
+  lines: 356
+- file: page-builder-schema-spec.md
+  path: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+  purpose: Canonical WordPress-side storage contract for page_builder_schema.
+  key_elements:
+  - element: canonical storage declaration
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:5
+    description: page_builder_schema is defined as the canonical WordPress-side storage format.
+  - element: storage key wording
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:21
+    description: The meta key is described as proposed, which is weaker wording than newer documents that treat it as confirmed and live.
+  - element: decision summary
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:539
+    description: The summary states one JSON document per WordPress page with ordered block instances and optional source bindings.
+  language: markdown
+  lines: 547
+- file: blueprint-dsl-spec.md
+  path: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md
+  purpose: Human-friendly authoring DSL specification for turning blueprints into page_builder_schema.
+  key_elements:
+  - element: canonical blueprint form
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md:71
+    description: The document defines a YAML-like declarative canonical blueprint shape for MVP.
+  - element: direct mapping rule
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md:300
+    description: Blueprint values are defined as converting directly into page_builder_schema.
+  - element: unresolved about-1 mapping
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/blueprint-dsl-spec.md:483
+    description: The about-1 source component mapping remains explicitly unfinalized.
+  language: markdown
+  lines: 487
+- file: mvp-block-data-contracts.md
+  path: docs/plan/astro-wordpress-page-builder/mvp-block-data-contracts.md
+  purpose: Concrete MVP data contracts for the first real blocks.
+  key_elements:
+  - element: scope limitation
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/mvp-block-data-contracts.md:12
+    description: The document currently defines only gallery-masonry-style1 and menu-category-photo-parallax-full-width.
+  - element: unresolved about-1 mapping
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/mvp-block-data-contracts.md:18
+    description: about-1 is excluded because its final source component mapping is still undecided.
+  - element: normalized Woo rule
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/mvp-block-data-contracts.md:385
+    description: The Woo resolver is documented as normalizing product data into the same internal shape as menuColumns before rendering.
+  language: markdown
+  lines: 450
+- file: github-actions-astro-deploy.md
+  path: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md
+  purpose: CI-based Astro deployment workflow note.
+  key_elements:
+  - element: workflow behavior
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md:9
+    description: The workflow builds Astro, deploys over SSH, creates backups, and fixes permissions.
+  - element: trigger strategy
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md:32
+    description: The default strategy is automatic deploy on main changes under astro-site plus manual workflow_dispatch.
+  language: markdown
+  lines: 43
+- file: local-astro-deploy-from-windows.md
+  path: docs/plan/astro-wordpress-page-builder/local-astro-deploy-from-windows.md
+  purpose: Manual Windows fallback deployment path for Astro static output.
+  key_elements:
+  - element: canonical local path
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/local-astro-deploy-from-windows.md:7
+    description: The document declares a single canonical local deploy path through build plus SCRIPTS/deploy-astro-static.ps1.
+  - element: canonical commands
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/local-astro-deploy-from-windows.md:50
+    description: The document provides the exact build and deploy commands and treats them as the only correct manual route.
+  language: markdown
+  lines: 220
+- file: testowa-blueprint.page_builder_schema.json
+  path: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+  purpose: Concrete example of the render-oriented page_builder_schema payload.
+  key_elements:
+  - element: page identity
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:2
+    description: The schema targets the testowa-blueprint page with published status and blueprint-test-page templateKey.
+  - element: stable section ids
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:11
+    description: The payload uses stable ids and block keys that match the documented registry patterns.
+  - element: Woo source binding
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:67
+    description: The menu block stores woo_category source binding inside source, separate from block data.
+  language: json
+  lines: 82
+- file: testowa-blueprint.page_builder_schema_for_ai.json
+  path: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json
+  purpose: Concrete example of the AI-editing-oriented schema.
+  key_elements:
+  - element: identity preservation
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:8
+    description: The first block reuses the same block id as the render schema, preserving mapping identity.
+  - element: edit guidance fields
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:12
+    description: The AI payload includes description, contentSource, editableFields, editRoute, and doNotEditDirectly guidance.
+  - element: Woo edit routing
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:61
+    description: The menu block routes category/content edits between WordPress media, schema fields, and WooCommerce tools.
+  language: json
+  lines: 98
+- file: agentic-page-builder-blueprint.md
+  path: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+  purpose: Top-level agent workflow and Make.com operating model.
+  key_elements:
+  - element: architecture-blueprint declaration
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:16
+    description: The document declares itself as the current architecture blueprint for the agent-driven page builder.
+  - element: three-process system model
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:53
+    description: The full system is defined as three connected processes: block refinement, page composition, and production content editing in Make.com.
+  - element: remaining open questions
+    type: pattern
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:601
+    description: The file ends with five explicit open decisions that still need to be locked.
+  language: markdown
+  lines: 609
+
+patterns_found:
+- category: architecture
+  pattern: Canonical plan/spec/workflow split
+  description: The folder uses a layered documentation model where implementation-plan.md frames the initiative, low-level specs define contracts, page-builder-authoring-workflow.md describes current operator steps, and react-wordpress-poc-status.md explicitly logs a milestone rather than the final architecture.
+  examples:
+  - file: docs/plan/astro-wordpress-page-builder/implementation-plan.md
+    location: docs/plan/astro-wordpress-page-builder/implementation-plan.md:5
+    snippet: This document is the current source of truth for the planned Astro page-builder workflow.
+  - file: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md
+    location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:11
+    snippet: This is not the final target architecture document.
+  - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:25
+    snippet: Current Truths And Limits.
+  prevalence: common
+- category: structure
+  pattern: Dual-meta-field WordPress model
+  description: Newer documents consistently describe page_builder_schema as the render payload and page_builder_schema_for_ai as the constrained AI-editing payload, with both written together and mapped by stable block id.
+  examples:
+  - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:15
+    snippet: page_builder_schema as the render-oriented WordPress meta field; page_builder_schema_for_ai as the AI-editing-oriented WordPress meta field.
+  - file: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:211
+    snippet: page_builder_schema is the full structural render payload; page_builder_schema_for_ai is the simplified editing payload.
+  - file: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json
+    location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:8
+    snippet: The AI payload reuses render-schema ids and includes edit constraints.
+  prevalence: common
+- category: workflow
+  pattern: Three connected processes
+  description: The documentation converges on three major processes: reusable business block refinement in VS Code, page assembly/publish, and production editing via Make.com, with Firebase introduced as an alternate working-state layer for editing.
+  examples:
+  - file: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:53
+    snippet: The full system should be treated as three connected processes.
+  - file: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+    location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:24
+    snippet: VS Code agent creates Firebase draft; Make agent edits it; compile and publish actions follow.
+  - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:225
+    snippet: Create render schema, generate AI schema, post both metas, verify, build Astro, deploy Astro.
+  prevalence: common
+- category: deployment
+  pattern: CI default plus Windows fallback
+  description: Deployment notes define GitHub Actions as the default Astro deployment strategy while preserving a separate canonical Windows fallback path using the deploy-astro-static.ps1 script.
+  examples:
+  - file: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md
+    location: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md:36
+    snippet: automatic deploy on main changes inside astro-site; manual deploy from Actions tab when needed.
+  - file: docs/plan/astro-wordpress-page-builder/local-astro-deploy-from-windows.md
+    location: docs/plan/astro-wordpress-page-builder/local-astro-deploy-from-windows.md:7
+    snippet: Canonical path for local deployment is build in astro-site plus SCRIPTS/deploy-astro-static.ps1.
+  prevalence: occasional
+- category: documentation
+  pattern: Transitional wording marks stale or not-yet-locked areas
+  description: Multiple files explicitly use proposed, recommended, still, or open-questions language, which distinguishes finalized contracts from planning-only or transitional notes.
+  examples:
+  - file: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+    location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:21
+    snippet: Proposed meta key: page_builder_schema.
+  - file: docs/plan/astro-wordpress-page-builder/mvp-block-data-contracts.md
+    location: docs/plan/astro-wordpress-page-builder/mvp-block-data-contracts.md:18
+    snippet: about-1 is intentionally not included yet because its final source component mapping is still undecided.
+  - file: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:601
+    snippet: Remaining Open Questions.
+  prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+  - component: Block registry specification
+    responsibility: Defines reusable business blocks, their schema contracts, source resolution rules, and versioning.
+    location: docs/plan/astro-wordpress-page-builder/block-registry-spec.md
+    relationship_to_domain: domain depends on this
+  - component: Render schema contract
+    responsibility: Defines the canonical WordPress-side page_builder_schema payload and section ordering model.
+    location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+    relationship_to_domain: domain depends on this
+  - component: AI schema contract
+    responsibility: Defines the simplified editing payload and its mapping to render schema block ids.
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    relationship_to_domain: domain depends on this
+  - component: Operator workflow
+    responsibility: Describes how repo-side JSON artifacts, WordPress sync, Astro build, and deployment are performed today.
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    relationship_to_domain: this uses domain outputs
+  - component: Firebase draft model
+    responsibility: Proposes a separate working-state document that compiles into the two WordPress payloads.
+    location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+    relationship_to_domain: optional parallel model for domain workflow
+  - component: Make.com scenario blueprint
+    responsibility: Defines how production AI editing consumes and rewrites both schemas, then requests redeploy.
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md
+    relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+  - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:20
+    usage_pattern: Public read of render schema and optional AI schema after write/publish.
+  - interface: POST /wp-json/bulwar/v1/page-builder/pages/{slug}
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:22
+    usage_pattern: Authenticated update of both page_builder_schema and page_builder_schema_for_ai in one request.
+  - interface: GitHub Actions deploy workflow
+    location: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md:9
+    usage_pattern: Builds Astro and deploys static output over SSH, with backup and permission repair.
+  data_flow_involving_domain: Repo-side block definitions and block docs define allowed business blocks and their contracts; a page is composed into page_builder_schema, transformed or generated into page_builder_schema_for_ai, written to WordPress post meta through the page-builder endpoint, rendered by Astro from WordPress data, and optionally edited later through a Make.com scenario that rewrites both schemas and triggers redeploy. firebase-page-draft-mvp.md inserts Firebase as an alternate working-state layer before compile and publish.
+  key_relationships_to_domain:
+  - from: block-registry-spec.md
+    to: page-builder-schema-spec.md
+    relationship: defines contracts consumed by
+  - from: blueprint-dsl-spec.md
+    to: page-builder-schema-spec.md
+    relationship: transforms into
+  - from: page-builder-authoring-workflow.md
+    to: testowa-blueprint.page_builder_schema.json
+    relationship: uses as canonical page artifact example
+  - from: agentic-page-builder-blueprint.md
+    to: page_builder_schema_for_ai
+    relationship: defines
+  - from: firebase-page-draft-mvp.md
+    to: page_builder_schema and page_builder_schema_for_ai
+    relationship: compiles into
+
+related_technology_stack:
+  languages_used_in_domain:
+  - Markdown
+  - YAML
+  - JSON
+  - PowerShell
+  frameworks_used_in_domain:
+  - name: Astro
+    usage_in_domain: Static rendering layer and deployment target for generated page output.
+  - name: WordPress
+    usage_in_domain: Runtime storage for page instances via post meta and REST bridge endpoints.
+  - name: React
+    usage_in_domain: Existing proof-of-concept renderer and earlier validation milestone.
+  - name: GitHub Actions
+    usage_in_domain: CI deployment path for Astro static output.
+  libraries_used_in_domain:
+  - name: WooCommerce
+    purpose_in_domain: External content source for product/category-backed blocks.
+  - name: Make.com
+    purpose_in_domain: Production AI content-editing execution layer.
+  - name: Firebase
+    purpose_in_domain: Proposed working-state store for draft editing before compile/publish.
+  external_apis_used_in_domain:
+  - name: WordPress REST page-builder endpoint
+    integration_point: page-builder-authoring-workflow.md and react-wordpress-poc-status.md
+  - name: WooCommerce data source bindings
+    integration_point: block-registry-spec.md, mvp-block-data-contracts.md, and react-wordpress-poc-status.md
+
+related_conventions:
+  naming_patterns_in_domain: blockKey values use stable kebab-case business names such as gallery-masonry-style1 and menu-category-photo-parallax-full-width; page artifacts follow slug.page_builder_schema.json and slug.page_builder_schema_for_ai.json naming; block instance ids use stable suffixes like <blockKey>-01.
+  structure_of_domain: The docs separate architecture blueprint, contract specs, workflow docs, and example payloads; per-page artifacts live alongside planning docs under docs/plan/astro-wordpress-page-builder.
+  error_handling_in_domain: The schema spec requires build-time failure for invalid schema or unsupported source, and the operator workflow requires verifying updated_meta_keys and GET responses after POST.
+  testing_in_domain: The implementation plan requires validation tests for block schemas, example payloads, page render, Woo resolvers, and failure cases; testowa-blueprint JSON files serve as concrete example payloads.
+  documentation_in_domain: Documents frequently self-label as current source of truth, canonical, recommended, or not final, which acts as an internal status marker for document authority.
+
+related_dependencies:
+  internal:
+  - component: docs/block-registry/
+    relationship_to_domain: Human-readable block docs are referenced as the repository-side source for block descriptions and AI guidance generation.
+    direction: outbound
+  - component: SCRIPTS/generate-page-builder-ai-schema.js
+    relationship_to_domain: The authoring workflow depends on this generator to derive page_builder_schema_for_ai from render schema JSON.
+    direction: outbound
+  - component: SCRIPTS/deploy-astro-static.ps1
+    relationship_to_domain: Local fallback deployment uses this script as the canonical manual path.
+    direction: outbound
+  - component: wordpress-plugin/bulwar-bridge
+    relationship_to_domain: Documentation depends on the bridge exposing GET/POST page-builder endpoints and WordPress meta registration.
+    direction: outbound
+  external:
+  - name: WordPress post meta and REST surface
+    purpose_for_domain: Stores and transports page instances.
+  - name: WooCommerce catalog data
+    purpose_for_domain: Supplies category/product-backed block content.
+  - name: GitHub repository secrets for deployment
+    purpose_for_domain: Required for CI deployment over SSH.
+
+domain_security_considerations:
+  sensitive_areas:
+  - area: Authenticated schema write path
+    location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:126
+    concern: The POST workflow requires an authenticated WordPress user with edit_pages and updates both meta fields together.
+  - area: Deployment credentials
+    location: docs/plan/astro-wordpress-page-builder/github-actions-astro-deploy.md:21
+    concern: SSH host, user, and private key are required as repository secrets.
+  - area: Publish approval gate
+    location: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md:287
+    concern: The Make-driven redeploy flow is documented as requiring explicit approval before deployment.
+  authentication_patterns_in_domain: WordPress write operations are authenticated; GitHub Actions deploy uses SSH key-based authentication; local deploy assumes a local SSH key in the repository root.
+  authorization_patterns_in_domain: page-builder-authoring-workflow.md specifies edit_pages capability for POST updates and agentic-page-builder-blueprint.md constrains Make agents to structured payload editing rather than arbitrary WordPress content mutation.
+  data_validation_in_domain: The registry owns block schema validation, page_builder_schema is validated against registry definitions, and the Make output is expected to remain strict and schema-bound.
+
+testing_patterns:
+  framework: Unspecified in the documentation; testing expectations are described as coverage areas rather than tied to one named framework.
+  coverage_areas:
+  - block schema validation tests
+  - example payload tests for each registered block
+  - page schema render test
+  - Woo resolver tests
+  - failure tests for invalid page schemas
+  test_organization: Test expectations are summarized in implementation-plan.md under Testing Rules rather than in a dedicated testing strategy document.
+  mock_patterns:
+  - Example payload JSON files act as reproducible fixtures for schema and workflow validation.
+
+open_questions:
+- question: What exact WordPress status or flag should represent changed by AI, waiting for redeploy?
+  context: The agent workflow requires a redeploy-needed state, but the exact representation remains explicitly open.
+  type: decision_blocker
+  affects:
+  - documentation-audit
+- question: Should page_builder_schema_for_ai always mirror every block, or can some render-only blocks be excluded?
+  context: The AI schema mapping rule is central to agent editing and payload generation, but scope parity remains open.
+  type: decision_blocker
+  affects:
+  - documentation-audit
+- question: Should page manifests be stored only in repo docs, or also be available through the WordPress bridge API?
+  context: The agent blueprint introduces page manifests for reproducibility, but storage location is not settled.
+  type: decision_blocker
+  affects:
+  - documentation-audit
+- question: Should the Make scenario be generated per page slug, per page template, or per page family?
+  context: Scenario granularity affects operational scaling and template reuse.
+  type: decision_blocker
+  affects:
+  - documentation-audit
+- question: Which exact folder should be the canonical working folder for raw imported shadcn blocks?
+  context: The refinement process is documented, but the raw import staging area is left open.
+  type: decision_blocker
+  affects:
+  - documentation-audit
+
+gaps:
+- area: PRD alignment
+  description: docs/prd.yaml does not describe the Astro + WordPress page-builder domain and currently tracks unrelated homepage/App.tsx refactor work.
+  impact: research_blocker
+  affects:
+  - documentation-audit
+- area: MVP storage wording drift
+  description: implementation-plan.md still frames the MVP as one WordPress meta field at line 226, while newer operator and agent docs describe a live dual-meta-field workflow.
+  impact: decision_blocker
+  affects:
+  - documentation-audit
+- area: Firebase versus direct WordPress operator flow
+  description: firebase-page-draft-mvp.md introduces Firebase as the working-state store, but page-builder-authoring-workflow.md documents a direct repo JSON to WordPress POST workflow as the current repeatable path; the authoritative relationship between these two models is not explicitly locked.
+  impact: decision_blocker
+  affects:
+  - documentation-audit
+- area: Generic page creation flow
+  description: The current POST endpoint only updates existing pages, and the only seed helper referenced as implemented is still specific to testowa-blueprint.
+  impact: decision_blocker
+  affects:
+  - documentation-audit
+- area: Compile contract from Firebase draft
+  description: firebase-page-draft-mvp.md explicitly says the next implementation design must define how compiled page_builder_schema and page_builder_schema_for_ai are produced from blocks.
+  impact: decision_blocker
+  affects:
+  - documentation-audit
+- area: Block catalog completeness
+  description: about-1 remains part of the MVP planning set but is still unresolved across implementation-plan.md, block-registry-spec.md, blueprint-dsl-spec.md, and mvp-block-data-contracts.md.
+  impact: decision_blocker
+  affects:
+  - documentation-audit
+- area: Static route discovery
+  description: The authoring workflow says new pages must currently be added to a test slug list for Astro proof generation, which means static generation is not yet documented as generic discovery.
+  impact: decision_blocker
+  affects:
+  - documentation-audit

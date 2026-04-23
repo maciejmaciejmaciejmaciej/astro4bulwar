@@ -1,0 +1,171 @@
+plan_id: font-restoration
+objective: Restore the exact original font size classes to all component files in zip/src/components/sections/ using zip/src/App.tmp.tsx as the source of truth.
+created_at: '2026-03-22T00:00:00Z'
+created_by: gem-planner
+status: pending_approval
+research_confidence: medium
+
+tldr: |
+  Mass regex scripts corrupted font sizes in the split section components. This plan involves strictly reversing these changes by extracting the correct classes from the original monolithic file ('App.tmp.tsx') and applying them surgically to the split components, concluding with a build and deployment phase.
+
+open_questions:
+  - "Are there any specific UI discrepancies outside of font sizes (e.g. line-height, padding) that were also corrupted during the mass regex replacement?"
+  - "Does the deployment process need to interact with the WordPress/WooCommerce bridge, or just upload to the public_html path?"
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: "Implementer applies classes blindly and misses edge cases resulting in visual regressions in responsive viewports (sm:, md: prefixes)."
+      likelihood: medium
+      impact: high
+      mitigation: "Ensure the researcher task thoroughly maps the entire class string, and the implementer replaces the entire class attribute exactly as it was in App.tmp.tsx."
+    - scenario: "Deployment fails due to network or SSH restrictions."
+      likelihood: low
+      impact: high
+      mitigation: "DevOps agent will capture SCP/SSH outputs and revert to manual steps if automated commands fail."
+  assumptions:
+    - "App.tmp.tsx accurately reflects the desired visual state before the regex corruption."
+    - "The component structure inside the sections did not heavily change during the file split, allowing for 1:1 mapping."
+
+implementation_specification:
+  code_structure: "Updates will happen in-place within the existing split component files in zip/src/components/sections/."
+  affected_areas:
+    - "zip/src/components/sections/*.tsx"
+  component_details:
+    - component: "Typography Elements in Sections"
+      responsibility: "Display text at the exact sizes intended by the original design."
+      interfaces: []
+  dependencies: []
+  integration_points:
+    - "Tailwind CSS compilation step during Vite build."
+
+contracts:
+  - from_task: map_original_classes
+    to_task: restore_core_sections
+    interface: "A precise mapping document detailing the exact className attributes for text-bearing elements in the core sections."
+    format: "Markdown list or JSON mapping."
+  - from_task: map_original_classes
+    to_task: restore_secondary_sections
+    interface: "A precise mapping document detailing the exact className attributes for text-bearing elements in the secondary sections."
+    format: "Markdown list or JSON mapping."
+
+tasks:
+  - id: map_original_classes
+    title: Extract Font Size Classes from Source of Truth
+    description: |
+      Analyze zip/src/App.tmp.tsx. Extract the exact className strings for all text-bearing elements (headings, paragraphs, spans) across the major sections (Hero, About, Menu, Breakfast, Salads, Gallery, etc.). Create a comprehensive mapping of 'Section -> Element -> Original className'.
+    wave: 1
+    agent: gem-researcher
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - "zip/src/App.tmp.tsx"
+    estimated_effort: medium
+    estimated_files: 1
+    estimated_lines: 0
+    focus_area: "App.tmp.tsx"
+    verification:
+      - "Mapping correctly identifies classes for text elements in TheMenuSection, BreakfastSection, etc."
+    acceptance_criteria:
+      - "A detailed mapping dictionary is produced outlining original classes for all corrupted sections."
+    failure_modes:
+      - scenario: "Failing to locate the matching DOM structures between App.tmp.tsx and the split files."
+        likelihood: medium
+        impact: high
+        mitigation: "Use semantic context (text content) to match elements rather than just DOM hierarchy."
+
+  - id: restore_core_sections
+    title: Restore Font Sizes in Core Menu Sections
+    description: |
+      Using the mapping generated in the previous task, surgically apply the original className attributes to the typography elements within the core menu components: TheMenuSection.tsx, BreakfastSection.tsx, and SalatkiNaWynosSection.tsx.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - map_original_classes
+    context_files:
+      - "zip/src/components/sections/TheMenuSection.tsx"
+      - "zip/src/components/sections/BreakfastSection.tsx"
+      - "zip/src/components/sections/SalatkiNaWynosSection.tsx"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 100
+    focus_area: "Core menu section typo fixes"
+    verification:
+      - "Class substitutions are exact matches to App.tmp.tsx."
+    acceptance_criteria:
+      - "The 3 target files use the exact original responsive and base text size classes."
+    failure_modes:
+      - scenario: "Merge conflicts or misaligned DOM structure."
+        likelihood: low
+        impact: medium
+        mitigation: "Use precise replace-string edits using large context blocks."
+    tech_stack:
+      - "React"
+      - "Tailwind"
+    test_coverage: null
+
+  - id: restore_secondary_sections
+    title: Restore Font Sizes in Secondary Sections
+    description: |
+      Using the mapping generated in the first task, surgically apply the original className attributes to the typography elements within secondary sections (e.g. HeroSection, About28, Footer, OfertaSection). 
+    wave: 2
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies:
+      - map_original_classes
+    context_files:
+      - "zip/src/components/sections/HeroSection.tsx"
+      - "zip/src/components/sections/About28.tsx"
+      - "zip/src/components/sections/Footer.tsx"
+    estimated_effort: large
+    estimated_files: 3
+    estimated_lines: 150
+    focus_area: "Secondary sections typo fixes"
+    verification:
+      - "Class substitutions are exact matches to App.tmp.tsx."
+    acceptance_criteria:
+      - "The targeted files use the exact original text size classes."
+    failure_modes:
+      - scenario: "Missing smaller, easily overlooked text nodes (e.g., links or small badges)."
+        likelihood: medium
+        impact: low
+        mitigation: "Methodically compare the entire HTML block."
+    tech_stack:
+      - "React"
+      - "Tailwind"
+    test_coverage: null
+
+  - id: build_and_deploy
+    title: Build and Deploy the Corrected App
+    description: |
+      Run the Vite build command ('npm run build' or 'yarn build' in the zip/ directory) to verify that the project compiles with no errors. Following a successful build, execute the deployment process (transferring dist files via SSH/rsync to the bulwar server).
+    wave: 3
+    agent: gem-devops
+    priority: high
+    status: pending
+    dependencies:
+      - restore_core_sections
+      - restore_secondary_sections
+    context_files:
+      - "zip/package.json"
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: "Production build and SSH deploy"
+    verification:
+      - "Build completes seamlessly."
+      - "SSH transfer exits with 0."
+    acceptance_criteria:
+      - "Restored frontend is live on the target server."
+    failure_modes:
+      - scenario: "Build fails due to syntax errors introduced during text restoration."
+        likelihood: medium
+        impact: high
+        mitigation: "Run a typecheck and linter before pushing the final build."
+    environment: "production"
+    requires_approval: true
+    security_sensitive: false

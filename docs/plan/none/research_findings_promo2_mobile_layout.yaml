@@ -1,0 +1,264 @@
+plan_id: none
+objective: Investigate the mobile layout issue in the story block with the attached menu panel below the image.
+focus_area: promo2_mobile_layout
+created_at: 2026-04-16
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The block matching the user's description is Promo2, not About28: it renders an "Our story" title and an attached lower menu panel directly below the image.
+  - The runtime renderer lives in zip/components/Promo2.tsx and is wired through the page-builder schema in zip/src/blocks/promo2/schema.ts.
+  - The likely mobile defect is caused by rigid row sizing in the lower menu panel: a 65% fixed text basis combined with a 40px minimum leader and a non-shrinking price label.
+  - A working comparison exists in zip/src/components/sections/BreakfastSection.tsx, which uses a softer text width cap, allows the dotted leader to shrink to 0, and applies word breaking to menu text.
+  - No screenshot file was present in the workspace, so the defect diagnosis is inferred from the block contract, markup, and comparison with existing responsive menu patterns.
+
+research_metadata:
+  methodology: Hybrid retrieval using memory view, targeted grep_search, file_search, and read_file across PRD, block docs, schema wiring, renderer implementation, and comparable responsive menu components.
+  scope: Focused on story/editorial blocks, page-builder mappings, and menu-row layout patterns relevant to the attached menu panel under an image.
+  confidence: high
+  coverage: 88
+  decision_blockers: 0
+  research_blockers: 1
+
+files_analyzed:
+  - file: Promo2.tsx
+    path: zip/components/Promo2.tsx
+    purpose: Renders the story-led promo block with a lower menu panel attached below the image.
+    key_elements:
+      - element: Promo2
+        type: function
+        location: zip/components/Promo2.tsx:94
+        description: Main renderer for the block; includes title, crew rows, story copy, image, and the lower menu panel.
+      - element: DEFAULT_PROMO2_CONTENT
+        type: variable
+        location: zip/components/Promo2.tsx:36
+        description: Default content with title "Our story" and sample menu rows.
+      - element: lower menu item row markup
+        type: pattern
+        location: zip/components/Promo2.tsx:152
+        description: Flex row that constrains text to 65%, inserts a dotted leader with a 40px minimum width, and keeps the price label shrink-0.
+    language: TSX
+    lines: 176
+
+  - file: schema.ts
+    path: zip/src/blocks/promo2/schema.ts
+    purpose: Declares the page-builder schema and renderer mapping for Promo2.
+    key_elements:
+      - element: promo2BlockDefinition
+        type: variable
+        location: zip/src/blocks/promo2/schema.ts:78
+        description: Registers Promo2 as a story-led promo section with an attached lower menu panel below the image.
+      - element: render.componentImportPath
+        type: pattern
+        location: zip/src/blocks/promo2/schema.ts:88
+        description: Points runtime rendering to components/Promo2.tsx.
+    language: TypeScript
+    lines: 112
+
+  - file: TemplatePage.tsx
+    path: zip/src/pages/TemplatePage.tsx
+    purpose: Includes a preview schema instance for promo2 in the main template showcase.
+    key_elements:
+      - element: template-promo2-01
+        type: variable
+        location: zip/src/pages/TemplatePage.tsx:56
+        description: Preview page-builder section using promo2DefaultData with a Woo category source.
+    language: TSX
+    lines: 186
+
+  - file: Promo2.test.tsx
+    path: zip/components/Promo2.test.tsx
+    purpose: Snapshot-like server-render tests for Promo2 markup.
+    key_elements:
+      - element: default layout assertions
+        type: pattern
+        location: zip/components/Promo2.test.tsx:10
+        description: Encodes current rigid menu-row classes including max-w-[65%] and min-w-[40px].
+    language: TSX
+    lines: 72
+
+  - file: BreakfastSection.tsx
+    path: zip/src/components/sections/BreakfastSection.tsx
+    purpose: Existing responsive menu layout pattern used as a local comparison for safer mobile behavior.
+    key_elements:
+      - element: menu item row markup
+        type: pattern
+        location: zip/src/components/sections/BreakfastSection.tsx:145
+        description: Uses max-w-[70%], break-words, menu-leader min-w-0, and a right-aligned price label.
+    language: TSX
+    lines: 181
+
+  - file: story-team-showcase.md
+    path: docs/block-registry/story-team-showcase.md
+    purpose: Documents the adjacent story block without the attached menu panel, helping distinguish it from Promo2.
+    key_elements:
+      - element: geometry rules
+        type: pattern
+        location: docs/block-registry/story-team-showcase.md:16
+        description: Defines the non-menu editorial block geometry.
+    language: Markdown
+    lines: 151
+
+patterns_found:
+  - category: architecture
+    pattern: Page-builder block schemas map to pre-existing React renderers outside zip/src.
+    description: Content blocks are registered in zip/src/blocks/** and can render through components stored in zip/components/**.
+    examples:
+      - file: zip/src/blocks/promo2/schema.ts
+        location: zip/src/blocks/promo2/schema.ts:88
+        snippet: componentImportPath: "components/Promo2.tsx"
+      - file: zip/src/blocks/story-team-showcase/schema.ts
+        location: zip/src/blocks/story-team-showcase/schema.ts:79
+        snippet: renderSection creates the PROMOCJA_sezonowa element
+    prevalence: common
+
+  - category: structure
+    pattern: Story/editorial blocks keep top editorial content separate from lower supporting media or menu content.
+    description: Promo2 extends the story block pattern by appending a menu surface directly under the image.
+    examples:
+      - file: zip/components/PROMOCJA_sezonowa.tsx
+        location: zip/components/PROMOCJA_sezonowa.tsx:105
+        snippet: image-only ending with a rounded image block
+      - file: zip/components/Promo2.tsx
+        location: zip/components/Promo2.tsx:142
+        snippet: rounded-top image followed by a surface-backed menu panel
+    prevalence: occasional
+
+  - category: responsive_layout
+    pattern: Stable mobile menu rows in this repo avoid hard minimum leader widths and apply word breaking to the text column.
+    description: BreakfastSection uses a more forgiving row composition than Promo2 for narrow viewports.
+    examples:
+      - file: zip/src/components/sections/BreakfastSection.tsx
+        location: zip/src/components/sections/BreakfastSection.tsx:146
+        snippet: max-w-[70%] min-w-0 shrink-0
+      - file: zip/src/components/sections/BreakfastSection.tsx
+        location: zip/src/components/sections/BreakfastSection.tsx:159
+        snippet: break-words on title and description
+      - file: zip/src/components/sections/BreakfastSection.tsx
+        location: zip/src/components/sections/BreakfastSection.tsx:171
+        snippet: menu-leader min-w-0
+    prevalence: occasional
+
+  - category: testing
+    pattern: Tests currently lock in literal Tailwind class strings for layout.
+    description: Promo2 tests assert the exact rigid classes that appear to cause the mobile issue.
+    examples:
+      - file: zip/components/Promo2.test.tsx
+        location: zip/components/Promo2.test.tsx:23
+        snippet: assert.match(markup, /max-w-\[65%\] min-w-0 shrink-0 basis-\[65%\] flex-col/)
+      - file: zip/components/Promo2.test.tsx
+        location: zip/components/Promo2.test.tsx:24
+        snippet: assert.match(markup, /menu-leader min-w-\[40px\]/)
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Promo2
+      responsibility: Renders the story block with the attached lower menu panel.
+      location: zip/components/Promo2.tsx
+      relationship_to_domain: domain implementation
+    - component: promo2 block schema
+      responsibility: Registers Promo2 in the page-builder runtime and source resolver.
+      location: zip/src/blocks/promo2/schema.ts
+      relationship_to_domain: domain depends on this
+    - component: TemplatePage preview schema
+      responsibility: Displays promo2 in the template preview page.
+      location: zip/src/pages/TemplatePage.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: BreakfastSection
+      responsibility: Provides a working local reference for responsive menu-row behavior.
+      location: zip/src/components/sections/BreakfastSection.tsx
+      relationship_to_domain: comparison pattern
+  interfaces_used_by_domain:
+    - interface: Promo2Content
+      location: zip/components/Promo2.tsx
+      usage_pattern: Drives editorial copy, hero image, and lower menu panel content.
+    - interface: MenuColumn
+      location: zip/src/blocks/registry/common.ts
+      usage_pattern: Defines the menu columns and menu items rendered below the image.
+  data_flow_involving_domain: Page-builder schema data is validated in zip/src/blocks/promo2/schema.ts, passed to Promo2 as content props, and rendered as editorial text plus an attached menu panel below the image.
+  key_relationships_to_domain:
+    - from: zip/src/blocks/promo2/schema.ts
+      to: zip/components/Promo2.tsx
+      relationship: imports
+    - from: zip/src/pages/TemplatePage.tsx
+      to: zip/src/blocks/promo2/schema.ts
+      relationship: imports
+    - from: zip/components/Promo2.tsx
+      to: zip/src/blocks/registry/common.ts
+      relationship: imports
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Functional components render page-builder blocks and section previews.
+    - name: Tailwind CSS v4
+      usage_in_domain: Utility classes define block geometry and responsive behavior.
+  libraries_used_in_domain:
+    - name: lucide-react
+      purpose_in_domain: Crew/member icon rendering in editorial story blocks.
+    - name: zod
+      purpose_in_domain: Runtime validation of page-builder block content.
+    - name: framer-motion
+      purpose_in_domain: Used by nearby section components but not by Promo2 itself.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Editorial promo blocks use descriptive names like Promo2, Promo3, and story-team-showcase, with DEFAULT_* content exports colocated in the renderer.
+  structure_of_domain: Page-builder schemas live under zip/src/blocks/** while some renderers remain under zip/components/**.
+  error_handling_in_domain: Content validity is enforced through zod schemas before rendering; the component itself does not perform runtime fallback beyond filtering empty menu columns.
+  testing_in_domain: Node test plus renderToStaticMarkup assertions are used to verify content presence and selected class tokens.
+  documentation_in_domain: Block-registry markdown documents geometry, content contract, and allowed editing surface.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/common.ts
+      relationship_to_domain: Provides MenuColumn typing and menu item shape.
+      direction: outbound
+    - component: zip/src/blocks/promo2/schema.ts
+      relationship_to_domain: Registers Promo2 for page-builder rendering.
+      direction: inbound
+    - component: zip/src/pages/TemplatePage.tsx
+      relationship_to_domain: Uses promo2 preview schema.
+      direction: inbound
+  external:
+    - name: react
+      purpose_for_domain: Component rendering
+    - name: tailwindcss
+      purpose_for_domain: Layout and responsive utility classes
+    - name: zod
+      purpose_for_domain: Schema validation
+    - name: lucide-react
+      purpose_for_domain: Crew row icons
+
+domain_security_considerations:
+  sensitive_areas: []
+  authentication_patterns_in_domain: None in the renderer itself.
+  authorization_patterns_in_domain: None in the renderer itself.
+  data_validation_in_domain: Menu and story content are validated by promo2DataSchema in zip/src/blocks/promo2/schema.ts before rendering.
+
+testing_patterns:
+  framework: node:test with react-dom/server
+  coverage_areas:
+    - default Promo2 content render
+    - custom content render
+    - class-token presence for lower menu panel structure
+  test_organization: Colocated unit-style test next to the renderer in zip/components/Promo2.test.tsx.
+  mock_patterns:
+    - renderToStaticMarkup with inline content objects
+
+open_questions:
+  - question: What exactly is visible in the user's screenshot: horizontal overflow, price clipping, or dotted leader collapse?
+    context: The screenshot itself was not present in the workspace, so the diagnosis is based on markup and local comparison patterns.
+    type: research
+    affects: [promo2_mobile_layout]
+
+gaps:
+  - area: screenshot evidence
+    description: No image attachment or screenshot file was available in the workspace to visually confirm the exact manifestation of the mobile defect.
+    impact: research_blocker
+    affects: [promo2_mobile_layout]

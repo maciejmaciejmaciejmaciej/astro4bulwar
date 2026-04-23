@@ -1,0 +1,72 @@
+{
+  "pageSlug": "restauracja-na-komunie",
+  "pageKind": "generic_page",
+  "wordpressPostId": null,
+  "title": "Restauracja na komunię",
+  "templateKey": "generic-page",
+  "status": "published",
+  "blocksOrder": [
+    "universal_header_block_2-01"
+  ],
+  "blocks": {
+    "universal_header_block_2-01": {
+      "id": "universal_header_block_2-01",
+      "blockKey": "universal_header_block_2",
+      "blockVersion": 1,
+      "variant": null,
+      "enabled": true,
+      "data": {
+        "eyebrow": "Przyjęcia komunijne",
+        "title": "Restauracja na komunię",
+        "description": "Ta strona jest prostym, jedno-sekcyjnym szkieletem oferty komunijnej Bulwar. Na tym etapie wykorzystuje tylko blok hero/story bez dodatkowych sekcji i bez rozbudowanego copy sprzedażowego.",
+        "metadataItems": [
+          {
+            "label": "Format:",
+            "value": "Przyjęcie komunijne"
+          },
+          {
+            "label": "Status:",
+            "value": "Jedna sekcja page-builder"
+          }
+        ],
+        "contactCta": {
+          "label": "Kontakt:",
+          "buttonLabel": "zapytaj o termin",
+          "href": "/kontakt"
+        },
+        "heroImage": {
+          "src": "/react/images/home_hero.jpg",
+          "alt": "Restauracja Bulwar przygotowana na przyjęcie komunijne"
+        },
+        "storySections": [
+          {
+            "number": "01.",
+            "title": "Zakres strony.",
+            "content": "Jedyny blok tej strony zbiera nagłówek, metadane, CTA i jeden wiersz opowieści w ramach roboczego szkicu oferty komunijnej."
+          }
+        ]
+      },
+      "source": null,
+      "meta": {
+        "ai": {
+          "description": "Jedyna sekcja strony restauracja na komunię. Edytuj wyłącznie treści w data: eyebrow, title, description, metadataItems, contactCta, heroImage i storySections; nie zmieniaj geometrii Project10, choreografii motion ani klas stylujących blok."
+        }
+      }
+    }
+  },
+  "compiled": {
+    "page_builder_schema": null,
+    "page_builder_schema_for_ai": null
+  },
+  "workflow": {
+    "requiresSourceMapping": false,
+    "unresolvedSourceBlockIds": [],
+    "sourceMappingNotes": {},
+    "needsCompile": true,
+    "needsPublish": false,
+    "needsDeploy": false
+  },
+  "needsCompile": true,
+  "needsPublish": false,
+  "needsDeploy": false
+}

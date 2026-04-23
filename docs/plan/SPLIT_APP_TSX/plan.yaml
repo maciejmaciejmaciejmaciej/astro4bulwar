@@ -1,0 +1,249 @@
+plan_id: "SPLIT_APP_TSX"
+objective: "Create a plan.yaml file breaking down the extraction of 19 UI sections and 3 subcomponents from zip/src/App.tsx into individual components within zip/src/components/sections/, based on the docs/plan/SPLIT_APP_TSX/research_findings_zip_src_app_tsx.yaml. Organize it into extraction waves."
+created_at: "2026-03-22T00:00:00Z"
+created_by: "gem-planner"
+status: "pending_approval"
+research_confidence: "high"
+
+tldr: |
+  Extract 19 UI layout sections and 3 inline subcomponents from the monolithic `zip/src/App.tsx` into isolated files under `zip/src/components/sections/` and `zip/src/components/ui/` or `components/shared/`.
+  This is organized in waves based on dependencies: base subcomponents first, followed by structural layout elements, then content sections, and finally re-integration in App.tsx.
+
+open_questions:
+  - "Should we remove the duplicated 'Wielkanoc w Bulwarze' section when integrating, or render the extracted component twice?"
+  - "Should state management for the cart (currently localized in ProductItem) be refactored concurrently, or left as-is for a separate task?"
+
+pre_mortem:
+  overall_risk_level: "medium"
+  critical_failure_modes:
+    - scenario: "Breaking imports due to missing types or shared constants during extraction"
+      likelihood: "medium"
+      impact: "high"
+      mitigation: "Ensure shared data and types are extracted first or duplicated locally before finalizing the shared data layer."
+    - scenario: "Styling layout breakage when extracting components to separate files"
+      likelihood: "low"
+      impact: "medium"
+      mitigation: "Maintain original layout wrapper classes correctly during extraction."
+  assumptions:
+    - "The exact layout and visual appearance should remain unchanged."
+    - "Global state refactor will follow in a separate plan. Local state within App.tsx will be passed as props if needed, or left within extracted components if isolated."
+
+implementation_specification:
+  code_structure: "New component files will be created in `zip/src/components/sections/` and `zip/src/components/ui/` (for common ones). `App.tsx` will become a composition of these imported sections."
+  affected_areas:
+    - "zip/src/App.tsx"
+    - "zip/src/components/sections/*"
+    - "zip/src/components/ui/*"
+  component_details:
+    - component: "Shared Components (ProductItem, Project5a, About28)"
+      responsibility: "Reusable UI blocks"
+      interfaces:
+        - "Props matching original inline definitions."
+    - component: "Layout Sections (Navbar, Footer, Cart Controls)"
+      responsibility: "Main app shell"
+      interfaces:
+        - "Accept necessary state props for cart toggling/counting."
+    - component: "Content Sections (Hero, Menu, Oferta, etc.)"
+      responsibility: "Display static/hardcoded data for the landing page"
+      interfaces:
+        - "No props required initially unless state depends on it."
+  dependencies:
+    - component: "Content Sections"
+      relationship: "uses Shared Components (e.g. Sałatki na wynos uses ProductItem)"
+    - component: "App.tsx"
+      relationship: "composes Layout and Content Sections"
+  integration_points:
+    - "App.tsx root layout"
+
+contracts:
+  - from_task: "extract-subcomponents"
+    to_task: "extract-content-sections-c"
+    interface: "ProductItem component export"
+    format: "React component with props: { name, description, weight, price }"
+  - from_task: "extract-subcomponents"
+    to_task: "extract-content-sections-a"
+    interface: "About28 and Project5a component exports"
+    format: "React components"
+
+tasks:
+  - id: "extract-subcomponents"
+    title: "Extract Inline Subcomponents"
+    description: |
+      Extract `ProductItem`, `Project5a`, and `About28` (including its helpers `ImageSection` and `TextSection`) from `App.tsx` into individual files inside `zip/src/components/sections/` or `zip/src/components/ui/`.
+    wave: 1
+    agent: "gem-implementer"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    context_files:
+      - "zip/src/App.tsx"
+    estimated_effort: "medium"
+    estimated_files: 3
+    estimated_lines: 200
+    focus_area: "zip/src/App.tsx subcomponents"
+    verification:
+      - "Ensure components export correctly without type errors."
+    acceptance_criteria:
+      - "ProductItem.tsx, Project5a.tsx, About28.tsx are created."
+    failure_modes:
+      - scenario: "Missing dependencies like Lucide icons or Framer Motion"
+        likelihood: "high"
+        impact: "high"
+        mitigation: "Include all necessary imports from App.tsx into the extracted files."
+    tech_stack:
+      - "React"
+      - "TypeScript"
+    test_coverage: null
+
+  - id: "extract-layout-sections"
+    title: "Extract Layout Sections"
+    description: |
+      Extract `Navbar`, `Footer`, `Sticky Cart Controls`, and `Reservation Quick Bar` from `App.tsx` into `zip/src/components/sections/`.
+    wave: 1
+    agent: "gem-implementer"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    context_files:
+      - "zip/src/App.tsx"
+    estimated_effort: "medium"
+    estimated_files: 4
+    estimated_lines: 200
+    focus_area: "zip/src/App.tsx layout sections"
+    verification:
+      - "Components are cleanly isolated with necessary imports."
+    acceptance_criteria:
+      - "Navbar, Footer, StickyCartControls, and ReservationQuickBar components exist."
+    failure_modes:
+      - scenario: "State variables for cart toggle are referenced within layout sections but defined in App"
+        likelihood: "high"
+        impact: "medium"
+        mitigation: "Pass state toggles and callbacks as props to these components."
+    tech_stack:
+      - "React"
+      - "TypeScript"
+    test_coverage: null
+
+  - id: "extract-content-sections-a"
+    title: "Extract Content Sections A"
+    description: |
+      Extract `Hero Section`, `Modern Interior`, `The Selection`, and `Our Services` into `zip/src/components/sections/`.
+    wave: 2
+    agent: "gem-implementer"
+    priority: "medium"
+    status: "pending"
+    dependencies: 
+      - "extract-subcomponents"
+    context_files:
+      - "zip/src/App.tsx"
+    estimated_effort: "medium"
+    estimated_files: 3
+    estimated_lines: 300
+    focus_area: "zip/src/App.tsx content sections"
+    verification:
+      - "Check that they can render independently."
+    acceptance_criteria:
+      - "Files HeroSection.tsx, ModernInterior.tsx, TheSelection.tsx, OurServices.tsx created."
+    failure_modes:
+      - scenario: "Hardcoded lists (e.g. services map) are disconnected"
+        likelihood: "medium"
+        impact: "medium"
+        mitigation: "Keep hardcoded arrays inside the extracted files for now, or extract them alongside the component."
+    tech_stack:
+      - "React"
+      - "TypeScript"
+    test_coverage: null
+
+  - id: "extract-content-sections-b"
+    title: "Extract Content Sections B"
+    description: |
+      Extract `Wielkanoc w Bulwarze`, `Breakfast Section`, `The Menu`, and `Gallery Section` into `zip/src/components/sections/`.
+      Handles deduplication of the 'Wielkanoc' section (extracting just one component).
+    wave: 2
+    agent: "gem-implementer"
+    priority: "medium"
+    status: "pending"
+    dependencies: []
+    context_files:
+      - "zip/src/App.tsx"
+    estimated_effort: "medium"
+    estimated_files: 3
+    estimated_lines: 300
+    focus_area: "App.tsx content"
+    verification:
+      - "No compilation errors on extraction."
+    acceptance_criteria:
+      - "Components are extracted properly."
+    failure_modes:
+      - scenario: "Missing image assets references"
+        likelihood: "low"
+        impact: "low"
+        mitigation: "Ensure paths are preserved."
+    tech_stack:
+      - "React"
+      - "TypeScript"
+    test_coverage: null
+
+  - id: "extract-content-sections-c"
+    title: "Extract Content Sections C"
+    description: |
+      Extract `Oferta Section`, `Quote Section`, `Blog Section`, `Special Offer`, and `Sałatki na wynos` into `zip/src/components/sections/`.
+    wave: 2
+    agent: "gem-implementer"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "extract-subcomponents"
+    context_files:
+      - "zip/src/App.tsx"
+    estimated_effort: "medium"
+    estimated_files: 3
+    estimated_lines: 300
+    focus_area: "App.tsx content"
+    verification:
+      - "ProductItem is correctly imported in Sałatki na wynos."
+    acceptance_criteria:
+      - "Components extracted."
+    failure_modes:
+      - scenario: "ProductItem import path mismatch"
+        likelihood: "medium"
+        impact: "high"
+        mitigation: "Ensure correct relative paths from sections/ to where ProductItem is saved."
+    tech_stack:
+      - "React"
+      - "TypeScript"
+    test_coverage: null
+
+  - id: "integrate-app-tsx"
+    title: "Integrate Extracted Components into App.tsx"
+    description: |
+      Refactor `zip/src/App.tsx` to import and compose all the newly created sections. Remove the inline code. 
+      Ensure local state (e.g., cart visibility) is passed down correctly to the new components.
+    wave: 3
+    agent: "gem-implementer"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "extract-layout-sections"
+      - "extract-content-sections-a"
+      - "extract-content-sections-b"
+      - "extract-content-sections-c"
+    context_files:
+      - "zip/src/App.tsx"
+    estimated_effort: "large"
+    estimated_files: 1
+    estimated_lines: 500
+    focus_area: "App.tsx composition"
+    verification:
+      - "App.tsx parses and compiles successfully without errors."
+    acceptance_criteria:
+      - "App.tsx is under 200 lines and only contains composition and global state declarations."
+    failure_modes:
+      - scenario: "Missing imports or prop mismatches causing compilation failure"
+        likelihood: "high"
+        impact: "high"
+        mitigation: "Run TypeScript compiler check after integration."
+    tech_stack:
+      - "React"
+      - "TypeScript"
+    test_coverage: null

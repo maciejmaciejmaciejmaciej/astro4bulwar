@@ -1,0 +1,582 @@
+plan_id: none
+objective: >-
+  Research BULWAR APP frontend checkout architecture in zip/. Focus on current
+  cart/checkout flow, any existing delivery cost logic, payment flow, and where
+  a backend bridge would connect. Identify relevant files, current state
+  handling, and likely integration points for address autocomplete/delivery cost
+  calculation, slot availability fetch, and checkout submit.
+focus_area: zip_frontend_checkout
+created_at: 2026-03-24
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - The only implemented cart and checkout flow is on the Easter catering route; the rest of the site can open the drawer UI but does not supply cart state.
+  - Cart state is fully client-side in localStorage, with normalized product IDs preserved in cart lines and transformed into drawer display items just before rendering.
+  - Delivery pricing in the drawer is currently a fixed UI-only surcharge of 15 zł, while page copy separately advertises a different business rule of 9 zł/km plus 10 zł start fee and free delivery above 800 zł.
+  - Payment flow is form-only: the UI captures cash vs online, but submit currently just logs data, shows an alert, and closes the drawer with no API call.
+  - The main backend bridge seams are the delivery address field and totals block in the drawer, the static date/time arrays in the drawer, and the drawer submit handler that already receives validated checkout form data.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval using semantic_search plus grep_search across zip/src and
+    zip/components, followed by targeted read_file inspection of router,
+    page-level state, cart domain logic, checkout UI, catalog data contracts,
+    and existing tests. Relationship discovery was done by tracing imports from
+    the catering page into cart utilities, product list components, and drawer
+    props.
+  scope: >-
+    Focused on the active frontend cart and checkout domain in zip/, including
+    router entry points, page state ownership, cart persistence, catalog/product
+    identity, checkout form behavior, and tested cart logic. Broader marketing
+    pages and unrelated experimental files were excluded except where they mount
+    the same drawer UI.
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Declares the active frontend routes and reveals which page owns the implemented checkout flow.
+    key_elements:
+      - element: Routes
+        type: pattern
+        location: zip/src/App.tsx:7
+        description: Exposes only three routes, including /catering-wielkanocny as the route with the implemented cart flow.
+    language: TypeScript TSX
+    lines: 14
+
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Boots the React app and establishes the /react router basename used by frontend route resolution.
+    key_elements:
+      - element: BrowserRouter basename
+        type: pattern
+        location: zip/src/main.tsx:9
+        description: Mounts the SPA under /react, relevant for bridge endpoint placement and frontend routing assumptions.
+    language: TypeScript TSX
+    lines: 13
+
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Owns the active cart state, persistence, product add/remove handlers, subtotal derivation, and drawer wiring.
+    key_elements:
+      - element: cartState
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:88
+        description: Initializes cart state from localStorage using the normalized product lookup.
+      - element: handleAddToCart
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:107
+        description: Adds simple products to the cart by numeric product ID.
+      - element: handleAddConfiguredSet
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:129
+        description: Adds the special configurable menu as a distinct cart line.
+      - element: CheckoutDrawer props wiring
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:188
+        description: Passes cart display items, subtotal, line quantity mutators, and clear-cart handler into the drawer.
+    language: TypeScript TSX
+    lines: 199
+
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Defines the cart domain model, persistence format, migration logic, price/count aggregation, and checkout drawer item mapping.
+    key_elements:
+      - element: CATERING_CART_STORAGE_KEY
+        type: variable
+        location: zip/src/lib/cateringCart.ts:15
+        description: localStorage key for the frontend cart state.
+      - element: CateringCartState
+        type: interface
+        location: zip/src/lib/cateringCart.ts:43
+        description: Versioned cart state storing line items only in the browser.
+      - element: loadCateringCartState
+        type: function
+        location: zip/src/lib/cateringCart.ts:225
+        description: Loads persisted cart data and migrates legacy quantity maps.
+      - element: addSimpleProductLine
+        type: function
+        location: zip/src/lib/cateringCart.ts:265
+        description: Aggregates repeated simple-product adds into one predictable line per product.
+      - element: addSpecialMenuFor2Line
+        type: function
+        location: zip/src/lib/cateringCart.ts:299
+        description: Adds each configured special set as a unique cart line.
+      - element: buildCheckoutDrawerItems
+        type: function
+        location: zip/src/lib/cateringCart.ts:360
+        description: Converts domain lines into the UI display contract consumed by the drawer.
+      - element: getCateringCartSubtotal
+        type: function
+        location: zip/src/lib/cateringCart.ts:395
+        description: Sums line unit prices and quantities into the frontend subtotal.
+    language: TypeScript
+    lines: 397
+
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Renders the checkout UI, validates form input, computes displayed totals, and owns the current submit placeholder.
+    key_elements:
+      - element: checkoutSchema
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:15
+        description: Zod schema validating personal data, payment method, delivery method, and conditional delivery details.
+      - element: AVAILABLE_DATES
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:69
+        description: Hard-coded delivery date options currently used instead of dynamic availability.
+      - element: TIME_SLOTS
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:75
+        description: Hard-coded delivery time windows currently used instead of dynamic availability.
+      - element: useForm
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:231
+        description: Form state is entirely local to the drawer and not lifted to page state.
+      - element: onSubmit
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:281
+        description: Current submit path only logs validated form data, shows an alert, and closes the drawer.
+      - element: totals block
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:364
+        description: Adds a fixed 15 zł surcharge when delivery is selected and computes the displayed grand total in the UI.
+      - element: delivery address input
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:511
+        description: Plain text address field with no autocomplete or remote pricing lookup.
+    language: TypeScript TSX
+    lines: 592
+
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Normalizes raw catering catalog JSON into a typed frontend product contract with numeric product IDs and price labels.
+    key_elements:
+      - element: CateringProductContract
+        type: interface
+        location: zip/src/data/cateringWielkanocny.ts:20
+        description: Typed product shape used throughout the active cart flow.
+      - element: normalizeProduct
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:80
+        description: Preserves numeric product IDs and normalized price values for cart operations.
+      - element: cateringWielkanocnyCategories
+        type: variable
+        location: zip/src/data/cateringWielkanocny.ts:163
+        description: Exported normalized catalog consumed by the catering page and cart product lookup.
+    language: TypeScript
+    lines: 164
+
+  - file: cateringSpecialMenuFor2.ts
+    path: zip/src/data/cateringSpecialMenuFor2.ts
+    purpose: Defines the configurable special-menu product, including its live shell product ID and per-person selection schema.
+    key_elements:
+      - element: SpecialMenuFor2ShellProductIdentity
+        type: interface
+        location: zip/src/data/cateringSpecialMenuFor2.ts:37
+        description: Captures the shell WooCommerce/base product identity for the special set.
+      - element: cateringSpecialMenuFor2Seed
+        type: variable
+        location: zip/src/data/cateringSpecialMenuFor2.ts:79
+        description: Declares the live shell product with baseProductId 53 and fixed unit price 169 PLN.
+      - element: buildSpecialMenuFor2Config
+        type: function
+        location: zip/src/data/cateringSpecialMenuFor2.ts:129
+        description: Builds the structured configuration stored in cart lines for the two-person set.
+    language: TypeScript
+    lines: 254
+
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Bridges normalized catalog products into add-to-cart UI actions.
+    key_elements:
+      - element: onAddToCart prop
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:27
+        description: Accepts productId and quantity and passes them into each product row.
+      - element: ProductItemAlt mapping
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:84
+        description: Passes normalized product IDs and derived cart quantities into add-to-cart controls.
+    language: TypeScript TSX
+    lines: 108
+
+  - file: ProductItemAlt.tsx
+    path: zip/src/components/sections/ProductItemAlt.tsx
+    purpose: Individual product row that captures desired quantity and emits add-to-cart events.
+    key_elements:
+      - element: quantity state
+        type: variable
+        location: zip/src/components/sections/ProductItemAlt.tsx:36
+        description: Local UI state for per-click quantity before cart insertion.
+      - element: add button
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:94
+        description: Emits productId and quantity through onAddToCart without any API side effects.
+    language: TypeScript TSX
+    lines: 112
+
+  - file: CateringProductSpecialMenuFor2.tsx
+    path: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+    purpose: Collects the special menu configuration before committing it into cart state.
+    key_elements:
+      - element: selection
+        type: variable
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:99
+        description: Local draft selection state for person-by-person special menu choices.
+      - element: handleCommit
+        type: function
+        location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx:125
+        description: Emits a completed special-menu configuration back to the page-level cart state.
+    language: TypeScript TSX
+    lines: 339
+
+  - file: HomePage.tsx
+    path: zip/src/pages/HomePage.tsx
+    purpose: Demonstrates that the shared drawer is mounted outside the active catering checkout context on other routes.
+    key_elements:
+      - element: CheckoutDrawer mount
+        type: pattern
+        location: zip/src/pages/HomePage.tsx:71
+        description: Opens the shared drawer without passing cart items, subtotal, or cart mutation props.
+    language: TypeScript TSX
+    lines: 74
+
+  - file: cateringCart.test.ts
+    path: zip/src/lib/cateringCart.test.ts
+    purpose: Verifies cart persistence migration and cart-line behavior.
+    key_elements:
+      - element: legacy migration test
+        type: pattern
+        location: zip/src/lib/cateringCart.test.ts:43
+        description: Confirms old quantity-map storage is migrated into v2 cart lines.
+      - element: simple aggregation test
+        type: pattern
+        location: zip/src/lib/cateringCart.test.ts:57
+        description: Confirms repeated simple-product adds aggregate into a single predictable line.
+      - element: special line uniqueness test
+        type: pattern
+        location: zip/src/lib/cateringCart.test.ts:75
+        description: Confirms configured special sets remain separate lines with summary metadata.
+    language: TypeScript
+    lines: 94
+
+patterns_found:
+  - category: architecture
+    pattern: Page-owned cart state with presentational checkout drawer
+    description: >-
+      The active catering page owns cart state and persistence, while the drawer
+      consumes derived display props and does not own the cart domain model.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:88
+        snippet: const [cartState, setCartState] = useState(() => loadCateringCartState(...))
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:205
+        snippet: cartItems, itemCount, subtotal, onSetCartLineQuantity, onClearCart arrive via props
+    prevalence: common
+
+  - category: state
+    pattern: Browser-only cart persistence in localStorage
+    description: >-
+      Cart state is loaded from and saved back to localStorage, with no server
+      synchronization or session token in the current implementation.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:93
+        snippet: window.localStorage.getItem(CATERING_CART_STORAGE_KEY)
+      - file: zip/src/pages/CateringWielkanocnyPage.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:104
+        snippet: window.localStorage.setItem(CATERING_CART_STORAGE_KEY, serializeCateringCartState(cartState))
+    prevalence: common
+
+  - category: structure
+    pattern: Product identity is preserved as numeric base product IDs
+    description: >-
+      Both simple products and the special two-person set carry backend-relevant
+      numeric product IDs through the cart domain model.
+    examples:
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:200
+        snippet: baseProductId: product.id
+      - file: zip/src/data/cateringSpecialMenuFor2.ts
+        location: zip/src/data/cateringSpecialMenuFor2.ts:83
+        snippet: baseProductId: 53
+    prevalence: common
+
+  - category: validation
+    pattern: Drawer form validation is local and schema-driven
+    description: >-
+      The checkout drawer uses react-hook-form plus Zod and conditional
+      validation for delivery details, but validation stops at the client.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:15
+        snippet: const checkoutSchema = z.object({ ... }).superRefine(...)
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:231
+        snippet: const form = useForm<CheckoutFormValues>({ resolver: zodResolver(checkoutSchema) })
+    prevalence: common
+
+  - category: pricing
+    pattern: Delivery pricing is currently UI-derived and static
+    description: >-
+      The displayed delivery fee is computed directly in the drawer from the
+      selected delivery method, independent of address, distance, or backend
+      response.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:369
+        snippet: values.deliveryMethod === "delivery" ? formatCurrency(15) : formatCurrency(0)
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:372
+        snippet: totalPrice + (values.deliveryMethod === "delivery" ? 15 : 0)
+    prevalence: common
+
+  - category: structure
+    pattern: Availability options are hard-coded arrays
+    description: >-
+      Delivery dates and time windows are embedded directly in the drawer file
+      rather than fetched from an external service or configuration.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:69
+        snippet: const AVAILABLE_DATES = [ ... ]
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:75
+        snippet: const TIME_SLOTS = [ ... ]
+    prevalence: common
+
+  - category: architecture
+    pattern: Submit flow is a placeholder terminal action
+    description: >-
+      The checkout submit handler has validated form data available but does not
+      yet construct or send an order payload to a backend.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:281
+        snippet: console.log("Order submitted:", data)
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:283
+        snippet: alert("Zamówienie złożone pomyślnie!")
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      responsibility: Owns cart lifecycle, subtotal derivation, and checkout drawer wiring.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain entry point
+    - component: zip/src/lib/cateringCart.ts
+      responsibility: Defines cart state shape, persistence, migration, and display-item projection.
+      location: zip/src/lib/cateringCart.ts
+      relationship_to_domain: domain core model
+    - component: zip/components/CheckoutDrawer.tsx
+      responsibility: Collects checkout form data and renders totals, delivery, and payment UI.
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: consumes domain outputs
+    - component: zip/src/components/sections/CateringProductListAlt.tsx
+      responsibility: Emits add-to-cart actions for standard products.
+      location: zip/src/components/sections/CateringProductListAlt.tsx
+      relationship_to_domain: feeds domain inputs
+    - component: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      responsibility: Emits configured special-menu cart additions.
+      location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      relationship_to_domain: feeds domain inputs
+    - component: zip/src/data/cateringWielkanocny.ts
+      responsibility: Supplies normalized catalog and numeric product IDs.
+      location: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: domain depends on this
+    - component: zip/src/data/cateringSpecialMenuFor2.ts
+      responsibility: Supplies special-product identity and config schema.
+      location: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: CateringCartState
+      location: zip/src/lib/cateringCart.ts:43
+      usage_pattern: Canonical persisted cart shape stored in localStorage.
+    - interface: CateringCartDisplayItem
+      location: zip/src/lib/cateringCart.ts:48
+      usage_pattern: UI projection passed into the checkout drawer.
+    - interface: CateringProductContract
+      location: zip/src/data/cateringWielkanocny.ts:20
+      usage_pattern: Normalized product contract used to build simple cart lines.
+    - interface: SpecialMenuFor2Config
+      location: zip/src/data/cateringSpecialMenuFor2.ts:29
+      usage_pattern: Structured configuration stored on special-menu cart lines.
+  data_flow_involving_domain: >-
+    Route /catering-wielkanocny renders the catering page, which loads normalized
+    product data and initializes cartState from localStorage. Product list rows
+    and the special-menu configurator emit add actions into page-level handlers,
+    which update cartState through pure helpers in cateringCart.ts. The page then
+    derives cart quantities, display items, item count, and subtotal and passes
+    them into CheckoutDrawer. Inside the drawer, a separate local form state
+    captures personal data, payment method, delivery method, address, date, and
+    time slot; totals are recomputed in the drawer UI; submit currently stops at
+    console.log plus alert.
+  key_relationships_to_domain:
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/lib/cateringCart.ts
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/components/CheckoutDrawer.tsx
+      relationship: composes
+    - from: zip/src/components/sections/CateringProductListAlt.tsx
+      to: zip/src/components/sections/ProductItemAlt.tsx
+      relationship: composes
+    - from: zip/src/components/sections/ProductItemAlt.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: uses domain outputs via onAddToCart callback
+    - from: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: uses domain outputs via onCommitConfiguredSet callback
+    - from: zip/components/CheckoutDrawer.tsx
+      to: zip/src/lib/cateringCart.ts
+      relationship: consumes display item type
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Component composition, local state, effects, and form rendering.
+    - name: React Router
+      usage_in_domain: Route selection for /catering-wielkanocny under basename /react.
+    - name: Vite
+      usage_in_domain: Frontend build/runtime environment for the SPA.
+  libraries_used_in_domain:
+    - name: react-hook-form
+      purpose_in_domain: Local checkout form state and submission handling inside the drawer.
+    - name: zod
+      purpose_in_domain: Schema validation for checkout form fields and conditional delivery requirements.
+    - name: @hookform/resolvers/zod
+      purpose_in_domain: Connects Zod schema validation to react-hook-form.
+    - name: motion
+      purpose_in_domain: Drawer open/close and expandable delivery-section animations.
+    - name: framer-motion
+      purpose_in_domain: Product-list and content animations outside the drawer.
+    - name: lucide-react
+      purpose_in_domain: Checkout, cart, and product UI iconography.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Domain utilities use explicit nouns such as cartState, baseProductId,
+    buildCheckoutDrawerItems, getCateringCartSubtotal, and handleAddToCart.
+    Simple lines use deterministic IDs prefixed with simple:, while special-menu
+    lines use unique generated IDs.
+  structure_of_domain: >-
+    The flow is split into route/page ownership, pure cart utilities in src/lib,
+    normalized product data in src/data, section components for catalog entry,
+    and a shared checkout drawer stored outside src in zip/components.
+  error_handling_in_domain: >-
+    Frontend validation is defensive but local: catalog normalization throws on
+    malformed data, cart loading falls back to an empty cart on parse/migration
+    failure, and add-to-cart handlers return early for invalid inputs. No remote
+    request or response error handling exists in the active checkout path.
+  testing_in_domain: >-
+    Tests cover cart migration/aggregation logic and one special-menu rendering
+    case. There are no tests for drawer submission, pricing, delivery
+    availability, or any backend integration because none is implemented.
+  documentation_in_domain: >-
+    Business rules such as delivery pricing and payment availability currently
+    appear as static marketing copy in the catering feature grid rather than as
+    executable checkout configuration.
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: Supplies the normalized catalog and product IDs used in cart lines.
+      direction: outbound
+    - component: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship_to_domain: Supplies the special product shell identity and selection schema.
+      direction: outbound
+    - component: zip/src/components/sections/ProductItemAlt.tsx
+      relationship_to_domain: Emits add-to-cart events for simple products.
+      direction: inbound
+    - component: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+      relationship_to_domain: Emits add-to-cart events for configured special products.
+      direction: inbound
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: Consumes cart display items and exposes the final submit seam.
+      direction: bidirectional
+  external:
+    - name: react-hook-form
+      purpose_for_domain: Checkout form state management.
+    - name: zod
+      purpose_for_domain: Client-side checkout validation.
+    - name: motion
+      purpose_for_domain: Drawer and expandable-section animation.
+    - name: framer-motion
+      purpose_for_domain: Product-section animation.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Personal data capture
+      location: zip/components/CheckoutDrawer.tsx:392
+      concern: Full name, phone number, and email are collected client-side.
+    - area: Delivery address capture
+      location: zip/components/CheckoutDrawer.tsx:511
+      concern: Delivery address is collected client-side and currently never leaves the browser.
+    - area: Client-stored cart contents
+      location: zip/src/pages/CateringWielkanocnyPage.tsx:93
+      concern: Cart content persists in localStorage and can be modified client-side.
+  authentication_patterns_in_domain: No authentication or session-bound order identity is implemented in the active frontend checkout path.
+  authorization_patterns_in_domain: No authorization logic is present in the active frontend checkout path.
+  data_validation_in_domain: >-
+    Client-side validation exists for checkout fields via Zod, but there is no
+    corresponding server-side validation path in the current frontend flow
+    because no backend request is made.
+
+testing_patterns:
+  framework: node:test with assert/strict, plus react-dom/server for static markup checks
+  coverage_areas:
+    - Cart storage migration from legacy quantity maps to v2 line-based state
+    - Simple-product aggregation and line quantity updates
+    - Distinct special-menu cart lines with summary metadata
+    - Special-menu component image/render regression
+  test_organization: Tests sit adjacent to source files in src/lib and src/components/sections.
+  mock_patterns:
+    - Direct pure-function invocation without network mocking
+    - Static server-side render assertions for component markup
+
+open_questions:
+  - question: What exact bridge contract should represent special-menu selections when submitting the order?
+    context: >-
+      The frontend preserves baseProductId plus structured special-menu config,
+      but there is no existing payload schema showing how that config maps to
+      WooCommerce line-item metadata.
+  - question: Should delivery pricing follow the drawer's fixed 15 zł logic or the feature-grid business copy of 9 zł/km plus 10 zł start fee and free delivery above 800 zł?
+    context: >-
+      Two different delivery-pricing models are present in the frontend at the
+      same time, and only one can drive the bridge integration.
+  - question: Are pickup orders supposed to use slot availability too, or only delivery orders?
+    context: >-
+      The current form requires date and slot only when delivery is selected,
+      but the catering copy also references pickup windows that may need
+      structured availability.
+  - question: Should the checkout drawer be globally functional on non-catering pages or remain inert there?
+    context: >-
+      HomePage mounts the same drawer without supplying cart data, which affects
+      whether the bridge integration belongs in a shared provider or remains
+      route-specific.
+
+gaps:
+  - area: Backend bridge implementation
+    description: No bridge client, endpoint definitions, or order-submit transport exists in zip/.
+    impact: Prevents verification of request/response shapes for autocomplete, delivery pricing, availability, and final checkout submit.
+  - area: Availability source of truth
+    description: Delivery dates and time slots are hard-coded in the drawer.
+    impact: The current frontend cannot show how remote availability would be normalized, cached, or invalidated.
+  - area: Payment integration
+    description: Payment method selection exists only as a form enum with no downstream behavior.
+    impact: The current flow does not reveal whether online payments should create a payment intent, redirect URL, or WooCommerce checkout session.
+  - area: Address intelligence
+    description: Address entry is a plain text field with no autocomplete, geocoding, or distance resolution.
+    impact: The current frontend does not yet show a concrete state model for backend-derived delivery zones or route-based fee calculation.

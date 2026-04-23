@@ -1,0 +1,650 @@
+plan_id: "pb-astro-ready-workflows-2026-04-21"
+objective: >-
+  Przygotowac i wdrozyc dwa osobne, ale polaczone workflow dla page-buildera:
+  Workflow 1 zamienia nowy blok shadcn w Astro-ready business block z pelnym
+  statusem ready w registry, a Workflow 2 sklada strone z gotowych blokow i przy
+  wykryciu bloku missing lub not-ready automatycznie uruchamia subflow Workflow 1,
+  po czym wraca do page composition i finalizuje publishable artifacts.
+created_at: "2026-04-21T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 2
+  total_dependencies: 11
+  risk_score: "high"
+
+tldr: |
+  Plan rozdziela problem na dwa workflow, ale spina je jednym shared readiness gate.
+  Najmniejsza bezpieczna architektura to:
+  1) wprowadzic neutralny shared registry manifest z capability/status zamiast opierac readiness na rozproszonych plikach,
+  2) dopiac Astro do tego samego kontraktu, tak aby ready oznaczalo realnie renderowalny blok w React, AI i Astro,
+  3) zbudowac Workflow 1 jako promotion flow: shadcn -> business block -> testy -> docs -> Astro -> registry status ready,
+  4) zbudowac Workflow 2 jako composer sterowany registry, ktory przy missing/not-ready bloku uruchamia Workflow 1 jako subflow i dopiero po statusie ready wraca do skladania strony.
+  Sources: docs/plan/astro-wordpress-page-builder/block-registry-spec.md,
+  docs/plan/astro-wordpress-page-builder/implementation-plan.md,
+  docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md,
+  docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+  docs/block-registry/registry.machine.json,
+  zip/src/blocks/registry/index.ts,
+  zip/src/blocks/registry/types.ts,
+  SCRIPTS/page-builder-runtime/runtimeWorkflow.ts,
+  SCRIPTS/page-builder-runtime/cli.ts,
+  astro-site/src/pages/[slug].astro.
+
+open_questions:
+  - >-
+    Czy pierwsza wersja auto-subflow ma dzialac synchronicznie w jednym procesie
+    CLI/agent runtime, czy od razu jako job orchestration z kolejka i resume po
+    osobnej sesji? Minimalny plan zaklada sync child-flow z checkpointem w draft.workflow.
+  - >-
+    Czy blockKey dla nowego bloku jest nadawany jawnie na wejsciu Workflow 1,
+    czy ma byc wyprowadzany z nazwy/importu shadcn? Minimalny plan zaklada
+    explicit blockKey, zeby nie psuc stabilnosci registry.
+
+pre_mortem:
+  overall_risk_level: "high"
+  critical_failure_modes:
+    - scenario: >-
+        Workflow 1 oznaczy blok jako ready mimo braku realnego Astro renderera,
+        testow albo docs, przez co Workflow 2 zacznie skladac strony na falszywie
+        zielonym statusie.
+      likelihood: "medium"
+      impact: "critical"
+      mitigation: >-
+        Shared registry musi przechowywac capability matrix i status promotion,
+        a status ready moze byc zapisany dopiero po przejsciu gate dla React,
+        Astro, AI, docs i testow. Gate nie moze opierac sie na recznej fladze.
+    - scenario: >-
+        Workflow 2 wejdzie w petle retry, bo fallback subflow bedzie odpalal
+        Workflow 1 bez limitu albo bez terminalnego stanu blocked/failed dla
+        konkretnego block requestu.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >-
+        Dodac workflow state z resume token, retry budget i terminalnym stanem
+        refinement_failed dla konkretnego block requestu; page composition ma
+        wracac tylko po statusie ready albo konczyc sie kontrolowanym blocked.
+    - scenario: >-
+        Powstanie drugi competing source of truth: React registry, Astro lookup,
+        AI descriptors i docs beda utrzymywane osobno, a readiness zacznie sie
+        rozjezdzac miedzy runtime'ami.
+      likelihood: "high"
+      impact: "high"
+      mitigation: >-
+        Utrzymac jeden shared registry manifest wyprowadzany z kontraktu registry
+        w repo i walidowac parity z docs/block-registry/registry.machine.json oraz
+        konsumentami Astro/Workflow zamiast recznego kopiowania statusow.
+  assumptions:
+    - >-
+      Registry w repo pozostaje source of truth dla definicji blokow i kontraktow,
+      a WordPress przechowuje tylko page instances/content. Sources:
+      docs/plan/astro-wordpress-page-builder/block-registry-spec.md,
+      docs/plan/astro-wordpress-page-builder/implementation-plan.md,
+      docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md.
+    - >-
+      Raw imported shadcn blocks nie moga trafic do registry bez refaktoryzacji do
+      reusable business block i kontroli TemplatePage/index.css. Sources:
+      docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md,
+      c:/Users/macie/Documents/BULWAR APP/.github/copilot-instructions.md,
+      zip/src/pages/TemplatePage.tsx.
+    - >-
+      Aktualny runtime CLI i compile gate juz istnieja i sa najlepszym miejscem do
+      dopiecia page composition oraz auto-resume zamiast budowy nowego, rownoleglego
+      toru. Sources: SCRIPTS/page-builder-runtime/cli.ts,
+      SCRIPTS/page-builder-runtime/runtimeWorkflow.ts,
+      SCRIPTS/make-page-draft-compile-gate.js,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md.
+
+implementation_specification:
+  code_structure: |
+    Docelowy system powinien miec trzy warstwy. Warstwa 1 to shared registry
+    contract w repo, ktory trzyma definicje blokow, capability matrix i status
+    promotion oraz emituje machine-readable manifest dla workflow i docs.
+    Warstwa 2 to Workflow 1, czyli refinement pipeline, ktory bierze nowy blok
+    shadcn, adaptuje go do design systemu, dopina React runtime, Astro renderer,
+    AI descriptor, testy i docs, a na koncu promuje status do ready tylko przez
+    gate. Warstwa 3 to Workflow 2, czyli page composition orchestrator reuse'ujacy
+    istniejacy runtime draft/compile/publish flow i konsumujacy wyłącznie shared
+    registry status; przy missing/not-ready blocku ma odpalic subflow Workflow 1,
+    zapisac checkpoint w draft.workflow i wznowic kompozycje po statusie ready.
+  affected_areas:
+    - "zip/src/blocks/registry/**"
+    - "docs/block-registry/**"
+    - "SCRIPTS/page-builder-runtime/**"
+    - "SCRIPTS/generate-page-builder-ai-schema.js"
+    - "SCRIPTS/create-default-page-draft-from-template.ts"
+    - "astro-site/src/**"
+    - "docs/plan/astro-wordpress-page-builder/*.md"
+  component_details:
+    - component: "shared registry readiness manifest"
+      responsibility: >-
+        Przechowywac dla kazdego blockKey capability matrix: react runtime,
+        astro renderer, ai descriptor, docs path, tests coverage oraz status
+        promotion typu draft|refining|ready|blocked. Ma byc jedynym gate input
+        dla obu workflow.
+      interfaces:
+        - "listBlocksWithReadiness()"
+        - "getBlockReadiness(blockKey)"
+        - "assertBlockReady(blockKey)"
+        - "emitMachineRegistryManifest()"
+    - component: "workflow1 block refinement orchestrator"
+      responsibility: >-
+        Przeprowadzac promotion flow dla nowego bloku od importu/adaptacji do
+        gotowego business blocka, dopinac Astro/testy/docs i zapisywac ready
+        dopiero po przejsciu gate.
+      interfaces:
+        - "runBlockRefinementWorkflow({ blockKey, sourceComponent, designReference, targetStatus })"
+        - "prepareBusinessBlockArtifacts(...)"
+        - "promoteBlockStatus(blockKey, 'ready')"
+    - component: "workflow2 page composition orchestrator"
+      responsibility: >-
+        Skladac draft/render schema z approved blocks, wykrywac missing/not-ready
+        blocki przez shared registry, uruchamiac auto-subflow Workflow 1 i po
+        sukcesie wracac do kompozycji oraz istniejacego compile/publish runtime.
+      interfaces:
+        - "runPageCompositionWorkflow({ pageSlug, blockRequests, autoRefineMissing })"
+        - "requestBlockRefinement(blockRequest)"
+        - "resumePageComposition(checkpointId)"
+    - component: "astro registry projection"
+      responsibility: >-
+        Zapewniac, ze Astro konsumuje ten sam kontrakt block capability zamiast
+        recznych if/switch branchy w [slug].astro; gotowosc Astro ma byc czescia
+        statusu ready, a nie osobna wiedza w pliku strony.
+      interfaces:
+        - "resolveAstroRenderer(blockKey)"
+        - "renderAstroSection(section)"
+        - "validateAstroBlockParity(blockKey)"
+  dependencies:
+    - component: "workflow1 block refinement orchestrator"
+      relationship: "Konsumuje shared registry readiness manifest do status promotion i listy wymaganych capability artefacts."
+    - component: "workflow2 page composition orchestrator"
+      relationship: "Konsumuje shared registry readiness manifest oraz runtime draft/compile/publish flow z SCRIPTS/page-builder-runtime/."
+    - component: "astro registry projection"
+      relationship: "Konsumuje shared registry capability data i zastępuje reczne dopinanie blokow po blockKey w astro-site/src/pages/[slug].astro."
+    - component: "shared registry readiness manifest"
+      relationship: "Jest emitowany/parity-checkowany z code registry i docs/block-registry/registry.machine.json, bez recznego utrzymywania wielu statusow."
+  integration_points:
+    - "zip/src/blocks/registry/index.ts"
+    - "zip/src/blocks/registry/types.ts"
+    - "zip/src/blocks/registry/firebasePageDraft.ts"
+    - "docs/block-registry/registry.machine.json"
+    - "SCRIPTS/generate-page-builder-ai-schema.js"
+    - "SCRIPTS/page-builder-runtime/runtimeWorkflow.ts"
+    - "SCRIPTS/page-builder-runtime/cli.ts"
+    - "astro-site/src/pages/[slug].astro"
+    - "astro-site/src/lib/types.ts"
+
+contracts:
+  - from_task: "registry_readiness_contract"
+    to_task: "astro_registry_projection"
+    interface: "Capability matrix and status semantics for what counts as Astro-ready and globally ready."
+    format: "Typed registry metadata plus machine manifest parity check"
+  - from_task: "registry_readiness_contract"
+    to_task: "workflow1_refinement_orchestrator"
+    interface: "Promotion gate contract for draft|refining|ready|blocked block lifecycle."
+    format: "Shared registry readiness descriptor and validator"
+  - from_task: "composition_resume_contract"
+    to_task: "workflow2_page_composition_orchestrator"
+    interface: "Checkpoint, retry budget, and unresolved block request state for auto-subflow resume."
+    format: "Extended Firebase draft workflow object and runtime checkpoint contract"
+  - from_task: "astro_registry_projection"
+    to_task: "workflow1_refinement_orchestrator"
+    interface: "Astro renderer registration/parity contract required before ready promotion."
+    format: "Registry-backed Astro renderer lookup and parity assertion"
+  - from_task: "workflow1_refinement_orchestrator"
+    to_task: "workflow2_page_composition_orchestrator"
+    interface: "Callable refinement subflow that returns blockKey plus final readiness status."
+    format: "Workflow invocation result with ready|blocked outcome and artifact summary"
+  - from_task: "workflow2_page_composition_orchestrator"
+    to_task: "review_dual_workflow_rollout"
+    interface: "End-to-end evidence for happy path and fallback path."
+    format: "Named CLI/test scenarios and resulting registry/draft state"
+  - from_task: "review_dual_workflow_rollout"
+    to_task: "update_workflow_docs"
+    interface: "Approved rollout notes, residual risks, and operator caveats."
+    format: "Review checklist plus accepted workflow decisions"
+
+tasks:
+  - id: "registry_readiness_contract"
+    title: "Ustanowic shared registry readiness contract jako jedyny gate dla obu workflow"
+    description: |
+      Wprowadzic jeden wspolny kontrakt readiness, ktory opisuje status i
+      capability bloku niezaleznie od tego, czy konsumentem jest React, Astro,
+      AI generator czy page composer. Minimalny bezpieczny zakres to dopisanie
+      status lifecycle i capability matrix do kontraktu registry oraz parity z
+      docs/block-registry/registry.machine.json, tak aby Workflow 1 i Workflow 2
+      nie sprawdzaly juz rozproszonych artefaktow recznie. Sources:
+      zip/src/blocks/registry/types.ts,
+      zip/src/blocks/registry/index.ts,
+      docs/block-registry/registry.machine.json,
+      docs/plan/astro-wordpress-page-builder/block-registry-spec.md.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Readiness gate = shared registry jako source of truth"
+      - "Status promotion dla blokow"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with:
+      - "astro_registry_projection"
+      - "workflow1_refinement_orchestrator"
+      - "workflow2_page_composition_orchestrator"
+    context_files:
+      - path: "zip/src/blocks/registry/types.ts"
+        description: "Biezacy kontrakt block definition bez readiness lifecycle."
+      - path: "zip/src/blocks/registry/index.ts"
+        description: "Centralny registry lookup i default instance creation."
+      - path: "docs/block-registry/registry.machine.json"
+        description: "Istniejacy machine registry z statusami seed/implemented, ale bez globalnego ready gate."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          Bez wspolnego gate Workflow 1 i 2 beda podejmowaly decyzje na roznych
+          sygnalach, co bezposrednio lamie wymaganie shared registry jako source of truth.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "shared readiness metadata"
+        verification:
+          - "Istnieje jedna funkcja/warstwa odczytu statusu gotowosci dla blockKey."
+          - "Machine registry da sie odtworzyc lub zwalidowac z code registry bez recznego status drift."
+          - "Workflow consumers nie bazuja juz na osobnych checklistach plikow."
+        acceptance_criteria:
+          - "Kazdy block ma status z ograniczonego lifecycle draft|refining|ready|blocked."
+          - "Ready oznacza komplet capability dla React, Astro, AI/docs i testow."
+          - "Shared registry jest jedynym oficjalnym gate input dla Workflow 1 i Workflow 2."
+        failure_modes:
+          - scenario: "Status ready pozostanie flaga reczna zamiast wynikiem gate."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Status promotion ma byc wyliczany/walidowany z capability matrix, nie wpisywany ad hoc."
+    tech_stack:
+      - "TypeScript"
+      - "JSON"
+      - "Zod"
+    test_coverage: "Contract tests dla readiness metadata i parity machine manifest"
+
+  - id: "composition_resume_contract"
+    title: "Dodac checkpoint i retry contract dla page composition z auto-subflow"
+    description: |
+      Rozszerzyc draft/runtime workflow state tak, aby Workflow 2 mogl bezpiecznie
+      przerwac skladanie strony, odpalic Workflow 1 dla missing/not-ready blocku,
+      zapisac stan i wznowic kompozycje bez petli oraz bez utraty kontekstu.
+      Najmniejszy bezpieczny zakres to checkpointId, pending block request,
+      retry budget i terminalny stan refinement_failed / blocked na poziomie draft.workflow.
+      Sources: zip/src/blocks/registry/firebasePageDraft.ts,
+      SCRIPTS/page-builder-runtime/runtimeWorkflow.ts,
+      SCRIPTS/page-builder-runtime/cli.ts,
+      SCRIPTS/create-default-page-draft-from-template.ts.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Workflow2 fallback = auto-subflow, nie tylko blad"
+      - "Kontrolowane resume page composition"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with:
+      - "workflow2_page_composition_orchestrator"
+    context_files:
+      - path: "zip/src/blocks/registry/firebasePageDraft.ts"
+        description: "Biezacy workflow state dla source mapping i lifecycle flags."
+      - path: "SCRIPTS/page-builder-runtime/runtimeWorkflow.ts"
+        description: "Istniejacy compile/publish orchestrator, ktory mozna rozszerzyc o resume checkpoints."
+      - path: "SCRIPTS/page-builder-runtime/cli.ts"
+        description: "CLI boundary dla runtime orchestration i env loading."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          Auto-subflow bez trwałego checkpointu to ryzyko petli, dubli publish albo
+          utraty kontekstu po nieudanym refinement flow.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 180
+        focus_area: "resume state"
+        verification:
+          - "Draft potrafi zapisac pending block refinement request i resume step."
+          - "Workflow ma retry budget oraz terminalny blocked state per request."
+          - "Resume nie wymaga manualnego odtwarzania listy blokow."
+        acceptance_criteria:
+          - "Istnieje jawny contract dla pending refinement request w draft.workflow."
+          - "Workflow 2 moze wznowic skladanie od checkpointu po statusie ready."
+          - "Nie ma nieskonczonych retry dla tego samego block requestu."
+        failure_modes:
+          - scenario: "Resume checkpoint nie zapisze docelowego miejsca powrotu i composer zacznie od zera."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Checkpoint musi trzymac current stage, requested blockKey i retry count."
+    tech_stack:
+      - "TypeScript"
+      - "Zod"
+      - "node:test"
+    test_coverage: "Contract tests dla workflow checkpoint, retry budget i blocked state"
+
+  - id: "astro_registry_projection"
+    title: "Dopiac Astro do shared registry, zeby gotowosc Astro byla czescia statusu ready"
+    description: |
+      Usunac wiedze o blokach z recznych branchy Astro i zastapic ja registry-backed
+      projection, ktora wie, jak renderowac tylko te bloki, ktore przeszly readiness gate.
+      Ten krok jest potrzebny, aby Workflow 1 mogl realnie produkowac Astro-ready blocks,
+      a nie tylko React-ready entries. Sources: astro-site/src/pages/[slug].astro,
+      astro-site/src/lib/types.ts,
+      astro-site/src/lib/pageBuilder.ts,
+      docs/plan/astro-wordpress-page-builder/implementation-plan.md.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Workflow1 output zawiera Astro"
+      - "Shared registry steruje Astro readiness"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "registry_readiness_contract"
+    conflicts_with:
+      - "workflow1_refinement_orchestrator"
+    context_files:
+      - path: "astro-site/src/pages/[slug].astro"
+        description: "Biezacy Astro renderer z recznym mapowaniem blockKey -> komponent."
+      - path: "astro-site/src/lib/types.ts"
+        description: "Astro-side parser contract dla page_builder_schema."
+      - path: "astro-site/src/lib/pageBuilder.ts"
+        description: "Biezacy build-time pipeline dla sekcji i Woo resolvers."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          Bez Astro projection z shared registry status ready bylby tylko statusem React/runtime,
+          a user explicitnie wymaga Astro-ready business block w Workflow 1.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 240
+        focus_area: "Astro parity"
+        verification:
+          - "Astro renderer lookup korzysta z registry-backed projection zamiast recznej listy if/switch."
+          - "Brak Astro capability blokuje promotion do ready."
+          - "Istnieje test/parity assertion dla shared registry vs Astro renderer map."
+        acceptance_criteria:
+          - "Astro potrafi rozwiazac renderer dla bloku tylko przez shared registry contract."
+          - "Nowy blok nie wymaga edycji recznego branch chain w [slug].astro do samego odkrycia gotowosci."
+          - "Brak Astro renderer powoduje status blocked/refining, nie ready."
+        failure_modes:
+          - scenario: "Astro dalej bedzie mial prywatna liste blokow poza registry."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Wymusic parity test i jeden publiczny resolveAstroRenderer(blockKey)."
+    tech_stack:
+      - "Astro"
+      - "TypeScript"
+      - "Zod"
+    test_coverage: "Parity tests registry -> Astro renderer plus static render smoke coverage"
+
+  - id: "workflow1_refinement_orchestrator"
+    title: "Zaimplementowac Workflow 1: shadcn -> business block -> Astro/tests/docs -> status ready"
+    description: |
+      Zbudowac wlasciwy refinement flow dla nowego bloku shadcn. Ten workflow ma
+      przyjac kandydacki blok, zrefaktoryzowac go do reusable business blocka zgodnie
+      z TemplatePage/design rules, dopiac registry entry, Astro renderer, AI descriptor,
+      testy i docs, a potem promowac status do ready przez shared gate. To jest glowny
+      deliverable dla wymagania: output = kod + Astro + testy + docs + status ready.
+      Sources: docs/plan/astro-wordpress-page-builder/agentic-page-builder-blueprint.md,
+      docs/plan/astro-wordpress-page-builder/block-registry-spec.md,
+      zip/src/pages/TemplatePage.tsx,
+      zip/src/index.css,
+      SCRIPTS/generate-page-builder-ai-schema.js,
+      docs/block-registry/index.md.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Workflow1 full output"
+      - "Refaktoryzacja raw shadcn do business block"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "registry_readiness_contract"
+      - "astro_registry_projection"
+    conflicts_with:
+      - "workflow2_page_composition_orchestrator"
+    context_files:
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Wizualny wzorzec i surface do walidacji design adaptation."
+      - path: "SCRIPTS/generate-page-builder-ai-schema.js"
+        description: "AI schema generator, ktory nowy blok musi wspierac bez osobnych hackow runtime."
+      - path: "docs/block-registry/index.md"
+        description: "Ludzka dokumentacja registry, ktora musi byc aktualizowana wraz z promotion."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          To centralny workflow biznesowy. Bez niego Workflow 2 nie bedzie mial do
+          czego wracac po fallbacku, a ready status pozostanie czysto deklaratywny.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "large"
+        estimated_files: 3
+        estimated_lines: 300
+        focus_area: "block refinement pipeline"
+        verification:
+          - "Nowy kandydat bloku przechodzi przez refactor do business block zamiast trafienia do registry jako raw shadcn primitive."
+          - "Promotion do ready wystepuje dopiero po React + Astro + AI + docs + tests."
+          - "Workflow emituje czytelny artifact summary dla subflow caller."
+        acceptance_criteria:
+          - "Workflow 1 produkuje kod bloku, Astro support, testy, docs i status ready."
+          - "Nowy blok pojawia sie w shared registry bez recznego obchodzenia gate."
+          - "Brak ktoregokolwiek artefaktu konczy sie blocked/refining, nie ready."
+        failure_modes:
+          - scenario: "Workflow 1 ograniczy sie do wygenerowania kodu React bez dopiecia Astro i docs."
+            likelihood: "medium"
+            impact: "critical"
+            mitigation: "Gate promotion musi wymagac capability matrix, a workflow summary ma raportowac brakujace capability jawnie."
+          - scenario: "Workflow 1 przepusci blok niezgodny z TemplatePage/design system."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Wlaczyc design acceptance do test/doc checklisty i do registry notes dla kazdego promoted blocka."
+    tech_stack:
+      - "TypeScript"
+      - "React"
+      - "Astro"
+      - "node:test"
+      - "Markdown"
+    test_coverage: "Contract and smoke tests dla registry registration, Astro parity i docs/status promotion"
+
+  - id: "workflow2_page_composition_orchestrator"
+    title: "Zaimplementowac Workflow 2: page composition z auto-subflow i powrotem do compose"
+    description: |
+      Zbudowac page composer, ktory sklada strone tylko z blokow ready z shared registry,
+      a przy missing/not-ready blocku automatycznie odpala Workflow 1 jako subflow,
+      czeka na outcome ready|blocked i po sukcesie wraca do page composition bez
+      recznego restartu calego flow. Potem ma reuse'owac istniejacy runtime draft ->
+      compile -> publish path. Sources: SCRIPTS/page-builder-runtime/runtimeWorkflow.ts,
+      SCRIPTS/page-builder-runtime/cli.ts,
+      zip/src/blocks/registry/createPageDraftFromScrape.ts,
+      SCRIPTS/create-default-page-draft-from-template.ts,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md.
+    wave: 4
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Workflow2 sklada strone z gotowych blokow"
+      - "Fallback = auto-subflow, nie blad"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "registry_readiness_contract"
+      - "composition_resume_contract"
+      - "workflow1_refinement_orchestrator"
+    conflicts_with:
+      - "review_dual_workflow_rollout"
+    context_files:
+      - path: "SCRIPTS/page-builder-runtime/runtimeWorkflow.ts"
+        description: "Istniejacy orchestrator compile/publish, ktory ma zostac reuse'owany zamiast duplikowany."
+      - path: "SCRIPTS/page-builder-runtime/cli.ts"
+        description: "CLI boundary dla page workflow i env autoload z .env.page-builder.local."
+      - path: "SCRIPTS/create-default-page-draft-from-template.ts"
+        description: "Bootstrap draftu, ktory mozna wykorzystac jako wejscie kompozycji strony."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          To drugi glowny workflow z requestu usera. Musi byc zbudowany na istniejacym
+          runtime, inaczej powstanie rownolegla droga publikacji i kolejny source drift.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "large"
+        estimated_files: 3
+        estimated_lines: 300
+        focus_area: "composition orchestration"
+        verification:
+          - "Composer czyta tylko shared registry readiness przy wyborze blokow."
+          - "Missing/not-ready block odpala Workflow 1 automatycznie i wraca po ready."
+          - "Po sukcesie composer reuse'uje compile/publish runtime bez duplikacji gate logic."
+        acceptance_criteria:
+          - "Workflow 2 nie konczy sie samym bledem przy missing/not-ready blocku."
+          - "Po sukcesie subflow Workflow 1 kompozycja wznawia sie z checkpointu."
+          - "Strona konczy sie publishable artifacts zgodnymi z istniejacym runtime flow."
+        failure_modes:
+          - scenario: "Composer po subflow uruchomi compile na starym snapshotcie registry."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Po subflow wymagany jest refresh shared registry i ponowna walidacja requested blockow przed resume."
+          - scenario: "Fallback odpali Workflow 1 dla bloku juz blocked i zapetli retry."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Composer musi respektowac retry budget i terminalny blocked state z composition_resume_contract."
+    tech_stack:
+      - "TypeScript"
+      - "Node.js CLI"
+      - "Zod"
+      - "node:test"
+    test_coverage: "End-to-end CLI tests dla happy path ready oraz fallback missing->refine->resume"
+
+  - id: "review_dual_workflow_rollout"
+    title: "Przeprowadzic review ryzyk, regresji i evidence check dla obu workflow"
+    description: |
+      Wykonac read-only audit wdrozenia po implementacji. Review ma sprawdzic, czy
+      readiness faktycznie pochodzi z shared registry, czy Workflow 2 nie duplikuje
+      compile/publish gate, oraz czy fallback path ma dowody na powrot do compose po
+      statusie ready. Findings sa wazniejsze niz streszczenie. Sources:
+      docs/plan/pb-astro-ready-workflows-2026-04-21/plan.yaml,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      SCRIPTS/page-builder-runtime/runtimeWorkflow.ts,
+      docs/block-registry/registry.machine.json.
+    wave: 5
+    agent: "gem-reviewer"
+    prototype: false
+    covers:
+      - "Review koncowy obu workflow"
+      - "Sprawdzenie regresji i source-of-truth"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "workflow1_refinement_orchestrator"
+      - "workflow2_page_composition_orchestrator"
+    conflicts_with: []
+    context_files:
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Canonical operator workflow, ktory nie moze zostac przypadkiem podmieniony przez nieudokumentowany runtime fork."
+      - path: "SCRIPTS/page-builder-runtime/runtimeWorkflow.ts"
+        description: "Miejsce weryfikacji, czy compose flow reuse'uje canonical runtime gate."
+      - path: "docs/block-registry/registry.machine.json"
+        description: "Dowod, czy ready status i capability matrix sa faktycznie spiete."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          Auto-subflow i shared readiness gate maja duzy potencjal regresji; read-only
+          review jest potrzebny przed uznaniem rollout za bezpieczny.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 150
+        focus_area: "rollout audit"
+        verification:
+          - "Review zawiera findings albo jawne stwierdzenie braku findings."
+          - "Source-of-truth drift i retry loop ryzyka zostaly sprawdzone evidence-based."
+          - "Review obejmuje rowniez test gaps i residual risk."
+        acceptance_criteria:
+          - "Powstaje audit z findings uporzadkowanymi wg severity."
+          - "Audit sprawdza oba scenariusze: happy path i fallback auto-subflow."
+          - "Audit weryfikuje, ze ready nie jest tylko flaga reczna."
+        failure_modes:
+          - scenario: "Review skupi sie na summary zamiast na rzeczywistych ryzykach i regresjach."
+            likelihood: "low"
+            impact: "medium"
+            mitigation: "Wymusic findings-first output i evidence check matrix."
+    requires_review: true
+    review_depth: "full"
+    review_security_sensitive: false
+
+  - id: "update_workflow_docs"
+    title: "Zaktualizowac dokumentacje operatora i registry o dwa finalne workflow"
+    description: |
+      Uaktualnic dokumentacje tak, aby operator i kolejni agenci widzieli juz dwa
+      prawdziwe workflow: refinement do ready oraz page composition z auto-subflow.
+      Dokumentacja ma wyjasniac shared registry readiness gate, moment promotion do
+      ready, fallback semantics oraz to, ze page-builder-authoring-workflow.md nadal
+      pozostaje canonical operator reference dla publish/deploy. Sources:
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      docs/plan/astro-wordpress-page-builder/implementation-plan.md,
+      docs/block-registry/index.md,
+      docs/block-registry/registry.machine.json.
+    wave: 6
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers:
+      - "Docs dla Workflow1 i Workflow2"
+      - "Opis shared readiness gate"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "workflow1_refinement_orchestrator"
+      - "workflow2_page_composition_orchestrator"
+      - "review_dual_workflow_rollout"
+    conflicts_with: []
+    context_files:
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Canonical operator workflow do aktualizacji i linkowania."
+      - path: "docs/plan/astro-wordpress-page-builder/implementation-plan.md"
+        description: "Planning source of truth z etapami systemu Astro/WordPress."
+      - path: "docs/block-registry/index.md"
+        description: "Punkt wejscia do dokumentacji block registry."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >-
+          Bez aktualizacji docs kolejni agenci beda dalej traktowac ready, Astro parity
+          i fallback subflow jako wiedze ukryta w kodzie, co szybko rozwali spojnosc workflow.
+        timestamp: "2026-04-21T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "operator and agent docs"
+        verification:
+          - "Docs opisuja oba workflow i wskazuja shared registry jako gate input."
+          - "Docs nie tworza konkurencyjnego source of truth wobec canonical operator workflow."
+          - "Docs zawieraja fallback semantics, ready criteria i miejsca integracji."
+        acceptance_criteria:
+          - "Operator widzi krok po kroku Workflow 1 i Workflow 2."
+          - "Ready criteria sa jawnie wypisane i zgodne z shared registry contract."
+          - "Dokumentacja zawiera ograniczenia, residual risks i momenty resume/fail."
+        failure_modes:
+          - scenario: "Docs opisza target architecture, ale nie realny operator flow."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Utrzymac parity z page-builder-authoring-workflow.md i review findings."
+    task_type: "update"
+    audience: "developers"
+    coverage_matrix:
+      - "Workflow 1: shadcn import -> business block -> ready"
+      - "Workflow 2: compose -> auto-refine subflow -> resume -> publish"
+      - "Shared registry readiness gate and status lifecycle"
+      - "Operator caveats and failure handling"

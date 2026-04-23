@@ -1,0 +1,143 @@
+plan_id: catering-raw-id-rename-20260326
+objective: Rename ambiguous raw Easter catering keys from category.id to category_id and product.id to product_id while preserving normalized/public contracts as id to minimize blast radius.
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Keep the change isolated to the raw Easter catering source and its normalizer. Rename raw JSON keys to category_id and product_id, update the raw TypeScript interfaces and normalization reads accordingly, and leave every normalized/public consumer contract unchanged as id. Only update tests that directly assert raw source field names or guard the id mapping boundary.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: A direct consumer outside the scoped tests reads cateringWielkanocnySource[*].id or pozycje[*].id and breaks after the raw rename.
+      likelihood: medium
+      impact: medium
+      mitigation: Search for direct raw-source property access before implementation and update only the directly coupled test/assertion surface if no production consumers exist.
+  assumptions:
+    - The intended public contract boundary is zip/src/data/cateringWielkanocny.ts, where normalized category/product objects must continue exposing id.
+    - Direct production consumers use cateringWielkanocnyCategories rather than the raw JSON shape.
+    - Scope remains limited to zip/src/data/cateringWielkanocny.json, zip/src/data/cateringWielkanocny.ts, and directly coupled tests.
+
+implementation_specification:
+  code_structure: Keep raw schema changes local to the source JSON and Raw* interfaces; map renamed raw keys back into the existing normalized/public contracts inside the existing normalizer.
+  affected_areas:
+    - zip/src/data/cateringWielkanocny.json
+    - zip/src/data/cateringWielkanocny.ts
+    - zip/src/pages/CateringWielkanocnyPage.test.tsx
+    - zip/src/lib/cateringCart.test.ts
+  component_details:
+    - component: Raw Easter catering JSON
+      responsibility: Store raw category and product identifiers under explicit raw-only names category_id and product_id.
+      interfaces:
+        - Raw category objects expose category_id instead of id.
+        - Raw product objects expose product_id instead of id.
+    - component: cateringWielkanocny normalizer
+      responsibility: Accept the renamed raw keys, validate them, and continue emitting normalized/public category and product contracts with id.
+      interfaces:
+        - RawCateringCategory uses category_id and pozycje.
+        - RawCateringProduct uses product_id.
+        - CateringCategoryContract remains id/title/description/imageUrl/products.
+        - CateringProductContract remains id plus existing content/price fields.
+    - component: Directly coupled tests
+      responsibility: Assert the raw-source rename where raw data is intentionally inspected and assert that normalized/public ids remain unchanged.
+      interfaces:
+        - Raw-source assertions reference category_id and product_id.
+        - Normalized assertions continue referencing id.
+  dependencies:
+    - component: Raw Easter catering JSON
+      relationship: Provides the renamed raw identifier fields consumed by the normalizer.
+    - component: cateringWielkanocny normalizer
+      relationship: Translates raw category_id/product_id into the unchanged normalized/public id contract consumed by the rest of the app.
+    - component: Directly coupled tests
+      relationship: Validate the raw-to-normalized boundary without expanding scope to unrelated UI or checkout behavior.
+  integration_points:
+    - Existing import of cateringWielkanocny.json in zip/src/data/cateringWielkanocny.ts
+    - Existing exports cateringWielkanocnySource and cateringWielkanocnyCategories
+    - Existing tests that inspect raw source data or normalized ids
+
+contracts:
+  - from_task: task_01_boundary_rename
+    to_task: task_02_targeted_validation
+    interface: Raw source now uses category_id/product_id while normalized/public exports still expose id with identical values.
+    format: TypeScript interfaces plus targeted test assertions on cateringWielkanocnySource and cateringWielkanocnyCategories
+
+tasks:
+  - id: task_01_boundary_rename
+    title: Apply the raw identifier rename at the data boundary
+    description: |
+      Rename raw identifier keys in zip/src/data/cateringWielkanocny.json from id to category_id/product_id.
+      Update RawCateringCategory and RawCateringProduct in zip/src/data/cateringWielkanocny.ts to reflect the raw schema explicitly.
+      Adjust normalizeCategory and normalizeProduct to read the renamed raw fields and continue emitting the unchanged normalized/public id fields.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - zip/src/data/cateringWielkanocny.json: Raw Easter catering source with ambiguous id keys.
+      - zip/src/data/cateringWielkanocny.ts: Raw schema definitions and normalization boundary that must preserve public id contracts.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 80
+    focus_area: raw-to-normalized id boundary
+    verification:
+      - Confirm every raw category object uses category_id and no longer uses id.
+      - Confirm every raw product object uses product_id and no longer uses id.
+      - Confirm normalized/public exports still typecheck and still expose id for categories and products.
+    acceptance_criteria:
+      - No normalized/public contract names change from id to category_id or product_id.
+      - Raw interfaces and runtime normalization both use the explicit raw field names.
+      - No production code outside the normalizer is required to change for this refactor.
+    failure_modes:
+      - scenario: The implementation renames normalized/public ids as well, causing a larger blast radius across cart/page consumers.
+        likelihood: low
+        impact: high
+        mitigation: Restrict edits to Raw* interfaces, JSON keys, and the normalize* read sites only.
+      - scenario: One or more JSON entries are missed, leaving mixed id/category_id/product_id shapes.
+        likelihood: medium
+        impact: medium
+        mitigation: Run a targeted search for quoted "id" keys inside the source file after the rename.
+    tech_stack:
+      - TypeScript
+      - JSON
+      - Vite JSON import pipeline
+    test_coverage: Update only directly coupled assertions that inspect raw source fields or the raw-to-normalized mapping.
+
+  - id: task_02_targeted_validation
+    title: Validate the raw rename without widening scope
+    description: |
+      Update directly coupled tests so they assert the renamed raw keys on cateringWielkanocnySource and the unchanged id contract on cateringWielkanocnyCategories.
+      Run only the targeted checks needed to prove the boundary is intact.
+    wave: 2
+    agent: gem-reviewer
+    priority: medium
+    status: pending
+    dependencies:
+      - task_01_boundary_rename
+    context_files:
+      - zip/src/pages/CateringWielkanocnyPage.test.tsx: Directly asserts raw source category/product identifiers and normalized split-mode mapping.
+      - zip/src/lib/cateringCart.test.ts: Guards that normalized product ids remain stable for cart lookup and display behavior.
+      - zip/src/data/cateringWielkanocny.ts: Boundary under test for raw-to-normalized id mapping.
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 60
+    focus_area: regression containment
+    verification:
+      - Confirm raw-source tests now reference category_id and product_id only where raw data is intentionally inspected.
+      - Confirm normalized/cart-facing tests still pass while continuing to reference product.id.
+      - Confirm no additional files need edits beyond the scoped data files and directly coupled tests.
+    acceptance_criteria:
+      - Tests prove raw ids were renamed and normalized ids were preserved.
+      - No unrelated UI or checkout tests need to change.
+      - The scoped refactor remains limited to the requested files and directly coupled tests.
+    failure_modes:
+      - scenario: A hidden direct consumer of cateringWielkanocnySource still expects raw id, causing test or runtime breakage outside the planned scope.
+        likelihood: medium
+        impact: medium
+        mitigation: Use a workspace search for cateringWielkanocnySource and raw .id access before accepting the change.
+    requires_review: true
+    review_depth: standard
+    security_sensitive: false

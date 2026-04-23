@@ -1,0 +1,252 @@
+plan_id: none
+objective: Determine why https://client.example/react/catering-wielkanocny-test is missing by verifying whether the local code contains the alias route, where it is defined, whether the likely cause is non-deployment, and whether any other local routing issue would block resolution.
+focus_area: zip React routing for catering-wielkanocny-test alias
+created_at: 2026-03-26
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Local source code contains the alias route /catering-wielkanocny-test and maps it to the same page component as /catering-wielkanocny.
+  - Alias references were found in the route constants file, the main route table, and a route rendering test; the built local dist bundle also contains the alias string.
+  - Local BrowserRouter basename and SPA rewrite configuration are aligned for /react/* routes, so no local routing defect was found that would block alias resolution.
+  - The most likely explanation is that the live environment is serving an older bundle or an undeployed build that does not yet include the alias.
+  - Workspace changes show recent new frontend build/deploy artifacts and new route-related source files, which is consistent with a local-only change set.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic_search and grep_search for alias and router discovery, followed by targeted read_file inspection of route constants, app routes, router bootstrap, SPA rewrite config, tests, and local built output.
+  scope: Focused review of zip frontend routing, SPA base path configuration, rewrite rules, tests, local built bundle, and workspace git changes relevant to the alias.
+  confidence: high
+  coverage: 91
+
+files_analyzed:
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Defines client-side route mappings for the React app.
+    key_elements:
+      - element: alias route registration
+        type: pattern
+        location: zip/src/App.tsx:16
+        description: Registers CATERING_WIELKANOCNY_TEST_PATH to render CateringWielkanocnyPage.
+      - element: primary route registration
+        type: pattern
+        location: zip/src/App.tsx:15
+        description: Registers CATERING_WIELKANOCNY_PATH to render the same page component.
+    language: TSX
+    lines: 18
+  - file: cateringThankYou.ts
+    path: zip/src/lib/cateringThankYou.ts
+    purpose: Centralizes path constants used by the catering routes.
+    key_elements:
+      - element: CATERING_WIELKANOCNY_TEST_PATH
+        type: variable
+        location: zip/src/lib/cateringThankYou.ts:2
+        description: Defines the alias string /catering-wielkanocny-test.
+      - element: CATERING_WIELKANOCNY_PATH
+        type: variable
+        location: zip/src/lib/cateringThankYou.ts:1
+        description: Defines the main route /catering-wielkanocny.
+    language: TS
+    lines: 3
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Boots the React app and applies router basename.
+    key_elements:
+      - element: BrowserRouter basename
+        type: pattern
+        location: zip/src/main.tsx:9
+        description: Uses basename /react so route /catering-wielkanocny-test resolves under /react/catering-wielkanocny-test.
+    language: TSX
+    lines: 11
+  - file: react.htaccess
+    path: react.htaccess
+    purpose: Provides SPA rewrite rules for direct route hits under /react.
+    key_elements:
+      - element: RewriteBase
+        type: pattern
+        location: react.htaccess:3
+        description: Sets rewrite base to /react/.
+      - element: SPA fallback rewrite
+        type: pattern
+        location: react.htaccess:6
+        description: Rewrites non-file and non-directory requests to /react/index.html.
+    language: Apache config
+    lines: 7
+  - file: CateringWielkanocnyPage.test.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.test.tsx
+    purpose: Verifies route rendering for the catering page.
+    key_elements:
+      - element: alias route coverage
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:12
+        description: Iterates over both primary and alias route constants and asserts shared page chrome.
+    language: TSX
+    lines: 24
+  - file: index-Drlb7a-M.js
+    path: zip/dist/assets/index-Drlb7a-M.js
+    purpose: Local built bundle generated from current source.
+    key_elements:
+      - element: compiled alias route string
+        type: pattern
+        location: zip/dist/assets/index-Drlb7a-M.js:217
+        description: Contains compiled strings for /catering-wielkanocny, /catering-wielkanocny-test, and thank-you path.
+    language: JavaScript
+    lines: 217
+
+patterns_found:
+  - category: structure
+    pattern: Route constants are centralized and reused by both runtime routing and tests.
+    description: The alias path is not hardcoded in one place only; it is defined once and consumed by the route table and tests.
+    examples:
+      - file: zip/src/lib/cateringThankYou.ts
+        location: zip/src/lib/cateringThankYou.ts:2
+        snippet: export const CATERING_WIELKANOCNY_TEST_PATH = "/catering-wielkanocny-test";
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:16
+        snippet: <Route path={CATERING_WIELKANOCNY_TEST_PATH} element={<CateringWielkanocnyPage />} />
+      - file: zip/src/pages/CateringWielkanocnyPage.test.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:12
+        snippet: for (const routePath of [CATERING_WIELKANOCNY_PATH, CATERING_WIELKANOCNY_TEST_PATH]) {
+    prevalence: common
+  - category: architecture
+    pattern: React Router routes are mounted under a /react basename.
+    description: Client-side paths are declared without the /react prefix and are resolved by BrowserRouter basename during runtime.
+    examples:
+      - file: zip/src/main.tsx
+        location: zip/src/main.tsx:9
+        snippet: <BrowserRouter basename="/react">
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:16
+        snippet: <Route path={CATERING_WIELKANOCNY_TEST_PATH} element={<CateringWielkanocnyPage />} />
+    prevalence: common
+  - category: structure
+    pattern: SPA fallback rewrite is configured to index.html under /react.
+    description: Direct navigation to client-side routes should work if the deployed server has the corresponding rewrite file and current build.
+    examples:
+      - file: react.htaccess
+        location: react.htaccess:3
+        snippet: RewriteBase /react/
+      - file: react.htaccess
+        location: react.htaccess:6
+        snippet: RewriteRule . /react/index.html [L]
+    prevalence: common
+  - category: testing
+    pattern: Alias route is covered by a static rendering test.
+    description: Local tests explicitly verify that the alias renders the same page chrome as the primary route.
+    examples:
+      - file: zip/src/pages/CateringWielkanocnyPage.test.tsx
+        location: zip/src/pages/CateringWielkanocnyPage.test.tsx:12
+        snippet: for (const routePath of [CATERING_WIELKANOCNY_PATH, CATERING_WIELKANOCNY_TEST_PATH]) {
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: BrowserRouter bootstrap
+      responsibility: Applies the /react basename for all client-side routes.
+      location: zip/src/main.tsx
+      relationship_to_domain: domain depends on this
+    - component: App route table
+      responsibility: Registers page components to path constants.
+      location: zip/src/App.tsx
+      relationship_to_domain: domain root
+    - component: CateringWielkanocnyPage
+      responsibility: Target page rendered for both the main route and the alias route.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain depends on this
+    - component: SPA rewrite config
+      responsibility: Enables direct requests to client-side routes under /react.
+      location: react.htaccess
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: React Router path constants
+      location: zip/src/lib/cateringThankYou.ts
+      usage_pattern: Imported into route table and tests.
+  data_flow_involving_domain: Route constant is defined in zip/src/lib/cateringThankYou.ts, consumed by zip/src/App.tsx, mounted under /react via zip/src/main.tsx, and expected to resolve through react.htaccess rewrite to index.html on direct requests.
+  key_relationships_to_domain:
+    - from: zip/src/lib/cateringThankYou.ts
+      to: zip/src/App.tsx
+      relationship: imports
+    - from: zip/src/main.tsx
+      to: zip/src/App.tsx
+      relationship: composes
+    - from: react.htaccess
+      to: deployed /react/index.html
+      relationship: rewrites requests to
+    - from: zip/src/pages/CateringWielkanocnyPage.test.tsx
+      to: zip/src/App.tsx
+      relationship: renders and validates
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - JavaScript
+    - Apache config
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Renders the SPA and target page component.
+    - name: React Router
+      usage_in_domain: Handles /react client-side route resolution via BrowserRouter and Routes.
+    - name: Vite
+      usage_in_domain: Produces the local built dist bundle containing the alias.
+  libraries_used_in_domain:
+    - name: react-router-dom
+      purpose_in_domain: BrowserRouter, Routes, Route, MemoryRouter.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Route constants use uppercase names with _PATH suffix and are grouped in a dedicated lib file.
+  structure_of_domain: Router bootstrap lives in main.tsx, route table in App.tsx, path constants in lib, and route coverage in page-level tests.
+  error_handling_in_domain: No special alias-specific error handling was found; routing relies on normal React Router matching and server rewrite fallback.
+  testing_in_domain: Node test plus renderToStaticMarkup with MemoryRouter is used for route coverage.
+  documentation_in_domain: No dedicated route documentation for this alias was found in the examined files.
+
+related_dependencies:
+  internal:
+    - component: zip/src/lib/cateringThankYou.ts
+      relationship_to_domain: source of route constants
+      direction: outbound
+    - component: zip/src/App.tsx
+      relationship_to_domain: active route registration
+      direction: bidirectional
+    - component: zip/src/main.tsx
+      relationship_to_domain: applies basename
+      direction: inbound
+    - component: react.htaccess
+      relationship_to_domain: enables direct-entry SPA resolution
+      direction: inbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Client-side routing and in-test route rendering.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: direct route entry under deployed /react path
+      location: react.htaccess
+      concern: Route availability depends on correct deployment of SPA fallback rewrite and current build artifacts.
+  authentication_patterns_in_domain: No authentication involved in this alias route.
+  authorization_patterns_in_domain: No authorization involved in this alias route.
+  data_validation_in_domain: Route string is statically defined and reused rather than derived from user input.
+
+testing_patterns:
+  framework: node:test with react-dom/server and MemoryRouter
+  coverage_areas:
+    - alias route renders same page chrome as primary route
+    - primary and thank-you route constants are imported centrally
+  test_organization: Page-level test file colocated with the page in zip/src/pages.
+  mock_patterns:
+    - MemoryRouter initialEntries for route simulation
+
+open_questions:
+  - question: What exact build or asset hash is currently deployed on https://client.example/react?
+    context: Local source and local dist contain the alias, but the live site content was not read from the server in this task.
+  - question: Was the current local frontend build copied together with the matching /react index.html and rewrite file to the live environment?
+    context: The local routing setup is consistent, so deployment state is the main unresolved variable.
+
+gaps:
+  - area: live server artifact verification
+    description: No direct inspection of live server files or live HTML/JS asset contents was performed.
+    impact: Prevents absolute confirmation that production is serving an older bundle rather than a current build with another environment-specific issue.
+  - area: deploy-package searchability
+    description: Workspace search did not return the alias string from deploy-package directories, while local dist clearly contains it.
+    impact: Prevents using deploy-package folders as a stronger local proxy for what was actually uploaded.
+

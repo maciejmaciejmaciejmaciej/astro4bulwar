@@ -1,0 +1,493 @@
+plan_id: none
+objective: >-
+  Read-only search for existing tooling or documented procedures to set the WordPress
+  global layout option and/or seed the shared footer page.
+focus_area: global_layout_footer_seeding
+created_at: 2026-04-20T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The runtime source of truth is the WordPress option `bulwar_bridge_global_layout`; the bridge reads it through `Constants::globalLayoutOptionName()` and resolves `footerPageId` internally. Missing or non-positive `footerPageId` yields `fallback_missing_footer_page_id`. Sources: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20, wordpress-plugin/bulwar-bridge/src/Config/Constants.php:78, wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:42, wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75-78.
+  - No repo-side production helper was found that writes `bulwar_bridge_global_layout` with `update_option(...)`. The only write-capable generic runtime path in repo is the authenticated page-builder POST endpoint for an existing page slug. Sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:89-120, wordpress-plugin/bulwar-bridge/src/Http/Routes.php:58-62, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:45, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:206.
+  - The repo contains test-only or proof-only footer identifiers, not a verified live one: `footerPageId = 37`, slug `shared-footer`, title `Shared Footer`, and section id `shared-footer-main` appear only in tests. Sources: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:251, wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254, wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:259, zip/src/blocks/registry/globalLayoutContract.test.ts:123-135.
+  - Existing docs define the required footer block contract and post-change verification path: one enabled `shared_footer` block in `page_builder_schema.sections[]`, then verify `GET /wp-json/bulwar/v1/layout/global` returns both meta statuses as `resolved`. Sources: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:16-24, docs/plan/navbar-footer-global-layout-v1/operator-reference.md:124-127, docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:14-35, docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:159-166.
+  - Existing operational evidence on dhosting favors a small PHP worker bootstrapping `wp-load.php` over the default `wp-cli` wrapper for writes, because the wrapper previously hit the wrong PHP version. Sources: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:172-173, SCRIPTS/seed-testowa-blueprint-schema.php:1-80, SCRIPTS/seed-testowa-blueprint-schema.sh:5-20, docs/plan/bulwar-bridge-checkout/live_site_audit.js:7-8.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval using memory review, file discovery, semantic_search, grep_search,
+    targeted read_file examination, and relationship discovery through route/controller/
+    resolver linkage. External web fetch was not needed because the task was bounded to
+    repository evidence.
+  scope: >-
+    Examined bridge runtime code, bridge tests, navbar/footer operator docs, page-builder
+    authoring docs, existing seeding helpers, and dhosting operational artifacts related to
+    WordPress writes and verification.
+  confidence: high
+  coverage: 88
+  decision_blockers: 1
+  research_blockers: 0
+
+files_analyzed:
+  - file: GlobalLayoutResolver.php
+    path: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+    purpose: Resolves public navbar/footer payload from the option and footer page meta.
+    key_elements:
+      - element: readSettings
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:40
+        description: Reads the global layout option with `get_option(Constants::globalLayoutOptionName(), [])` and normalizes missing or invalid option states. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:42-61.
+      - element: footerPageId resolution
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75
+        description: Casts `settings['footerPageId']` to int and returns fallback status `fallback_missing_footer_page_id` when the value is absent or <= 0. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:75-78.
+      - element: shared footer block scan
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:107
+        description: Scans `page_builder_schema.sections[]` for the first enabled `shared_footer` block with version 1 and `source = null`. Source: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:95-127.
+    language: PHP
+    lines: 220
+
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: Defines the default global layout option name.
+    key_elements:
+      - element: BULWAR_BRIDGE_GLOBAL_LAYOUT_OPTION default
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20
+        description: Sets the default option name to `bulwar_bridge_global_layout`. Source: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:20.
+      - element: globalLayoutOptionName
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:78
+        description: Exposes the option name used by the resolver and docs. Source: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:78-82.
+    language: PHP
+    lines: 87
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Registers public and authenticated bridge routes relevant to layout reads and page meta writes.
+    key_elements:
+      - element: global layout route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40
+        description: Registers public `GET /wp-json/bulwar/v1/layout/global`. Source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:40-44.
+      - element: page-builder update route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:58
+        description: Registers authenticated `POST /wp-json/bulwar/v1/page-builder/pages/{slug}` guarded by `current_user_can('edit_pages')`. Source: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:58-62.
+    language: PHP
+    lines: 64
+
+  - file: PageBuilderController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    purpose: Reads and writes page-builder metas for existing pages.
+    key_elements:
+      - element: update
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:89
+        description: Accepts authenticated JSON and updates `page_builder_schema` plus `page_builder_schema_for_ai` for an existing page. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:89-131.
+      - element: edit_post guard
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:97
+        description: Requires `current_user_can('edit_post', $page->ID)` before writing page meta. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:97-100.
+      - element: update_post_meta writes
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:119
+        description: Writes both meta keys in one operation; it does not touch `bulwar_bridge_global_layout`. Source: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:119-120.
+    language: PHP
+    lines: 260
+
+  - file: GlobalLayoutControllerTest.php
+    path: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php
+    purpose: Test fixture that shows the expected option shape and a synthetic footer page fixture.
+    key_elements:
+      - element: synthetic footerPageId
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:251
+        description: Test fixture stores `footerPageId = 37` in the option payload. Source: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:251.
+      - element: synthetic footer page slug/title
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254
+        description: Creates a test page with slug `shared-footer` and title `Shared Footer`. Source: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:254.
+      - element: synthetic shared footer section
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:259
+        description: Uses section id `shared-footer-main` and block key `shared_footer` as the dedicated footer block fixture. Source: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:259-266.
+    language: PHP
+    lines: 320
+
+  - file: operator-reference.md
+    path: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+    purpose: Quick operator reference for the implemented shared navbar/footer system.
+    key_elements:
+      - element: source of truth note
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:7
+        description: Documents the option name, stored keys, and internal-only nature of `footerPageId`. Source: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:7-12.
+      - element: footer authoring rule
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:16
+        description: Documents that footer content comes from the referenced page's `page_builder_schema` and one enabled `shared_footer` block. Source: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:16-24.
+      - element: operator workflow
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:124
+        description: Documents updating navbar in the option, footer in the shared footer block, and verifying `GET /layout/global`. Source: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:124-127.
+    language: Markdown
+    lines: 127
+
+  - file: how-navbar-footer-work.md
+    path: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md
+    purpose: End-to-end explainer for storage, resolution, runtime consumption, and editing workflow.
+    key_elements:
+      - element: storage model
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:7
+        description: Explains that the option stores `navbar` plus internal `footerPageId`, while footer content lives on a separate page. Source: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:7-18.
+      - element: dedicated footer block contract
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:19
+        description: Shows the expected `shared_footer` block payload shape in `page_builder_schema.sections[]`. Source: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:19-33.
+      - element: editing workflow
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:159
+        description: Documents the operational sequence to edit navbar/footer content and verify resolved meta statuses. Source: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:159-166.
+    language: Markdown
+    lines: 166
+
+  - file: global-layout-contract.md
+    path: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md
+    purpose: Locks the public and internal contract for the global layout feature.
+    key_elements:
+      - element: internal storage rule
+        type: pattern
+        location: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:37
+        description: States that shared footer data stays in the shared footer page `page_builder_schema.sections[]` and `footerPageId` remains internal. Source: docs/plan/navbar-footer-global-layout-v1/global-layout-contract.md:37-43.
+    language: Markdown
+    lines: 46
+
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Documents the canonical page-builder authoring and WordPress write workflow.
+    key_elements:
+      - element: POST endpoint truth
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:45
+        description: States that the WordPress POST endpoint updates an existing page and does not create a missing one. Source: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:45.
+      - element: no generic create-and-post helper
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:206
+        description: States that no generic repo-side script creates any page by slug and then posts both metas automatically. Source: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:206.
+      - element: authenticated page-builder POST workflow
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:212
+        description: Defines the authenticated POST body shape and `edit_pages` requirement for schema writes. Source: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:212-226.
+    language: Markdown
+    lines: 320
+
+  - file: seed-testowa-blueprint-schema.php
+    path: SCRIPTS/seed-testowa-blueprint-schema.php
+    purpose: Test-page-specific PHP helper that creates or updates one page and writes page-builder metas through `wp-load.php`.
+    key_elements:
+      - element: existing page lookup
+        type: function
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:51
+        description: Looks up only slug `testowa-blueprint` with `get_page_by_path(...)`. Source: SCRIPTS/seed-testowa-blueprint-schema.php:51.
+      - element: create-or-update branch
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:64
+        description: Creates the page if missing and writes `page_builder_schema` plus optional `page_builder_schema_for_ai`. Source: SCRIPTS/seed-testowa-blueprint-schema.php:64-80.
+    language: PHP
+    lines: 86
+
+  - file: seed-testowa-blueprint-schema.sh
+    path: SCRIPTS/seed-testowa-blueprint-schema.sh
+    purpose: Test-page-specific WP-CLI seeding helper for the same proof page.
+    key_elements:
+      - element: direct wp-cli invocation
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:5
+        description: Uses `/usr/bin/php82 /usr/local/bin/wp-cli.phar` with the dhosting WordPress path. Source: SCRIPTS/seed-testowa-blueprint-schema.sh:5.
+      - element: page creation by slug
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:9
+        description: Finds or creates only `testowa-blueprint`. Source: SCRIPTS/seed-testowa-blueprint-schema.sh:9-15.
+      - element: page meta writes
+        type: pattern
+        location: SCRIPTS/seed-testowa-blueprint-schema.sh:17
+        description: Writes page-builder meta with `wp eval`; it does not update the global layout option. Source: SCRIPTS/seed-testowa-blueprint-schema.sh:17-20.
+    language: Bash
+    lines: 27
+
+  - file: react-wordpress-poc-status.md
+    path: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md
+    purpose: Operational notes from live page-builder proof deployment on dhosting.
+    key_elements:
+      - element: wp-cli wrapper warning
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:172
+        description: Records that direct PHP scripts through `/usr/bin/php82` were preferred and the broken default `wp-cli` wrapper should be avoided for schema seeding. Source: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:172-173.
+    language: Markdown
+    lines: 280
+
+  - file: live_site_audit.js
+    path: docs/plan/bulwar-bridge-checkout/live_site_audit.js
+    purpose: Captures an existing SSH plus explicit `php83 wp-cli.phar` pattern for live dhosting audits.
+    key_elements:
+      - element: ssh plus explicit wp-cli path
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/live_site_audit.js:7
+        description: Uses `ssh` plus `php83 /usr/local/bin/wp-cli.phar --path='client.example/public_html'` for live inspection. Source: docs/plan/bulwar-bridge-checkout/live_site_audit.js:7-8.
+    language: JavaScript
+    lines: 80
+
+patterns_found:
+  - category: architecture
+    pattern: Option-plus-page split for global layout storage
+    description: Navbar data is stored directly in one WordPress option, while footer data is stored indirectly on a referenced page via `footerPageId` and `page_builder_schema.sections[]`. Sources: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:42-127, docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:7-18.
+    examples:
+      - file: GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:42-127
+        snippet: "get_option(Constants::globalLayoutOptionName(), []); ... $footerPageId = isset($settings['footerPageId']) ? (int) $settings['footerPageId'] : 0;"
+      - file: how-navbar-footer-work.md
+        location: docs/plan/navbar-footer-global-layout-v1/how-navbar-footer-work.md:7-18
+        snippet: "The option stores navbar plus footerPageId; the footer content itself is not stored in the option."
+    prevalence: common
+
+  - category: structure
+    pattern: Dedicated shared footer block contract
+    description: Footer resolution requires one enabled `shared_footer` block with version 1 and `source = null`; section order is decisive. Sources: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:107-127, docs/plan/navbar-footer-global-layout-v1/operator-reference.md:16-24.
+    examples:
+      - file: GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:107-127
+        snippet: "if (($section['blockKey'] ?? null) !== self::SHARED_FOOTER_BLOCK_KEY) continue; ... if ((int) ($section['blockVersion'] ?? 0) !== self::SHARED_FOOTER_BLOCK_VERSION)"
+      - file: operator-reference.md
+        location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:18-22
+        snippet: "blockKey: \"shared_footer\", blockVersion: 1, source: null; keep exactly one enabled shared_footer block."
+    prevalence: common
+
+  - category: error_handling
+    pattern: Fail-open bridge payload with explicit fallback statuses
+    description: The bridge always emits a normalized payload and uses `meta.layout_option_status` and `meta.footer_status` to communicate whether the source resolved cleanly. Sources: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:16-31, docs/plan/navbar-footer-global-layout-v1/operator-reference.md:68-80.
+    examples:
+      - file: GlobalLayoutResolver.php
+        location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:16-31
+        snippet: "'meta' => ['layout_option_status' => $optionStatus, 'footer_status' => $footerStatus]"
+      - file: GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:296
+        snippet: "fallback_missing_footer_page_id"
+    prevalence: common
+
+  - category: operational
+    pattern: Existing generic write path is page-meta only
+    description: The repo provides an authenticated REST writer for page-builder meta on existing pages, but no corresponding writer for the global layout option. Sources: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:89-120, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:45, docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:206.
+    examples:
+      - file: PageBuilderController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:119-120
+        snippet: "update_post_meta($page->ID, 'page_builder_schema', ...); update_post_meta($page->ID, 'page_builder_schema_for_ai', ...)"
+      - file: page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:45
+        snippet: "the WordPress POST endpoint updates an existing page; it does not create a missing page"
+    prevalence: occasional
+
+  - category: testing
+    pattern: Synthetic footer identifiers used only in tests
+    description: Candidate footer page id/slug/title and section id found in repo are test fixtures rather than live-verified identifiers. Sources: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:251-266, zip/src/blocks/registry/globalLayoutContract.test.ts:123-135.
+    examples:
+      - file: GlobalLayoutControllerTest.php
+        location: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php:251-266
+        snippet: "footerPageId => 37; new WP_Post(37, 'page', 'publish', 'shared-footer', 'Shared Footer');"
+      - file: globalLayoutContract.test.ts
+        location: zip/src/blocks/registry/globalLayoutContract.test.ts:123-135
+        snippet: "id: 'shared-footer-main', blockKey: SHARED_FOOTER_BLOCK_KEY"
+    prevalence: rare
+
+  - category: operational
+    pattern: dhosting write workflows prefer explicit PHP runtime control
+    description: Existing deployment notes and helpers avoid the default WP-CLI wrapper and favor explicit PHP plus `wp-load.php` or explicit `php82/php83 wp-cli.phar`. Sources: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:172-173, SCRIPTS/seed-testowa-blueprint-schema.php:1-80, docs/plan/bulwar-bridge-checkout/live_site_audit.js:7-8.
+    examples:
+      - file: react-wordpress-poc-status.md
+        location: docs/plan/astro-wordpress-page-builder/react-wordpress-poc-status.md:172-173
+        snippet: "run direct PHP scripts through /usr/bin/php82; avoid relying on the broken wp-cli wrapper"
+      - file: seed-testowa-blueprint-schema.php
+        location: SCRIPTS/seed-testowa-blueprint-schema.php:1-80
+        snippet: "require_once $wpRoot . '/wp-load.php'; ... update_post_meta(...)"
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: GlobalLayoutResolver
+      responsibility: Resolve the public global layout payload from storage.
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      relationship_to_domain: domain depends on this
+    - component: Global layout REST route/controller
+      responsibility: Expose public `GET /wp-json/bulwar/v1/layout/global`.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php and wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+      relationship_to_domain: this uses domain outputs
+    - component: PageBuilderController update route
+      responsibility: Authenticated writer for page-builder schema metas on an existing page.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: adjacent write path reusable for footer page meta only
+    - component: Test-page seed helpers
+      responsibility: Create one proof page and write page-builder metas on dhosting.
+      location: SCRIPTS/seed-testowa-blueprint-schema.php and SCRIPTS/seed-testowa-blueprint-schema.sh
+      relationship_to_domain: implementation pattern only
+  interfaces_used_by_domain:
+    - interface: WordPress option storage
+      location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php and wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+      usage_pattern: Read `bulwar_bridge_global_layout` via `get_option(...)`; no matching repo-side writer found.
+    - interface: WordPress post meta storage
+      location: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php and wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      usage_pattern: Read and write `page_builder_schema` and `page_builder_schema_for_ai` on pages.
+    - interface: Bridge REST API
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      usage_pattern: Public read route for layout and authenticated POST route for page-builder updates.
+  data_flow_involving_domain: >-
+    `bulwar_bridge_global_layout` option -> `GlobalLayoutResolver::readSettings()` -> internal
+    `footerPageId` lookup -> footer page `page_builder_schema` -> first enabled `shared_footer`
+    block -> normalized public payload -> `GET /wp-json/bulwar/v1/layout/global` consumed by React
+    and Astro. Separately, the authenticated page-builder POST endpoint writes page meta for an
+    existing slug but does not update the global layout option.
+  key_relationships_to_domain:
+    - from: Constants::globalLayoutOptionName
+      to: GlobalLayoutResolver::readSettings
+      relationship: calls
+    - from: GlobalLayoutResolver
+      to: WordPress page meta `page_builder_schema`
+      relationship: reads
+    - from: Routes
+      to: GlobalLayoutController::show
+      relationship: routes
+    - from: Routes
+      to: PageBuilderController::update
+      relationship: routes
+    - from: PageBuilderController::update
+      to: page_builder_schema metas
+      relationship: writes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - Markdown
+    - Bash
+    - JavaScript
+    - TypeScript
+  frameworks_used_in_domain:
+    - name: WordPress
+      usage_in_domain: Option storage, post meta storage, page lookup, REST routes, and capability checks power the global layout and page-builder flows.
+    - name: WooCommerce
+      usage_in_domain: Present in adjacent bridge workflows, but not directly used by the global layout storage path inspected here.
+  libraries_used_in_domain:
+    - name: WP-CLI
+      purpose_in_domain: Optional operational helper for page lookup and meta writes in proof scripts and audits.
+    - name: Zod
+      purpose_in_domain: Type contract validation for public layout payload and shared footer section shape in React/Astro contract modules.
+  external_apis_used_in_domain:
+    - name: Bulwar Bridge REST API
+      integration_point: `GET /wp-json/bulwar/v1/layout/global` and `POST /wp-json/bulwar/v1/page-builder/pages/{slug}`.
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Option names are constant-backed (`BULWAR_BRIDGE_GLOBAL_LAYOUT_OPTION` ->
+    `bulwar_bridge_global_layout`); internal pointer key is `footerPageId`; the dedicated footer
+    section contract uses block key `shared_footer`, version `1`, and common test section id
+    `shared-footer-main`.
+  structure_of_domain: >-
+    Runtime code lives in `wordpress-plugin/bulwar-bridge/src`, test fixtures in
+    `wordpress-plugin/bulwar-bridge/tests`, operator docs under
+    `docs/plan/navbar-footer-global-layout-v1`, and proof-only seeding helpers under `SCRIPTS/`.
+  error_handling_in_domain: >-
+    Global layout resolution prefers stable fallback payloads plus explicit meta statuses, while
+    page-builder writes return structured REST errors for bad JSON, missing pages, or insufficient
+    permissions. Sources: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php:16-31,
+    wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:97-118.
+  testing_in_domain: >-
+    Tests use synthetic WordPress fixtures and assert both public payload contents and fallback
+    meta statuses. Source: wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php.
+  documentation_in_domain: >-
+    Global-layout operator docs describe storage and verification; page-builder workflow docs
+    describe authenticated schema writes and current tooling limits.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      relationship_to_domain: provides the option name consumed by the resolver
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/GlobalLayoutController.php
+      relationship_to_domain: exposes resolver output over REST
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+      relationship_to_domain: adjacent writer for footer page meta if the page already exists
+      direction: bidirectional
+    - component: docs/plan/navbar-footer-global-layout-v1/*.md
+      relationship_to_domain: documents the storage and operator contract
+      direction: inbound
+  external:
+    - name: WordPress core functions (`get_option`, `get_post`, `get_post_meta`, `update_post_meta`, `get_page_by_path`, `wp_insert_post`)
+      purpose_for_domain: storage reads, page lookup, page creation in proof helpers, and meta writes
+    - name: WP-CLI
+      purpose_for_domain: optional remote operational helper for page lookup/creation and meta inspection or writes
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Authenticated page meta writes
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:97-120
+      concern: Writes require WordPress authentication and post-level edit capability.
+    - area: Internal footer page reference
+      location: docs/plan/navbar-footer-global-layout-v1/operator-reference.md:7-12
+      concern: `footerPageId` is intentionally internal and should not leak into public payloads or client contracts.
+  authentication_patterns_in_domain: >-
+    `GET /layout/global` is public, while `POST /page-builder/pages/{slug}` requires an authenticated
+    user with `edit_pages` at the route layer and `edit_post` at the controller layer. Sources:
+    wordpress-plugin/bulwar-bridge/src/Http/Routes.php:58-62,
+    wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php:97-100.
+  authorization_patterns_in_domain: >-
+    The page-builder writer authorizes at both route and page levels; no authenticated REST writer
+    for the global layout option was found in the inspected scope.
+  data_validation_in_domain: >-
+    PageBuilderController coerces both `schema` and `aiSchema` from object or JSON string and rejects
+    invalid payloads; runtime contracts in React/Astro reject public payloads that expose internal
+    `footerPageId` or unresolved meta statuses.
+
+testing_patterns:
+  framework: Custom PHP test harness with fixture globals plus TypeScript tests for Zod-based contracts.
+  coverage_areas:
+    - Global layout endpoint success path
+    - Fallback meta status when `footerPageId` is missing
+    - Public contract rejection of leaked `footerPageId`
+    - Dedicated `shared_footer` block validation shape
+  test_organization: >-
+    Bridge endpoint behavior is covered in `wordpress-plugin/bulwar-bridge/tests`, while frontend
+    contract parsing lives in `zip/src/blocks/registry/globalLayoutContract.test.ts` and Astro-side
+    layout parsing tests live under `astro-site/src/lib`.
+  mock_patterns:
+    - Synthetic WordPress options/posts/post_meta arrays in PHP tests
+    - Contract payload fixtures in TypeScript tests
+
+open_questions:
+  - question: What is the actual live shared footer page id and slug on `client.example`?
+    context: Only synthetic identifiers (`37`, `shared-footer`, `Shared Footer`) were found in tests; no live artifact or doc in repo records the real target page.
+    type: decision_blocker
+    affects: [global_layout_footer_seeding]
+  - question: Is there an approved authenticated operational path for updating `bulwar_bridge_global_layout` on live WordPress?
+    context: Repo evidence shows reads of the option and docs saying to update it, but no script, REST route, or generic helper that writes it was found.
+    type: decision_blocker
+    affects: [global_layout_footer_seeding]
+  - question: Is the live fix expected to use the authenticated page-builder POST endpoint, direct server-side PHP, or explicit WP-CLI on dhosting?
+    context: Existing docs support all three as adjacent patterns, but only the page-builder POST path is generic in repo and it cannot create a missing page or update the option.
+    type: research
+    affects: [global_layout_footer_seeding]
+
+gaps:
+  - area: Global layout option writer
+    description: No ready-made repo tool or endpoint was found that writes `bulwar_bridge_global_layout` or sets its `footerPageId` with `update_option(...)`.
+    impact: decision_blocker
+    affects: [global_layout_footer_seeding]
+  - area: Live footer page identifier
+    description: No doc, fixture, publish artifact, or setup note in the inspected scope records a verified live footer page slug/id or a stored live `page_builder_schema` containing `shared_footer`.
+    impact: decision_blocker
+    affects: [global_layout_footer_seeding]
+  - area: Generic create-or-update footer page helper
+    description: Existing repo helpers create or update only the proof page `testowa-blueprint`; the documented generic POST path updates existing pages only.
+    impact: research_blocker
+    affects: [global_layout_footer_seeding]

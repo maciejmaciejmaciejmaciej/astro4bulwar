@@ -1,0 +1,469 @@
+plan_id: breakfast-zero-price-20260331
+objective: >-
+  identify the shortest safe fix for a bug where the checkout->WooCommerce bridge
+  creates breakfast items with price 0 zl in Woo order line items.
+focus_area: bridge_checkout_line_item_pricing
+created_at: 2026-03-31
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Orders are created directly inside wordpress-plugin/bulwar-bridge via Woo PHP APIs, not via a Woo Store API payload builder.
+  - The checkout payload never sends line-item prices; it sends product_id, quantity, and optional configuration only.
+  - Both QuoteService and OrderService recompute price from wc_get_product(product_id)->get_price(). Any Woo product whose current price is 0 will be quoted and written as 0 in the order.
+  - The JSON breakfast product id 88 follows the normal simple-product path. The only divergent breakfast-adjacent path is the special menu shell product id 53, which differs only by extra order-item meta and is outside the normal category sync script.
+
+research_metadata:
+  methodology: >-
+    Medium-complexity hybrid retrieval: semantic_search for prior bridge/docs context,
+    grep_search for exact order, subtotal, special_menu_for_2, breakfast, and sync patterns,
+    read_file for end-to-end controller/service/cart data flow, plus targeted terminal line counts for file metadata.
+  scope: >-
+    Examined the active checkout submit path in zip plus the WordPress plugin order/quote services,
+    and the supporting product-sync and shell-product setup scripts needed to distinguish simple breakfast products from the special shell product path.
+  confidence: medium
+  coverage: 93
+
+probable_root_cause:
+  statement: >-
+    The bridge is not sourcing prices from the frontend checkout payload. It recalculates every cart line from the live Woo product record using wc_get_product(product_id)->get_price() in both quote and order creation.
+    As a result, any affected breakfast product whose Woo price is currently 0 will be saved into the Woo order as 0. The code does not contain a breakfast-specific pricing override.
+  confidence: medium
+  evidence:
+    - file: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:91
+      detail: cartSubtotal() loads each product with wc_get_product() and adds get_price() * quantity.
+    - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:95
+      detail: add_product() is called with explicit subtotal and total derived from product->get_price() * quantity.
+    - file: zip/src/lib/cateringCart.ts
+      location: zip/src/lib/cateringCart.ts:411
+      detail: buildBridgeCheckoutCartLines() emits product_id, quantity, line_type, and optional configuration only; no price fields exist.
+    - file: zip/components/CheckoutDrawer.tsx
+      location: zip/components/CheckoutDrawer.tsx:584
+      detail: checkout POST sends cart_lines exactly as built above; no explicit line totals are posted.
+
+findings:
+  order_line_item_creation:
+    route:
+      file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:32
+      detail: POST /wp-json/bulwar/v1/checkout/orders is the sole order-submit route in the plugin.
+    controller:
+      file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:107
+      detail: CheckoutController::orders validates the JSON body and hands it to OrderService::create().
+    writer:
+      file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:17
+      detail: OrderService::create() calls wc_create_order(), then order->add_product() for each cart line, then calculate_totals(false).
+  price_contract:
+    explicit_line_prices_from_client: false
+    variation_ids_from_client: false
+    detail: >-
+      The client contract contains product_id, quantity, client_line_id, line_type, and optional configuration only.
+      No line subtotal, line total, unit price, or variation_id fields are present anywhere in the active checkout payload.
+  breakfast_vs_normal:
+    simple_breakfast_product_88:
+      file: zip/src/data/cateringWielkanocny.json
+      location: zip/src/data/cateringWielkanocny.json:9
+      detail: Product 88 ("Sniadanie Wielkanocne dla 2 osob", cena 129) is a normal JSON-backed simple product.
+    simple_breakfast_mapping:
+      file: zip/src/data/cateringWielkanocny.ts
+      location: zip/src/data/cateringWielkanocny.ts:128
+      detail: normalizeProduct() maps raw JSON products, including product 88, into the standard simple product contract with id and price.
+    special_shell_product_53:
+      file: zip/src/data/cateringSpecialMenuFor2.ts
+      location: zip/src/data/cateringSpecialMenuFor2.ts:79
+      detail: The configurable special menu uses shell product id 53 with frontend seed unitPrice 169 and line_type special_menu_for_2.
+    actual_bridge_difference:
+      file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:100
+      detail: special_menu_for_2 differs only by extra order-item meta written after add_product(); pricing still uses product->get_price() before that branch.
+    sync_scope_difference:
+      file: SCRIPTS/sync_catering_category.js
+      location: SCRIPTS/sync_catering_category.js:629
+      detail: Normal JSON-backed products are upserted with Woo regular_price/price from cena, but the special shell product 53 is outside this sync flow and is maintained separately.
+  direct_vs_store_api:
+    detail: >-
+      The plugin creates orders through WooCommerce PHP APIs directly (wc_create_order + add_product).
+      No Store API payload builder was found in the examined bridge source.
+
+files_analyzed:
+  - file: OrderService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+    purpose: Creates Woo orders and adds Woo line items and special-menu meta.
+    key_elements:
+      - element: OrderService::create
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:17
+        description: Main order writer; creates the order, adds line items, fees, metadata, and calculates totals.
+      - element: line item price assignment
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:95
+        description: Passes explicit subtotal and total to add_product based on product->get_price() * quantity.
+      - element: addSpecialMenuFor2Meta
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:138
+        description: Adds configuration metadata only for special_menu_for_2 after the priced line item already exists.
+    language: PHP
+    lines: 229
+  - file: QuoteService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+    purpose: Recomputes cart subtotal and delivery fee before order submission.
+    key_elements:
+      - element: QuoteService::quote
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:18
+        description: Creates the delivery quote token and authoritative subtotal/fee response.
+      - element: cartSubtotal
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:91
+        description: Totals cart lines from wc_get_product(product_id)->get_price().
+    language: PHP
+    lines: 301
+  - file: CheckoutController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+    purpose: REST controller for checkout endpoints.
+    key_elements:
+      - element: CheckoutController::orders
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:107
+        description: Validates the final checkout payload and delegates order creation to OrderService.
+    language: PHP
+    lines: 172
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Registers the bridge REST endpoints.
+    key_elements:
+      - element: orders route registration
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:32
+        description: Registers POST /checkout/orders.
+    language: PHP
+    lines: 38
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Sends the frontend checkout request to the bridge.
+    key_elements:
+      - element: order submit fetch
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:584
+        description: Posts final checkout JSON to /wp-json/bulwar/v1/checkout/orders.
+      - element: cart_lines payload inclusion
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:611
+        description: Sends cart_lines without explicit prices.
+    language: TypeScript
+    lines: 1001
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Builds the bridge cart-line contract from frontend cart state.
+    key_elements:
+      - element: buildSpecialMenuFor2CartLine
+        type: function
+        location: zip/src/lib/cateringCart.ts:221
+        description: Builds the special shell-product cart line using baseProductId 53 and frontend unitPrice 169 for UI only.
+      - element: buildBridgeCheckoutCartLines
+        type: function
+        location: zip/src/lib/cateringCart.ts:411
+        description: Serializes cart lines into the bridge payload with product_id, quantity, line_type, and optional configuration only.
+    language: TypeScript
+    lines: 432
+  - file: cateringSpecialMenuFor2.ts
+    path: zip/src/data/cateringSpecialMenuFor2.ts
+    purpose: Declares the special-menu shell product identity and frontend display price.
+    key_elements:
+      - element: cateringSpecialMenuFor2Seed
+        type: variable
+        location: zip/src/data/cateringSpecialMenuFor2.ts:79
+        description: Declares shell product id 53 and frontend unitPrice 169.
+      - element: resolveSpecialMenuFor2UnitPrice
+        type: function
+        location: zip/src/data/cateringSpecialMenuFor2.ts:180
+        description: Returns the seed shellProduct unitPrice for frontend cart math and display.
+    language: TypeScript
+    lines: 254
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Normalizes JSON-backed catering products, including the breakfast product 88.
+    key_elements:
+      - element: normalizeProduct
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:128
+        description: Maps raw JSON product_id and cena into the normal product contract used by the simple cart path.
+    language: TypeScript
+    lines: 220
+  - file: cateringWielkanocny.json
+    path: zip/src/data/cateringWielkanocny.json
+    purpose: Stores the JSON-backed breakfast product record.
+    key_elements:
+      - element: breakfast product 88
+        type: variable
+        location: zip/src/data/cateringWielkanocny.json:9
+        description: Defines product 88 with name Sniadanie Wielkanocne dla 2 osob and cena 129.
+    language: JSON
+    lines: 412
+  - file: sync_catering_category.js
+    path: SCRIPTS/sync_catering_category.js
+    purpose: Syncs normal JSON-backed catering products into WooCommerce.
+    key_elements:
+      - element: bulwar_sync_upsert_product
+        type: function
+        location: SCRIPTS/sync_catering_category.js:629
+        description: Writes Woo regular_price and price from normalized cena for synced products.
+      - element: Woo price sync write block
+        type: pattern
+        location: SCRIPTS/sync_catering_category.js:656
+        description: Sets regular_price and price on synced products.
+    language: JavaScript/PHP worker string
+    lines: 922
+  - file: add_special_product.php
+    path: SCRIPTS/add_special_product.php
+    purpose: One-off helper that creates the special shell product 53 outside the normal category sync path.
+    key_elements:
+      - element: special shell product setup
+        type: pattern
+        location: SCRIPTS/add_special_product.php:18
+        description: Creates Obiad Wielkanocny dla 2 osob and sets both price and regular_price to 169.
+    language: PHP
+    lines: 37
+
+patterns_found:
+  - category: architecture
+    pattern: Direct Woo order creation inside the bridge
+    description: The plugin does not assemble a Store API order payload; it creates Woo orders directly in PHP.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:55
+        snippet: $order = wc_create_order();
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:95
+        snippet: $itemId = $order->add_product($product, $quantity, [
+    prevalence: common
+  - category: pricing
+    pattern: Server-authoritative price recomputation from Woo product records
+    description: Both quoting and order creation recompute prices from wc_get_product()->get_price(), not from frontend payload values.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:104
+        snippet: $price = (float) $product->get_price();
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:96
+        snippet: 'subtotal' => (float) $product->get_price() * $quantity,
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:97
+        snippet: 'total' => (float) $product->get_price() * $quantity,
+    prevalence: common
+  - category: contract
+    pattern: Frontend payload excludes line-item prices
+    description: The active checkout contract sends only identifiers and quantities for pricing-sensitive lines.
+    examples:
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:411
+        snippet: export const buildBridgeCheckoutCartLines = (
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:611
+        snippet: cart_lines: cartLinesPayload,
+      - file: wordpress-plugin/bulwar-bridge/docs/contracts.md
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:110
+        snippet: Client-submitted prices are intentionally excluded from the frozen contract.
+    prevalence: common
+  - category: structure
+    pattern: special_menu_for_2 changes metadata, not pricing logic
+    description: The special-menu line type only adds configuration metadata after the item is already priced and added to the order.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:100
+        snippet: if ($itemId && $lineType === 'special_menu_for_2') {
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:138
+        snippet: private function addSpecialMenuFor2Meta($item, $config): void
+    prevalence: occasional
+  - category: data_sync
+    pattern: Normal JSON products and the special shell product are maintained by different paths
+    description: JSON-backed products are synced with price writes; shell product 53 is created outside that sync.
+    examples:
+      - file: SCRIPTS/sync_catering_category.js
+        location: SCRIPTS/sync_catering_category.js:656
+        snippet: $price = (string) $normalized['cena'];
+      - file: SCRIPTS/sync_catering_category.js
+        location: SCRIPTS/sync_catering_category.js:661
+        snippet: $wooProduct->set_regular_price($price);
+      - file: SCRIPTS/add_special_product.php
+        location: SCRIPTS/add_special_product.php:22
+        snippet: $product_obj->set_price('169');
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CheckoutDrawer submit flow
+      responsibility: Posts the final checkout request to the bridge.
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: domain produces bridge input JSON
+    - component: Cart-line serializer
+      responsibility: Converts frontend cart state into the canonical bridge cart_lines contract.
+      location: zip/src/lib/cateringCart.ts
+      relationship_to_domain: domain produces pricing inputs used by the bridge
+    - component: Orders REST controller
+      responsibility: Validates request shape and invokes the order writer.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship_to_domain: domain entrypoint for order creation
+    - component: OrderService
+      responsibility: Creates the Woo order, line items, fee item, and order metadata.
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship_to_domain: domain writes the final Woo line items
+    - component: QuoteService
+      responsibility: Recomputes subtotal and delivery fee before final submit.
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+      relationship_to_domain: domain uses the same price source earlier in checkout
+    - component: Category sync worker
+      responsibility: Keeps normal JSON-backed Woo product prices aligned with frontend category data.
+      location: SCRIPTS/sync_catering_category.js
+      relationship_to_domain: adjacent maintenance path for normal products only
+  interfaces_used_by_domain:
+    - interface: POST /wp-json/bulwar/v1/checkout/orders
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:32
+      usage_pattern: Final submit carrying customer data, fulfillment tokens, and cart_lines
+    - interface: POST /wp-json/bulwar/v1/checkout/delivery-quote
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:18
+      usage_pattern: Recomputes cart subtotal from the same Woo price source before order creation
+  data_flow_involving_domain: >-
+    CateringWielkanocnyPage owns cart state and builds cartLinesPayload via buildBridgeCheckoutCartLines.
+    CheckoutDrawer POSTs that payload to /checkout/orders.
+    CheckoutController::orders delegates to OrderService::create.
+    OrderService loads each Woo product by product_id and sets order line subtotal/total from product->get_price() * quantity before saving the Woo order.
+  key_relationships_to_domain:
+    - from: zip/src/lib/cateringCart.ts
+      to: zip/components/CheckoutDrawer.tsx
+      relationship: supplies cart_lines payload
+    - from: zip/components/CheckoutDrawer.tsx
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship: calls REST endpoint
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      to: WooCommerce order/product APIs
+      relationship: composes
+    - from: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php
+      to: WooCommerce product APIs
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - TypeScript
+    - JSON
+    - JavaScript
+  frameworks_used_in_domain:
+    - name: WordPress REST API
+      usage_in_domain: exposes /wp-json/bulwar/v1 checkout endpoints
+    - name: WooCommerce PHP API
+      usage_in_domain: creates orders with wc_create_order, wc_get_product, add_product, and fee/order meta APIs
+    - name: React
+      usage_in_domain: builds cart state and submits checkout payload from the frontend
+  libraries_used_in_domain:
+    - name: WooCommerce core
+      purpose_in_domain: authoritative product and order model
+    - name: Vite/React app code
+      purpose_in_domain: frontend checkout payload builder
+  external_apis_used_in_domain:
+    - name: none for line-item creation path
+      integration_point: order creation path itself uses local Woo APIs; only delivery quotes call distance/geocoding providers
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Frontend cart lines use snake_case wire fields such as client_line_id, line_type, and product_id.
+    Special-product code uses SPECIAL_MENU_FOR_2 constants and line_type special_menu_for_2.
+  structure_of_domain: >-
+    Frontend keeps display prices in cart state, but the bridge treats the browser as untrusted and recomputes server-side totals from Woo product data.
+  error_handling_in_domain: >-
+    CheckoutController converts thrown RuntimeException codes like UNKNOWN_PRODUCT, QUOTE_EXPIRED, and SLOT_UNAVAILABLE into REST errors, but there is no dedicated guard for zero-priced paid items.
+  testing_in_domain: >-
+    The plugin has tests around availability and Make webhook formatting, but no focused OrderService or QuoteService tests asserting price behavior for simple breakfast products or the special shell product.
+  documentation_in_domain: >-
+    docs/contracts.md explicitly states that client-submitted prices are excluded and the bridge resolves price server-side.
+
+related_dependencies:
+  internal:
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: builds the cart_lines input contract
+      direction: inbound
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: triggers the order submit request
+      direction: inbound
+    - component: SCRIPTS/sync_catering_category.js
+      relationship_to_domain: maintains Woo price data for normal JSON-backed products
+      direction: bidirectional
+    - component: SCRIPTS/add_special_product.php
+      relationship_to_domain: one-off maintainer for special shell product 53
+      direction: inbound
+  external:
+    - name: WooCommerce product catalog
+      purpose_for_domain: source of truth for get_price() during quote and order creation
+    - name: WooCommerce order model
+      purpose_for_domain: persistence layer for final line items and totals
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: price authority
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/QuoteService.php:91
+      concern: The bridge correctly distrusts client totals, but that makes Woo product data the sole pricing authority for paid lines.
+    - area: order write path
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:95
+      concern: Zero or stale Woo prices will be persisted silently because the bridge does not reject nonpositive paid prices.
+  authentication_patterns_in_domain: Public REST routes rely on payload validation, token checks, and server-side recomputation rather than logged-in user auth.
+  authorization_patterns_in_domain: No per-user authorization gate exists on checkout endpoints; safety depends on server-side validation and authoritative product data.
+  data_validation_in_domain: Request shape, quote tokens, slot tokens, product existence, and quantity are validated, but price reasonableness is not validated separately.
+
+testing_patterns:
+  framework: ad hoc PHP test files plus workspace search evidence
+  coverage_areas:
+    - availability/slot logic
+    - Make webhook payload formatting
+    - frontend cart serialization and display flows
+  test_organization: Tests exist under wordpress-plugin/bulwar-bridge/tests and zip/src/*.test.ts(x), but price-path assertions for checkout order creation were not found.
+  mock_patterns:
+    - fake order/item objects in MakeWebhookNotifierTest
+    - frontend unit tests around cart serialization and special menu config
+
+fix_candidates:
+  - candidate: Correct the live Woo price on the actually affected product id and keep Woo as the single pricing authority
+    scope: Works for either simple breakfast product 88 or shell product 53
+    why_minimal: No bridge logic change is required because the bridge is already intentionally reading Woo price data
+    risks:
+      - Does not prevent future silent zero-priced orders if another product record drifts to 0
+      - Requires first confirming which product id is affected in live orders
+  - candidate: Add a bridge-side guard that rejects paid cart lines whose resolved Woo price is <= 0 before quote creation and before order write
+    scope: QuoteService::cartSubtotal and OrderService::create
+    why_minimal: Small localized code change in the existing pricing path
+    risks:
+      - Would also reject any intentionally free products unless those are explicitly allowed
+      - Converts a silent pricing bug into a checkout failure, which is safer but operationally noisier
+  - candidate: Special-case special_menu_for_2 to use a server-owned bridge config price instead of shell product get_price()
+    scope: Only relevant if the affected 0-priced line is shell product 53
+    why_minimal: Narrow code path change limited to special_menu_for_2
+    risks:
+      - Introduces a second source of truth separate from Woo catalog data and normal sync scripts
+      - Leaves simple breakfast product 88 unaffected if that is the real failing product
+      - Requires matching the same override in QuoteService and OrderService to avoid subtotal/order drift
+
+open_questions:
+  - question: Which product id is actually appearing with 0 PLN in the live Woo order items: simple breakfast product 88, special shell product 53, or both?
+    context: The code path is clear, but the workspace does not contain the current live Woo product records or the failing order export.
+  - question: What is the current live Woo get_price() value for product 88 and product 53?
+    context: That single fact determines whether the root cause is catalog data drift or a need for a targeted bridge override.
+  - question: Has the normal category sync been run after product 88 was added to the JSON data?
+    context: Product 88 is JSON-backed and should inherit its price via sync, unlike shell product 53 which is outside that flow.
+
+gaps:
+  - area: live catalog state
+    description: No local export of the current live Woo product objects for ids 88 and 53 was available in the examined workspace.
+    impact: Prevents proving whether the bad line is caused by simple-product sync drift, shell-product drift, or both.
+  - area: direct order-service tests
+    description: No PHP tests were found that assert QuoteService and OrderService behavior for zero-priced breakfast/simple/special products.
+    impact: The safest code-level guard can be identified, but its regression surface is not currently covered by automated tests.
+  - area: failing order evidence
+    description: No failing Woo order snapshot or line-item export was present showing the exact product id and stored totals for the bad breakfast line.
+    impact: Root-cause confidence remains medium rather than high even though the responsible pricing path is identified.

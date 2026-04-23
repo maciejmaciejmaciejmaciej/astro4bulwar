@@ -1,0 +1,329 @@
+plan_id: catering-wielkanocny-breakfast-20260326
+objective: Determine exactly how checkout/cart naming currently works for catering-wielkanocny products and what minimal code changes are needed so that if a product lacks zespolona_nazwa_z_opisem, checkout uses nazwa_produktu instead.
+focus_area: catering_checkout_naming
+created_at: 2026-03-26T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Simple catering cart lines persist a single displayName generated in buildSimpleCartLine.
+  - For simple products, buildSimpleCartLine currently always reads product.combinedText, so split-mode products produce an undefined cart/checkout name.
+  - Checkout order submission sends only product_id and quantity to the bridge, but the drawer UI and checkout success snapshot both display item.name copied from cartItems.
+  - Current Easter data already contains a split-mode product (Barszcz bardzo czerwony) with nazwa_produktu and opis_produktu and no zespolona_nazwa_z_opisem.
+  - If future data may omit zespolona_nazwa_z_opisem and also omit opis_produktu, normalizeProduct currently throws before checkout can load.
+
+research_metadata:
+  methodology: Hybrid retrieval using semantic_search and grep_search, followed by targeted read_file examination of cart, page, checkout drawer, snapshot, UI list, tests, and source data.
+  scope: Focused on catering-wielkanocny cart and checkout naming path from normalized data through cart line creation, drawer rendering, checkout submission, and post-checkout snapshot.
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Builds and serializes catering cart lines, drawer items, and checkout payload lines.
+    key_elements:
+      - element: buildSimpleCartLine
+        type: function
+        location: zip/src/lib/cateringCart.ts:201
+        description: Creates simple cart lines and currently sets displayName from product.combinedText only.
+      - element: buildCheckoutDrawerItems
+        type: function
+        location: zip/src/lib/cateringCart.ts:368
+        description: Converts cart state into drawer display items and copies line.displayName into item.name.
+      - element: buildBridgeCheckoutCartLines
+        type: function
+        location: zip/src/lib/cateringCart.ts:407
+        description: Builds bridge payload lines using product IDs and quantities only, without any product name.
+    language: TypeScript
+    lines: 425
+  - file: cateringWielkanocny.ts
+    path: zip/src/data/cateringWielkanocny.ts
+    purpose: Normalizes raw Easter catering JSON into combined or split product contracts.
+    key_elements:
+      - element: normalizeProduct
+        type: function
+        location: zip/src/data/cateringWielkanocny.ts:128
+        description: Returns split-mode products when nazwa_produktu and opis_produktu exist together; otherwise requires zespolona_nazwa_z_opisem.
+      - element: CateringProductContract
+        type: type
+        location: zip/src/data/cateringWielkanocny.ts:45
+        description: Union of combined and split product contracts used by cart and UI code.
+    language: TypeScript
+    lines: 196
+  - file: cateringWielkanocny.json
+    path: zip/src/data/cateringWielkanocny.json
+    purpose: Raw source data for Easter catering products.
+    key_elements:
+      - element: Barszcz bardzo czerwony entry
+        type: data
+        location: zip/src/data/cateringWielkanocny.json:41
+        description: Uses nazwa_produktu and opis_produktu without zespolona_nazwa_z_opisem, proving split-mode data is active in current menu.
+    language: JSON
+    lines: 389
+  - file: CateringWielkanocnyPage.tsx
+    path: zip/src/pages/CateringWielkanocnyPage.tsx
+    purpose: Wires normalized catering products into cart state and checkout drawer props.
+    key_elements:
+      - element: handleAddToCart
+        type: function
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:153
+        description: Looks up the normalized product and passes it to addSimpleProductLine.
+      - element: cartItems/cartLinesPayload derivation
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyPage.tsx:184
+        description: Uses buildCheckoutDrawerItems and buildBridgeCheckoutCartLines as the only cart/checkout data sources for the drawer.
+    language: TSX
+    lines: 260
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Renders cart summary, submits checkout, and persists post-checkout success snapshot.
+    key_elements:
+      - element: renderSimpleCartItem
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:180
+        description: Displays item.name in the cart summary UI.
+      - element: onSubmit
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:558
+        description: Sends cart_lines payload to the bridge, then copies cartItems[].name into the stored success snapshot.
+    language: TSX
+    lines: 995
+  - file: checkoutSuccessSnapshot.ts
+    path: zip/src/lib/checkoutSuccessSnapshot.ts
+    purpose: Stores and formats post-checkout item summaries.
+    key_elements:
+      - element: CheckoutSuccessSnapshotItem.name
+        type: type
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:7
+        description: Stored item name field used on the thank-you flow.
+      - element: buildCheckoutSuccessCopyText
+        type: function
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:155
+        description: Renders the persisted item.name into the textual order summary.
+    language: TypeScript
+    lines: 300
+  - file: CheckoutSuccessConfirmation.tsx
+    path: zip/src/components/CheckoutSuccessConfirmation.tsx
+    purpose: Displays stored checkout success snapshot items.
+    key_elements:
+      - element: renderReadonlyCartItem
+        type: function
+        location: zip/src/components/CheckoutSuccessConfirmation.tsx:9
+        description: Renders item.name from the success snapshot in the thank-you UI.
+    language: TSX
+    lines: 140
+  - file: CateringProductListAlt.tsx
+    path: zip/src/components/sections/CateringProductListAlt.tsx
+    purpose: Renders product cards from normalized product contracts.
+    key_elements:
+      - element: split/combined UI branching
+        type: pattern
+        location: zip/src/components/sections/CateringProductListAlt.tsx:106
+        description: Uses product.productName for split-mode products and combinedText for combined-mode products.
+    language: TSX
+    lines: 147
+  - file: ProductItemAlt.tsx
+    path: zip/src/components/sections/ProductItemAlt.tsx
+    purpose: Displays a single product card before add-to-cart.
+    key_elements:
+      - element: isStructuredProduct branch
+        type: pattern
+        location: zip/src/components/sections/ProductItemAlt.tsx:50
+        description: Correctly renders split-mode products with productName and productDescriptionHtml.
+    language: TSX
+    lines: 156
+  - file: cateringCart.test.ts
+    path: zip/src/lib/cateringCart.test.ts
+    purpose: Covers cart migration and aggregation behavior.
+    key_elements:
+      - element: existing cart tests
+        type: testing
+        location: zip/src/lib/cateringCart.test.ts:1
+        description: No current assertion covers naming fallback for split-mode products.
+    language: TypeScript
+    lines: 92
+  - file: CateringProductListAlt.test.tsx
+    path: zip/src/components/sections/CateringProductListAlt.test.tsx
+    purpose: Verifies split-mode product rendering on the catalog page.
+    key_elements:
+      - element: split product fixture
+        type: testing
+        location: zip/src/components/sections/CateringProductListAlt.test.tsx:7
+        description: Confirms the UI already handles split-mode products separately from combined text.
+    language: TSX
+    lines: 33
+
+patterns_found:
+  - category: architecture
+    pattern: Cart naming is derived once and then propagated downstream.
+    description: A simple cart line stores displayName, then drawer items and success snapshot reuse it rather than recomputing from product data.
+    examples:
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:201
+        snippet: displayName: product.combinedText
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:377
+        snippet: name: line.displayName
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:623
+        snippet: name: item.name
+    prevalence: common
+  - category: structure
+    pattern: Product contracts are split between combined-text and split-name modes.
+    description: Product cards branch on contentMode and render productName/productDescriptionHtml for split products.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:158
+        snippet: if (productName !== null || productDescriptionHtml !== null)
+      - file: zip/src/components/sections/CateringProductListAlt.tsx
+        location: zip/src/components/sections/CateringProductListAlt.tsx:129
+        snippet: productName={isStructuredProduct(product) ? product.productName : undefined}
+    prevalence: common
+  - category: error_handling
+    pattern: Data normalization rejects partial split data.
+    description: normalizeProduct throws when only one of nazwa_produktu or opis_produktu is present.
+    examples:
+      - file: zip/src/data/cateringWielkanocny.ts
+        location: zip/src/data/cateringWielkanocny.ts:159
+        snippet: if (productName === null || productDescriptionHtml === null) { throw new Error(...) }
+    prevalence: occasional
+  - category: testing
+    pattern: Existing tests cover split rendering and cart aggregation, but not split-name cart naming.
+    description: Tests do not assert the cart/display name chosen for split-mode products.
+    examples:
+      - file: zip/src/lib/cateringCart.test.ts
+        location: zip/src/lib/cateringCart.test.ts:42
+        snippet: simple products still aggregate into one predictable line per product
+      - file: zip/src/components/sections/CateringProductListAlt.test.tsx
+        location: zip/src/components/sections/CateringProductListAlt.test.tsx:7
+        snippet: contentMode: "split"
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: cateringWielkanocnyCategories
+      responsibility: Supplies normalized product contracts to the page.
+      location: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: domain depends on this
+    - component: CateringWielkanocnyPage
+      responsibility: Connects product catalog interactions to cart state and checkout drawer props.
+      location: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: domain depends on this
+    - component: CheckoutDrawer
+      responsibility: Shows cart items, posts checkout requests, and writes the success snapshot.
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: CheckoutSuccessConfirmation
+      responsibility: Displays persisted checkout item names after order placement.
+      location: zip/src/components/CheckoutSuccessConfirmation.tsx
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: CateringProductContract
+      location: zip/src/data/cateringWielkanocny.ts
+      usage_pattern: Union type passed from data normalization into cart creation and product list rendering.
+    - interface: CateringCartDisplayItem
+      location: zip/src/lib/cateringCart.ts
+      usage_pattern: Drawer and success snapshot UI consume item.name from this structure.
+    - interface: BridgeCheckoutCartLine
+      location: zip/src/lib/cateringCart.ts
+      usage_pattern: Checkout API payload uses IDs and quantities only.
+  data_flow_involving_domain: Raw Easter JSON is normalized into combined or split product contracts, the page adds selected products into cart state, simple cart lines store a displayName, drawer items copy that displayName into name, checkout submits only cart_lines by ID/quantity, and the local success snapshot copies cartItems[].name for the thank-you UI.
+  key_relationships_to_domain:
+    - from: zip/src/data/cateringWielkanocny.ts
+      to: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/src/lib/cateringCart.ts
+      relationship: calls
+    - from: zip/src/pages/CateringWielkanocnyPage.tsx
+      to: zip/components/CheckoutDrawer.tsx
+      relationship: composes
+    - from: zip/src/lib/cateringCart.ts
+      to: zip/components/CheckoutDrawer.tsx
+      relationship: supplies display item names and checkout payload lines
+    - from: zip/components/CheckoutDrawer.tsx
+      to: zip/src/lib/checkoutSuccessSnapshot.ts
+      relationship: calls
+    - from: zip/src/lib/checkoutSuccessSnapshot.ts
+      to: zip/src/components/CheckoutSuccessConfirmation.tsx
+      relationship: supplies persisted item names
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - JSON
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: Page, drawer, and product card rendering.
+  libraries_used_in_domain:
+    - name: react-hook-form
+      purpose_in_domain: Checkout form state and validation wiring in the drawer.
+    - name: zod
+      purpose_in_domain: Checkout form schema validation.
+    - name: react-router-dom
+      purpose_in_domain: Navigation to the thank-you page after successful checkout.
+    - name: motion/react
+      purpose_in_domain: Drawer animation.
+  external_apis_used_in_domain:
+    - name: Bulwar bridge checkout endpoints
+      integration_point: zip/components/CheckoutDrawer.tsx posts cart_lines to /wp-json/bulwar/v1/checkout/slots, /delivery-quote, and /orders.
+
+related_conventions:
+  naming_patterns_in_domain: Combined-mode products use combinedText; split-mode products use productName and productDescriptionHtml; cart and snapshot layers use displayName/name.
+  structure_of_domain: Data normalization is isolated in src/data, cart transformations in src/lib, page wiring in src/pages, and checkout UI in components.
+  error_handling_in_domain: Invalid product data is rejected early during normalization; checkout network errors surface as user-facing messages in the drawer.
+  testing_in_domain: Lightweight node:test coverage exists for cart transformations and separate rendering tests exist for split-mode product cards.
+  documentation_in_domain: No dedicated inline domain documentation beyond type definitions and naming.
+
+related_dependencies:
+  internal:
+    - component: zip/src/data/cateringWielkanocny.ts
+      relationship_to_domain: provides normalized source products
+      direction: outbound
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: consumes cart helpers and passes outputs to checkout drawer
+      direction: inbound
+    - component: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: consumes cart display items and bridge payload lines
+      direction: inbound
+    - component: zip/src/lib/checkoutSuccessSnapshot.ts
+      relationship_to_domain: persists displayed names after checkout
+      direction: inbound
+  external:
+    - name: react-hook-form
+      purpose_for_domain: checkout form state
+    - name: zod
+      purpose_for_domain: checkout validation
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: checkout submission payload
+      location: zip/components/CheckoutDrawer.tsx:584
+      concern: Payload relies on product_id and quantity, so naming changes in the frontend do not alter backend order identity.
+  authentication_patterns_in_domain: No frontend auth pattern in the examined naming path.
+  authorization_patterns_in_domain: No frontend authorization pattern in the examined naming path.
+  data_validation_in_domain: Product source data is strictly validated by normalizeProduct before rendering.
+
+testing_patterns:
+  framework: node:test plus React server rendering tests
+  coverage_areas:
+    - cart migration and aggregation
+    - special menu distinctness
+    - split product rendering in catalog cards
+  test_organization: Library tests live beside src/lib files and rendering tests live beside component files.
+  mock_patterns:
+    - static fixtures for normalized products
+    - in-memory cart state construction
+
+open_questions:
+  - question: Should products with nazwa_produktu but no opis_produktu be accepted, or should the fallback apply only to already valid split-mode products?
+    context: The requested behavior mentions missing zespolona_nazwa_z_opisem specifically, but current normalization rejects partial split data before checkout can run.
+  - question: Should fallback naming also be reused anywhere else product.combinedText may be assumed in future cart-related helpers?
+    context: The current issue is centered in buildSimpleCartLine, but the convention is implicit rather than codified.
+
+gaps:
+  - area: backend order presentation
+    description: The bridge payload contains no item names, so this research did not establish how WooCommerce or the bridge labels the server-side order lines after product_id resolution.
+    impact: Low for the requested frontend checkout/cart naming change; backend naming likely remains unaffected.

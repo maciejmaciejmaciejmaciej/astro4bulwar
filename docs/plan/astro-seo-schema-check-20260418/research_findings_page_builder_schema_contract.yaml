@@ -1,0 +1,341 @@
+plan_id: astro-seo-schema-check-20260418
+objective: >-
+  Determine whether the user page schema changed as part of the recent Astro SEO
+  implementation, focusing on astro-site runtime schema/parser files and related
+  page-builder documentation artifacts.
+focus_area: page_builder_schema_contract
+created_at: 2026-04-18
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - The current workspace diff changes the Astro runtime contract for top-level `page_builder_schema.seo` from a loose object to a typed optional SEO object in astro-site/src/lib/types.ts.
+  - The WordPress fetch/parser path in astro-site/src/lib/wordpress.ts also became stricter: `seo` is no longer coerced through `normalizeRecord`, so malformed non-object SEO payloads that previously degraded to `{}` now fail validation.
+  - Core page-builder structure did not change: `version`, `page`, `sections`, `meta`, and `build` remain in the same positions, and no new required top-level field was added.
+  - The concrete example render schema and AI schema files under docs/plan/astro-wordpress-page-builder were added as new docs artifacts, but the example render schema still does not contain a `seo` key.
+  - Based on repo examples, existing WordPress `page_builder_schema` content likely does not need broad migration unless live pages already store legacy arbitrary SEO payloads under `seo`.
+
+research_metadata:
+  methodology: >-
+    Medium-complexity hybrid retrieval: workspace file search for Astro schema and
+    docs artifacts, targeted reads of types/parser/spec files, grep for SEO and
+    page_builder_schema usage, git status/diff/log inspection for working-tree and
+    history context, and focused checks for example schema payload contents.
+  scope: >-
+    Focused on astro-site/src/lib/types.ts, astro-site/src/lib/wordpress.ts,
+    astro-site/src/lib/pageBuilder.ts, astro-site/src/lib/types.test.ts, and the
+    docs/plan/astro-wordpress-page-builder schema/spec/example files relevant to
+    page_builder_schema and page_builder_schema_for_ai.
+  confidence: high
+  coverage: 93
+  decision_blockers: 0
+  research_blockers: 1
+
+files_analyzed:
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Defines the Astro-side Zod contract for page_builder_schema and exported schema types.
+    key_elements:
+      - element: pageSeoSchema
+        type: pattern
+        location: astro-site/src/lib/types.ts:96
+        description: Introduces a typed optional SEO object with title, description, canonical, robots, og, and noindex.
+      - element: pageBuilderSchema.seo
+        type: pattern
+        location: astro-site/src/lib/types.ts:115
+        description: Changes top-level seo from a loose record to pageSeoSchema.optional().
+      - element: optionalSeoStringSchema
+        type: pattern
+        location: astro-site/src/lib/types.ts:79
+        description: Normalizes blank SEO strings to undefined before validation.
+      - element: ResolvedPageSeo
+        type: type
+        location: astro-site/src/lib/types.ts:127
+        description: Adds a typed resolved SEO shape for downstream layout/page rendering.
+    language: TypeScript
+    lines: 131
+  - file: wordpress.ts
+    path: astro-site/src/lib/wordpress.ts
+    purpose: Fetches page_builder_schema from WordPress and normalizes payloads before Zod parsing.
+    key_elements:
+      - element: normalizeSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:169
+        description: Still normalizes top-level meta/build and section meta, but now passes seo through as-is instead of coercing it into a generic object.
+      - element: seo normalization branch
+        type: pattern
+        location: astro-site/src/lib/wordpress.ts:184
+        description: Uses schema.seo ?? undefined instead of normalizeRecord(schema.seo), making malformed non-object SEO payloads visible to Zod validation.
+      - element: fetchWordPressPageBuilderSchema
+        type: function
+        location: astro-site/src/lib/wordpress.ts:198
+        description: Parses the normalized schema through pageBuilderSchema.parse().
+    language: TypeScript
+    lines: 213
+  - file: pageBuilder.ts
+    path: astro-site/src/lib/pageBuilder.ts
+    purpose: Builds the static Astro page object from the parsed WordPress schema.
+    key_elements:
+      - element: buildStaticPage
+        type: function
+        location: astro-site/src/lib/pageBuilder.ts:5
+        description: Resolves section data only; it does not reshape top-level page seo or other page metadata.
+    language: TypeScript
+    lines: 19
+  - file: types.test.ts
+    path: astro-site/src/lib/types.test.ts
+    purpose: Regression coverage for the new typed SEO contract.
+    key_elements:
+      - element: blank optional SEO normalization test
+        type: testing
+        location: astro-site/src/lib/types.test.ts:16
+        description: Confirms blank string SEO fields normalize to undefined.
+      - element: malformed structured SEO rejection test
+        type: testing
+        location: astro-site/src/lib/types.test.ts:45
+        description: Confirms malformed SEO object shapes are rejected by pageBuilderSchema.
+    language: TypeScript
+    lines: 50
+  - file: page-builder-schema-spec.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+    purpose: Untracked documentation draft describing the canonical page_builder_schema storage contract.
+    key_elements:
+      - element: top-level optional seo field
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:67
+        description: Documents seo as an optional top-level field in the conceptual schema.
+      - element: example full schema
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:313
+        description: Shows the full schema structure, but the included example remains focused on page and sections rather than a populated SEO payload.
+    language: Markdown
+    lines: 454
+  - file: testowa-blueprint.page_builder_schema.json
+    path: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+    purpose: Concrete example render-oriented page_builder_schema payload.
+    key_elements:
+      - element: top-level page schema example
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:1
+        description: Example includes version, page, and sections, but no top-level seo object.
+    language: JSON
+    lines: 162
+  - file: testowa-blueprint.page_builder_schema_for_ai.json
+    path: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json
+    purpose: Concrete AI-oriented companion payload example.
+    key_elements:
+      - element: AI schema example root
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json:1
+        description: Companion AI schema remains editing-oriented and separate from Astro runtime consumption.
+    language: JSON
+    lines: 98
+  - file: plan.yaml
+    path: docs/plan/astro-wordpress-page-builder/plan.yaml
+    purpose: Untracked plan draft for the Astro SEO phase.
+    key_elements:
+      - element: plan objective
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/plan.yaml:3
+        description: States that the SEO phase is about typed SEO contract, WordPress payload normalization, page-level SEO resolution, and head rendering.
+      - element: typed SEO contract task
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/plan.yaml:167
+        description: Explicitly frames replacing loose pageBuilderSchema.seo with a typed SEO schema as the first task.
+      - element: normalization task
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/plan.yaml:226
+        description: Explicitly frames WordPress-side pre-parse SEO normalization as a separate runtime parser task.
+    language: YAML
+    lines: 403
+
+patterns_found:
+  - category: structure
+    pattern: Top-level SEO contract tightened from loose object to typed optional object
+    description: The Astro-side page_builder_schema contract now constrains `seo` to a known nested object shape instead of accepting any record of unknown keys.
+    examples:
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:115
+        snippet: seo: pageSeoSchema.optional()
+      - file: docs/plan/astro-wordpress-page-builder/plan.yaml
+        location: docs/plan/astro-wordpress-page-builder/plan.yaml:170
+        snippet: Zastapic luzne pole seo w pageBuilderSchema jawnym seoSchema
+    prevalence: common
+  - category: error_handling
+    pattern: Parser no longer silently coerces malformed seo into an empty object
+    description: The WordPress fetch layer previously normalized any non-object seo value to `{}`; current code passes raw seo through, so malformed payloads fail typed parsing instead of being tolerated.
+    examples:
+      - file: astro-site/src/lib/wordpress.ts
+        location: astro-site/src/lib/wordpress.ts:184
+        snippet: seo: schema.seo ?? undefined
+      - file: astro-site/src/lib/types.test.ts
+        location: astro-site/src/lib/types.test.ts:45
+        snippet: pageBuilderSchema still rejects malformed structured SEO values
+    prevalence: common
+  - category: structure
+    pattern: Core render schema shape remains stable
+    description: Version, page, sections, meta, and build continue to exist in the same top-level structure and no new required page field was introduced by the SEO change.
+    examples:
+      - file: astro-site/src/lib/types.ts
+        location: astro-site/src/lib/types.ts:104
+        snippet: export const pageBuilderSchema = z.object({ version, page, sections, meta, seo, build })
+      - file: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:1
+        snippet: { "version": 1, "page": { ... }, "sections": [ ... ] }
+    prevalence: common
+  - category: documentation
+    pattern: Docs pack added around page_builder_schema, but example payloads did not start using seo
+    description: New schema/spec/example docs were added in the Astro page-builder plan directory, yet the concrete example render schema still omits a top-level seo object.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-schema-spec.md:67
+        snippet: `seo` documented as optional top-level field
+      - file: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+        location: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json:1
+        snippet: example payload contains no `seo`
+    prevalence: occasional
+  - category: testing
+    pattern: SEO contract now has dedicated schema tests
+    description: A new test file covers blank-string normalization and malformed SEO rejection for pageBuilderSchema.
+    examples:
+      - file: astro-site/src/lib/types.test.ts
+        location: astro-site/src/lib/types.test.ts:16
+        snippet: pageBuilderSchema normalizes blank optional SEO strings to undefined
+      - file: astro-site/src/lib/types.test.ts
+        location: astro-site/src/lib/types.test.ts:45
+        snippet: pageBuilderSchema still rejects malformed structured SEO values
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: astro-site/src/lib/types.ts
+      responsibility: Defines the authoritative Astro-side page_builder_schema contract and exported page/SEO types.
+      location: astro-site/src/lib/types.ts
+      relationship_to_domain: domain contract definition
+    - component: astro-site/src/lib/wordpress.ts
+      responsibility: Fetches page_builder_schema from WordPress and normalizes payloads before Zod parsing.
+      location: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: domain parser entrypoint
+    - component: astro-site/src/lib/pageBuilder.ts
+      responsibility: Resolves section data after schema parsing, without redefining top-level page metadata.
+      location: astro-site/src/lib/pageBuilder.ts
+      relationship_to_domain: downstream consumer of parsed schema
+    - component: docs/plan/astro-wordpress-page-builder/*.page_builder_schema*.json
+      responsibility: Example repo-side artifacts representing render and AI page schema shapes.
+      location: docs/plan/astro-wordpress-page-builder
+      relationship_to_domain: documentation/example artifacts
+  interfaces_used_by_domain:
+    - interface: PageBuilderSchema
+      location: astro-site/src/lib/types.ts:121
+      usage_pattern: Returned by fetchWordPressPageBuilderSchema and buildStaticPage.
+    - interface: PageSeo
+      location: astro-site/src/lib/types.ts:124
+      usage_pattern: Typed top-level seo payload accepted by pageBuilderSchema.
+    - interface: ResolvedPageSeo
+      location: astro-site/src/lib/types.ts:127
+      usage_pattern: Intended downstream resolved SEO object for layout/page rendering.
+  data_flow_involving_domain: >-
+    WordPress endpoint payload.data.schema is fetched in astro-site/src/lib/wordpress.ts,
+    normalized for meta/build/section meta and now passed through with raw seo intact,
+    validated by pageBuilderSchema in astro-site/src/lib/types.ts, then consumed by
+    astro-site/src/lib/pageBuilder.ts for section resolution. The AI companion schema
+    remains a separate artifact and is not consumed by Astro runtime in this slice.
+  key_relationships_to_domain:
+    - from: astro-site/src/lib/wordpress.ts
+      to: astro-site/src/lib/types.ts
+      relationship: parses with
+    - from: astro-site/src/lib/pageBuilder.ts
+      to: astro-site/src/lib/wordpress.ts
+      relationship: calls
+    - from: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+      to: astro-site/src/lib/types.ts
+      relationship: mirrors example payload shape consumed by runtime contract
+    - from: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema_for_ai.json
+      to: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+      relationship: companion editing payload for the same page slug
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JSON
+    - Markdown
+    - YAML
+  frameworks_used_in_domain:
+    - name: Astro
+      usage_in_domain: consumes parsed page_builder_schema during static page build.
+    - name: Zod
+      usage_in_domain: validates typed page_builder_schema and SEO payload shapes.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: schema validation and type inference for runtime contract enforcement
+  external_apis_used_in_domain:
+    - name: WordPress page-builder endpoint
+      integration_point: astro-site/src/lib/wordpress.ts fetches /wp-json/bulwar/v1/page-builder/pages/{slug}
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Runtime schema names use `*Schema` suffixes, page-builder payload artifacts use
+    `<slug>.page_builder_schema.json` and `<slug>.page_builder_schema_for_ai.json`,
+    and top-level payload keys remain `version`, `page`, `sections`, `meta`, `seo`, `build`.
+  structure_of_domain: >-
+    Types and parser are separated: types.ts owns the Zod contract, wordpress.ts owns
+    payload normalization/fetching, pageBuilder.ts resolves section-level runtime data,
+    and docs/plan/astro-wordpress-page-builder holds schema/spec examples.
+  error_handling_in_domain: >-
+    Parser normalization still protects meta/build/per-section meta objects, but SEO now
+    relies on typed validation rather than generic object coercion.
+  testing_in_domain: >-
+    Dedicated unit tests now target top-level SEO contract behavior in astro-site/src/lib/types.test.ts.
+  documentation_in_domain: >-
+    The page-builder docs pack in docs/plan/astro-wordpress-page-builder is currently
+    untracked in git and behaves as a draft documentation layer rather than a committed spec baseline.
+
+related_dependencies:
+  internal:
+    - component: astro-site/src/lib/types.ts
+      relationship_to_domain: authoritative runtime schema contract
+      direction: outbound
+    - component: astro-site/src/lib/wordpress.ts
+      relationship_to_domain: fetch/normalization layer feeding the contract
+      direction: inbound
+    - component: astro-site/src/lib/pageBuilder.ts
+      relationship_to_domain: consumes parsed schema after validation
+      direction: inbound
+    - component: docs/plan/astro-wordpress-page-builder/testowa-blueprint.page_builder_schema.json
+      relationship_to_domain: example render payload for the same contract
+      direction: inbound
+  external:
+    - name: WordPress page-builder API
+      purpose_for_domain: source of page_builder_schema payloads consumed by Astro
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: runtime schema acceptance at WordPress boundary
+      location: astro-site/src/lib/wordpress.ts:184
+      concern: malformed live SEO payloads that were previously tolerated as empty objects can now fail the build/runtime parse path.
+  authentication_patterns_in_domain: Public fetch of page schema by slug; no auth pattern examined in this slice.
+  authorization_patterns_in_domain: No authorization logic examined in this slice.
+  data_validation_in_domain: >-
+    Zod now validates a typed seo object with optional nested robots and og fields;
+    blank strings are normalized to undefined, but non-object malformed values are rejected.
+
+testing_patterns:
+  framework: node:test plus assert/strict
+  coverage_areas:
+    - blank optional SEO normalization
+    - malformed SEO shape rejection
+  test_organization: Tests colocated beside the schema file in astro-site/src/lib
+  mock_patterns:
+    - Minimal base page_builder_schema fixture with version, page, and empty sections
+
+open_questions:
+  - question: Do any live WordPress pages currently store a legacy arbitrary `seo` payload outside the new typed shape?
+    context: Repo examples and new example JSONs omit `seo`, but live WordPress post meta was not exported in this task.
+    type: research
+    affects: [page_builder_schema_contract]
+
+gaps:
+  - area: live WordPress page_builder_schema payload inventory
+    description: No direct export of current live page_builder_schema records was examined, so compatibility with already-saved SEO payloads is inferred from repo examples rather than production evidence.
+    impact: research_blocker
+    affects: [page_builder_schema_contract]

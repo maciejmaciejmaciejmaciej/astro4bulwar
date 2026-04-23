@@ -1,0 +1,555 @@
+plan_id: firebase-draft-wp-authoring-e2e-20260418
+objective: >
+  Wdrozyc minimalny, praktyczny workflow authoringu page-buildera, w ktorym
+  agent VS Code tworzy draft dokumentu w Firebase, workflow umie utworzyc
+  brakujaca strone WordPress po slug, compile zawsze daje poprawne
+  page_builder_schema i page_builder_schema_for_ai, a calosc da sie sprawdzic
+  lokalnie oraz warunkowo end-to-end bez live credentiali.
+created_at: '2026-04-18T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 2
+  total_dependencies: 5
+  risk_score: medium
+
+tldr: |
+  Najmniejszy spojny plan to utrzymac obecny repo-first bootstrap i compile
+  gate jako fundament, dodac runtime-neutralny zapis draftu w ksztalcie
+  FirebasePageDraft, rozszerzyc WordPress bridge o create-or-update po slug,
+  a potem spiac jeden publish flow: draft -> compile obu schematow -> ensure
+  page exists -> write obu meta -> verify readback. Poniewaz live runtime
+  Firebase i live credy moga byc niedostepne, done powinno byc oparte o
+  lokalny artifact draftu, testowany upsert WordPress i deterministyczny
+  contract test dla obu schematow. Sources:
+  zip/src/blocks/registry/firebasePageDraft.ts,
+  SCRIPTS/generate-page-draft-from-scrape.ts,
+  SCRIPTS/make-page-draft-compile-gate.js,
+  wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+  docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+  docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md.
+
+open_questions:
+  - >
+    Jaki docelowy mechanizm autoryzacji dla runtime Firebase ma obslugiwac
+    agent po pojawieniu sie credentiali: service account w skrypcie,
+    lokalny emulator, czy osobny backend helper? To nie blokuje etapu lokalnego,
+    ale wplywa na finalna implementacje tasku zapisu draftu. Sources:
+    docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md,
+    user request.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: >
+        Zostanie zaimplementowany tylko lokalny JSON artifact, a workflow
+        zacznie udawac, ze posiada prawdziwy runtime Firebase create step.
+      likelihood: medium
+      impact: high
+      mitigation: >
+        Rozdzielic kontrakt draftu od transportu i nazwac lokalny etap jako
+        Firebase-compatible draft write, dopoki live runtime nie zostanie
+        skonfigurowany. Sources:
+        zip/src/blocks/registry/firebasePageDraft.ts,
+        docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md.
+    - scenario: >
+        Create-by-slug w WordPress zacznie tworzyc duplikaty albo nadpisywac
+        niewlasciwa strone, bo obecny endpoint jest zaprojektowany tylko pod
+        update istniejacej strony.
+      likelihood: medium
+      impact: critical
+      mitigation: >
+        Wprowadzic jawny upsert contract z resolve by sanitized slug,
+        idempotent second call i testem, ze drugi publish nie tworzy nowego
+        postu. Sources:
+        wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+        docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md.
+    - scenario: >
+        Compile i publish rozjada sie semantycznie i workflow zapisze tylko
+        jeden z meta payloadow albo utraci mapowanie 1:1 po block id.
+      likelihood: medium
+      impact: high
+      mitigation: >
+        Zachowac compile gate jako jedyne miejsce generowania obu payloadow i
+        testowac jednoczesny write obu meta z readback verification. Sources:
+        SCRIPTS/make-page-draft-compile-gate.js,
+        .github/instructions/page-builder.instructions.md,
+        wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+    - scenario: >
+        Pelny live E2E zostanie uznany za blocker, mimo ze brak credentiali byl
+        znany od poczatku.
+      likelihood: high
+      impact: medium
+      mitigation: >
+        Zdefiniowac warunkowe done: lokalny happy path i mockowane granice sa
+        wymagane, live publish jest tylko finalnym smoke testem, jesli credy sa
+        dostepne. Source: user request.
+  assumptions:
+    - >
+      Nazwa FirebasePageDraft zostaje bez zmian i nie wchodzi do zakresu tej
+      iteracji. Source: user request.
+    - >
+      Bootstrap draftu i compile gate juz istnieja i powinny zostac reuse,
+      zamiast byc przepisywane. Sources:
+      SCRIPTS/generate-page-draft-from-scrape.ts,
+      SCRIPTS/make-page-draft-compile-gate.js,
+      /memories/repo/firebase-draft-compile-gates.md.
+    - >
+      Najbardziej praktyczne miejsce na obsluge create missing page to obecny
+      page-builder bridge, bo juz odpowiada za dual-meta update i permission
+      check. Sources:
+      wordpress-plugin/bulwar-bridge/src/Http/Routes.php,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php.
+
+implementation_specification:
+  code_structure: |
+    Zachowac obecny podzial odpowiedzialnosci: registry i kontrakt draftu w
+    zip/src/blocks/registry, translacja scrape -> draft i compile w SCRIPTS,
+    a WordPress create-or-update oraz dual-meta persistence w bridge pluginie.
+    Nie budowac pelnego runtime Firebase na sile; najpierw dodac adapter write,
+    ktory potrafi zapisac Firebase-compatible document oraz ma lokalny fallback
+    do testow i dry-run. Publish flow ma byc pojedynczym orchestrated command:
+    create draft, uzupelnij approved mappings, compile oba payloady, ensure page
+    exists by slug, zapisz oba meta, zweryfikuj GET readback.
+  affected_areas:
+    - zip/src/blocks/registry/firebasePageDraft.ts
+    - SCRIPTS/generate-page-draft-from-scrape.ts
+    - SCRIPTS/make-page-draft-compile-gate.js
+    - SCRIPTS/
+    - wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    - docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+  component_details:
+    - component: Firebase-compatible draft writer
+      responsibility: >
+        Przyjac obecny FirebasePageDraft i zapisac go przez runtime adapter,
+        ktory dzis moze byc lokalny albo mockowany, a pozniej prawdziwie
+        firebase'owy bez zmiany kontraktu draftu.
+      interfaces:
+        - VS Code agent uruchamia jeden command, ktory konczy sie artifactem draftu i identyfikatorem dokumentu lub lokalnym odpowiednikiem.
+        - FirebasePageDraft shape pozostaje kanonicznym kontraktem dokumentu roboczego.
+    - component: WordPress page upsert by slug
+      responsibility: >
+        Upewnic sie, ze publish flow moze utworzyc brakujaca strone i przy
+        kolejnym wywolaniu tylko ja zaktualizowac.
+      interfaces:
+        - Jeden authenticated path przyjmuje slug, title, schema i aiSchema oraz zwraca pageId i updated_meta_keys.
+        - Drugi publish tego samego sluga jest idempotentny i nie tworzy duplikatu.
+    - component: Compile and publish orchestrator
+      responsibility: >
+        Spiac istniejacy bootstrap draftu, approved source mappings, compile obu
+        schematow i WordPress publish w jedna deterministyczna sciezke.
+      interfaces:
+        - Orchestrator otrzymuje draft lub scrape input i zwraca compiled payloady, pageId oraz wynik readback verify.
+    - component: Local E2E harness
+      responsibility: >
+        Udowodnic lokalnie caly happy path bez live credow, z mockami granic
+        Firebase i WordPress.
+      interfaces:
+        - Jeden test scenariusza przechodzi bootstrap -> draft write -> compile -> ensure page -> dual-meta publish -> GET verify.
+    - component: Operator documentation
+      responsibility: >
+        Opisac warunkowy done i rozroznic lokalny E2E, dry-run publish oraz
+        opcjonalny live smoke test.
+      interfaces:
+        - Krotka instrukcja uruchomienia i kryteria gotowosci bez live credentiali.
+  dependencies:
+    - component: createPageDraftFromScrape
+      relationship: >
+        Jest zrodlem draftu i ma byc pierwszym etapem workflow create draft.
+    - component: make-page-draft-compile-gate
+      relationship: >
+        Pozostaje jedynym compile gate generujacym rownoczesnie
+        page_builder_schema i page_builder_schema_for_ai.
+    - component: PageBuilderController
+      relationship: >
+        Jest docelowym miejscem create-or-update strony i zapisu obu meta.
+    - component: page-builder docs
+      relationship: >
+        Dokumenty musza zostac zaktualizowane, aby operator wiedzial kiedy
+        workflow jest lokalny, a kiedy live.
+  integration_points:
+    - zip/src/blocks/registry/firebasePageDraft.ts
+    - SCRIPTS/generate-page-draft-from-scrape.ts
+    - SCRIPTS/make-page-draft-compile-gate.js
+    - wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+    - wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+
+contracts:
+  - from_task: add_firebase_compatible_draft_write
+    to_task: add_publish_orchestrator
+    interface: >
+      Deterministyczny FirebasePageDraft artifact wraz z pageSlug, blocksOrder,
+      blocks oraz workflow gates.
+    format: JSON zgodny z firebasePageDraftSchema
+  - from_task: add_wordpress_upsert_by_slug
+    to_task: add_publish_orchestrator
+    interface: >
+      Authenticated create-or-update by slug, ktory zwraca pageId i zapisuje oba
+      meta payloady.
+    format: REST request and response JSON
+  - from_task: add_publish_orchestrator
+    to_task: add_local_e2e_harness
+    interface: >
+      Jeden command lub modul, ktory wykonuje happy path i zwraca compiled,
+      pageId oraz readback verification.
+    format: CLI output plus JSON result object
+  - from_task: add_local_e2e_harness
+    to_task: document_operator_workflow
+    interface: >
+      Zweryfikowany zakres lokalny i lista warunkow wymaganych do opcjonalnego
+      live smoke testu.
+    format: test evidence plus short readiness summary
+
+tasks:
+  - id: add_firebase_compatible_draft_write
+    title: Dodac runtime-neutralny etap tworzenia draftu kompatybilnego z Firebase
+    description: |
+      Rozszerzyc obecny bootstrap tak, aby VS Code agent konczyl prace etapem
+      create draft, a nie tylko zapisem lokalnego pliku bez jawnej semantyki.
+      Implementacja ma reuse createPageDraftFromScrape i FirebasePageDraft,
+      ale oddzielic kontrakt dokumentu od transportu, bo live runtime Firebase
+      jeszcze nie istnieje. Sources:
+      SCRIPTS/generate-page-draft-from-scrape.ts,
+      zip/src/blocks/registry/createPageDraftFromScrape.ts,
+      zip/src/blocks/registry/firebasePageDraft.ts,
+      docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - create-draft-step
+      - preserve-FirebasePageDraft-name
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/src/blocks/registry/firebasePageDraft.ts
+        description: Obecny kontrakt draftu.
+      - path: zip/src/blocks/registry/createPageDraftFromScrape.ts
+        description: Obecny bootstrap registry -> draft.
+      - path: SCRIPTS/generate-page-draft-from-scrape.ts
+        description: Istniejacy CLI, ktory dzis zapisuje lokalny draft JSON.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          To najwczesniejszy brak wzgledem celu uzytkownika: workflow ma miec
+          jawny krok create draft w Firebase-compatible ksztalcie.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: kontrakt draftu i adapter write
+        verification:
+          - Agent moze uruchomic jeden command, ktory tworzy draft artifact zgodny z firebasePageDraftSchema.
+          - Kontrakt draftu pozostaje kompatybilny z obecnym compile gate.
+        acceptance_criteria:
+          - Workflow ma wyrazny etap create draft, nawet jesli live runtime jest zastapiony adapterem lokalnym lub mockiem.
+          - FirebasePageDraft nie zmienia nazwy.
+          - Wynik etapu jest gotowy do bezposredniego podania do compile gate.
+        failure_modes:
+          - scenario: Lokalny fallback przecieknie do dokumentacji jako rownowazny live Firebase runtime.
+            likelihood: medium
+            impact: medium
+            mitigation: Oznaczyc ten etap jako Firebase-compatible draft write i opisac warunki live runtime osobno.
+    tech_stack:
+      - TypeScript
+      - Zod
+      - Node.js
+    test_coverage: Draft contract plus adapter tests bez live Firebase.
+
+  - id: add_wordpress_upsert_by_slug
+    title: Dodac generyczne create-or-update strony WordPress po slug
+    description: |
+      Rozszerzyc obecny page-builder bridge tak, aby publish flow nie wymagalo
+      recznego tworzenia strony ani testowych seed scripts. Najmniejszy zakres
+      to authenticated upsert by slug z kontrola uprawnien, idempotentnym drugim
+      wywolaniem i wspolnym zapisem page_builder_schema oraz
+      page_builder_schema_for_ai. Sources:
+      wordpress-plugin/bulwar-bridge/src/Http/Routes.php,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      /memories/repo/page-builder-wordpress-page-creation.md.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - create-missing-wordpress-page
+      - dual-meta-write
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        description: Rejestracja obecnych GET i POST tras.
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        description: Obecny update-only controller.
+      - path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        description: Udokumentowany brak create helpera.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          To root-cause brakujacego kroku ensure page exists i upraszcza caly
+          publish flow bardziej niz kolejny testowy seed script.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 260
+        focus_area: bridge upsert by slug
+        verification:
+          - Pierwsze wywolanie tworzy strone dla nowego sluga.
+          - Drugie wywolanie dla tego samego sluga aktualizuje te sama strone.
+          - Odpowiedz zawiera pageId oraz updated_meta_keys dla obu meta.
+        acceptance_criteria:
+          - Workflow umie utworzyc brakujaca strone WordPress po slug bez testowego seed scriptu.
+          - Publish zapisuje rownoczesnie page_builder_schema i page_builder_schema_for_ai.
+          - Zachowane sa permission checks edit_pages edit_post.
+        failure_modes:
+          - scenario: Upsert ominie normalizacje slugow i stworzy dwa prawie identyczne posty.
+            likelihood: medium
+            impact: high
+            mitigation: Uzyc jednego sanitize/resolve path oraz testu idempotencji dla drugiego wywolania.
+    tech_stack:
+      - PHP
+      - WordPress REST API
+    test_coverage: Local controller tests lub request-level tests dla create plus update.
+
+  - id: review_upsert_security_and_contract
+    title: Zweryfikowac bezpieczenstwo i kontrakt create-or-update w bridge
+    description: |
+      Przed spieciem publish flow trzeba przeczytac nowy upsert pod katem
+      permissions, zachowania dla unpublished pages, slug collisions i shape
+      response body, bo to security-sensitive granica miedzy agentem a live
+      WordPressem. Sources:
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md.
+    wave: 2
+    agent: gem-reviewer
+    prototype: false
+    covers:
+      - security-check
+    priority: medium
+    status: pending
+    dependencies:
+      - add_wordpress_upsert_by_slug
+    conflicts_with: []
+    context_files:
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        description: Nowy create-or-update logic do audytu.
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        description: Permission callbacks i surface API.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Create page po slug to nowa powierzchnia ryzyka i nie powinien byc
+          konsumowany przez orchestrator bez krotkiego review.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 120
+        focus_area: auth i idempotencja
+        verification:
+          - Review potwierdza permission model i brak obvious duplicate-path risk.
+          - Review potwierdza shape response potrzebny orchestratorowi.
+        acceptance_criteria:
+          - Istnieje czytelna decyzja czy endpoint jest gotowy do uzycia przez agent workflow.
+          - Potencjalne luki sa wypunktowane przed dodaniem E2E harness.
+        failure_modes:
+          - scenario: Review skupi sie na stylu kodu zamiast na auth i idempotencji.
+            likelihood: low
+            impact: medium
+            mitigation: Ograniczyc review scope do permission, slug resolution i dual-meta contract.
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: true
+
+  - id: add_publish_orchestrator
+    title: Spiac draft, compile i publish w jeden command workflow
+    description: |
+      Dodac jeden repo-side orchestrator, ktory bierze draft lub scrape input,
+      stosuje approved source mappings, odpala compile gate, pilnuje obu
+      payloadow i publikuje je przez WordPress upsert by slug, a na koniec robi
+      readback verify. Nie przenosic logiki compile do WordPress; compile ma
+      zostac po stronie repo. Sources:
+      SCRIPTS/make-page-draft-compile-gate.js,
+      SCRIPTS/generate-page-draft-from-scrape.ts,
+      wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php,
+      .github/instructions/make-scenario.instructions.md,
+      .github/instructions/page-builder.instructions.md.
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - dual-schema-correctness
+      - publish-flow
+    priority: high
+    status: pending
+    dependencies:
+      - add_firebase_compatible_draft_write
+      - add_wordpress_upsert_by_slug
+      - review_upsert_security_and_contract
+    conflicts_with: []
+    context_files:
+      - path: SCRIPTS/make-page-draft-compile-gate.js
+        description: Jedyny compile gate dla obu payloadow.
+      - path: SCRIPTS/generate-page-draft-from-scrape.ts
+        description: Wejscie repo -> draft.
+      - path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/PageBuilderController.php
+        description: Publish target dla dual-meta write.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Uzytkownik potrzebuje realnego workflow, nie tylko osobnych narzedzi.
+          Ten task skleja istniejace i nowe elementy w jedna sciezke operatora.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 280
+        focus_area: orchestracja publish path
+        verification:
+          - Jeden command umie przejsc od draftu do published meta payloads.
+          - Compile blokuje unresolved source mappings.
+          - Readback potwierdza obecność data.schema i data.aiSchema.
+        acceptance_criteria:
+          - Workflow produkuje i publikuje poprawne page_builder_schema i page_builder_schema_for_ai.
+          - WordPress pageId jest zwracane i moze byc zapisane z powrotem w draft metadata lub result artifact.
+          - Readback verify sprawdza 1:1 obecność obu meta payloadow po publish.
+        failure_modes:
+          - scenario: Orchestrator zacznie generowac schemas poza compile gate i utraci jedno zrodlo prawdy.
+            likelihood: medium
+            impact: high
+            mitigation: Trzymac generation wyłącznie w make-page-draft-compile-gate i konsumowac tylko jego output.
+    tech_stack:
+      - Node.js
+      - TypeScript
+      - WordPress REST API
+    test_coverage: Happy-path integration test z mockowanym WordPressem.
+
+  - id: add_local_e2e_harness
+    title: Dodac lokalny test happy path dla calego procesu end-to-end
+    description: |
+      Zbudowac minimalny, powtarzalny lokalny harness, ktory pokazuje caly
+      proces bez live credentiali: bootstrap, draft write, approved mappings,
+      compile obu schematow, create-or-update strony i GET verify. Jesli live
+      credy sa dostepne, ten sam harness moze miec osobny optional smoke mode,
+      ale lokalny scenariusz jest wymagany niezaleznie od live. Sources:
+      SCRIPTS/generate-page-draft-from-scrape.test.js,
+      SCRIPTS/make-page-draft-compile-gate.test.js,
+      zip/src/blocks/registry/firebasePageDraft.test.ts,
+      user request.
+    wave: 4
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - end-to-end-testability
+      - local-proof-without-creds
+    priority: high
+    status: pending
+    dependencies:
+      - add_publish_orchestrator
+    conflicts_with: []
+    context_files:
+      - path: zip/src/blocks/registry/firebasePageDraft.test.ts
+        description: Istniejace testy kontraktu draftu.
+      - path: SCRIPTS/generate-page-draft-from-scrape.test.js
+        description: Istniejacy test bootstrapu.
+      - path: SCRIPTS/make-page-draft-compile-gate.test.js
+        description: Istniejacy test compile gate.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Pelny live E2E moze byc zablokowany przez credentiale, wiec lokalny
+          harness jest jedynym stabilnym dowodem, ze workflow jest rzeczywiscie
+          sklejony od poczatku do konca.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 240
+        focus_area: lokalny happy path
+        verification:
+          - Test przechodzi create draft -> compile -> ensure page -> publish -> readback.
+          - Test rozroznia lokalny success od optional live smoke mode.
+        acceptance_criteria:
+          - Repo ma minimalny zestaw testow lokalnych pokrywajacy caly happy path.
+          - Brak live credentiali nie blokuje uznania lokalnego E2E za zaliczone.
+          - Ewentualny live smoke test jest opcjonalny i jawnie oznaczony jako conditional.
+        failure_modes:
+          - scenario: Test bedzie zbyt mockowany i nie zlapie rozjazdu request/response contract z WordPressem.
+            likelihood: medium
+            impact: medium
+            mitigation: Mockować tylko granice sieciowe, ale trzymac realny request body i response shape bridge endpointu.
+    tech_stack:
+      - Node.js
+      - TypeScript
+      - test runner already used in repo
+    test_coverage: End-to-end local harness plus optional live smoke toggle.
+
+  - id: document_operator_workflow
+    title: Zaktualizowac workflow operatorski i warunkowe kryteria done
+    description: |
+      Po wdrozeniu trzeba zaktualizowac dokumentacje tak, aby bylo jasne, co
+      jest wspierane lokalnie juz teraz, gdzie konczy sie Firebase-compatible
+      draft write, kiedy WordPress page upsert jest wymagany, oraz co znaczy
+      done bez live credentiali. Sources:
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md,
+      docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md,
+      user request.
+    wave: 5
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - operator-docs
+      - conditional-done
+    priority: medium
+    status: pending
+    dependencies:
+      - add_local_e2e_harness
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        description: Kanoniczny repo-first workflow.
+      - path: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+        description: Target-state rola Firebase draft store.
+      - path: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md
+        description: Target-state bootstrap i compile mapping note.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: >
+          Nowy feature bez jasnego workflow operatorskiego bedzie mylic lokalny
+          dry-run z gotowym live runtime i utrudni odbior zmian.
+        timestamp: '2026-04-18T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 180
+        focus_area: docs i done criteria
+        verification:
+          - Dokumentacja rozroznia local E2E, optional live smoke i finalne prerequisites credentiali.
+          - Dokumentacja opisuje create page by slug jako czesc nowego canonical workflow.
+        acceptance_criteria:
+          - Operator ma krotki, powtarzalny flow w 5-7 krokach.
+          - Done criteria bez live credentiali sa zapisane wprost.
+          - Dokumentacja nie twierdzi, ze runtime Firebase jest juz produkcyjnie gotowy, jesli dalej nie ma credow.
+        failure_modes:
+          - scenario: Dokumentacja zostawi niejednoznacznosc miedzy target-state a current-state.
+            likelihood: medium
+            impact: medium
+            mitigation: Oznaczyc jawnie, ktore kroki sa obecnie lokalne lub mocked, a ktore wymagaja live credentials.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - current state versus target state
+      - create draft step
+      - create or update WordPress page by slug
+      - compile and publish dual meta
+      - local E2E and conditional live smoke

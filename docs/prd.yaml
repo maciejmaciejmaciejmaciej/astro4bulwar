@@ -1,0 +1,24 @@
+prd_id: refactor-app-tsx
+version: 1.0.0
+status: draft
+
+features:
+  - name: Rebuild Homepage
+    overview: Rebuild the home page landing layout section by section, based on scraped content from wp-seo-scraper/output/home/content.md.
+    status: planned
+  - name: Refactor App.tsx
+    overview: Extract all inline sections from zip/src/App.tsx into individual reusable components inside zip/src/components/sections/ to improve maintainability and readability.
+    status: planned
+  - name: Font Size Restoration
+    overview: Restore the original font sizes in the split components to exactly match the App.tmp.tsx backup, repairing the damage done by rogue regex scripts.
+    status: planned
+
+state_machines: []
+
+errors: []
+
+decisions:
+  - decision: Extract sections into individual files in `zip/src/components/sections/`.
+  - rationale: App.tsx is currently a monolithic file (>1000 lines) containing ~20 distinct sections, making it hard to maintain. Grouping into waves (4-5 components) mitigates massive merge conflicts. Duplicated sections (e.g. Easter Section) should be made into single reusable components.
+
+changes: []

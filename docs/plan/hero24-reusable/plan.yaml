@@ -1,0 +1,138 @@
+plan_id: hero24-reusable
+objective: Make Hero24 reusable by exposing its card content through props while preserving identical default rendering for <Hero24 />, limiting scope to Hero24 and only the current page usage if alignment is strictly needed, and verifying with a frontend build.
+created_at: '2026-03-24T00:00:00Z'
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+tldr: |
+  Make Hero24 data-driven with a minimal safe API based on items plus className, keep the current visual output unchanged for bare <Hero24 />, and avoid any redesign or page composition changes. Reuse the existing StepsGrid-style pattern of typed item data plus mapped rendering only where it helps reduce hardcoded content without changing the section structure.
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: The reusable props refactor changes spacing, typography, icon styling, or copy order so the default <Hero24 /> output no longer matches the current section.
+      likelihood: medium
+      impact: high
+      mitigation: Keep the existing markup and classes intact, move only the repeated card content into typed defaultItems, and treat visual parity for bare <Hero24 /> as a non-negotiable acceptance criterion.
+  assumptions:
+    - Hero24 will remain a presentational section and does not need state, effects, or new layout wrappers.
+    - The current page usage in CateringWielkanocnyPage can remain <Hero24 /> unless the final typings require an import or prop alignment change.
+    - The StepsGrid pattern is a reference for typing and array mapping, not a basis for redesigning Hero24.
+
+implementation_specification:
+  code_structure: Keep Hero24 in its existing file, add a typed item contract and in-file defaultItems constant, render cards from props, and leave the section wrapper and existing classes structurally unchanged. Touch the page file only if a minimal usage alignment is strictly necessary.
+  affected_areas:
+    - zip/src/components/sections/Hero24.tsx
+    - zip/src/pages/CateringWielkanocnyPage.tsx
+  component_details:
+    - component: Hero24
+      responsibility: Render the same four-card section as today by default while optionally accepting injected item content and a wrapper className for reuse.
+      interfaces:
+        - Hero24Props includes items and className.
+        - defaultItems preserves the current icon, title, and description set used by bare <Hero24 />.
+    - component: CateringWielkanocnyPage
+      responsibility: Continue rendering Hero24 without page composition changes.
+      interfaces:
+        - Keeps existing <Hero24 /> usage unless a minimal import or prop-alignment adjustment is required.
+  dependencies:
+    - component: CateringWielkanocnyPage
+      relationship: composes Hero24 without changing route structure or neighboring sections.
+    - component: Hero24
+      relationship: may mirror the typed array-mapping pattern already used in StepsGrid while keeping its own visual structure.
+  integration_points:
+    - Existing Hero24 import and usage in the catering page.
+    - Frontend build executed from zip/package.json.
+
+contracts:
+  - from_task: make_hero24_reusable
+    to_task: verify_hero24_reusable_build
+    interface: Hero24 accepts optional items plus className and exposes defaultItems-backed rendering that remains visually identical for bare <Hero24 />.
+    format: TSX component API and unchanged default markup behavior
+
+tasks:
+  - id: make_hero24_reusable
+    title: Refactor Hero24 to accept reusable item content while preserving the current default output
+    description: |
+      Update Hero24 so its repeated card content is driven by a typed items prop and a defaultItems constant that reproduces the current section exactly. Keep the existing section structure, classes, icon styling, and rendered order intact, and only touch CateringWielkanocnyPage if a minimal usage alignment is required by the refactor.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - zip/src/components/sections/Hero24.tsx: Current hardcoded four-card section and target reusable component.
+      - zip/src/components/sections/StepsGrid.tsx: Existing repo pattern for typed array-driven card rendering.
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Current bare <Hero24 /> usage that must remain compositionally unchanged.
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 60
+    focus_area: reusable component API
+    verification:
+      - Confirm Hero24 exposes items and className without adding state or redesigning markup.
+      - Confirm bare <Hero24 /> still renders the same four cards with the same copy, icons, and classes.
+      - Confirm the page file is unchanged unless a minimal alignment edit is strictly necessary.
+    acceptance_criteria:
+      - Hero24 supports an items prop and className.
+      - A defaultItems-backed bare <Hero24 /> remains visually identical to the current rendering.
+      - No page composition changes are introduced.
+      - Only the allowed files are touched.
+    failure_modes:
+      - scenario: The refactor imports or types icons in a way that breaks the current card rendering or widens the public API unnecessarily.
+        likelihood: medium
+        impact: medium
+        mitigation: Follow the narrow StepsGrid-style typing pattern and keep the public surface to items plus className only.
+    tech_stack:
+      - React 19
+      - TypeScript
+      - Tailwind CSS v4
+    test_coverage: null
+
+  - id: verify_hero24_reusable_build
+    title: Verify unchanged default behavior and frontend build success
+    description: |
+      Validate that Hero24 still renders its current default content when used as <Hero24 /> and that the frontend build succeeds after the reusable props refactor. Verification should stay focused on the two allowed files and confirm there are no unintended route or layout changes.
+    wave: 2
+    agent: gem-browser-tester
+    priority: medium
+    status: completed
+    dependencies:
+      - make_hero24_reusable
+    context_files:
+      - zip/src/components/sections/Hero24.tsx: Verify the final API and unchanged default rendering path.
+      - zip/src/pages/CateringWielkanocnyPage.tsx: Verify the page still uses Hero24 without composition changes.
+      - zip/package.json: Source of the frontend build command.
+    estimated_effort: small
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: build and regression verification
+    verification:
+      - Confirm bare <Hero24 /> still resolves to defaultItems-backed output.
+      - Run the frontend build from zip and confirm success.
+      - Confirm no new props are required at the existing page call site.
+    acceptance_criteria:
+      - Default Hero24 behavior is preserved.
+      - The existing page usage remains valid without composition changes.
+      - The frontend build passes successfully.
+    failure_modes:
+      - scenario: The component compiles locally but the build fails because of exported type usage, icon typing, or stale imports.
+        likelihood: medium
+        impact: medium
+        mitigation: Include a full frontend build in verification and check both touched files for unused imports and TSX type compatibility.
+    validation_matrix:
+      - scenario: Default Hero24 regression check
+        steps:
+          - Inspect Hero24 with no items prop supplied.
+          - Confirm the rendered copy, icons, order, and wrapper classes match the current section behavior.
+        expected_result: Bare <Hero24 /> reproduces the current section output with no visual or structural regression.
+      - scenario: Existing page usage check
+        steps:
+          - Inspect CateringWielkanocnyPage after the refactor.
+          - Confirm Hero24 remains in the same place in the page composition and does not require new props.
+        expected_result: The page composition is unchanged and the existing Hero24 usage remains minimal.
+      - scenario: Frontend build validation
+        steps:
+          - Run the frontend build from the zip workspace.
+          - Review the output for errors related to Hero24 or the page import.
+        expected_result: The build completes successfully without new errors.

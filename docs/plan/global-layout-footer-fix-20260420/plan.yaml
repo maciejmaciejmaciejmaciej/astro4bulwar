@@ -1,0 +1,372 @@
+plan_id: global-layout-footer-fix-20260420
+objective: >-
+  Properly fix the live global layout blocker by adding the smallest durable repo-owned
+  operational tooling to upsert the shared footer page, set
+  bulwar_bridge_global_layout.footerPageId, and verify the live endpoint plus Astro
+  production build without ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK=true.
+created_at: 2026-04-20T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 4
+  risk_score: medium
+
+tldr: |
+  - The blocker is operational data, not Astro behavior: the bridge already reads `bulwar_bridge_global_layout`, requires a positive `footerPageId`, and falls back when the referenced footer page or `shared_footer` block is missing or invalid. Sources: wordpress-plugin/bulwar-bridge/src/Config/Constants.php, wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php.
+  - Astro is already fail-closed in production unless `ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK=true` is set, and it rejects any global layout payload whose `layout_option_status` or `footer_status` is not `resolved`. Sources: astro-site/src/lib/wordpress.ts, astro-site/src/pages/[slug].astro.
+  - The smallest durable fix is code+ops with no runtime loosening: add one narrow `wp-load.php` bootstrap writer plus one checked-in shared footer schema payload and one short operator update, then run the tool on live and verify `GET /wp-json/bulwar/v1/layout/global` plus `astro-site` production build without the fallback override. Sources: SCRIPTS/seed-testowa-blueprint-schema.php, docs/plan/navbar-footer-global-layout-v1/operator-reference.md, docs/plan/none/research_findings_global_layout_footer_seeding.yaml.
+
+open_questions:
+  - Which exact live footer content should seed the shared footer page if no canonical published footer payload is exported first. The plan assumes the repo will store one approved initial footer payload before the live write. Sources: docs/plan/ad-hoc-shared-footer-investigation/research_findings_shared-footer.yaml.
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: The new writer overwrites the full `bulwar_bridge_global_layout` option and destroys a valid `navbar` payload while fixing only `footerPageId`.
+      likelihood: medium
+      impact: critical
+      mitigation: >-
+        Make the script read the existing option, preserve `navbar` as-is, and only merge
+        `footerPageId` unless an explicit force-overwrite flag is added later. Print the
+        before/after option summary or support a dry-run before mutation. Sources:
+        wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php,
+        docs/plan/none/research_findings_global_layout_footer_seeding.yaml.
+    - scenario: The seeded page_builder_schema uses the wrong block shape so WordPress resolves `fallback_footer_block_invalid` and Astro still fails.
+      likelihood: medium
+      impact: high
+      mitigation: >-
+        Keep the payload in a checked-in JSON artifact that contains exactly one enabled
+        `shared_footer` section with `blockVersion: 1`, `source: null`, and footer data that
+        matches the public footer contract. Validate against the existing contract shape before
+        writing. Sources: astro-site/src/lib/globalLayoutContract.ts,
+        zip/src/blocks/registry/globalLayoutContract.ts,
+        wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php.
+    - scenario: Live writes succeed, but operators do not verify the endpoint/build and the failure remains hidden until deployment.
+      likelihood: medium
+      impact: high
+      mitigation: >-
+        Make verification explicit and blocking: first confirm `GET /wp-json/bulwar/v1/layout/global`
+        returns both statuses as `resolved`, then run the Astro production build without
+        `ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK`. Sources:
+        docs/plan/navbar-footer-global-layout-v1/operator-reference.md,
+        astro-site/src/lib/wordpress.ts,
+        astro-site/src/pages/[slug].astro.
+  assumptions:
+    - Live WordPress access allows running a repo-owned PHP script that bootstraps `wp-load.php`, which is already the proven dhosting-safe write pattern in this repo. Sources: SCRIPTS/seed-testowa-blueprint-schema.php, docs/plan/none/research_findings_global_layout_footer_seeding.yaml.
+    - The bridge runtime itself does not need code changes for this fix because the failure source is missing/invalid live data, not resolver logic. Sources: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php, astro-site/src/lib/wordpress.ts.
+
+implementation_specification:
+  code_structure: >-
+    Add one operational PHP worker under `SCRIPTS/` that owns page upsert and option merge,
+    add one checked-in shared footer `page_builder_schema` JSON artifact consumed by that
+    worker, and update one existing operator-facing document with the exact invocation and
+    verification flow. Do not change Astro or bridge fail-closed runtime logic. Sources:
+    SCRIPTS/seed-testowa-blueprint-schema.php,
+    docs/plan/navbar-footer-global-layout-v1/operator-reference.md,
+    astro-site/src/pages/[slug].astro.
+  affected_areas:
+    - SCRIPTS/ for the writer and canonical shared footer payload artifact. Sources: SCRIPTS/seed-testowa-blueprint-schema.php.
+    - docs/plan/navbar-footer-global-layout-v1/ for the operator workflow update. Sources: docs/plan/navbar-footer-global-layout-v1/operator-reference.md.
+    - Live WordPress option `bulwar_bridge_global_layout` and one dedicated shared footer page instance. Sources: wordpress-plugin/bulwar-bridge/src/Config/Constants.php, wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php.
+  component_details:
+    - component: SCRIPTS/seed-global-layout-footer.php
+      responsibility: >-
+        Bootstrap `wp-load.php`, read the checked-in footer schema payload, validate the
+        minimal shared footer block contract, upsert the dedicated footer page by slug/title,
+        write `page_builder_schema`, merge `footerPageId` into the existing global layout
+        option, and emit a concise success summary with page id and option state.
+      interfaces:
+        - CLI contract: explicit WordPress root path plus optional payload path, slug, and title.
+        - Mutation contract: updates only the target page `page_builder_schema` and `bulwar_bridge_global_layout.footerPageId`.
+    - component: SCRIPTS/shared-footer.page_builder_schema.json
+      responsibility: >-
+        Store the canonical minimal render schema for the shared footer page so live content is
+        reproducible from the repo instead of being chat-only or server-only.
+      interfaces:
+        - JSON input for `seed-global-layout-footer.php`.
+    - component: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+      responsibility: >-
+        Document the exact seed/update command, what data the script mutates, and the required
+        post-run verification of endpoint statuses plus Astro build.
+      interfaces:
+        - Operator runbook for safe production execution.
+  dependencies:
+    - component: seed-global-layout-footer.php
+      relationship: Reads the checked-in JSON payload, mutates a WordPress page instance via `wp-load.php`, and merges `footerPageId` into the bridge-owned option.
+    - component: Astro production build
+      relationship: Consumes the live `GET /wp-json/bulwar/v1/layout/global` response and remains unchanged; build success depends on the live option/page becoming resolvable.
+  integration_points:
+    - WordPress option resolved through `Constants::globalLayoutOptionName()`.
+    - Dedicated footer page `page_builder_schema` post meta scanned by `GlobalLayoutResolver::resolveFooter()`.
+    - Live endpoint `GET /wp-json/bulwar/v1/layout/global`.
+    - `astro-site` production build path that calls `fetchWordPressGlobalLayout()`.
+
+contracts:
+  - from_task: task-1
+    to_task: task-3
+    interface: >-
+      A repo-owned CLI tool that can idempotently create or update the shared footer page and
+      merge `footerPageId` into the existing option without touching Astro runtime logic.
+    format: >-
+      PHP CLI entrypoint plus one checked-in JSON payload file; output includes page id and final
+      footerPageId.
+  - from_task: task-1
+    to_task: task-4
+    interface: >-
+      Live WordPress state after running the seed tool: `layout_option_status=resolved` and
+      `footer_status=resolved` on the global layout endpoint.
+    format: REST JSON response from `/wp-json/bulwar/v1/layout/global`.
+  - from_task: task-2
+    to_task: task-3
+    interface: Operator-safe invocation and verification instructions.
+    format: Updated markdown runbook in the existing navbar/footer operator reference.
+
+tasks:
+  - id: task-1
+    title: Add minimal shared footer seed/update tooling
+    description: |
+      Add the smallest durable repo-owned writer for this operational gap.
+
+      Scope:
+      - create `SCRIPTS/seed-global-layout-footer.php`
+      - create one checked-in minimal `shared_footer` payload file, for example `SCRIPTS/shared-footer.page_builder_schema.json`
+      - follow the existing `wp-load.php` bootstrap pattern from `SCRIPTS/seed-testowa-blueprint-schema.php`
+
+      Required behavior:
+      - validate the payload contains one enabled `shared_footer` block with `blockVersion: 1`, `source: null`, and footer data matching the public footer shape
+      - upsert one dedicated WordPress page by slug/title
+      - write `page_builder_schema` on that page
+      - preserve existing `navbar` option data and merge only `footerPageId` into `bulwar_bridge_global_layout`
+      - print enough output for operators to confirm the page id and applied footerPageId
+
+      Non-goals:
+      - no Astro code changes
+      - no bridge resolver behavior changes
+      - no fallback override or fail-open behavior
+
+      Sources: SCRIPTS/seed-testowa-blueprint-schema.php, wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php, astro-site/src/lib/globalLayoutContract.ts, wordpress-plugin/bulwar-bridge/tests/GlobalLayoutControllerTest.php.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - user-1
+      - user-3
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: SCRIPTS/seed-testowa-blueprint-schema.php
+        description: Existing proven `wp-load.php` bootstrap pattern for WordPress page/meta writes.
+      - path: wordpress-plugin/bulwar-bridge/src/Layout/GlobalLayoutResolver.php
+        description: Runtime footer resolution semantics that the seeded data must satisfy.
+      - path: astro-site/src/lib/globalLayoutContract.ts
+        description: Public footer shape mirrored into the shared footer block contract.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial plan creation
+        timestamp: 2026-04-20T00:00:00Z
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: shared footer operational writer
+        verification:
+          - Script can run idempotently against an existing page and an empty site state.
+          - Written option preserves existing navbar data while setting `footerPageId`.
+          - Seeded schema matches the strict shared footer contract.
+        acceptance_criteria:
+          - Repo contains one durable tool that can create or update the shared footer page and set `bulwar_bridge_global_layout.footerPageId`.
+          - The tool does not loosen Astro fail-closed behavior or alter bridge runtime semantics.
+          - The tool is narrow enough that its blast radius is limited to one page and one option field merge.
+        failure_modes:
+          - scenario: Option merge replaces navbar payload
+            likelihood: medium
+            impact: high
+            mitigation: Read-modify-write only `footerPageId`; preserve other keys by default.
+          - scenario: Shared footer payload is structurally invalid
+            likelihood: medium
+            impact: high
+            mitigation: Validate payload before `update_post_meta` and abort on invalid shape.
+    tech_stack:
+      - PHP CLI
+      - WordPress core bootstrap via wp-load.php
+      - JSON payload artifact
+    test_coverage: >-
+      Prefer a focused smoke check path for payload validation and idempotent page/option writes;
+      no Astro runtime test changes are required for this task.
+
+  - id: task-2
+    title: Document the exact operator run path
+    description: |
+      Update the existing navbar/footer operator reference with the exact command contract for the
+      new seed/update tool, what it mutates, and the mandatory verification sequence.
+
+      Keep this short and operational:
+      - required inputs such as WordPress root path and payload file
+      - expected script output
+      - warning that the script preserves fail-closed Astro behavior and only fixes live source data
+      - reminder that live dhosting operations still require the normal permissions discipline when files are deployed
+
+      Sources: docs/plan/navbar-footer-global-layout-v1/operator-reference.md, .github/instructions/project-foundation.instructions.md.
+    wave: 2
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - user-1
+      - user-2
+      - user-3
+    priority: medium
+    status: pending
+    dependencies:
+      - task-1
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+        description: Existing operator-facing home for navbar/footer runtime instructions.
+      - path: .github/instructions/project-foundation.instructions.md
+        description: Repo rule set for operational scripts and deployment discipline.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial plan creation
+        timestamp: 2026-04-20T00:00:00Z
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 40
+        focus_area: operator runbook
+        verification:
+          - Operator can execute the command without chat-only knowledge.
+          - Verification steps name the live endpoint and the Astro build path explicitly.
+        acceptance_criteria:
+          - One existing doc is updated with the canonical command and verification flow.
+          - The doc states that fallback override remains disabled in production.
+        failure_modes:
+          - scenario: Documentation omits a required verification step
+            likelihood: medium
+            impact: medium
+            mitigation: Include endpoint and build verification as explicit blocking checks.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - seed/update command
+      - mutated WordPress assets
+      - live endpoint verification
+      - Astro build verification
+
+  - id: task-3
+    title: Run the live shared footer fix and verify the endpoint
+    description: |
+      Execute the new repo-owned tool against the live WordPress environment to create or update
+      the shared footer page and set `bulwar_bridge_global_layout.footerPageId`, then verify the
+      public endpoint before any Astro build validation.
+
+      Required verification:
+      - `GET /wp-json/bulwar/v1/layout/global` returns HTTP 200
+      - `meta.layout_option_status=resolved`
+      - `meta.footer_status=resolved`
+      - returned footer fields match the seeded payload closely enough that normalization did not strip critical content
+
+      This is the first live go/no-go gate. If the endpoint is unresolved, do not proceed to Astro build verification.
+
+      Sources: docs/plan/navbar-footer-global-layout-v1/operator-reference.md, astro-site/src/lib/wordpress.ts.
+    wave: 2
+    agent: gem-devops
+    prototype: false
+    covers:
+      - user-2
+      - user-3
+      - user-4
+    priority: high
+    status: pending
+    dependencies:
+      - task-1
+    conflicts_with: []
+    context_files:
+      - path: SCRIPTS/seed-global-layout-footer.php
+        description: Repo-owned live mutation tool from task-1.
+      - path: docs/plan/navbar-footer-global-layout-v1/operator-reference.md
+        description: Canonical verification sequence.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial plan creation
+        timestamp: 2026-04-20T00:00:00Z
+        estimated_effort: small
+        estimated_files: 0
+        estimated_lines: 0
+        focus_area: live WordPress data repair
+        verification:
+          - Endpoint returns both global layout statuses as `resolved`.
+          - Returned payload contains the expected footer/contact/legal values.
+        acceptance_criteria:
+          - Live footer page exists and is referenced by the option.
+          - The public layout endpoint is fully resolved without any fallback status.
+        failure_modes:
+          - scenario: Script runs against wrong WordPress root or site
+            likelihood: low
+            impact: critical
+            mitigation: Require explicit wp root argument and verify endpoint host before execution.
+          - scenario: Page write succeeds but option update fails
+            likelihood: medium
+            impact: high
+            mitigation: Treat page id and final option state as separate assertions in script output and endpoint verification.
+    environment: production
+    requires_approval: true
+    devops_security_sensitive: true
+
+  - id: task-4
+    title: Prove Astro production build passes without the fallback override
+    description: |
+      After the endpoint is resolved, run the `astro-site` production build without
+      `ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK=true` and capture the result.
+
+      Required behavior:
+      - no environment override enabling global layout fallback
+      - build completes successfully using the live `layout/global` endpoint
+      - any failure message is preserved as evidence because it would signal the live fix is incomplete
+
+      Sources: astro-site/src/pages/[slug].astro, astro-site/src/lib/wordpress.ts.
+    wave: 3
+    agent: gem-devops
+    prototype: false
+    covers:
+      - user-2
+      - user-3
+      - user-4
+    priority: high
+    status: pending
+    dependencies:
+      - task-3
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/pages/[slug].astro
+        description: Astro fail-closed loader for global layout.
+      - path: astro-site/src/lib/wordpress.ts
+        description: Build-time endpoint fetch and unresolved-meta rejection.
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial plan creation
+        timestamp: 2026-04-20T00:00:00Z
+        estimated_effort: small
+        estimated_files: 0
+        estimated_lines: 0
+        focus_area: build verification
+        verification:
+          - `astro-site` production build succeeds without the fallback override env var.
+          - No code changes are needed in Astro to achieve that success.
+        acceptance_criteria:
+          - Astro build passes fail-closed against the repaired live endpoint.
+          - The repo does not depend on `ASTRO_ALLOW_GLOBAL_LAYOUT_FALLBACK=true` for production builds.
+        failure_modes:
+          - scenario: Endpoint resolves in a browser check but build still reads unresolved data
+            likelihood: low
+            impact: high
+            mitigation: Run the actual production build immediately after endpoint verification and inspect the exact build error if it fails.
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false

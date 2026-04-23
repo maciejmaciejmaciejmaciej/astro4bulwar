@@ -1,0 +1,356 @@
+plan_id: catering-wielkanocny-breakfast-20260326
+objective: Inspect the Easter catering data structure and determine exactly where to add a new WooCommerce category id 26 named "zestaw dla 2 osób" under the existing meal set for 2 people on the catering-wielkanocny page, containing one product with id 88.
+focus_area: catering_wielkanocny_page_data
+created_at: 2026-03-26
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+	- The page renders a standalone special-menu block for "Obiad Wielkanocny dla 2 osób" before any JSON-backed categories.
+	- The JSON category order is: Pieczywo, Zupy, Przystawki, Świąteczny obiad, Dodatki, Sosy, Desery, Menu dziecięce; the first JSON object becomes the first section shown under the special-menu block.
+	- Split-field products are already supported via nazwa_produktu + opis_produktu, but both fields are mandatory together when used.
+	- The product description renderer injects raw HTML with explicit styling hooks for br, em, li, p, strong, and ul.
+	- Product id 88 does not exist in the scoped Easter data files, so only the required JSON shape and insertion point are derivable here.
+
+research_metadata:
+	methodology: "Hybrid retrieval with semantic_search and grep_search across the scoped Easter page/data files, followed by targeted read_file inspection of the data contracts, page composition, special-menu seed, and list/item renderers."
+	scope: "Focused on zip/src/data/cateringWielkanocny.json, zip/src/data/cateringWielkanocny.ts, zip/src/pages/CateringWielkanocnyPage.tsx, and directly related special-menu/list/item renderer files and tests."
+	confidence: high
+	coverage: 95
+
+files_analyzed:
+	- file: cateringWielkanocny.json
+		path: zip/src/data/cateringWielkanocny.json
+		purpose: Source JSON for the Easter catering category list rendered on the page.
+		key_elements:
+			- element: category array root
+				type: pattern
+				location: zip/src/data/cateringWielkanocny.json:1
+				description: Root JSON value is an ordered array of category objects; array order drives rendered category order.
+			- element: split-field product example
+				type: pattern
+				location: zip/src/data/cateringWielkanocny.json:41
+				description: Existing example under Zupy uses nazwa_produktu and opis_produktu instead of zespolona_nazwa_z_opisem.
+			- element: category order after first categories
+				type: pattern
+				location: zip/src/data/cateringWielkanocny.json:149
+				description: Świąteczny obiad appears after Przystawki, followed by Dodatki, Sosy, Desery, and Menu dziecięce.
+		language: json
+		lines: 395
+
+	- file: cateringWielkanocny.ts
+		path: zip/src/data/cateringWielkanocny.ts
+		purpose: Type contracts and normalization layer that validates and transforms Easter JSON into page-ready category/product objects.
+		key_elements:
+			- element: RawCateringProduct
+				type: interface
+				location: zip/src/data/cateringWielkanocny.ts:5
+				description: Defines allowed raw product fields including combined text and split-field variants.
+			- element: RawCateringCategory
+				type: interface
+				location: zip/src/data/cateringWielkanocny.ts:17
+				description: Defines category shape with id, nazwa_kategorii, opis_kategorii, image_url, and pozycje.
+			- element: normalizeProduct
+				type: function
+				location: zip/src/data/cateringWielkanocny.ts:128
+				description: Accepts split mode only when both nazwa_produktu and opis_produktu or opis_poduktu are present; otherwise falls back to combined mode.
+			- element: normalizeCategory
+				type: function
+				location: zip/src/data/cateringWielkanocny.ts:183
+				description: Preserves incoming category order while validating description, image URL prefix, and product arrays.
+			- element: cateringWielkanocnyCategories
+				type: variable
+				location: zip/src/data/cateringWielkanocny.ts:215
+				description: Exported normalized category array consumed directly by the page.
+		language: typescript
+		lines: 179
+
+	- file: CateringWielkanocnyPage.tsx
+		path: zip/src/pages/CateringWielkanocnyPage.tsx
+		purpose: Composes the Easter catering page and defines the render order of hero, feature grid, standalone special menu, and mapped categories.
+		key_elements:
+			- element: CateringProductSpecialMenuFor2 placement
+				type: pattern
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:223
+				description: Standalone special menu block renders before the mapped category sections.
+			- element: category map
+				type: pattern
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:228
+				description: All categories from cateringWielkanocnyCategories render afterward in array order.
+		language: typescript
+		lines: 233
+
+	- file: cateringSpecialMenuFor2.ts
+		path: zip/src/data/cateringSpecialMenuFor2.ts
+		purpose: Stores the special-menu-for-2 seed data that is rendered independently from the JSON categories.
+		key_elements:
+			- element: shellProduct.baseProductId
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:83
+				description: Special-menu shell product is WooCommerce product id 53.
+			- element: shellProduct.title
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:86
+				description: Title is "Obiad Wielkanocny dla 2 osób".
+			- element: imageUrl
+				type: variable
+				location: zip/src/data/cateringSpecialMenuFor2.ts:92
+				description: Separate hero image for the standalone special-menu section.
+		language: typescript
+		lines: 225
+
+	- file: CateringProductListAlt.tsx
+		path: zip/src/components/sections/CateringProductListAlt.tsx
+		purpose: Renders each normalized category section and passes either combined or split product fields to ProductItemAlt.
+		key_elements:
+			- element: isStructuredProduct
+				type: function
+				location: zip/src/components/sections/CateringProductListAlt.tsx:19
+				description: Treats a product as split mode when contentMode is split.
+			- element: products.map
+				type: pattern
+				location: zip/src/components/sections/CateringProductListAlt.tsx:104
+				description: Passes productName and productDescriptionHtml only for split-mode products.
+		language: typescript
+		lines: 136
+
+	- file: ProductItemAlt.tsx
+		path: zip/src/components/sections/ProductItemAlt.tsx
+		purpose: Final product renderer for both combined and split product content.
+		key_elements:
+			- element: isStructuredProduct
+				type: variable
+				location: zip/src/components/sections/ProductItemAlt.tsx:50
+				description: Split rendering activates only when both productName and productDescriptionHtml are truthy.
+			- element: productDescriptionHtml renderer
+				type: pattern
+				location: zip/src/components/sections/ProductItemAlt.tsx:63
+				description: Injects productDescriptionHtml via dangerouslySetInnerHTML and styles selected tags.
+		language: typescript
+		lines: 153
+
+	- file: CateringProductListAlt.test.tsx
+		path: zip/src/components/sections/CateringProductListAlt.test.tsx
+		purpose: Snapshot-style markup test for category layout behavior.
+		key_elements:
+			- element: split product fixture
+				type: pattern
+				location: zip/src/components/sections/CateringProductListAlt.test.tsx:8
+				description: Test fixture includes productDescriptionHtml and validates split-mode rendering path is acceptable.
+		language: typescript
+		lines: 34
+
+	- file: ProductItemAlt.test.tsx
+		path: zip/src/components/sections/ProductItemAlt.test.tsx
+		purpose: Snapshot-style markup test for split-product layout.
+		key_elements:
+			- element: split product render test
+				type: pattern
+				location: zip/src/components/sections/ProductItemAlt.test.tsx:7
+				description: Confirms the structured product layout path remains active for productName plus productDescriptionHtml.
+		language: typescript
+		lines: 22
+
+patterns_found:
+	- category: structure
+		pattern: Standalone featured product block renders outside the JSON category list.
+		description: The special-menu-for-2 section is not represented inside cateringWielkanocny.json and is composed directly in the page before categories are mapped.
+		examples:
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:223
+				snippet: "<CateringProductSpecialMenuFor2 ... />"
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:228
+				snippet: "{cateringWielkanocnyCategories.map((category) => (...))}"
+			- file: zip/src/data/cateringSpecialMenuFor2.ts
+				location: zip/src/data/cateringSpecialMenuFor2.ts:83
+				snippet: "baseProductId: 53"
+		prevalence: common
+
+	- category: structure
+		pattern: Category display order follows raw JSON array order without additional sorting.
+		description: The normalization layer maps the raw array directly, and the page renders that mapped array as-is.
+		examples:
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:215
+				snippet: "export const cateringWielkanocnyCategories = rawCategories.map(normalizeCategory)"
+			- file: zip/src/pages/CateringWielkanocnyPage.tsx
+				location: zip/src/pages/CateringWielkanocnyPage.tsx:228
+				snippet: "cateringWielkanocnyCategories.map((category) => (...) )"
+			- file: zip/src/data/cateringWielkanocny.json
+				location: zip/src/data/cateringWielkanocny.json:1
+				snippet: "[{ \"id\": 16, \"nazwa_kategorii\": \"Pieczywo\" ... }]"
+		prevalence: common
+
+	- category: structure
+		pattern: Products support two mutually exclusive content shapes.
+		description: A product is either combined mode using zespolona_nazwa_z_opisem or split mode using nazwa_produktu plus opis_produktu/opis_poduktu.
+		examples:
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:149
+				snippet: "const productName = normalizeOptionalString(product.nazwa_produktu, ...)"
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:153
+				snippet: "const productDescriptionHtml = normalizeOptionalString(product.opis_produktu ?? product.opis_poduktu, ...)"
+			- file: zip/src/data/cateringWielkanocny.json
+				location: zip/src/data/cateringWielkanocny.json:41
+				snippet: '"nazwa_produktu": "Barszcz bardzo czerwony"'
+		prevalence: common
+
+	- category: error_handling
+		pattern: Split fields are validated as an all-or-nothing pair.
+		description: If either nazwa_produktu or opis_produktu is missing while the other exists, normalization throws an error.
+		examples:
+			- file: zip/src/data/cateringWielkanocny.ts
+				location: zip/src/data/cateringWielkanocny.ts:158
+				snippet: "if (productName === null || productDescriptionHtml === null) { throw new Error(...) }"
+		prevalence: common
+
+	- category: structure
+		pattern: Raw HTML descriptions are rendered directly in split mode.
+		description: productDescriptionHtml is injected with dangerouslySetInnerHTML and only selected tags have explicit prose-like utility styling.
+		examples:
+			- file: zip/src/components/sections/ProductItemAlt.tsx
+				location: zip/src/components/sections/ProductItemAlt.tsx:63
+				snippet: "[&_br]:block [&_em]:italic [&_li]:ml-4 [&_li]:list-disc [&_p]:mb-2 [&_strong]:font-semibold [&_ul]:mt-2"
+			- file: zip/src/components/sections/ProductItemAlt.tsx
+				location: zip/src/components/sections/ProductItemAlt.tsx:64
+				snippet: "dangerouslySetInnerHTML={{ __html: productDescriptionHtml ?? \"\" }}"
+		prevalence: occasional
+
+related_architecture:
+	components_relevant_to_domain:
+		- component: cateringWielkanocnyCategories
+			responsibility: Normalized category dataset for the Easter page.
+			location: zip/src/data/cateringWielkanocny.ts
+			relationship_to_domain: domain depends on this
+		- component: CateringProductSpecialMenuFor2
+			responsibility: Standalone interactive special-menu block for two people.
+			location: zip/src/components/sections/CateringProductSpecialMenuFor2.tsx
+			relationship_to_domain: rendered before JSON categories
+		- component: cateringSpecialMenuFor2Seed
+			responsibility: Seed data for the standalone special menu shell product and options.
+			location: zip/src/data/cateringSpecialMenuFor2.ts
+			relationship_to_domain: supplies special menu content independent of JSON categories
+		- component: CateringProductListAlt
+			responsibility: Category section renderer for JSON-backed categories.
+			location: zip/src/components/sections/CateringProductListAlt.tsx
+			relationship_to_domain: this uses domain outputs
+		- component: ProductItemAlt
+			responsibility: Product row renderer for combined and split product content.
+			location: zip/src/components/sections/ProductItemAlt.tsx
+			relationship_to_domain: this uses domain outputs
+	interfaces_used_by_domain:
+		- interface: RawCateringProduct
+			location: zip/src/data/cateringWielkanocny.ts:5
+			usage_pattern: Raw JSON product schema before normalization.
+		- interface: RawCateringCategory
+			location: zip/src/data/cateringWielkanocny.ts:17
+			usage_pattern: Raw JSON category schema before normalization.
+		- interface: CateringCategoryContract
+			location: zip/src/data/cateringWielkanocny.ts:46
+			usage_pattern: Normalized page-facing category object passed into list renderer.
+		- interface: SpecialMenuFor2Seed
+			location: zip/src/data/cateringSpecialMenuFor2.ts:37
+			usage_pattern: Special-menu seed object passed directly into the special component.
+	data_flow_involving_domain: "cateringWielkanocny.json -> normalizeCategory/normalizeProduct in cateringWielkanocny.ts -> cateringWielkanocnyCategories export -> CateringWielkanocnyPage map -> CateringProductListAlt -> ProductItemAlt. In parallel, cateringSpecialMenuFor2.ts -> cateringSpecialMenuFor2Seed -> CateringWielkanocnyPage -> CateringProductSpecialMenuFor2."
+	key_relationships_to_domain:
+		- from: zip/src/data/cateringWielkanocny.json
+			to: zip/src/data/cateringWielkanocny.ts
+			relationship: imports
+		- from: zip/src/data/cateringWielkanocny.ts
+			to: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship: imports
+		- from: zip/src/pages/CateringWielkanocnyPage.tsx
+			to: zip/src/components/sections/CateringProductListAlt.tsx
+			relationship: composes
+		- from: zip/src/components/sections/CateringProductListAlt.tsx
+			to: zip/src/components/sections/ProductItemAlt.tsx
+			relationship: composes
+		- from: zip/src/data/cateringSpecialMenuFor2.ts
+			to: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship: imports
+
+related_technology_stack:
+	languages_used_in_domain:
+		- JSON
+		- TypeScript
+		- TSX
+	frameworks_used_in_domain:
+		- name: React
+			usage_in_domain: Page composition and product/category rendering.
+	libraries_used_in_domain:
+		- name: framer-motion
+			purpose_in_domain: Parallax motion wrapper around category sections in CateringProductListAlt.
+		- name: lucide-react
+			purpose_in_domain: Dietary indicator icons in ProductItemAlt.
+		- name: node:test
+			purpose_in_domain: Snapshot-style renderer tests for list and item components.
+	external_apis_used_in_domain: []
+
+related_conventions:
+	naming_patterns_in_domain: "Raw JSON uses Polish field names such as nazwa_kategorii, opis_kategorii, pozycje, nazwa_produktu, opis_produktu, gramatura, cena. Normalized TypeScript contracts translate them to title, description, imageUrl, products, productName, productDescriptionHtml, weight, and priceLabel."
+	structure_of_domain: "Special menu content is modeled separately from general categories. General categories remain array-driven JSON content."
+	error_handling_in_domain: "Normalization is strict: strings must be non-empty, numbers finite, booleans explicit, image URLs must start with /react/images/, pozycje must be an array, and split product fields must be provided together."
+	testing_in_domain: "Renderer tests verify split-product markup paths and category layout markup."
+	documentation_in_domain: "No dedicated inline documentation file for this domain was found; the data contracts and tests serve as the primary behavior reference."
+
+related_dependencies:
+	internal:
+		- component: zip/src/data/cateringWielkanocny.json
+			relationship_to_domain: raw content source for normalized categories
+			direction: inbound
+		- component: zip/src/data/cateringSpecialMenuFor2.ts
+			relationship_to_domain: separate source for standalone menu-for-2 block
+			direction: inbound
+		- component: zip/src/pages/CateringWielkanocnyPage.tsx
+			relationship_to_domain: consumes both normalized categories and special-menu seed
+			direction: outbound
+		- component: zip/src/components/sections/CateringProductListAlt.tsx
+			relationship_to_domain: consumes normalized category data
+			direction: outbound
+		- component: zip/src/components/sections/ProductItemAlt.tsx
+			relationship_to_domain: consumes split/combined product fields
+			direction: outbound
+	external:
+		- name: react
+			purpose_for_domain: renders the page and product sections
+		- name: framer-motion
+			purpose_for_domain: animates category section panel positioning
+		- name: lucide-react
+			purpose_for_domain: renders dietary icons
+
+domain_security_considerations:
+	sensitive_areas:
+		- area: raw HTML rendering in product descriptions
+			location: zip/src/components/sections/ProductItemAlt.tsx:64
+			concern: productDescriptionHtml is injected with dangerouslySetInnerHTML and no sanitization is visible in this domain.
+	authentication_patterns_in_domain: "None in the scoped rendering/data files."
+	authorization_patterns_in_domain: "None in the scoped rendering/data files."
+	data_validation_in_domain: "Input JSON is validated in cateringWielkanocny.ts before rendering, but HTML content inside opis_produktu is not sanitized before insertion into the DOM."
+
+testing_patterns:
+	framework: node:test with renderToStaticMarkup assertions
+	coverage_areas:
+		- split product rendering path in ProductItemAlt
+		- category panel markup path in CateringProductListAlt
+	test_organization: "Component-level colocated *.test.tsx files under zip/src/components/sections."
+	mock_patterns:
+		- Inline fixture objects for split-mode products
+		- renderToStaticMarkup output assertions
+
+open_questions:
+	- question: What image_url should category id 26 use?
+		context: The renderer requires image_url to exist and to start with /react/images/, but the requested new category did not specify an image asset.
+	- question: What exact product fields beyond id 88 are intended for the single product?
+		context: Product id 88 is not present in the scoped Easter data, so title, description HTML, weight, price, and dietary flags are not derivable from these files.
+	- question: Should the new category become the first JSON category or be integrated into the standalone special-menu component instead?
+		context: The current architecture treats the special menu as a separate page block, not as a JSON category, so "under the existing meal set for 2 people" maps to the first JSON position if the new section must appear immediately below it.
+
+gaps:
+	- area: product 88 source data
+		description: No scoped file contains product id 88 or a related WooCommerce export for this Easter page.
+		impact: Exact live copy, price, and product metadata for the requested single-product section cannot be verified from the scoped source alone.
+	- area: desired category artwork
+		description: The request specifies the category id and name but not the image asset path required by validation.
+		impact: The full final JSON object cannot be populated with a verified image_url from this research scope.

@@ -1,0 +1,377 @@
+plan_id: thank-you-url-20260326
+objective: >-
+  Find the root cause of why the production thank-you page is showing the fallback
+  'Brak aktywnego podsumowania zamówienia' instead of the order confirmation,
+  focusing on the checkout success snapshot write/read flow and post-success navigation.
+focus_area: checkout_success_navigation
+created_at: 2026-03-26T00:00:00Z
+created_by: gem-researcher
+status: completed
+
+tldr: |
+  - The write/read wiring is present end-to-end: the checkout success handler writes a snapshot to localStorage, then navigates to the dedicated thank-you route.
+  - The thank-you page has no fallback data source beyond localStorage; if the key is absent, invalid, or stale, it always renders the controlled fallback.
+  - The active success path no longer stays in the drawer; the legacy in-drawer confirmation branch still exists in the component, but the current happy path closes the drawer and navigates away immediately.
+  - No other runtime code in src clears the snapshot key except the thank-you snapshot reader when data is stale/invalid.
+  - The built dist bundle contains the thank-you route and snapshot helpers, so the current build artifact includes this flow.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval using semantic_search and grep_search to locate snapshot and thank-you flow,
+    followed by targeted read_file inspection of the focused source files, main router entry,
+    relevant tests, and dist artifact verification for the deployed bundle.
+  scope: >-
+    Focused analysis of the React catering checkout success flow, persisted thank-you snapshot
+    contract, route wiring, and direct dependents in the zip workspace.
+  confidence: high
+  coverage: 90
+
+files_analyzed:
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Handles checkout submission, snapshot persistence, drawer UI, and post-success navigation.
+    key_elements:
+      - element: useNavigate hookup
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:321
+        description: Creates the router navigation function used after successful order creation.
+      - element: successSnapshot state
+        type: variable
+        location: zip/components/CheckoutDrawer.tsx:331
+        description: Legacy local component state for in-drawer success rendering.
+      - element: onSubmit success branch
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:560
+        description: Builds the accepted-order snapshot from order response data and selected form values.
+      - element: writeCheckoutSuccessSnapshot call
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:644
+        description: Persists the accepted-order snapshot into localStorage before cart clearing.
+      - element: post-success sequence
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:646
+        description: Sets success state, clears cart, closes drawer, then navigates to the thank-you route.
+      - element: in-drawer success render
+        type: pattern
+        location: zip/components/CheckoutDrawer.tsx:688
+        description: Still supports rendering CheckoutSuccessConfirmation inside the drawer when successSnapshot is set.
+    language: TypeScript
+    lines: 1001
+
+  - file: checkoutSuccessSnapshot.ts
+    path: zip/src/lib/checkoutSuccessSnapshot.ts
+    purpose: Defines the persisted snapshot contract, serialization, retention rules, and storage helpers.
+    key_elements:
+      - element: CHECKOUT_SUCCESS_SNAPSHOT_STORAGE_KEY
+        type: variable
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:1
+        description: Dedicated localStorage key for the thank-you snapshot.
+      - element: CHECKOUT_SUCCESS_SNAPSHOT_MAX_AGE_MS
+        type: variable
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:2
+        description: Retention window set to 24 hours.
+      - element: loadCheckoutSuccessSnapshot
+        type: function
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:207
+        description: Parses and validates raw persisted data and returns ready, missing, or stale state.
+      - element: writeCheckoutSuccessSnapshot
+        type: function
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:263
+        description: Serializes the accepted-order snapshot and writes it synchronously to localStorage.
+      - element: readCheckoutSuccessSnapshot
+        type: function
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:281
+        description: Reads the snapshot and removes the key only when the data is stale or invalid.
+    language: TypeScript
+    lines: 301
+
+  - file: CateringWielkanocnyThankYouPage.tsx
+    path: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+    purpose: Mounts the dedicated thank-you page and decides between confirmation content and fallback content.
+    key_elements:
+      - element: snapshotResult initializer
+        type: variable
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:54
+        description: Reads the persisted snapshot once during mount-time state initialization.
+      - element: readCheckoutSuccessSnapshot call
+        type: function
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:59
+        description: Uses localStorage as the only hydration source for the confirmation page.
+      - element: fallback heading
+        type: function
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:42
+        description: Returns 'Brak aktywnego podsumowania zamówienia' when the snapshot status is missing.
+      - element: snapshot/fallback render branch
+        type: pattern
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:122
+        description: Renders the shared confirmation component only when snapshotResult.snapshot is non-null.
+    language: TypeScript
+    lines: 154
+
+  - file: App.tsx
+    path: zip/src/App.tsx
+    purpose: Declares the flat route table for the React app.
+    key_elements:
+      - element: thank-you route
+        type: pattern
+        location: zip/src/App.tsx:12
+        description: Mounts CateringWielkanocnyThankYouPage under the thank-you path constant.
+    language: TypeScript
+    lines: 15
+
+  - file: cateringThankYou.ts
+    path: zip/src/lib/cateringThankYou.ts
+    purpose: Defines the stable route constants for the catering and thank-you pages.
+    key_elements:
+      - element: CATERING_WIELKANOCNY_PATH
+        type: variable
+        location: zip/src/lib/cateringThankYou.ts:1
+        description: Base path for the catering page.
+      - element: CATERING_WIELKANOCNY_THANK_YOU_PATH
+        type: variable
+        location: zip/src/lib/cateringThankYou.ts:2
+        description: Dedicated thank-you route path used by both router and navigation code.
+    language: TypeScript
+    lines: 2
+
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Mounts the React app under BrowserRouter.
+    key_elements:
+      - element: BrowserRouter basename
+        type: pattern
+        location: zip/src/main.tsx:8
+        description: Configures the router basename as /react, making navigate('/catering-wielkanocny/dziekujemy') resolve to /react/catering-wielkanocny/dziekujemy.
+    language: TypeScript
+    lines: 13
+
+  - file: CateringWielkanocnyThankYouPage.test.tsx
+    path: zip/src/pages/CateringWielkanocnyThankYouPage.test.tsx
+    purpose: Verifies that the thank-you page renders confirmation content when a valid snapshot exists and fallback when it does not.
+    key_elements:
+      - element: valid snapshot render test
+        type: testing
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.test.tsx:28
+        description: Confirms the page renders order confirmation when localStorage contains a valid snapshot.
+      - element: missing snapshot fallback test
+        type: testing
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.test.tsx:82
+        description: Confirms the page renders the controlled fallback when no snapshot exists.
+    language: TypeScript
+    lines: 98
+
+  - file: checkoutSuccessSnapshot.test.ts
+    path: zip/src/lib/checkoutSuccessSnapshot.test.ts
+    purpose: Verifies snapshot serialization, replacement, and stale cleanup behavior.
+    key_elements:
+      - element: stale snapshot cleanup test
+        type: testing
+        location: zip/src/lib/checkoutSuccessSnapshot.test.ts:93
+        description: Confirms stale snapshots are removed after the 24-hour retention window.
+      - element: write/read replacement test
+        type: testing
+        location: zip/src/lib/checkoutSuccessSnapshot.test.ts:107
+        description: Confirms the dedicated key always stores only the latest accepted-order snapshot.
+    language: TypeScript
+    lines: 143
+
+patterns_found:
+  - category: architecture
+    pattern: localStorage-backed thank-you hydration
+    description: >-
+      The thank-you page does not fetch order confirmation from the backend or route params; it depends solely on a persisted localStorage snapshot.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:644
+        snippet: const nextSnapshot = writeCheckoutSuccessSnapshot(window.localStorage, nextSnapshotBase);
+      - file: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:59
+        snippet: return readCheckoutSuccessSnapshot(window.localStorage);
+    prevalence: common
+
+  - category: structure
+    pattern: route constant reused between writer and reader sides
+    description: >-
+      The thank-you route constant is centralized and used consistently by routing and navigation code.
+    examples:
+      - file: zip/src/lib/cateringThankYou.ts
+        location: zip/src/lib/cateringThankYou.ts:2
+        snippet: export const CATERING_WIELKANOCNY_THANK_YOU_PATH = "/catering-wielkanocny/dziekujemy";
+      - file: zip/src/App.tsx
+        location: zip/src/App.tsx:12
+        snippet: <Route path={CATERING_WIELKANOCNY_THANK_YOU_PATH} element={<CateringWielkanocnyThankYouPage />} />
+    prevalence: common
+
+  - category: error_handling
+    pattern: controlled fallback on missing or stale persisted data
+    description: >-
+      Missing or expired persisted data is treated as a first-class state and produces intentional fallback UI instead of a broken route.
+    examples:
+      - file: zip/src/lib/checkoutSuccessSnapshot.ts
+        location: zip/src/lib/checkoutSuccessSnapshot.ts:224
+        snippet: return { status: "missing", snapshot: null, shouldClear: false };
+      - file: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+        location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx:43
+        snippet: return status === "stale" ? "To podsumowanie wygasło" : "Brak aktywnego podsumowania zamówienia";
+    prevalence: common
+
+  - category: architecture
+    pattern: dormant in-drawer success renderer remains after route-based flow
+    description: >-
+      The component still contains an in-drawer confirmation branch, but the active success sequence closes the drawer and navigates immediately, making route-based confirmation the intended flow.
+    examples:
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:646
+        snippet: setSuccessSnapshot(nextSnapshot); onClearCart?.(); onClose(); navigate(CATERING_WIELKANOCNY_THANK_YOU_PATH);
+      - file: zip/components/CheckoutDrawer.tsx
+        location: zip/components/CheckoutDrawer.tsx:688
+        snippet: {successSnapshot ? ( <CheckoutSuccessConfirmation snapshot={successSnapshot} /> ) : (
+    prevalence: occasional
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: CheckoutDrawer
+      responsibility: Submit checkout, construct accepted-order snapshot, and trigger post-success route transition.
+      location: zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: domain depends on this
+    - component: persisted snapshot helper
+      responsibility: Own localStorage contract and stale-data lifecycle.
+      location: zip/src/lib/checkoutSuccessSnapshot.ts
+      relationship_to_domain: domain depends on this
+    - component: CateringWielkanocnyThankYouPage
+      responsibility: Render confirmation if persisted snapshot is present; otherwise render fallback.
+      location: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: App route map
+      responsibility: Expose the thank-you page route under the React router.
+      location: zip/src/App.tsx
+      relationship_to_domain: this uses domain outputs
+    - component: BrowserRouter basename
+      responsibility: Prefix all client routes with /react in the deployed app.
+      location: zip/src/main.tsx
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: CheckoutSuccessSnapshotData
+      location: zip/src/lib/checkoutSuccessSnapshot.ts:14
+      usage_pattern: Writer-side contract built from order response and cart contents before persistence.
+    - interface: CheckoutSuccessSnapshotReadResult
+      location: zip/src/lib/checkoutSuccessSnapshot.ts:37
+      usage_pattern: Reader-side tri-state result used by the thank-you page to choose confirmation or fallback.
+  data_flow_involving_domain: >-
+    Successful order creation in CheckoutDrawer builds CheckoutSuccessSnapshotData from bridge order response,
+    writes it to the dedicated localStorage key, clears the cart, closes the drawer, then navigates to
+    the thank-you route. On mount, the thank-you page reads the same localStorage key once and either
+    renders CheckoutSuccessConfirmation or fallback content depending on read status.
+  key_relationships_to_domain:
+    - from: zip/components/CheckoutDrawer.tsx
+      to: zip/src/lib/checkoutSuccessSnapshot.ts
+      relationship: calls
+    - from: zip/components/CheckoutDrawer.tsx
+      to: zip/src/lib/cateringThankYou.ts
+      relationship: imports
+    - from: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+      to: zip/src/lib/checkoutSuccessSnapshot.ts
+      relationship: calls
+    - from: zip/src/App.tsx
+      to: zip/src/pages/CateringWielkanocnyThankYouPage.tsx
+      relationship: composes
+    - from: zip/src/main.tsx
+      to: zip/src/App.tsx
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Components, state initialization, and effect-based document metadata updates.
+    - name: react-router-dom
+      usage_in_domain: Client navigation and route mounting for the thank-you page.
+  libraries_used_in_domain:
+    - name: react-hook-form
+      purpose_in_domain: Checkout form state and submission handling inside the drawer.
+    - name: zod
+      purpose_in_domain: Checkout form schema validation before order submission.
+    - name: motion/react
+      purpose_in_domain: Drawer presentation and animations.
+  external_apis_used_in_domain:
+    - name: Bulwar bridge checkout API
+      integration_point: zip/components/CheckoutDrawer.tsx via /wp-json/bulwar/v1/checkout/orders
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Route constants live in a tiny lib module, persistence helpers use explicit read/write/load/clear names,
+    and thank-you page state is expressed as snapshotResult with a ready/missing/stale tri-state.
+  structure_of_domain: >-
+    Source-of-truth persistence logic is isolated in src/lib, route constants in a dedicated helper,
+    route declaration in App.tsx, and the UI shell for the thank-you page follows the existing catering page composition.
+  error_handling_in_domain: >-
+    Missing, invalid, and stale snapshot states are normalized into a controlled read result and mapped to explicit fallback copy.
+  testing_in_domain: >-
+    Focused node:test coverage exists for snapshot lifecycle helpers and thank-you page rendering against a memory-backed localStorage stub.
+  documentation_in_domain: >-
+    docs/plan/thank-you-url-20260326/plan.yaml defines the intended architecture, including snapshot persistence,
+    route behavior, and the expectation that the thank-you route depends on persisted client state.
+
+related_dependencies:
+  internal:
+    - component: zip/src/components/CheckoutSuccessConfirmation.tsx
+      relationship_to_domain: Renders the accepted-order summary for both drawer and thank-you page.
+      direction: outbound
+    - component: zip/src/pages/CateringWielkanocnyPage.tsx
+      relationship_to_domain: Hosts the active CheckoutDrawer instance used by the catering checkout.
+      direction: inbound
+    - component: zip/src/main.tsx
+      relationship_to_domain: Supplies the /react BrowserRouter basename needed for route resolution.
+      direction: inbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Navigation and route mounting
+    - name: react-hook-form
+      purpose_for_domain: Checkout submission flow
+    - name: zod
+      purpose_for_domain: Form validation
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: client-side order confirmation persistence
+      location: zip/src/lib/checkoutSuccessSnapshot.ts
+      concern: The thank-you page stores customer email and order summary in localStorage, which is readable by any script on the same origin until stale cleanup or overwrite.
+  authentication_patterns_in_domain: No authenticated user context is used for the thank-you page flow.
+  authorization_patterns_in_domain: No authorization check gates access to the thank-you route; visibility depends entirely on client-local persisted data.
+  data_validation_in_domain: >-
+    Persisted snapshot data is sanitized before use; invalid shapes are treated as missing and removed.
+
+testing_patterns:
+  framework: node:test with assert and MemoryRouter/localStorage stubs
+  coverage_areas:
+    - Snapshot serialization and hydration
+    - Snapshot stale cleanup
+    - Snapshot replacement under a dedicated key
+    - Thank-you page rendering with and without a valid snapshot
+  test_organization: Tests live alongside the snapshot helper and thank-you page modules.
+  mock_patterns:
+    - In-memory Storage implementation
+    - Global window replacement with localStorage stub
+    - MemoryRouter initialEntries for route-specific rendering
+
+open_questions:
+  - question: How is the production thank-you URL being reached when the fallback is observed?
+    context: >-
+      The source code navigates correctly after writing the snapshot, so a production fallback strongly suggests the page is being opened without going through the current client-side success handler, or after the snapshot has already been removed/expired.
+  - question: Is the observed production fallback from an immediate post-order flow or from revisiting/directly opening the thank-you URL later?
+    context: >-
+      The code intentionally renders fallback for missing or stale client state, and the retention window is 24 hours.
+
+gaps:
+  - area: live browser/session evidence
+    description: >-
+      This research did not inspect an active production browser session, localStorage contents, or network timeline at the moment the fallback was observed.
+    impact: >-
+      The code-level root cause can be narrowed to missing/stale client snapshot hydration, but the exact production trigger remains inferred rather than observed.
+  - area: deployment artifact provenance on server
+    description: >-
+      The dist bundle in the workspace contains the thank-you route and snapshot flow, but the deployed server files were not directly fetched from production during this analysis.
+    impact: >-
+      This leaves a small residual possibility of production serving an older or different artifact, although the workspace build itself is consistent.

@@ -1,0 +1,383 @@
+plan_id: bulwar-bridge-checkout
+objective: >-
+  Assess whether a Make.com webhook integration can be implemented simply in the
+  BULWAR bridge by sending a minimal outbound payload containing order_id and a
+  preformatted long HTML order summary string, while respecting repository
+  constraints around trust boundaries, privacy, and operational handling.
+focus_area: make_webhook_payload
+created_at: 2026-03-25T00:00:00Z
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - In this repo context, sending a small outbound JSON payload from WordPress/PHP to a Make webhook is a simple extension because the bridge already centralizes authoritative order creation and response/error taxonomy.
+  - Sending only { order_id, text_long_string } is technically feasible, but it is operationally weaker than sending order_id plus a sanitized structured summary object and an optional html_summary string for display.
+  - Raw HTML inside a long JSON string is generally safe for Make webhook ingestion as text, but it increases fragility for downstream parsing, escaping, and future scenario branching.
+  - Privacy is the main constraint: the existing bridge order payload contains customer PII, so any outbound Make payload must be built from a separate sanitized formatter rather than forwarding customer or address fields by default.
+  - There is no existing outbound webhook sender in the plugin, so retry, idempotency, and failure policy for Make delivery would need to be explicitly added.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval using semantic_search and grep_search across the bridge,
+    checkout plan artifacts, and frontend cart-summary helpers; targeted
+    read_file inspection of the PHP bridge contracts and order creation path;
+    plus Make Developer Hub documentation lookup for webhook transport and
+    queue/log behavior.
+  scope: >-
+    Focused on the WordPress/PHP bridge runtime, checkout contract shape,
+    existing human-readable order summary generation in the frontend, live Woo
+    deployment constraints, and Make webhook ingestion characteristics relevant
+    to a single outbound order summary notification.
+  confidence: high
+  coverage: 91
+
+files_analyzed:
+  - file: contracts.md
+    path: wordpress-plugin/bulwar-bridge/docs/contracts.md
+    purpose: Defines the authoritative bridge request and response contract style.
+    key_elements:
+      - element: shared contract rules
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:39
+        description: Establishes JSON over HTTPS POST, UTF-8, and idempotent order submission as repo-level contract norms.
+      - element: order endpoint response
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:343
+        description: Confirms the successful order response already returns order_id and authoritative totals from the PHP bridge.
+    language: markdown
+    lines: 461
+  - file: OrderService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+    purpose: Creates authoritative Woo orders and stores fulfillment and special-item meta.
+    key_elements:
+      - element: OrderService::create
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:14
+        description: Central order creation path where a post-order outbound webhook could be attached.
+      - element: billing and shipping setters
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:47
+        description: Shows that customer email, phone, and delivery address are present in server-side order data and therefore must be deliberately excluded from a privacy-safe webhook payload.
+      - element: mapOrderResponse
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:196
+        description: Returns a compact authoritative response already centered on order_id, payment_method, totals, and fulfillment timing.
+    language: php
+    lines: 227
+  - file: CheckoutController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+    purpose: Maps bridge-domain failures to HTTP responses and retryability semantics.
+    key_elements:
+      - element: CheckoutController::orders
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:94
+        description: Shows current synchronous order submit flow and error taxonomy that a webhook sender would need to fit into.
+      - element: known error mapping
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:144
+        description: Distinguishes validation failures from retryable server failures, which is directly relevant to Make delivery failure policy.
+    language: php
+    lines: 172
+  - file: Response.php
+    path: wordpress-plugin/bulwar-bridge/src/Support/Response.php
+    purpose: Defines the normalized response envelope with request_id and timestamp.
+    key_elements:
+      - element: Response::error
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Support/Response.php:18
+        description: Shows that retryable is a first-class concept in the bridge response model.
+      - element: meta generator
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Support/Response.php:45
+        description: Generates request_id and timestamp values that could also be reused in outbound webhook payloads for correlation.
+    language: php
+    lines: 59
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: Central constant registry for bridge runtime configuration.
+    key_elements:
+      - element: Constants::all
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:24
+        description: Natural location for adding a Make webhook URL or enable flag if outbound transport is implemented.
+    language: php
+    lines: 79
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Builds frontend cart lines and human-readable display rows.
+    key_elements:
+      - element: buildCheckoutDrawerItems
+        type: function
+        location: zip/src/lib/cateringCart.ts:368
+        description: Produces display-friendly summary lines already separated from canonical checkout payload lines.
+      - element: buildBridgeCheckoutCartLines
+        type: function
+        location: zip/src/lib/cateringCart.ts:401
+        description: Shows the existing separation between machine payload and display summary concerns.
+    language: typescript
+    lines: 428
+  - file: cateringSpecialMenuFor2.ts
+    path: zip/src/data/cateringSpecialMenuFor2.ts
+    purpose: Defines summary-string helpers for the special catering product.
+    key_elements:
+      - element: buildSpecialMenuPersonSummary
+        type: function
+        location: zip/src/data/cateringSpecialMenuFor2.ts:238
+        description: Generates readable single-line summaries for configured menu selections.
+      - element: buildSpecialMenuFor2SummaryString
+        type: function
+        location: zip/src/data/cateringSpecialMenuFor2.ts:250
+        description: Demonstrates the repo already accepts joined long display strings for operator-facing summaries.
+    language: typescript
+    lines: 254
+  - file: plan.yaml
+    path: docs/plan/bulwar-bridge-checkout/plan.yaml
+    purpose: States the bridge architecture, trust boundary, and direct Woo order path.
+    key_elements:
+      - element: implementation specification
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/plan.yaml:48
+        description: Positions the PHP bridge as the server-side authority and integration seam.
+      - element: T1 bridge contracts
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/plan.yaml:136
+        description: Confirms frozen JSON contracts and manual-cash MVP scope.
+    language: yaml
+    lines: 576
+  - file: research_findings_live_woo_constraints.yaml
+    path: docs/plan/bulwar-bridge-checkout/research_findings_live_woo_constraints.yaml
+    purpose: Provides live-site constraints for the v2 WordPress backend.
+    key_elements:
+      - element: minimal live runtime
+        type: pattern
+        location: docs/plan/bulwar-bridge-checkout/research_findings_live_woo_constraints.yaml:13
+        description: Confirms the live WordPress backend is minimal and suitable for adding a small custom outbound integration.
+    language: yaml
+    lines: 371
+
+patterns_found:
+  - category: architecture
+    pattern: Bridge is the single authoritative integration seam
+    description: >-
+      The repo already concentrates order validation, Woo creation, and response
+      shaping inside the PHP bridge, so an outbound Make webhook belongs there
+      instead of the React frontend.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:14
+        snippet: create(array $body): array
+      - file: docs/plan/bulwar-bridge-checkout/plan.yaml
+        location: docs/plan/bulwar-bridge-checkout/plan.yaml:48
+        snippet: React should stay a thin client and submit to the bridge
+    prevalence: common
+  - category: structure
+    pattern: Machine payload and readable summaries are already separate concerns
+    description: >-
+      The frontend builds canonical cart lines for checkout and separate summary
+      lines for display, which supports a sanitized outbound notification layer.
+    examples:
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:368
+        snippet: buildCheckoutDrawerItems returns summaryLines for display
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:401
+        snippet: buildBridgeCheckoutCartLines returns configuration but not display summary
+    prevalence: common
+  - category: structure
+    pattern: No outbound webhook transport exists yet
+    description: >-
+      Searches across the bridge found inbound REST route registration and order
+      creation only; no wp_remote_post or webhook URL handling is currently implemented.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Plugin.php
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:12
+        snippet: add_action('rest_api_init', [Routes::class, 'register']);
+      - file: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:24
+        snippet: current constants include pricing and slot config values only
+    prevalence: common
+  - category: error_handling
+    pattern: Retryability is explicit in the bridge contract
+    description: >-
+      The bridge already marks errors as retryable or not, which is consistent
+      with defining a clear Make delivery policy instead of treating all
+      outbound failures the same way.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Support/Response.php
+        location: wordpress-plugin/bulwar-bridge/src/Support/Response.php:18
+        snippet: retryable is part of the error payload
+      - file: wordpress-plugin/bulwar-bridge/docs/contracts.md
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:63
+        snippet: QUOTE_EXPIRED response shows retryable true
+    prevalence: common
+  - category: security
+    pattern: Customer PII exists in the authoritative order flow
+    description: >-
+      The server-side order creation path writes customer name, email, phone,
+      and sometimes delivery address, so a privacy-safe Make payload must be
+      assembled from a narrower formatter.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:47
+        snippet: set_billing_email and set_billing_phone
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:58
+        snippet: set_shipping_address_1 and set_shipping_city for delivery
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Bulwar Bridge plugin
+      responsibility: Owns server-side contracts, Woo writes, and the trusted integration boundary.
+      location: wordpress-plugin/bulwar-bridge
+      relationship_to_domain: domain is implemented here
+    - component: OrderService
+      responsibility: Creates the Woo order and holds the best attachment point for post-create outbound notification.
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship_to_domain: domain depends on this
+    - component: CheckoutController
+      responsibility: Exposes the order submit endpoint and current failure envelope.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship_to_domain: domain depends on this
+    - component: Frontend cart summary helpers
+      responsibility: Generate human-readable item summaries distinct from canonical cart payloads.
+      location: zip/src/lib and zip/src/data
+      relationship_to_domain: this uses domain outputs
+  interfaces_used_by_domain:
+    - interface: POST /wp-json/bulwar/v1/checkout/orders
+      location: wordpress-plugin/bulwar-bridge/docs/contracts.md
+      usage_pattern: Creates authoritative orders and already returns order_id, totals, and fulfillment timing.
+    - interface: Make webhook HTTP endpoint
+      location: external Make scenario webhook URL
+      usage_pattern: Would accept JSON payload over HTTPS and queue/log incoming payloads on the Make side.
+  data_flow_involving_domain: >-
+    React submits canonical checkout JSON to the same-domain PHP bridge; the
+    bridge validates, creates the Woo order, and returns an authoritative order
+    response. A Make integration would be an additional outbound step from the
+    bridge after order creation, using a separately formatted sanitized payload.
+  key_relationships_to_domain:
+    - from: zip/src/lib/cateringCart.ts
+      to: wordpress-plugin/bulwar-bridge/docs/contracts.md
+      relationship: matches canonical cart-line contract
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      to: WooCommerce order APIs
+      relationship: writes
+    - from: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      to: Make webhook endpoint
+      relationship: would post to if implemented
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - TypeScript
+    - YAML
+    - Markdown
+  frameworks_used_in_domain:
+    - name: WordPress REST API
+      usage_in_domain: Provides the existing checkout endpoint shape and response conventions.
+    - name: WooCommerce
+      usage_in_domain: Stores authoritative orders, totals, and fulfillment metadata.
+  libraries_used_in_domain:
+    - name: WooCommerce core APIs
+      purpose_in_domain: wc_create_order, wc_get_product, order item meta, totals calculation
+    - name: Make webhooks
+      purpose_in_domain: External ingestion target for a single outbound order notification payload
+  external_apis_used_in_domain:
+    - name: Make webhook endpoint
+      integration_point: outbound HTTPS POST from WordPress/PHP after successful Woo order creation
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Repo contracts use explicit snake_case JSON keys such as order_id,
+    idempotency_key, request_id, and *_minor totals. Private Woo meta uses the
+    _bulwar_ prefix and display-oriented order item meta uses bulwar_ keys.
+  structure_of_domain: >-
+    Validation happens in controllers, authoritative persistence happens in
+    services, and display summaries are already modeled separately from
+    canonical payloads on the frontend.
+  error_handling_in_domain: >-
+    Domain failures are surfaced as explicit codes with retryable flags and a
+    normalized JSON envelope. That pattern supports explicit handling for
+    outbound Make transport failures.
+  testing_in_domain: >-
+    The repo has frontend tests for summary builders but no PHP tests for an
+    outbound webhook transport layer because that layer does not exist yet.
+  documentation_in_domain: >-
+    Bridge contracts and prior research artifacts are strong and explicit for
+    inbound checkout flows, but there is no existing documented outbound
+    notification contract.
+
+related_dependencies:
+  internal:
+    - component: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship_to_domain: source of authoritative order_id, totals, fulfillment timing, and PII-sensitive source data
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      relationship_to_domain: would hold integration configuration such as webhook URL or enabled flag
+      direction: outbound
+    - component: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship_to_domain: demonstrates existing readable summary formatting patterns that can inform a webhook formatter
+      direction: inbound
+  external:
+    - name: Make webhook URL
+      purpose_for_domain: receives outbound order notification payloads
+    - name: WordPress HTTP API
+      purpose_for_domain: likely transport mechanism for outbound POST requests
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: customer identity and contact fields
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:47
+      concern: Email and phone are available during order creation and would be easy to leak if the webhook payload is built from the full request body.
+    - area: delivery address fields
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:58
+      concern: Delivery address is present for delivery orders and should be excluded if the stated requirement is no personal data.
+    - area: special item configuration JSON
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:129
+      concern: Raw configuration JSON may contain more detail than downstream automation needs and should not be forwarded unless intentionally whitelisted.
+  authentication_patterns_in_domain: >-
+    Current bridge traffic is same-domain inbound REST. A Make integration would
+    add a new outbound trust boundary based on a secret webhook URL or similar
+    server-side configuration.
+  authorization_patterns_in_domain: >-
+    There is no existing outbound authorization layer in the plugin; access
+    control would be implicit in possession of the configured Make webhook URL.
+  data_validation_in_domain: >-
+    Privacy-safe payload construction should be whitelist-based and derived from
+    the saved order object or a dedicated sanitized formatter, not by forwarding
+    arbitrary request fields or full HTML built from unsanitized input.
+
+testing_patterns:
+  framework: mixed frontend unit tests plus no current PHP transport tests
+  coverage_areas:
+    - readable summary generation for special menu lines in TypeScript
+    - no outbound HTTP posting or retry policy tests in PHP
+  test_organization: >-
+    Frontend summary helpers are unit-tested in zip/src/data and zip/src/lib.
+    The bridge runtime currently lacks a webhook sender abstraction and related
+    PHP tests.
+  mock_patterns:
+    - summary helper tests assert stable readable strings for special menu selections
+    - no observed mock for wp_remote_post or transport failure cases
+
+open_questions:
+  - question: Should the Make scenario ever branch on line items, totals, or fulfillment type, or is the payload intended only for human-readable notification output?
+    context: A pure HTML string is sufficient for display, but weak for future scenario logic or filtering.
+  - question: Is Make delivery business-critical for order acceptance, or can the order succeed even when webhook delivery fails?
+    context: The current bridge order endpoint is synchronous; coupling Make delivery into that path changes failure handling and user-visible behavior.
+  - question: Does “no personal data” exclude coarse delivery metadata such as fulfillment type and slot time, or only direct identifiers like name, phone, email, and full address?
+    context: Slot timing is operationally useful and not directly identifying, but privacy scope should be explicit before freezing the outbound schema.
+
+gaps:
+  - area: outbound transport implementation
+    description: No webhook sender, webhook configuration constant, or delivery status persistence exists in the plugin today.
+    impact: Operational complexity depends on whether Make delivery is best-effort or must be retried and audited.
+  - area: sanitized formatter policy
+    description: The repo has readable summary builders, but no server-side sanitizer dedicated to privacy-safe outbound notification payloads.
+    impact: Without a dedicated formatter, the simplest implementation risks leaking PII or over-sharing internal order detail.
+  - area: Make-side payload parsing contract
+    description: No repo artifact defines whether downstream Make scenarios will consume only rendered HTML or also structured fields.
+    impact: Choosing HTML-only now may make later scenario branching or data mapping more brittle.

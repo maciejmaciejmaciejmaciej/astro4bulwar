@@ -1,0 +1,727 @@
+plan_id: standalone-20260421
+objective: Zbadanie jak to repo ma byc reused dla nowego klienta WooCommerce, z naciskiem na istniejaca dokumentacje operatorsko-deployowa i pierwsze kroki wdrozeniowe.
+focus_area: new-client-reuse-operator-docs
+created_at: 2026-04-21T00:00:00Z
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - Repo opisuje reuse jako model dwufazowy: najpierw Faza wdrozeniowa doprowadza do dzialajacego WordPress na `/`, React na `/react` i Astro na `/astro`, a dopiero potem Faza produkcyjna przenosi ten sam front Astro na root domeny. Source: docs/setup/klonowanie-astro-wordpress-woocommerce.md:17, docs/setup/day-1-checklista-klonowania.md:29, /memories/repo/astro-wp-clone-workflow.md:1.
+  - Twarda bramka przed produkcja wymaga stabilnego `/astro`, health endpointu `wp-json/bulwar/v1/health`, braku runtime fallbackow do starej domeny, poprawnych canonicali/linkow i potwierdzonego manualnego deployu przed CI. Source: docs/setup/klonowanie-astro-wordpress-woocommerce.md:70, docs/setup/sekwencyjny-przewodnik-klonowania.md:100, wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16.
+  - Operator przed pierwszym deployem musi miec wypelniony manifest klienta, usuniete lub odizolowane artefakty starej instancji (`id_rsa`, `id_rsa.pub`, `temp_wp_config.php`, lokalne `.env*`), przygotowane katalogi `/react` i `/astro`, ustawione stale bridge i przepiete domeny/slugi/SSH/sciezki deployowe. Source: docs/setup/day-1-checklista-klonowania.md:5, docs/setup/template-manifest-nowej-instancji.md:98, docs/setup/repo-do-klonowania-plan-parametryzacji.md:5, workspace root file inventory.
+  - Najwczesniej dotykane pliki sa realnie zahardkodowane pod obecna instancje: `astro-site/astro.config.mjs`, `astro-site/src/lib/config.ts`, `zip/vite.config.ts`, `zip/src/main.tsx`, `deploy-react.sh`, `SCRIPTS/deploy-astro-static.ps1`, `SCRIPTS/rollback-astro-static.ps1`, `.github/workflows/deploy-astro-dhosting.yml`, helpery React z fallbackiem do `https://client.example`, slug `testowa-blueprint`, oraz stale bridge. Source: astro-site/astro.config.mjs:4, astro-site/astro.config.mjs:6, zip/vite.config.ts:9, zip/src/main.tsx:9, deploy-react.sh:4, SCRIPTS/deploy-astro-static.ps1:11, .github/workflows/deploy-astro-dhosting.yml:24, zip/src/pages/TestowaBlueprintPage.tsx:8, zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62, zip/src/blocks/registry/wordpressApi.ts:30, zip/src/blocks/registry/wooStoreApi.ts:56, wordpress-plugin/bulwar-bridge/src/Config/Constants.php:39.
+  - Dhosting jest w tym repo traktowany jako hosting z obowiazkowym krokiem `chmod 755` dla katalogow i `chmod 644` dla plikow po deployu lub rollbacku; ten sam wymog wystepuje w docs/setup, lokalnych skryptach i workflow GitHub Actions. Source: docs/setup/repo-do-klonowania-plan-parametryzacji.md:84, deploy-react.sh:14, deploy-react.sh:15, SCRIPTS/deploy-astro-static.ps1:49, SCRIPTS/deploy-astro-static.ps1:50, SCRIPTS/rollback-astro-static.ps1:44, SCRIPTS/rollback-astro-static.ps1:45, .github/workflows/deploy-astro-dhosting.yml:86, .github/workflows/deploy-astro-dhosting.yml:87.
+
+research_metadata:
+  methodology: Hybrid retrieval using memory view, file_search, grep_search, targeted read_file reads, and one PowerShell line-count pass via run_in_terminal. Relationship discovery covered docs/setup to runtime config, deploy scripts, and bridge health implementation.
+  scope: Focused on operator and deployment reuse of the repository for a new WooCommerce client, with supporting code reads limited to runtime URLs, deploy paths, bridge constants, and health-route behavior.
+  confidence: high
+  coverage: 91
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: klonowanie-astro-wordpress-woocommerce.md
+    path: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+    purpose: Glowny dokument operatorski opisujacy dwufazowy model reuse repo dla nowego klienta.
+    key_elements:
+      - element: Model dwufazowy
+        type: pattern
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:17
+        description: Definiuje Faze wdrozeniowa konczaca sie dzialajacym `/astro` i osobna Faze produkcyjna przenoszaca ten sam front na root domeny.
+      - element: Warunek przejscia do Fazy produkcyjnej
+        type: pattern
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:70
+        description: Zbiera twarde bramki przed cutoverem, w tym health, brak starej domeny w runtime i manualny proof przed CI.
+      - element: Co trzeba przepiac w repo
+        type: pattern
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:104
+        description: Grupuje zmiany wokol domen, slugow, SSH, `public_html`, fallbackow runtime, bridge i deployu.
+    language: markdown
+    lines: 102
+
+  - file: day-1-checklista-klonowania.md
+    path: docs/setup/day-1-checklista-klonowania.md
+    purpose: Minimalna lista gotowosci do pierwszego deployu Astro pod `/astro`.
+    key_elements:
+      - element: Predeploy checklist
+        type: pattern
+        location: docs/setup/day-1-checklista-klonowania.md:5
+        description: Wymaga manifestu, oczyszczenia sekretow, dzialajacego WordPress/WooCommerce, aktywnego bridge i przepietych sciezek deployowych.
+      - element: Minimalna kolejnosc na pierwszy dzien
+        type: pattern
+        location: docs/setup/day-1-checklista-klonowania.md:18
+        description: Ustawia kolejnosc backend -> bridge -> katalogi -> config/deploy -> React -> Astro -> health/test.
+      - element: Warunek zamkniecia Fazy wdrozeniowej
+        type: pattern
+        location: docs/setup/day-1-checklista-klonowania.md:29
+        description: Zamyka faze dopiero na dzialajacym `domena.pl/astro`.
+    language: markdown
+    lines: 24
+
+  - file: tabela-zadan-klonowania.md
+    path: docs/setup/tabela-zadan-klonowania.md
+    purpose: Operacyjna tabela etapow, miejsc zmian i kryteriow przejscia dalej.
+    key_elements:
+      - element: Etap 7 runtime Astro
+        type: pattern
+        location: docs/setup/tabela-zadan-klonowania.md:13
+        description: Wskazuje `astro-site/astro.config.mjs` i `astro-site/src/lib/config.ts` jako glowny punkt przepiecia Astro.
+      - element: Etap 9 deploy lokalny i CI
+        type: pattern
+        location: docs/setup/tabela-zadan-klonowania.md:15
+        description: Wskazuje `deploy-react.sh`, `SCRIPTS/*.ps1` i `.github/workflows/...` jako miejsce przepiecia targetu deployu.
+      - element: Etap 16 SEO root domeny
+        type: pattern
+        location: docs/setup/tabela-zadan-klonowania.md:22
+        description: Okresla, ze po produkcyjnym cutoverze tylko root domeny ma byc publicznie indeksowalny.
+    language: markdown
+    lines: 26
+
+  - file: template-manifest-nowej-instancji.md
+    path: docs/setup/template-manifest-nowej-instancji.md
+    purpose: Pusty formularz wszystkich danych potrzebnych przed dotknieciem konfiguracji i skryptow.
+    key_elements:
+      - element: Skrypty i pliki do przepiecia
+        type: pattern
+        location: docs/setup/template-manifest-nowej-instancji.md:98
+        description: Zawiera repo-specyficzna liste plikow operatorskich, runtime i bridge do sprawdzenia lub zmiany.
+      - element: Globalne find and replace
+        type: pattern
+        location: docs/setup/template-manifest-nowej-instancji.md:128
+        description: Ustala zmienne tekstowe starej i nowej instancji, w tym domeny, slug, `public_html`, host i user SSH.
+      - element: Bramka po Fazie wdrozeniowej
+        type: pattern
+        location: docs/setup/template-manifest-nowej-instancji.md:141
+        description: Formalizuje health, live React, live Astro, prawa `755/644`, test zamowienia i manualny proof.
+    language: markdown
+    lines: 135
+
+  - file: gotowy-przyklad-manifestu-nowej-instancji.md
+    path: docs/setup/gotowy-przyklad-manifestu-nowej-instancji.md
+    purpose: Wypelniony przyklad manifestu dla nowego klienta zachowujacy obecna topologie `/`, `/react`, `/astro`.
+    key_elements:
+      - element: Uzupelnij te 8 rzeczy najpierw
+        type: pattern
+        location: docs/setup/gotowy-przyklad-manifestu-nowej-instancji.md:5
+        description: Minimalny pakiet startowy obejmujacy domene, SSH, `public_html`, backupy, URL `/astro` i finalny URL produkcyjny.
+      - element: Pliki i skrypty do przepiecia
+        type: pattern
+        location: docs/setup/gotowy-przyklad-manifestu-nowej-instancji.md:114
+        description: Przeklada pusty manifest na nazwy konkretnych plikow w repo.
+      - element: Jak tego uzywac w praktyce
+        type: pattern
+        location: docs/setup/gotowy-przyklad-manifestu-nowej-instancji.md:161
+        description: Utrzymuje zasade najpierw stabilne `/astro`, dopiero potem root domeny.
+    language: markdown
+    lines: 136
+
+  - file: sekwencyjny-przewodnik-klonowania.md
+    path: docs/setup/sekwencyjny-przewodnik-klonowania.md
+    purpose: Krok-po-kroku przewodnik operatorski dla kolejnych dzialan wdrozeniowych.
+    key_elements:
+      - element: Krok 6. Przepnij konfiguracje Astro
+        type: pattern
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:54
+        description: Wprost wymienia `site`, `WORDPRESS_BASE_URL` i `TEST_PAGE_SLUGS` jako elementy do przepiecia.
+      - element: Krok 8. Przepnij deploy lokalny i CI
+        type: pattern
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:66
+        description: Utrzymuje osobny etap dla deploy scripts i workflow.
+      - element: Bramka przed produkcja
+        type: pattern
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:100
+        description: Zabrania przechodzenia do root domeny bez stabilnego `/astro`.
+    language: markdown
+    lines: 75
+
+  - file: repo-do-klonowania-plan-parametryzacji.md
+    path: docs/setup/repo-do-klonowania-plan-parametryzacji.md
+    purpose: Techniczna mapa parametrow i zamian tekstowych potrzebnych przy reuse repo.
+    key_elements:
+      - element: Czego nie wolno przenosic 1:1
+        type: pattern
+        location: docs/setup/repo-do-klonowania-plan-parametryzacji.md:5
+        description: Enumeruje artefakty starego srodowiska zabronione do dziedziczenia.
+      - element: Najwazniejsze zamiany tekstowe w repo
+        type: pattern
+        location: docs/setup/repo-do-klonowania-plan-parametryzacji.md:66
+        description: Ustala glowny mechanizm przepiecia repo przez domene, slug, `public_html`, host i user SSH.
+      - element: Regula dhosting po deployu
+        type: pattern
+        location: docs/setup/repo-do-klonowania-plan-parametryzacji.md:84
+        description: Traktuje `chmod 755/644` jako obowiazkowa czesc deployu.
+    language: markdown
+    lines: 68
+
+  - file: checklista-migracji-seo-wordpress-do-astro.md
+    path: docs/setup/checklista-migracji-seo-wordpress-do-astro.md
+    purpose: SEO i indeksacja podczas przejscia z technicznego `/astro` na root domeny.
+    key_elements:
+      - element: Przed cutoverem produkcyjnym
+        type: pattern
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:7
+        description: Wymaga mapy URL, decyzji o losie `/astro`, finalnego canonicala, sitemap i robots.
+      - element: W trakcie cutoveru
+        type: pattern
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:18
+        description: Utrzymuje zasade jednego indeksowalnego wariantu oraz recznej weryfikacji root, landingow i canonicali.
+      - element: Twarde zasady
+        type: pattern
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:35
+        description: Zabrania duplikacji root vs `/astro` i traktowania canonicala jako zamiennika `301`.
+    language: markdown
+    lines: 30
+
+  - file: astro.config.mjs
+    path: astro-site/astro.config.mjs
+    purpose: Glowna konfiguracja Astro ustawiajaca bazowy prefix i publiczny origin.
+    key_elements:
+      - element: base
+        type: variable
+        location: astro-site/astro.config.mjs:4
+        description: Ustawia Astro pod `/astro/`.
+      - element: site
+        type: variable
+        location: astro-site/astro.config.mjs:6
+        description: Wskazuje obecnie na `https://client.example`.
+    language: javascript
+    lines: 6
+
+  - file: config.ts
+    path: astro-site/src/lib/config.ts
+    purpose: Twardy fallback Astro do WordPress base URL.
+    key_elements:
+      - element: WORDPRESS_BASE_URL
+        type: variable
+        location: astro-site/src/lib/config.ts:1
+        description: Wskazuje obecnie na `https://client.example`.
+    language: typescript
+    lines: 1
+
+  - file: vite.config.ts
+    path: zip/vite.config.ts
+    purpose: Konfiguracja Vite dla React SPA i jego publicznego prefixu.
+    key_elements:
+      - element: base
+        type: variable
+        location: zip/vite.config.ts:9
+        description: Ustawia build React pod `/react/`.
+      - element: process.env.GEMINI_API_KEY define
+        type: variable
+        location: zip/vite.config.ts:12
+        description: Pokazuje, ze runtime React konsumuje tez wstrzykiwany sekret build-time.
+    language: typescript
+    lines: 24
+
+  - file: main.tsx
+    path: zip/src/main.tsx
+    purpose: Entry point React SPA ustawiajacy basename routera.
+    key_elements:
+      - element: BrowserRouter basename
+        type: variable
+        location: zip/src/main.tsx:9
+        description: Wymusza publiczny prefix `/react` dla routingu aplikacji.
+    language: tsx
+    lines: 12
+
+  - file: deploy-react.sh
+    path: deploy-react.sh
+    purpose: Lokalny skrypt deployu React na dhosting.
+    key_elements:
+      - element: BASE
+        type: variable
+        location: deploy-react.sh:4
+        description: Wskazuje obecne `public_html` instancji Bulwar.
+      - element: chmod 755
+        type: pattern
+        location: deploy-react.sh:14
+        description: Naprawia prawa katalogow po deployu React.
+      - element: chmod 644
+        type: pattern
+        location: deploy-react.sh:15
+        description: Naprawia prawa plikow po deployu React.
+    language: bash
+    lines: 13
+
+  - file: deploy-astro-static.ps1
+    path: SCRIPTS/deploy-astro-static.ps1
+    purpose: Lokalny deploy Astro static na dhosting z backupem i prawami.
+    key_elements:
+      - element: remotePublicRoot
+        type: variable
+        location: SCRIPTS/deploy-astro-static.ps1:11
+        description: Kieruje publikacje na `public_html/astro` obecnej instancji.
+      - element: chmod 755
+        type: pattern
+        location: SCRIPTS/deploy-astro-static.ps1:49
+        description: Naprawia prawa katalogow na serwerze po rozpakowaniu.
+      - element: chmod 644
+        type: pattern
+        location: SCRIPTS/deploy-astro-static.ps1:50
+        description: Naprawia prawa plikow na serwerze po rozpakowaniu.
+    language: powershell
+    lines: 44
+
+  - file: rollback-astro-static.ps1
+    path: SCRIPTS/rollback-astro-static.ps1
+    purpose: Rollback Astro z backupu na dhosting.
+    key_elements:
+      - element: remotePublicRoot
+        type: variable
+        location: SCRIPTS/rollback-astro-static.ps1:12
+        description: Przywraca do `public_html/astro`.
+      - element: chmod 755
+        type: pattern
+        location: SCRIPTS/rollback-astro-static.ps1:44
+        description: Naprawia prawa katalogow po rollbacku.
+      - element: chmod 644
+        type: pattern
+        location: SCRIPTS/rollback-astro-static.ps1:45
+        description: Naprawia prawa plikow po rollbacku.
+    language: powershell
+    lines: 40
+
+  - file: deploy-astro-dhosting.yml
+    path: .github/workflows/deploy-astro-dhosting.yml
+    purpose: CI deploy Astro na dhosting przez GitHub Actions.
+    key_elements:
+      - element: REMOTE_PUBLIC_ROOT
+        type: variable
+        location: .github/workflows/deploy-astro-dhosting.yml:24
+        description: Wskazuje target `public_html/astro` w obecnej instancji.
+      - element: chmod 755
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:86
+        description: Naprawia prawa katalogow w CI deployu.
+      - element: chmod 644
+        type: pattern
+        location: .github/workflows/deploy-astro-dhosting.yml:87
+        description: Naprawia prawa plikow w CI deployu.
+    language: yaml
+    lines: 82
+
+  - file: TestowaBlueprintPage.tsx
+    path: zip/src/pages/TestowaBlueprintPage.tsx
+    purpose: Repo-specyficzna testowa strona React powiazana z page builder slugiem.
+    key_elements:
+      - element: PAGE_BUILDER_SLUG
+        type: variable
+        location: zip/src/pages/TestowaBlueprintPage.tsx:8
+        description: Trzyma stary slug `testowa-blueprint`, wskazany w docs jako glowna wartosc do zamiany.
+    language: tsx
+    lines: 50
+
+  - file: fetchWordPressPageBuilderSchema.ts
+    path: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+    purpose: React helper pobierajacy page_builder_schema z WordPressa.
+    key_elements:
+      - element: VITE_WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:62
+        description: Domyslnie wskazuje na `https://client.example`.
+    language: typescript
+    lines: 74
+
+  - file: wordpressApi.ts
+    path: zip/src/blocks/registry/wordpressApi.ts
+    purpose: React helper pobierajacy dane WordPress REST.
+    key_elements:
+      - element: VITE_WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/blocks/registry/wordpressApi.ts:30
+        description: Domyslnie wskazuje na `https://client.example`.
+    language: typescript
+    lines: 121
+
+  - file: wooStoreApi.ts
+    path: zip/src/blocks/registry/wooStoreApi.ts
+    purpose: React helper pobierajacy Woo Store API po samej bazie WordPress.
+    key_elements:
+      - element: VITE_WORDPRESS_BASE_URL fallback
+        type: variable
+        location: zip/src/blocks/registry/wooStoreApi.ts:56
+        description: Domyslnie wskazuje na `https://client.example`.
+    language: typescript
+    lines: 278
+
+  - file: CheckoutDrawer.tsx
+    path: zip/components/CheckoutDrawer.tsx
+    purpose: Front checkoutu z lokalnym bridge base URL fallback.
+    key_elements:
+      - element: buildBridgeBaseUrl
+        type: function
+        location: zip/components/CheckoutDrawer.tsx:134
+        description: Na SSR i localhost zwraca `https://client.example` zamiast origin nowej instancji.
+    language: tsx
+    lines: 945
+
+  - file: Constants.php
+    path: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+    purpose: Zrodlo domyslnych i wymaganych stalych bridge potrzebnych do health i checkoutu.
+    key_elements:
+      - element: BULWAR_BRIDGE_MAKE_WEBHOOK_URL default
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:19
+        description: Domyslnie pusty webhook Make, pozniej zwracany przez `all()`.
+      - element: storeOriginLine1 mapowanie
+        type: variable
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:39
+        description: Pokazuje, ze pozycje adresowe sklepu sa obowiazkowym inputem nowej instancji.
+      - element: missingRequiredConstants
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:66
+        description: Implementuje health-gate na brakujace stale.
+    language: php
+    lines: 82
+
+  - file: HealthController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/HealthController.php
+    purpose: Publiczny health endpoint bridge dla operatora i checklisty wdrozeniowej.
+    key_elements:
+      - element: missingRequiredConstants payload
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/HealthController.php:21
+        description: Zwraca brakujace stale w odpowiedzi sukcesu.
+    language: php
+    lines: 19
+
+  - file: Routes.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+    purpose: Rejestruje REST namespace bridge.
+    key_elements:
+      - element: health route
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16
+        description: Utrzymuje `GET /wp-json/bulwar/v1/health` jako publiczny endpoint gotowosci.
+    language: php
+    lines: 60
+
+  - file: contracts.md
+    path: wordpress-plugin/bulwar-bridge/docs/contracts.md
+    purpose: Dokumentuje te same zalozenia hostingu, namespace i trust boundary co operator musi zachowac przy reuse.
+    key_elements:
+      - element: Frontend location
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:6
+        description: Potwierdza, ze React zostaje pod `/react/` i uderza w same-domain REST.
+      - element: Health contract
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:17
+        description: Dokumentuje shape odpowiedzi `GET /wp-json/bulwar/v1/health`.
+      - element: Trust boundary
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/docs/contracts.md:10
+        description: Definiuje browser jako nieautorytatywny dla totali, oplat i integralnosci checkoutu.
+    language: markdown
+    lines: 397
+
+patterns_found:
+  - category: structure
+    pattern: Dwufazowy reuse repo
+    description: Dokumentacja konsekwentnie rozdziela bezpieczna Faze wdrozeniowa konczaca sie dzialajacym `/astro` od osobnej Fazy produkcyjnej odpowiadajacej za root domeny i SEO.
+    examples:
+      - file: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:17
+        snippet: "Ten proces ma 2 fazy."
+      - file: docs/setup/sekwencyjny-przewodnik-klonowania.md
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:100
+        snippet: "Do Fazy produkcyjnej przechodzisz dopiero wtedy, gdy `domena.pl/astro` jest stabilne"
+    prevalence: common
+
+  - category: sequencing
+    pattern: Manifest-first i no-guessing
+    description: Operator ma uzupelnic manifest i wszystkie parametry instancji zanim dotknie configow, skryptow albo deployu.
+    examples:
+      - file: docs/setup/template-manifest-nowej-instancji.md
+        location: docs/setup/template-manifest-nowej-instancji.md:1
+        snippet: "Ten plik wypelniasz zanim dotkniesz konfiguracji i skryptow."
+      - file: docs/setup/sekwencyjny-przewodnik-klonowania.md
+        location: docs/setup/sekwencyjny-przewodnik-klonowania.md:15
+        snippet: "Idziesz dalej dopiero wtedy, gdy nie zgadujesz zadnej z tych rzeczy."
+    prevalence: common
+
+  - category: security
+    pattern: Quarantine starej instancji przed reuse
+    description: Zarowno docs, jak i aktualny workspace zakladaja usuniecie lub odlozenie na bok kluczy SSH, lokalnych envow i plikow technicznych poprzedniej instancji.
+    examples:
+      - file: docs/setup/repo-do-klonowania-plan-parametryzacji.md
+        location: docs/setup/repo-do-klonowania-plan-parametryzacji.md:5
+        snippet: "id_rsa, id_rsa.pub, temp_wp_config.php, stare lokalne `.env*`"
+      - file: workspace-root
+        location: workspace root
+        snippet: "Obecnie istnieja `id_rsa`, `id_rsa.pub`, `temp_wp_config.php` w root repo."
+    prevalence: common
+
+  - category: architecture
+    pattern: Zachowanie topologii `/`, `/react`, `/astro`
+    description: Dokumentacja, runtime i bridge contracts utrzymuja WordPress na root domeny, React pod `/react`, a Astro pod `/astro` jako najszybsza droga reuse.
+    examples:
+      - file: /memories/repo/astro-wp-clone-workflow.md
+        location: /memories/repo/astro-wp-clone-workflow.md:1
+        snippet: "WordPress on root, React under /react, Astro under /astro"
+      - file: astro-site/astro.config.mjs
+        location: astro-site/astro.config.mjs:4
+        snippet: "base: '/astro/'"
+      - file: zip/src/main.tsx
+        location: zip/src/main.tsx:9
+        snippet: "<BrowserRouter basename=\"/react\">"
+    prevalence: common
+
+  - category: deployment
+    pattern: Twarde, repo-specyficzne sciezki deployu i backupow
+    description: Skrypty deployowe i workflow CI maja zakodowane obecne `public_html`, backup roots i host SSH, wiec sa pierwszorzednym obszarem przepiecia przy reuse.
+    examples:
+      - file: deploy-react.sh
+        location: deploy-react.sh:4
+        snippet: "BASE=\"/home/client-user/domains/client.example/public_html\""
+      - file: SCRIPTS/deploy-astro-static.ps1
+        location: SCRIPTS/deploy-astro-static.ps1:11
+        snippet: "$remotePublicRoot = '/home/client-user/domains/client.example/public_html/astro'"
+      - file: .github/workflows/deploy-astro-dhosting.yml
+        location: .github/workflows/deploy-astro-dhosting.yml:24
+        snippet: "REMOTE_PUBLIC_ROOT: /home/client-user/domains/client.example/public_html/astro"
+    prevalence: common
+
+  - category: runtime
+    pattern: Fallbacki do starej domeny i testowego sluga
+    description: React i Astro maja zahardkodowane URL-e do `https://client.example` oraz slug `testowa-blueprint`, co docs/setup i repo memory traktuja jako glowny cluster zmian pierwszego dnia.
+    examples:
+      - file: astro-site/src/lib/config.ts
+        location: astro-site/src/lib/config.ts:1
+        snippet: "export const WORDPRESS_BASE_URL = 'https://client.example'"
+      - file: zip/src/blocks/registry/wordpressApi.ts
+        location: zip/src/blocks/registry/wordpressApi.ts:30
+        snippet: "VITE_WORDPRESS_BASE_URL ?? \"https://client.example\""
+      - file: zip/src/pages/TestowaBlueprintPage.tsx
+        location: zip/src/pages/TestowaBlueprintPage.tsx:8
+        snippet: "const PAGE_BUILDER_SLUG = \"testowa-blueprint\""
+    prevalence: common
+
+  - category: validation
+    pattern: Health endpoint jako operator gate
+    description: Bridge health sluzy jako glowny warunek przejscia dalej i expose'uje brakujace stale wymagane dla nowej instancji.
+    examples:
+      - file: docs/setup/klonowanie-astro-wordpress-woocommerce.md
+        location: docs/setup/klonowanie-astro-wordpress-woocommerce.md:70
+        snippet: "bridge health zwraca `success=true`"
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16
+        snippet: "register_rest_route('bulwar/v1', '/health'"
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/HealthController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/HealthController.php:21
+        snippet: "'missingRequiredConstants' => Constants::missingRequiredConstants()"
+    prevalence: common
+
+  - category: seo
+    pattern: Root cutover only after `/astro` stability
+    description: SEO, canonicale, sitemap i los `/astro` sa modelowane jako osobny etap po domknieciu wdrozeniowej stabilnosci.
+    examples:
+      - file: docs/setup/checklista-migracji-seo-wordpress-do-astro.md
+        location: docs/setup/checklista-migracji-seo-wordpress-do-astro.md:35
+        snippet: "Nie rob cutoveru, dopoki Faza wdrozeniowa nie daje stabilnego `domena.pl/astro`."
+      - file: docs/setup/tabela-zadan-klonowania.md
+        location: docs/setup/tabela-zadan-klonowania.md:22
+        snippet: "tylko root domeny jest publicznie indeksowalny"
+    prevalence: common
+
+  - category: hosting
+    pattern: dhosting chmod post-deploy rule
+    description: Prawa 755/644 sa w tym repo czescia definicji udanego deployu i rollbacku, a nie opcjonalna administracja serwera.
+    examples:
+      - file: docs/setup/repo-do-klonowania-plan-parametryzacji.md
+        location: docs/setup/repo-do-klonowania-plan-parametryzacji.md:84
+        snippet: "Po kazdym deployu wymus prawa"
+      - file: deploy-react.sh
+        location: deploy-react.sh:14
+        snippet: "find \"$BASE/react\" -type d -exec chmod 755 {} \;"
+      - file: .github/workflows/deploy-astro-dhosting.yml
+        location: .github/workflows/deploy-astro-dhosting.yml:87
+        snippet: "find '${REMOTE_PUBLIC_ROOT}' -type f -exec chmod 644 {} \;"
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: docs/setup package
+      responsibility: Defines the operator workflow, gates, manifests, and SEO cutover rules for reuse.
+      location: docs/setup/
+      relationship_to_domain: domain depends on this
+    - component: Astro runtime config
+      responsibility: Holds Astro base path and WordPress base URL for the static frontend.
+      location: astro-site/astro.config.mjs and astro-site/src/lib/config.ts
+      relationship_to_domain: domain depends on this
+    - component: React runtime config
+      responsibility: Holds React SPA basename, `/react` build base, page-builder slug, and WordPress/Woo fallback URLs.
+      location: zip/src/main.tsx, zip/vite.config.ts, zip/src/pages/TestowaBlueprintPage.tsx, zip/src/blocks/registry/**, zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: domain depends on this
+    - component: Deploy scripts and workflow
+      responsibility: Transfer artifacts to dhosting, back them up, and restore permissions.
+      location: deploy-react.sh, SCRIPTS/deploy-astro-static.ps1, SCRIPTS/rollback-astro-static.ps1, .github/workflows/deploy-astro-dhosting.yml
+      relationship_to_domain: domain depends on this
+    - component: bulwar-bridge plugin
+      responsibility: Exposes same-domain REST endpoints, validates required bridge constants, and anchors the health gate.
+      location: wordpress-plugin/bulwar-bridge/
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: GET /wp-json/bulwar/v1/health
+      location: wordpress-plugin/bulwar-bridge/src/Http/Routes.php:16
+      usage_pattern: Used as a readiness gate in docs/setup and manifest checklists.
+    - interface: GET /wp-json/bulwar/v1/page-builder/pages/{slug}
+      location: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts:67
+      usage_pattern: Used by the test page slug during runtime validation of the cloned WordPress content layer.
+    - interface: Same-domain React under /react
+      location: wordpress-plugin/bulwar-bridge/docs/contracts.md:6
+      usage_pattern: SPA stays on `/react` and is not moved during the first deployment phase.
+  data_flow_involving_domain: Operator fills manifest and first-day checklist, rewires domain/slug/SSH/public_html values in Astro, React, deploy scripts and bridge constants, deploys React to `/react` and Astro to `/astro`, then validates same-domain bridge health and page-builder endpoints before any production root cutover.
+  key_relationships_to_domain:
+    - from: docs/setup/template-manifest-nowej-instancji.md
+      to: astro-site/astro.config.mjs
+      relationship: configures
+    - from: docs/setup/template-manifest-nowej-instancji.md
+      to: zip/src/main.tsx
+      relationship: configures
+    - from: docs/setup/template-manifest-nowej-instancji.md
+      to: deploy-react.sh
+      relationship: configures
+    - from: docs/setup/day-1-checklista-klonowania.md
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/HealthController.php
+      relationship: validates via
+    - from: zip/src/pages/TestowaBlueprintPage.tsx
+      to: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      relationship: calls
+    - from: zip/src/blocks/registry/fetchWordPressPageBuilderSchema.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Routes.php
+      relationship: consumes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - Markdown
+    - YAML
+    - TypeScript
+    - TSX
+    - JavaScript
+    - Bash
+    - PowerShell
+    - PHP
+  frameworks_used_in_domain:
+    - name: Astro ^5.14.2
+      usage_in_domain: Static frontend published under `/astro`, configured by `astro-site/package.json` and `astro-site/astro.config.mjs`.
+    - name: React ^19.0.0
+      usage_in_domain: SPA published under `/react`, with basename routing and page-builder test page.
+    - name: Vite ^6.2.0
+      usage_in_domain: Build system for the React SPA and public base `/react/`.
+    - name: React Router DOM ^7.13.1
+      usage_in_domain: Sets SPA basename `/react` in `zip/src/main.tsx`.
+    - name: WordPress plus WooCommerce
+      usage_in_domain: Backend root install, same-domain REST surface, and checkout authority for the cloned client.
+    - name: GitHub Actions
+      usage_in_domain: CI deploy path for Astro using Node.js 22 and SSH-based archive deployment.
+  libraries_used_in_domain:
+    - name: zod ^4.3.6
+      purpose_in_domain: Shared validation dependency present in both Astro and React packages.
+    - name: @tailwindcss/vite ^4.1.14
+      purpose_in_domain: React build plugin used in the `/react` application.
+    - name: @google/genai ^1.29.0
+      purpose_in_domain: Present in React package and paired with a Vite build define for `GEMINI_API_KEY`.
+  external_apis_used_in_domain:
+    - name: WordPress REST bulwar/v1
+      integration_point: React page-builder and layout helpers plus operator health checks.
+    - name: Make webhook
+      integration_point: Bridge constant `BULWAR_BRIDGE_MAKE_WEBHOOK_URL` and post-order notifications documented in bridge contracts.
+
+related_conventions:
+  naming_patterns_in_domain: Docs and scripts use "Faza wdrozeniowa" and "Faza produkcyjna" consistently; test landing slug is named `testowa-blueprint`; path variables use explicit names like `REMOTE_PUBLIC_ROOT`, `remotePublicRoot`, `WORDPRESS_BASE_URL`, and `PAGE_BUILDER_SLUG`.
+  structure_of_domain: Operator docs live in `docs/setup/`; Astro deployment lives under `astro-site/` and `SCRIPTS/`; React deployment and runtime under `zip/`; WordPress integration under `wordpress-plugin/bulwar-bridge/`.
+  error_handling_in_domain: Docs define gates rather than exception flows; runtime helpers throw on non-OK HTTP responses; bridge health returns a success envelope with `missingRequiredConstants` instead of failing closed.
+  testing_in_domain: Dominant pattern is manual operator verification through health endpoint, `/react`, `/astro/<slug>`, permissions check, and at least one critical order test before phase closure.
+  documentation_in_domain: The setup package is split by intent: one overview, one day-1 checklist, one task table, one blank manifest, one filled manifest example, one sequential guide, one parameterization plan, and one SEO cutover checklist.
+
+related_dependencies:
+  internal:
+    - component: astro-site/astro.config.mjs
+      relationship_to_domain: Supplies `/astro` base and site origin that docs/setup tells the operator to change.
+      direction: outbound
+    - component: astro-site/src/lib/config.ts
+      relationship_to_domain: Supplies Astro WordPress base URL fallback that must follow the new backend.
+      direction: outbound
+    - component: zip/src/main.tsx and zip/vite.config.ts
+      relationship_to_domain: Supply React basename and build base under `/react`.
+      direction: outbound
+    - component: zip/src/blocks/registry/** and zip/components/CheckoutDrawer.tsx
+      relationship_to_domain: Carry hardcoded domain fallbacks and bridge origin logic.
+      direction: outbound
+    - component: wordpress-plugin/bulwar-bridge/src/Config/Constants.php
+      relationship_to_domain: Encodes required business constants and webhook/config defaults that drive health gating.
+      direction: outbound
+    - component: docs/setup/*
+      relationship_to_domain: Provide the operator sequence used to touch the rest of the codebase.
+      direction: inbound
+  external:
+    - name: dhosting SSH/SCP/SSH shell
+      purpose_for_domain: Target runtime for manual and CI deploys, including permission repair.
+    - name: WordPress plus WooCommerce install
+      purpose_for_domain: Backend clone destination and same-domain runtime surface.
+    - name: GitHub Secrets
+      purpose_for_domain: Provide `DHOSTING_SSH_KEY`, `DHOSTING_SSH_HOST`, and `DHOSTING_SSH_USER` in CI.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Reused repository secrets and credentials
+      location: workspace root and docs/setup/repo-do-klonowania-plan-parametryzacji.md:5
+      concern: `id_rsa`, `id_rsa.pub`, `temp_wp_config.php`, and local `.env*` are explicitly called out as forbidden to inherit into a new client clone.
+    - area: Build-time secret injection in React
+      location: zip/vite.config.ts:12
+      concern: `GEMINI_API_KEY` is exposed to Vite define logic and therefore belongs to the instance-specific secret set.
+    - area: Bridge operational secrets
+      location: wordpress-plugin/bulwar-bridge/src/Config/Constants.php:19 and wordpress-plugin/bulwar-bridge/src/Config/Constants.php:38
+      concern: Make webhook URL and Google Maps key are instance-specific and tied to backend behavior.
+  authentication_patterns_in_domain: Manual deploy scripts use SSH key auth against dhosting; CI writes an SSH private key from GitHub secrets and uses `scp` plus `ssh` for archive deployment.
+  authorization_patterns_in_domain: Bridge health, page-builder and global-layout REST endpoints are registered with `permission_callback` set to `__return_true`, matching the same-domain frontend contract documented in bridge contracts.
+  data_validation_in_domain: The bridge validates required constants through `Constants::missingRequiredConstants()`, while the operator docs enforce a manifest-first workflow to avoid guessing domain, SSH, public_html, backup and slug parameters.
+
+testing_patterns:
+  framework: Mixed manual operator verification plus PHP/TypeScript test coverage around bridge/runtime helpers.
+  coverage_areas:
+    - Health endpoint readiness via `GET /wp-json/bulwar/v1/health`
+    - Live reachability of `/react/` and `/astro/<slug>/`
+    - Absence of fallback calls to the old domain in runtime config
+    - Post-deploy permissions on dhosting (`755/644`)
+    - Minimum one critical order test before closing Faza wdrozeniowa
+  test_organization: Manual gates are documented in `docs/setup/*`; bridge contracts and plugin tests live under `wordpress-plugin/bulwar-bridge/`; runtime helper tests exist under `astro-site/src/lib/*.test.ts` and `zip/src/**`.
+  mock_patterns:
+    - Public health response shape documented in `wordpress-plugin/bulwar-bridge/docs/contracts.md`
+    - Runtime helper tests assert against hardcoded `https://client.example` URLs in current fixtures
+
+open_questions:
+  - question: Czy React ma byc publiczny pod `/react` dla kazdego nowego klienta, czy tylko wtedy gdy checkout jest potrzebny publicznie?
+    context: Glowny overview i task table zachowuja `/react`, ale overview warunkuje jego publiczna poprawnosc fraza "jesli jest potrzebny publicznie".
+    type: research
+    affects:
+      - standalone-20260421
+  - question: Czy aktualny first-day must-change cluster powinien formalnie obejmowac `zip/src/App.tsx`, czy `zip/vite.config.ts` i `zip/src/main.tsx` sa nowym substytutem tej odpowiedzialnosci?
+    context: `docs/setup/repo-do-klonowania-plan-parametryzacji.md` wskazuje `zip/src/App.tsx`, a repo memory wskazuje `zip/vite.config.ts` i `zip/src/main.tsx` jako first-day cluster.
+    type: research
+    affects:
+      - standalone-20260421
+  - question: Czy operator ma czyscic takze wygenerowane artefakty `dist/` i `deploy-*` zawierajace stara domene, czy workflow reuse zaklada dotykanie tylko plikow zrodlowych i skryptow?
+    context: Grep pokazal liczne build artifacts z `https://client.example`, ale docs/setup nie rozroznia zrodel od artefaktow.
+    type: research
+    affects:
+      - standalone-20260421
+
+gaps:
+  - area: React base-path docs drift
+    description: Pakiet `docs/setup/*` nie wymienia explicite `zip/vite.config.ts` i `zip/src/main.tsx`, mimo ze te pliki realnie trzymaja `/react/` base i router basename.
+    impact: research_blocker
+    affects:
+      - standalone-20260421
+  - area: Bridge constants provisioning path
+    description: Docs/setup mowia o "stalych bridge" i health-gate, ale nie opisują gdzie i jak operator ma je finalnie ustawic w nowej instancji WordPressa.
+    impact: research_blocker
+    affects:
+      - standalone-20260421
+  - area: Hardcoded old-domain inventory outside main cluster
+    description: Dokumentacja nie ma jednego centralnego spisu wszystkich zahardkodowanych canonicali, asset origins i runtime fallbackow poza glownymi helperami i skryptami.
+    impact: research_blocker
+    affects:
+      - standalone-20260421

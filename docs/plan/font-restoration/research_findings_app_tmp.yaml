@@ -1,0 +1,41 @@
+plan_id: font-restoration
+objective: Restore original font classes
+focus_area: app_tmp
+created_at: '2026-03-22'
+created_by: gem-researcher
+status: completed
+tldr: |
+  - Analyzed App.tmp.tsx
+  - Saved classes mapping to class_mapping.json
+research_metadata:
+  methodology: hybrid
+  scope: app_tmp
+  confidence: high
+  coverage: 100
+files_analyzed:
+  - file: App.tmp.tsx
+    path: zip/src/App.tmp.tsx
+    purpose: Source of truth
+    key_elements:
+      - element: classes
+        type: pattern
+        location: zip/src/App.tmp.tsx:1
+        description: class mapping
+    language: tsx
+    lines: 100
+patterns_found:
+  - category: structure
+    pattern: xyz
+    description: xyz
+    examples:
+      - file: App.tmp.tsx
+        location: 1
+        snippet: xyz
+    prevalence: common
+open_questions:
+  - question: none
+    context: none
+gaps:
+  - area: none
+    description: none
+    impact: none

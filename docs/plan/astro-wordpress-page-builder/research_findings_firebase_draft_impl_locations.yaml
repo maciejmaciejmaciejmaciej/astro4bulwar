@@ -1,0 +1,633 @@
+plan_id: astro-wordpress-page-builder
+objective: >-
+  Okreslic najlepsze miejsca implementacji dla draftu Firebase strony,
+  bootstrapu createPageDraftFromScrape oraz szkieletu modulu Make.com Code
+  compile, na podstawie istniejacego registry blokow, utili page buildera,
+  skryptow repo i aktualnych konwencji nazewniczych.
+focus_area: firebase_draft_impl_locations
+created_at: 2026-04-18
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - Najlepszy fit dla TypeScriptowego kontraktu draftu Firebase to nowy plik w zip/src/blocks/registry, bo w tej warstwie zyja juz Zodowe kontrakty, parsery i helpery tworzenia instancji blokow.
+  - createPageDraftFromScrape najlepiej dodac jako osobny helper w tej samej warstwie registry zamiast w scraperze albo SCRIPTS, bo ma skladac draft z registry defaults i jawnych source bindings, a nie wykonywac IO ani publikacje.
+  - Szkielet modulu Make.com Code powinien trafic do nowego pliku JavaScript w SCRIPTS, bo obecny generator AI dziala juz jako osobna granica runtime CommonJS i nie importuje TypeScriptowego registry bez bundlera.
+  - Obecny kod nie zawiera implementacji Firebase draft ani compile step; te elementy istnieja tylko w dokumentacji target-state, wiec rekomendacja musi zachowac rozdzial: draft/schema po stronie TS registry, compile skeleton po stronie plain JS.
+  - Najwazniejsze ograniczenie: menu Woo-backed nie moze byc bootstrapowane z body scrape; draft i compile musza zachowac workflow.requiresSourceMapping, unresolvedSourceBlockIds oraz blokade compile do czasu jawnego source mappingu.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval: przeglad instrukcji domenowych, grep_search dla symboli i
+    kontraktow, semantic_search dla wzorcow, targeted read_file na kluczowych
+    plikach registry, blokach source-backed, skryptach SCRIPTS i dokumentach
+    target-state, plus terminalowy pomiar dlugosci plikow.
+  scope: >-
+    Zbadano warstwe zip/src/blocks/registry, wybrane foldery blokow menu,
+    generator page_builder_schema_for_ai w SCRIPTS, testy invariantow registry,
+    workflow repo-first oraz dokumentacje Firebase draft / scrape bootstrap.
+    Analiza byla zawężona do lokalizacji implementacyjnych, zaleznosci i
+    ograniczen, bez wdrazania zmian.
+  confidence: high
+  coverage: 90
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: types.ts
+    path: zip/src/blocks/registry/types.ts
+    purpose: Bazowe typy registry blokow i instancji sekcji page buildera.
+    key_elements:
+      - element: PageBuilderBlockDefinition
+        type: interface
+        location: zip/src/blocks/registry/types.ts:21
+        description: Definiuje kontrakt block definition z schema, defaultData, render, runtime, sourceSchema i sourceResolver.
+      - element: PageBuilderSectionInstance
+        type: interface
+        location: zip/src/blocks/registry/types.ts:41
+        description: Reprezentuje instancje sekcji renderowego page_builder_schema z id, blockKey, blockVersion, data, source i meta.
+    language: typescript
+    lines: 46
+
+  - file: pageBuilderSchema.ts
+    path: zip/src/blocks/registry/pageBuilderSchema.ts
+    purpose: Zodowy parser i walidator kanonicznego renderowego page_builder_schema.
+    key_elements:
+      - element: pageBuilderSectionSchema
+        type: variable
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:6
+        description: Definiuje shape pojedynczej sekcji render schema.
+      - element: parsePageBuilderSchema
+        type: function
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:78
+        description: Waliduje version, page, unique ids, block versions, data i source przez shared registry.
+    language: typescript
+    lines: 93
+
+  - file: index.ts
+    path: zip/src/blocks/registry/index.ts
+    purpose: Centralny runtime registry z rejestrem blokow, validatorami i fabryka domyslnych instancji.
+    key_elements:
+      - element: blockRegistry
+        type: variable
+        location: zip/src/blocks/registry/index.ts:79
+        description: Mapuje blockKey do colocated block definitions.
+      - element: validateBlockData
+        type: function
+        location: zip/src/blocks/registry/index.ts:127
+        description: Parsuje data przez schema konkretnego bloku.
+      - element: validateBlockSource
+        type: function
+        location: zip/src/blocks/registry/index.ts:137
+        description: Waliduje source przez sourceSchema bloku albo odrzuca source dla content-only blokow.
+      - element: createDefaultBlockInstance
+        type: function
+        location: zip/src/blocks/registry/index.ts:157
+        description: Tworzy stabilna, zwalidowana instancje sekcji z clone(defaultData) i id w formacie <blockKey>-NN.
+    language: typescript
+    lines: 185
+
+  - file: blueprint.ts
+    path: zip/src/blocks/registry/blueprint.ts
+    purpose: Istniejacy helper tworzenia render schema z prostszego blueprintu.
+    key_elements:
+      - element: pageBlueprintSchema
+        type: variable
+        location: zip/src/blocks/registry/blueprint.ts:7
+        description: Definiuje uproszczony blueprint z page i sections[].block/data/source.
+      - element: createPageBuilderSchemaFromBlueprint
+        type: function
+        location: zip/src/blocks/registry/blueprint.ts:62
+        description: Merguje overrides z block.defaultData, nadaje fallback ids i zwraca parsePageBuilderSchema(...).
+    language: typescript
+    lines: 79
+
+  - file: common.ts
+    path: zip/src/blocks/registry/common.ts
+    purpose: Shared Zod schemas dla obrazow, CTA i source payloadow Woo.
+    key_elements:
+      - element: wooCategorySourceSchema
+        type: variable
+        location: zip/src/blocks/registry/common.ts:28
+        description: Kontrakt sourceType=woo_category ze sourceValue slug/id oraz options.
+      - element: sharedWooSourceSchema
+        type: variable
+        location: zip/src/blocks/registry/common.ts:42
+        description: Wspolny union source payloadow Woo dla blokow source-backed.
+    language: typescript
+    lines: 53
+
+  - file: resolvePageBuilderSources.ts
+    path: zip/src/blocks/registry/resolvePageBuilderSources.ts
+    purpose: Runtime source hydration render schema przez Woo i WordPress resolvery.
+    key_elements:
+      - element: resolvePageBuilderSchemaSources
+        type: function
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:38
+        description: Przechodzi po sections i rozstrzyga source-backed bloki do gotowego data.
+      - element: menu_two_columns_with_with_heading_no_img branch
+        type: pattern
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:62
+        description: Pokazuje, ze standalone menu panel ma juz osobny resolver Woo.
+      - element: menu-category-photo-parallax-full-width branch
+        type: pattern
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:88
+        description: Pokazuje source-aware translacje dla full-width menu hero.
+    language: typescript
+    lines: 133
+
+  - file: schema.ts
+    path: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts
+    purpose: Colocated kontrakt bloku menu dwukolumnowego z headingiem i Woo category source.
+    key_elements:
+      - element: menuTwoColumnsWithWithHeadingNoImgSourceSchema
+        type: variable
+        location: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts:16
+        description: Uzywa wooCategorySourceSchema jako jedynego dopuszczalnego source.
+      - element: menuTwoColumnsWithWithHeadingNoImgDataSchema
+        type: variable
+        location: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts:18
+        description: Okresla title, menuColumns i emptyStateText.
+      - element: menuTwoColumnsWithWithHeadingNoImgBlockDefinition
+        type: variable
+        location: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts:96
+        description: Definiuje tags, variants i sourceResolver dla standalone Woo-backed panelu menu.
+    language: typescript
+    lines: 127
+
+  - file: schema.ts
+    path: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts
+    purpose: Colocated kontrakt bloku menu hero z parallaxem i source Woo category/woo products.
+    key_elements:
+      - element: menuCategoryPhotoParallaxFullWidthSourceSchema
+        type: variable
+        location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:16
+        description: Dopuszcza woo_category i woo_products.
+      - element: menuCategoryPhotoParallaxFullWidthDataSchema
+        type: variable
+        location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:21
+        description: Okresla heroTitle, backgroundImage, layout, menuColumns i emptyStateText.
+      - element: menuCategoryPhotoParallaxFullWidthBlockDefinition
+        type: variable
+        location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:91
+        description: Zachowuje runtime i sourceResolver dla bloku, ktory w render schema jest source-backed.
+    language: typescript
+    lines: 125
+
+  - file: generate-page-builder-ai-schema.js
+    path: SCRIPTS/generate-page-builder-ai-schema.js
+    purpose: Plain Node/CommonJS generator page_builder_schema_for_ai z render schema.
+    key_elements:
+      - element: AI_BLOCK_REGISTRY
+        type: variable
+        location: SCRIPTS/generate-page-builder-ai-schema.js:362
+        description: Descriptor-driven mapa opisow, editableFields, editRoute i builderow content dla blokow AI.
+      - element: buildAiBlock
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:959
+        description: Mapuje jedna render section do jednego bloku AI i rzuca blad dla unsupported blockKey.
+      - element: buildAiSchema
+        type: function
+        location: SCRIPTS/generate-page-builder-ai-schema.js:987
+        description: Buduje finalny page_builder_schema_for_ai z zachowaniem stable ids.
+    language: javascript
+    lines: 941
+
+  - file: generate-page-builder-ai-schema.test.js
+    path: SCRIPTS/generate-page-builder-ai-schema.test.js
+    purpose: Testy generatora AI schema wykonywanego jako osobny proces Node.
+    key_elements:
+      - element: execFileSync(generatorPath)
+        type: pattern
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:76
+        description: Potwierdza, ze generator jest traktowany jako CLI i oddzielna granica runtime.
+      - element: menu block coverage tests
+        type: pattern
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:94
+        description: Sprawdza zachowanie block ids, blockKey i editable fields dla blokow menu.
+    language: javascript
+    lines: 470
+
+  - file: registry-invariants.test.tsx
+    path: zip/src/blocks/registry/registry-invariants.test.tsx
+    purpose: Invarianty synchronizacji miedzy TS registry i JS AI generatorem.
+    key_elements:
+      - element: aiSchemaScriptPath
+        type: variable
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:22
+        description: Wskazuje generator AI w SCRIPTS jako zewnetrzny skrypt.
+      - element: AI schema generator coverage stays aligned with the registered blocks
+        type: pattern
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:67
+        description: Wymusza 1:1 pokrycie registered blocks przez generator AI.
+    language: typescript
+    lines: 98
+
+  - file: page-builder-authoring-workflow.md
+    path: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+    purpose: Kanoniczny obecny workflow repo-first dla page buildera.
+    key_elements:
+      - element: canonical operating workflow
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:7
+        description: Oznacza ten dokument jako aktualny workflow produkcyjny.
+      - element: Compose The Render Schema In Repo
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:66
+        description: Potwierdza, ze render schema jest tworzone w repo jako pierwszy krok.
+      - element: Generate The AI Schema From The Render Schema
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:80
+        description: Potwierdza repo-side generator AI schema w SCRIPTS.
+    language: markdown
+    lines: 174
+
+  - file: firebase-page-draft-mvp.md
+    path: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+    purpose: Docelowy shape jednego dokumentu draftu Firebase i compile/publish lifecycle.
+    key_elements:
+      - element: Final MVP Shape
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:72
+        description: Pokazuje top-level fields draftu, blocksOrder, blocks map i compiled snapshots.
+      - element: workflow.requiresSourceMapping
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:165
+        description: Doklada gate dla brakujacych Woo bindings.
+      - element: What The Compile Step Does
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:213
+        description: Definiuje compile jako osobny krok generujacy oba WordPress payloady.
+    language: markdown
+    lines: 191
+
+  - file: scrape-bootstrap-firebase-draft-mapping.md
+    path: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md
+    purpose: Target-state mapping bootstrapu ze scrape do draftu i compile module dla Make.
+    key_elements:
+      - element: createPageDraftFromScrape
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:20
+        description: Nazywa funkcje bootstrapujaca i okresla jej role.
+      - element: sourceMappingNotes
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:189
+        description: Dodaje operator guidance per unresolved block id.
+      - element: Kontrakt wejściowy modułu
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:269
+        description: Podaje shape wejscia dla Make Code compile module.
+      - element: Reguły działania modułu
+        type: pattern
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:347
+        description: Okresla walidacje workflow.requiresSourceMapping i warunek fail-safe compile.
+    language: markdown
+    lines: 428
+
+  - file: index.md
+    path: docs/block-registry/index.md
+    purpose: Repo-side zasady utrzymania block registry i generatora AI.
+    key_elements:
+      - element: Only reusable business blocks belong here
+        type: pattern
+        location: docs/block-registry/index.md:17
+        description: Potwierdza, ze kontrakty blokow i ich logika musza pozostac w registry, nie w przypadkowych skryptach.
+      - element: AI schema generation stays descriptor-driven
+        type: pattern
+        location: docs/block-registry/index.md:27
+        description: Wskazuje shared generator registry w SCRIPTS jako jedyne miejsce rozszerzan AI descriptors.
+    language: markdown
+    lines: 39
+
+patterns_found:
+  - category: structure
+    pattern: Page-builder contracts live in zip/src/blocks/registry as small focused TypeScript modules.
+    description: Render schema, blueprint schema, shared source schemas i registry helpery sa rozdzielone na osobne pliki z jawnymi nazwami domenowymi.
+    examples:
+      - file: zip/src/blocks/registry/pageBuilderSchema.ts
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:78
+        snippet: export const parsePageBuilderSchema = (value: unknown): PageBuilderSchema => {
+      - file: zip/src/blocks/registry/blueprint.ts
+        location: zip/src/blocks/registry/blueprint.ts:62
+        snippet: export const createPageBuilderSchemaFromBlueprint = (blueprintValue: unknown): PageBuilderSchema => {
+      - file: zip/src/blocks/registry/index.ts
+        location: zip/src/blocks/registry/index.ts:157
+        snippet: export const createDefaultBlockInstance = (
+    prevalence: common
+
+  - category: architecture
+    pattern: Block contracts are colocated per block and source-aware blocks declare sourceSchema/sourceResolver beside data schema.
+    description: Kazdy blok niesie wlasny schema.ts, a source-backed bloki maja sourceSchema oraz sourceResolver w tej samej definicji.
+    examples:
+      - file: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts
+        location: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts:96
+        snippet: export const menuTwoColumnsWithWithHeadingNoImgBlockDefinition: PageBuilderBlockDefinition<
+      - file: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts
+        location: zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts:91
+        snippet: export const menuCategoryPhotoParallaxFullWidthBlockDefinition: PageBuilderBlockDefinition<
+    prevalence: common
+
+  - category: architecture
+    pattern: AI schema generation is descriptor-driven and intentionally separated into a plain JS runtime in SCRIPTS.
+    description: Generator AI nie korzysta bezposrednio z TS registry; buduje payload z render schema przez AI_BLOCK_REGISTRY i jest wywolywany jako CLI.
+    examples:
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:362
+        snippet: const AI_BLOCK_REGISTRY = {
+      - file: SCRIPTS/generate-page-builder-ai-schema.js
+        location: SCRIPTS/generate-page-builder-ai-schema.js:959
+        snippet: function buildAiBlock(section) {
+      - file: zip/src/blocks/registry/registry-invariants.test.tsx
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:94
+        snippet: const execution = spawnSync(process.execPath, [aiSchemaScriptPath, "--input", inputPath, "--output", outputPath], {
+    prevalence: common
+
+  - category: testing
+    pattern: Registry invariants enforce that every registered block remains compatible with both core schema validation and AI schema generation.
+    description: Testy nie tylko waliduja TS registry, ale tez sprawdzaja pokrycie generatora AI dla wszystkich registered blocks.
+    examples:
+      - file: zip/src/blocks/registry/registry-invariants.test.tsx
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:67
+        snippet: test("AI schema generator coverage stays aligned with the registered blocks", () => {
+      - file: SCRIPTS/generate-page-builder-ai-schema.test.js
+        location: SCRIPTS/generate-page-builder-ai-schema.test.js:94
+        snippet: test('AI schema generator supports the standalone menu panel blocks and keeps section variants editable', () => {
+    prevalence: common
+
+  - category: workflow
+    pattern: Current canonical flow is repo-first render schema -> AI schema generator; Firebase draft remains a documented target-state only.
+    description: Dokumentacja wyraznie oddziela obecny wspierany workflow od planowanego draft store w Firebase i compile step.
+    examples:
+      - file: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md
+        location: docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md:7
+        snippet: This is the current canonical operating workflow for the system.
+      - file: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+        location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:213
+        snippet: ## What The Compile Step Does
+      - file: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md
+        location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:347
+        snippet: ### Reguły działania modułu
+    prevalence: common
+
+  - category: naming
+    pattern: Helper names use explicit verb-led domains such as parse*, create*, fetch*, and resolve*.
+    description: Nazwy utili sa opisowe i wskazuja jednoznacznie granice odpowiedzialnosci.
+    examples:
+      - file: zip/src/blocks/registry/pageBuilderSchema.ts
+        location: zip/src/blocks/registry/pageBuilderSchema.ts:78
+        snippet: parsePageBuilderSchema
+      - file: zip/src/blocks/registry/blueprint.ts
+        location: zip/src/blocks/registry/blueprint.ts:62
+        snippet: createPageBuilderSchemaFromBlueprint
+      - file: zip/src/blocks/registry/resolvePageBuilderSources.ts
+        location: zip/src/blocks/registry/resolvePageBuilderSources.ts:38
+        snippet: resolvePageBuilderSchemaSources
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: zip/src/blocks/registry
+      responsibility: Trzyma registry truth dla render schema, defaults, walidacji i helperow tworzenia sekcji.
+      location: zip/src/blocks/registry
+      relationship_to_domain: Domain draftu Firebase powinien zalezec od tej warstwy jako source of truth dla blockKey, blockVersion, data i source.
+    - component: zip/src/blocks/*/schema.ts
+      responsibility: Colocated block contracts dla data/source i runtime render.
+      location: zip/src/blocks
+      relationship_to_domain: Bootstrap draftu musi wybierac tylko zatwierdzone bloki i sourceSchema z tych plikow.
+    - component: SCRIPTS/generate-page-builder-ai-schema.js
+      responsibility: Buduje page_builder_schema_for_ai z render schema po stronie plain JS.
+      location: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: Compile skeleton dla Make najlepiej reuseuje jego descriptor-driven wzorzec, ale pozostaje w osobnej granicy runtime.
+    - component: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+      responsibility: Definiuje target-state draftu, compile step i workflow gates.
+      location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md
+      relationship_to_domain: Jest jedynym repo-side zrodlem shape draftu Firebase; brak odpowiadajacego kodu runtime.
+  interfaces_used_by_domain:
+    - interface: PageBuilderSectionInstance
+      location: zip/src/blocks/registry/types.ts:41
+      usage_pattern: Najblizszy istniejący typ dla entries w draft.blocks[*], bo trzyma id, blockKey, blockVersion, variant, enabled, data i source.
+    - interface: PageBuilderSchema
+      location: zip/src/blocks/registry/pageBuilderSchema.ts:31
+      usage_pattern: Naturalny typ dla compiled.page_builder_schema oraz walidacji wyjscia compile.
+    - interface: PageBuilderBlockDefinition
+      location: zip/src/blocks/registry/types.ts:21
+      usage_pattern: Dostarcza version, defaultData i sourceSchema potrzebne bootstrapowi.
+  data_flow_involving_domain: >-
+    Obecny flow produkcyjny to repo render schema -> parsePageBuilderSchema ->
+    repo-side generator AI schema w SCRIPTS -> WordPress dual meta. Docelowy
+    flow draftowy dodaje warstwe Firebase draft przed compile, ale compile ma
+    nadal produkowac ten sam pair: page_builder_schema oraz
+    page_builder_schema_for_ai, bez zmiany registry truth i bez kopiowania body
+    scrape do blokow menu Woo-backed.
+  key_relationships_to_domain:
+    - from: zip/src/blocks/registry/index.ts
+      to: zip/src/blocks/*/schema.ts
+      relationship: imports
+    - from: zip/src/blocks/registry/pageBuilderSchema.ts
+      to: zip/src/blocks/registry/index.ts
+      relationship: calls
+    - from: zip/src/blocks/registry/blueprint.ts
+      to: zip/src/blocks/registry/pageBuilderSchema.ts
+      relationship: calls
+    - from: zip/src/blocks/registry/resolvePageBuilderSources.ts
+      to: zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts
+      relationship: imports
+    - from: zip/src/blocks/registry/registry-invariants.test.tsx
+      to: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship: executes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - JavaScript
+    - Markdown
+  frameworks_used_in_domain:
+    - name: React 19
+      usage_in_domain: Registry runtime.renderSection i strony diagnostyczne korzystaja z React/TSX w zip.
+    - name: Vite 6
+      usage_in_domain: Buduje aplikacje zip, w ktorej zyje obecna warstwa TS registry.
+  libraries_used_in_domain:
+    - name: zod 4.3.6
+      purpose_in_domain: Walidacja kontraktow block data, source i render schema w zip registry.
+    - name: tsx 4.21.0
+      purpose_in_domain: Uruchamianie testow TypeScriptowych repo-side dla registry i stron.
+    - name: axios 1.13.6
+      purpose_in_domain: Zaleznosc scrape tooling w zip/SRIPTS/wp-seo-scraper; istotna tylko dla etapu normalizacji scrape, nie dla samego bootstrapu draftu.
+    - name: cheerio 1.2.0
+      purpose_in_domain: Parser HTML w scraperze; nie jest potrzebny w compile skeletonie Make.
+  external_apis_used_in_domain:
+    - name: WooCommerce Store API / source resolvers
+      integration_point: zip/src/blocks/registry/resolvePageBuilderSources.ts i powiazane resolvery Woo.
+    - name: WordPress page-builder endpoint
+      integration_point: Obecny workflow repo-first zapisuje oba meta payloady do WordPress po wygenerowaniu render i AI schema.
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Helpery uzywaja verb-led nazw w camelCase po stronie TS (`parsePageBuilderSchema`,
+    `createPageBuilderSchemaFromBlueprint`, `resolvePageBuilderSchemaSources`) i
+    kebab-case nazw plikow dla CLI / repo scripts po stronie SCRIPTS
+    (`generate-page-builder-ai-schema.js`).
+  structure_of_domain: >-
+    Registry core ma osobne pliki dla wspolnych schema, parsera render schema,
+    blueprint helpera i resolvera source. Kazdy business block ma wlasny folder
+    `zip/src/blocks/<blockKey>/schema.ts`. Repo-side skrypty publikacyjne i
+    generator AI zyja w SCRIPTS jako plain JS.
+  error_handling_in_domain: >-
+    TS registry rzuca twarde bledy dla unknown blockKey, version mismatch,
+    invalid data i invalid source. Generator AI rzuca blad dla unsupported
+    blockKey. Dokument draftu wymaga controlled failure, gdy workflow ma
+    unresolved source mapping.
+  testing_in_domain: >-
+    Testy invariantow pilnuja zgodnosci registry oraz generatora AI. Source
+    resolution ma osobne testy dla blokow menu i WordPress/Woo-backed blokow.
+  documentation_in_domain: >-
+    docs/block-registry i docs/plan/astro-wordpress-page-builder sa aktywnie
+    uzywane jako kontrakty operacyjne i target-state notes. Dokumentacja juz
+    rozroznia canonical workflow od target-state Firebase draft.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/index.ts
+      relationship_to_domain: Dostarcza createDefaultBlockInstance, getBlock i validate* potrzebne draft bootstrapowi.
+      direction: outbound
+    - component: zip/src/blocks/registry/pageBuilderSchema.ts
+      relationship_to_domain: Dostarcza PageBuilderSchema i parsePageBuilderSchema dla compiled render output.
+      direction: outbound
+    - component: zip/src/blocks/registry/common.ts
+      relationship_to_domain: Dostarcza wspolne source schemas Woo dla workflow.requiresSourceMapping i placeholder bindings.
+      direction: outbound
+    - component: SCRIPTS/generate-page-builder-ai-schema.js
+      relationship_to_domain: Dostarcza istniejacy wzorzec budowy AI payloadu po stronie JS.
+      direction: outbound
+    - component: zip/SRIPTS/wp-seo-scraper
+      relationship_to_domain: Potencjalne zrodlo znormalizowanego scrapeDocument wejscia do bootstrapu, ale nie miejsce dla compile logiki.
+      direction: inbound
+  external:
+    - name: zod
+      purpose_for_domain: Typed schema validation w nowym TypeScriptowym draft contract file.
+    - name: node runtime (CommonJS)
+      purpose_for_domain: Granica wykonania dla Make-like compile skeletonu i obecnego generatora AI w SCRIPTS.
+
+implementation_locations:
+  - item: TypeScript type/schema dla Firebase page draft z workflow.requiresSourceMapping, unresolvedSourceBlockIds i sourceMappingNotes
+    recommended_path: zip/src/blocks/registry/firebasePageDraft.ts
+    action: create_new_file
+    rationale: >-
+      Najblizsze istniejące analogie to pageBuilderSchema.ts, blueprint.ts,
+      common.ts i types.ts. Wszystkie kontrakty page buildera sa tu juz
+      modelowane przez Zod i compose'owane z shared registry. Dodanie draft
+      contract do pageBuilderSchema.ts mieszaloby working draft store z
+      kanonicznym WordPress render schema, co przeczy dokumentacji target-state.
+    dependencies_to_reuse:
+      - zip/src/blocks/registry/types.ts: PageBuilderSectionInstance jako baza dla entries w draft.blocks
+      - zip/src/blocks/registry/pageBuilderSchema.ts: PageBuilderSchema dla compiled.page_builder_schema
+      - zip/src/blocks/registry/common.ts: wooCategorySourceSchema / sharedWooSourceSchema dla workflow gates i placeholder bindings
+      - zip/src/blocks/registry/index.ts: validateBlockData, validateBlockSource, getBlock
+    constraints_from_current_code:
+      - pageBuilderSchema.ts jest kanonicznym kontraktem render meta dla WordPress, nie working draft store
+      - w kodzie nie ma jeszcze TS typu dla page_builder_schema_for_ai; compiled.page_builder_schema_for_ai wymaga osobnego local type/schema albo tymczasowo unknown
+      - dokumentacja target-state wymaga zachowania blocksOrder + blocks map + stable ids, zamiast root array write modelu
+
+  - item: Bootstrap function createPageDraftFromScrape
+    recommended_path: zip/src/blocks/registry/createPageDraftFromScrape.ts
+    action: create_new_file_and_extend_registry_exports_if_needed
+    rationale: >-
+      Konwencja helperow registry jest verb-led i rozdziela parser, blueprint
+      build oraz source resolution na osobne pliki. createPageDraftFromScrape ma
+      budowac strukture draftu z registry defaults i source bindings, wiec jest
+      blizej createPageBuilderSchemaFromBlueprint niz skryptow CLI albo samego
+      scrape parsera.
+    dependencies_to_reuse:
+      - zip/src/blocks/registry/index.ts: createDefaultBlockInstance, getBlock, validateBlockData, validateBlockSource
+      - zip/src/blocks/registry/blueprint.ts: wzorzec deep merge dla recipe/data overrides
+      - zip/src/blocks/menu_two_columns_with_with_heading_no_img/schema.ts: sourceSchema i defaultData dla standalone Woo menu block
+      - zip/src/blocks/menu-category-photo-parallax-full-width/schema.ts: sourceSchema i defaultData dla hero menu block
+      - zip/src/blocks/registry/firebasePageDraft.ts: parse/validate final draft output
+    constraints_from_current_code:
+      - bootstrap ma byc structure-only; dokumentacja zabrania kopiowania body content, nazw dan, opisow i cen ze scrape do menuColumns
+      - current code nie ma Firebase SDK ani persystencji draftu, wiec helper powinien zwracac draft object, a nie wykonywac zapis do Firestore
+      - wejscie ma byc znormalizowanym scrapeDocument; zip/SRIPTS/wp-seo-scraper jest osobna warstwa ekstrakcji i nie powinien byc miejscem dla page-builder compile logic
+
+  - item: JavaScript skeleton dla Make.com Code compile module
+    recommended_path: SCRIPTS/make-code-compile-page-draft.js
+    action: create_new_file
+    rationale: >-
+      Obecny generator AI schema juz zyje w SCRIPTS jako plain JS/CommonJS i jest
+      uruchamiany jako osobny proces. Make Code compile skeleton ma te sama
+      granice runtime: nie powinien byc wsadzany do TS registry ani do scrapera,
+      ale powinien pozostac repo-side artefaktem JS obok generatora AI.
+    dependencies_to_reuse:
+      - SCRIPTS/generate-page-builder-ai-schema.js: descriptor-driven AI_BLOCK_REGISTRY, buildAiBlock/buildAiSchema pattern
+      - docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md: input/output contract i fail-safe rules modulu
+      - zip/src/blocks/registry/registry-invariants.test.tsx: oczekiwanie, ze AI generator coverage pozostaje aligned z registered blocks
+    constraints_from_current_code:
+      - generator AI nie eksportuje biblioteki; dzisiaj jest monolitycznym CLI, wiec wspol-reuzycie bedzie wymagalo albo extraction helpera JS, albo tymczasowego duplikowania minimalnych descriptor functions
+      - plain JS layer nie ma bezposredniego, bezpiecznego importu TS/TSX registry bez dodatkowego bundlingu lub transpile step
+      - compile step nie istnieje w wykonywalnym kodzie; dokumentacja wymaga, aby modul failowal kontrolowanie przy workflow.requiresSourceMapping=true albo placeholder sourceValue typu TODO_WOO_CATEGORY_SLUG
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Woo source bindings for restaurant menu blocks
+      location: docs/plan/astro-wordpress-page-builder/scrape-bootstrap-firebase-draft-mapping.md:347
+      concern: Compile i bootstrap nie moga traktowac scrape body jako kanonicznego zrodla produktow, cen i opisow.
+    - area: Dual WordPress payload generation
+      location: docs/plan/astro-wordpress-page-builder/firebase-page-draft-mvp.md:213
+      concern: Compile musi produkowac oba payloady razem; partial publish lub jednostronny update narusza kontrakt page buildera.
+  authentication_patterns_in_domain: >-
+    W badanym zakresie nie ma jeszcze implementacji Firebase auth ani Make auth.
+    Obecny zapis do WordPressa jest opisany jako osobny, authenticated publish
+    step po compile.
+  authorization_patterns_in_domain: >-
+    Make Code compile module wedlug dokumentacji ma byc walidatorem i
+    translacja, nie edytorem katalogu produktow Woo ani publisherem.
+  data_validation_in_domain: >-
+    Aktualny kod stawia na Zod parsing po stronie TS registry i explicite
+    failuje dla unknown blockKey/source. Ta sama rygorystyczna walidacja powinna
+    byc utrzymana w nowym draft contract file przed wygenerowaniem compiled
+    payloadow.
+
+testing_patterns:
+  framework: node:test plus repo TypeScript tests executed via tsx/node
+  coverage_areas:
+    - registry invariants dla wszystkich registered blocks
+    - AI schema generator coverage aligned z registered blocks
+    - source resolution dla Woo-backed menu blocks i WordPress-backed oferta posts
+  test_organization: >-
+    TS registry ma testy obok utili w zip/src/blocks/registry, a generator AI ma
+    osobny zestaw testow w SCRIPTS. To sugeruje trzymanie nowych testow draft
+    contractu przy TS registry oraz compile skeleton tests przy SCRIPTS.
+  mock_patterns:
+    - spawnSync/execFileSync dla uruchamiania JS CLI generatora jako osobnego procesu
+    - parsePageBuilderSchema na syntetycznych payloadach do weryfikacji registry contracts
+
+open_questions:
+  - question: Czy compiled.page_builder_schema_for_ai ma dostac formalny TS/Zod schema w zip, czy pozostac na razie plain-JS contractem generatora?
+    context: Obecnie render schema ma parsePageBuilderSchema, ale AI schema jest generowana i testowana tylko po stronie SCRIPTS.
+    type: decision_blocker
+    affects: [user-request]
+
+  - question: Czy createPageDraftFromScrape ma znac tylko czysta funkcje transformacji, czy od razu warstwe recipe/page-kind selection z osobnej mapy templateKey -> block recipes?
+    context: Dokument bootstrapu wspomina page kind, templateKey i approved recipes, ale w kodzie nie ma jeszcze repo-side recipe registry dla draft bootstrapu.
+    type: research
+    affects: [user-request]
+
+  - question: Czy Make compile skeleton ma docelowo wspoldzielic helpery z generate-page-builder-ai-schema.js przez ekstrakcje wspolnego JS lib, czy pozostac niezaleznym szkieletem?
+    context: Obecny generator AI jest monolitycznym CLI bez exports, ale nowy compile module potrzebuje podobnych descriptor patterns.
+    type: research
+    affects: [user-request]
+
+gaps:
+  - area: Firebase runtime implementation
+    description: W repo nie ma wykonujacego sie kodu dla Firebase draft store, Firestore persistence ani odczytu/zapisu draftu.
+    impact: research_blocker
+    affects: [user-request]
+
+  - area: Compile step implementation
+    description: Compile z draftu Firebase do obu payloadow WordPress istnieje tylko w dokumentacji target-state i nie ma jeszcze repo-side runtime code.
+    impact: research_blocker
+    affects: [user-request]
+
+  - area: Typed AI schema contract in TypeScript
+    description: page_builder_schema_for_ai ma generator i testy, ale brak analogicznego pliku schema/type w zip/src/blocks/registry.
+    impact: nice_to_know
+    affects: [user-request]

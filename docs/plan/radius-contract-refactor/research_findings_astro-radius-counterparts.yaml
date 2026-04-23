@@ -1,0 +1,400 @@
+plan_id: radius-contract-refactor
+objective: Find Astro counterparts for the React blocks used on /template that still need central radius alignment, and record whether Astro-side radius handling is hardcoded or semantic.
+focus_area: astro-radius-counterparts
+created_at: 2026-04-22
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - /template mounts Feature18 via universal_multilink_block, Project5c via universal_header_block_1, OccasionalMenuPdfDownloadSection via block_download, MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection via menu_two_columns_with_with_heading_with_img_fullwidth_paralax, and Project10 via universal_header_block_2; Feature20 is only mounted on /template2.
+  - Exact Astro-ready counterparts exist only for universal_header_block_2 and for the separate menu-category-photo-parallax-full-width block that the parallax menu block is explicitly derived from; universal_multilink_block, universal_header_block_1, and block_download have no Astro renderer registered.
+  - The exact Astro counterpart UniversalHeaderBlock2Section.astro still hardcodes border-radius: 4px for both the CTA and hero image frame.
+  - The nearest Astro menu analogue MenuCategorySection.astro currently has no local or shared radius declarations for its menu-section surface, so it is not yet using a central semantic radius token either.
+  - React source blocks in scope still use hardcoded rounded-* utilities such as rounded-[4px], rounded-[8px], rounded-[24px], rounded-t-[4px], and rounded-b-[4px].
+
+research_metadata:
+  methodology: Hybrid retrieval using grep_search, file_search, semantic_search, and targeted read_file inspection of TemplatePage wiring, shared registry readiness, Astro projection files, Astro CSS, and the suspected React source components.
+  scope: Focused on zip/src/pages/TemplatePage.tsx, zip/src/pages/TemplatePage2.tsx, the five suspected React files, astro-site/src/components, astro-site/src/lib/astroRegistry.ts, astro-site/src/styles/global.css, and shared registry/docs mappings.
+  confidence: high
+  coverage: 92
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: TemplatePage.tsx
+    path: zip/src/pages/TemplatePage.tsx
+    purpose: Defines the /template preview schema and confirms which registered blocks are mounted there.
+    key_elements:
+      - element: TEMPLATE_PAGE_PREVIEW_SCHEMA.sections
+        type: variable
+        location: zip/src/pages/TemplatePage.tsx:95
+        description: Includes universal_multilink_block, universal_header_block_1, universal_header_block_2, block_download, and menu_two_columns_with_with_heading_with_img_fullwidth_paralax on /template.
+    language: TypeScript
+    lines: 191
+  - file: TemplatePage2.tsx
+    path: zip/src/pages/TemplatePage2.tsx
+    purpose: Confirms that Feature20 is mounted on /template2 rather than /template.
+    key_elements:
+      - element: Feature20 import and render
+        type: pattern
+        location: zip/src/pages/TemplatePage2.tsx:6
+        description: Mounts Feature20 only on the secondary preview canvas.
+    language: TypeScript
+    lines: 139
+  - file: Feature18.tsx
+    path: zip/src/components/sections/Feature18.tsx
+    purpose: React renderer for universal_multilink_block.
+    key_elements:
+      - element: leftColumn CTA
+        type: pattern
+        location: zip/src/components/sections/Feature18.tsx:99
+        description: Uses rounded-[4px] on the primary CTA button.
+      - element: card shell
+        type: pattern
+        location: zip/src/components/sections/Feature18.tsx:110
+        description: Uses rounded-[4px] on each card shell.
+    language: TypeScript
+    lines: 136
+  - file: Project5c.tsx
+    path: zip/src/components/sections/Project5c.tsx
+    purpose: React renderer for universal_header_block_1.
+    key_elements:
+      - element: links panel shell
+        type: pattern
+        location: zip/src/components/sections/Project5c.tsx:124
+        description: Uses rounded-[4px] on the links panel.
+      - element: gallery media frames
+        type: pattern
+        location: zip/src/components/sections/Project5c.tsx:156
+        description: Uses rounded-[4px] on both image frames.
+    language: TypeScript
+    lines: 202
+  - file: OccasionalMenuPdfDownloadSection.tsx
+    path: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx
+    purpose: React renderer for block_download.
+    key_elements:
+      - element: outer section card
+        type: pattern
+        location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:79
+        description: Uses rounded-[4px] on the outer card shell.
+      - element: feature icon shell
+        type: pattern
+        location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:97
+        description: Uses rounded-[4px] on the icon shell.
+      - element: PDF panel shell
+        type: pattern
+        location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:110
+        description: Uses rounded-[24px] on the download panel.
+      - element: primary CTA button
+        type: pattern
+        location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:129
+        description: Uses rounded-[8px] on the primary CTA.
+    language: TypeScript
+    lines: 149
+  - file: MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+    path: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+    purpose: React renderer for the parallax two-column menu block.
+    key_elements:
+      - element: hero shell
+        type: pattern
+        location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:39
+        description: Uses rounded-t-[4px] rounded-b-none on the parallax hero.
+      - element: attached menu panel
+        type: pattern
+        location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:63
+        description: Passes rounded-t-none rounded-b-[4px] into the shared panel class.
+    language: TypeScript
+    lines: 65
+  - file: Feature20.tsx
+    path: zip/src/components/sections/Feature20.tsx
+    purpose: Suspected React block checked for /template usage and Astro registry presence.
+    key_elements:
+      - element: Feature20Card
+        type: pattern
+        location: zip/src/components/sections/Feature20.tsx:104
+        description: Uses rounded-xl, but the component is not mounted on /template and has no page-builder or Astro registry mapping.
+    language: TypeScript
+    lines: 120
+  - file: astroRegistry.ts
+    path: astro-site/src/lib/astroRegistry.ts
+    purpose: Defines the Astro projection and enforces parity with the shared readiness manifest.
+    key_elements:
+      - element: astroRendererProjection
+        type: variable
+        location: astro-site/src/lib/astroRegistry.ts:33
+        description: Only maps about-1, gallery-masonry-style1, menu-category-photo-parallax-full-width, our-services, and universal_header_block_2.
+      - element: resolveAstroRenderer
+        type: function
+        location: astro-site/src/lib/astroRegistry.ts:75
+        description: Throws unless a block is both ready and Astro-enabled in the readiness manifest.
+    language: TypeScript
+    lines: 103
+  - file: PageBuilderSection.astro
+    path: astro-site/src/components/PageBuilderSection.astro
+    purpose: Astro-side dispatcher for shared registry sections.
+    key_elements:
+      - element: MenuCategorySection render branch
+        type: pattern
+        location: astro-site/src/components/PageBuilderSection.astro:51
+        description: Renders only menu-category-photo-parallax-full-width into MenuCategorySection.astro.
+      - element: UniversalHeaderBlock2Section render branch
+        type: pattern
+        location: astro-site/src/components/PageBuilderSection.astro:62
+        description: Renders only universal_header_block_2 into UniversalHeaderBlock2Section.astro.
+    language: Astro
+    lines: 81
+  - file: MenuCategorySection.astro
+    path: astro-site/src/components/MenuCategorySection.astro
+    purpose: Astro renderer for menu-category-photo-parallax-full-width and nearest Astro analogue for the parallax two-column menu block.
+    key_elements:
+      - element: menu-section markup
+        type: pattern
+        location: astro-site/src/components/MenuCategorySection.astro:77
+        description: Renders the hero plus lower menu grid but has no local style block with radius declarations.
+    language: Astro
+    lines: 123
+  - file: global.css
+    path: astro-site/src/styles/global.css
+    purpose: Shared Astro styling source for MenuCategorySection and other site primitives.
+    key_elements:
+      - element: menu-section styles
+        type: pattern
+        location: astro-site/src/styles/global.css:325
+        description: Defines menu-section hero/content/grid/item styles without any border-radius declaration for menu-section selectors.
+      - element: hardcoded 4px radius examples
+        type: pattern
+        location: astro-site/src/styles/global.css:644
+        description: "Confirms Astro global styling elsewhere still uses raw border-radius: 4px values instead of a semantic radius token."
+    language: CSS
+    lines: 920
+  - file: UniversalHeaderBlock2Section.astro
+    path: astro-site/src/components/UniversalHeaderBlock2Section.astro
+    purpose: Exact Astro renderer for universal_header_block_2 and closest editorial/header parity reference on Astro.
+    key_elements:
+      - element: CTA radius
+        type: pattern
+        location: astro-site/src/components/UniversalHeaderBlock2Section.astro:204
+        description: "Hardcodes border-radius: 4px on the CTA."
+      - element: image frame radius
+        type: pattern
+        location: astro-site/src/components/UniversalHeaderBlock2Section.astro:224
+        description: "Hardcodes border-radius: 4px on the image frame."
+    language: Astro
+    lines: 339
+  - file: registry.machine.json
+    path: docs/block-registry/registry.machine.json
+    purpose: Shared readiness manifest used by Astro to determine which block keys are Astro-ready.
+    key_elements:
+      - element: block_download readiness
+        type: pattern
+        location: docs/block-registry/registry.machine.json:139
+        description: Marks block_download as refining with astroRenderer.available = false.
+      - element: menu_two_columns_with_with_heading_with_img_fullwidth_paralax readiness
+        type: pattern
+        location: docs/block-registry/registry.machine.json:372
+        description: Marks the parallax two-column menu block as refining with astroRenderer.available = false.
+      - element: menu-category-photo-parallax-full-width readiness
+        type: pattern
+        location: docs/block-registry/registry.machine.json:401
+        description: Marks the adjacent category-photo parallax block as ready with Astro path astro-site/src/components/MenuCategorySection.astro.
+      - element: universal_header_block_1 readiness
+        type: pattern
+        location: docs/block-registry/registry.machine.json:635
+        description: Marks universal_header_block_1 as refining with astroRenderer.available = false.
+      - element: universal_header_block_2 readiness
+        type: pattern
+        location: docs/block-registry/registry.machine.json:664
+        description: Marks universal_header_block_2 as ready with Astro path astro-site/src/components/UniversalHeaderBlock2Section.astro.
+      - element: universal_multilink_block readiness
+        type: pattern
+        location: docs/block-registry/registry.machine.json:694
+        description: Marks universal_multilink_block as refining with astroRenderer.available = false.
+    language: JSON
+    lines: 1945
+
+patterns_found:
+  - category: architecture
+    pattern: Astro projection is keyed by shared registry readiness, not by React component name.
+    description: Exact Astro counterparts are available only when the block key is both ready and astroRenderer.available in the shared readiness manifest, then mirrored in astro-site/src/lib/astroRegistry.ts and PageBuilderSection.astro.
+    examples:
+      - file: astro-site/src/lib/astroRegistry.ts
+        location: astro-site/src/lib/astroRegistry.ts:33
+        snippet: "astroRendererProjection only includes about-1, gallery-masonry-style1, menu-category-photo-parallax-full-width, our-services, and universal_header_block_2."
+      - file: astro-site/src/components/PageBuilderSection.astro
+        location: astro-site/src/components/PageBuilderSection.astro:51
+        snippet: "Only menu-category-photo-parallax-full-width and universal_header_block_2 from the target-adjacent set are rendered by Astro branches."
+    prevalence: common
+  - category: registry
+    pattern: Three of the four /template target blocks remain React-only in the shared readiness manifest.
+    description: universal_multilink_block, universal_header_block_1, and block_download are implemented on React and documented, but Astro readiness is explicitly false.
+    examples:
+      - file: docs/block-registry/registry.machine.json
+        location: docs/block-registry/registry.machine.json:139
+        snippet: '"block_download" -> "astroRenderer": { "available": false }'
+      - file: docs/block-registry/registry.machine.json
+        location: docs/block-registry/registry.machine.json:635
+        snippet: '"universal_header_block_1" -> "astroRenderer": { "available": false }'
+      - file: docs/block-registry/registry.machine.json
+        location: docs/block-registry/registry.machine.json:694
+        snippet: '"universal_multilink_block" -> "astroRenderer": { "available": false }'
+    prevalence: occasional
+  - category: composition
+    pattern: The parallax two-column menu block maps only to a composition-adjacent Astro analogue, not an exact Astro counterpart.
+    description: Its block doc states that the React block is derived from menu-category-photo-parallax-full-width plus the shared menu panel treatment, while the shared registry marks the exact block key as not Astro-ready.
+    examples:
+      - file: docs/block-registry/menu_two_columns_with_with_heading_with_img_fullwidth_paralax.md
+        location: docs/block-registry/menu_two_columns_with_with_heading_with_img_fullwidth_paralax.md:20
+        snippet: "This block is intentionally derived from menu-category-photo-parallax-full-width for the full-width parallax hero shell."
+      - file: docs/block-registry/registry.machine.json
+        location: docs/block-registry/registry.machine.json:372
+        snippet: '"menu_two_columns_with_with_heading_with_img_fullwidth_paralax" -> "astroRenderer": { "available": false }'
+      - file: docs/block-registry/registry.machine.json
+        location: docs/block-registry/registry.machine.json:401
+        snippet: '"menu-category-photo-parallax-full-width" -> "astroRenderer": { "available": true, "path": "astro-site/src/components/MenuCategorySection.astro" }'
+    prevalence: rare
+  - category: radius
+    pattern: Radius handling is still hardcoded where Astro exact counterparts exist.
+    description: "UniversalHeaderBlock2Section.astro uses raw border-radius: 4px values, and the nearest menu analogue does not expose a semantic radius token either."
+    examples:
+      - file: astro-site/src/components/UniversalHeaderBlock2Section.astro
+        location: astro-site/src/components/UniversalHeaderBlock2Section.astro:209
+        snippet: 'border-radius: 4px;'
+      - file: astro-site/src/components/UniversalHeaderBlock2Section.astro
+        location: astro-site/src/components/UniversalHeaderBlock2Section.astro:227
+        snippet: 'border-radius: 4px;'
+      - file: astro-site/src/styles/global.css
+        location: astro-site/src/styles/global.css:325
+        snippet: 'menu-section selectors define hero/content/grid/item rules without any radius token or border-radius declaration.'
+    prevalence: occasional
+  - category: radius
+    pattern: React source blocks still carry literal rounded-* utility classes.
+    description: All four /template-mounted React suspects use hardcoded Tailwind radius utilities rather than a central semantic radius abstraction.
+    examples:
+      - file: zip/src/components/sections/Feature18.tsx
+        location: zip/src/components/sections/Feature18.tsx:99
+        snippet: 'rounded-[4px]'
+      - file: zip/src/components/sections/Project5c.tsx
+        location: zip/src/components/sections/Project5c.tsx:124
+        snippet: 'rounded-[4px]'
+      - file: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx
+        location: zip/src/components/sections/OccasionalMenuPdfDownloadSection.tsx:110
+        snippet: 'rounded-[24px]'
+      - file: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx
+        location: zip/src/components/sections/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.tsx:39
+        snippet: 'rounded-t-[4px] rounded-b-none'
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: shared registry readiness manifest
+      responsibility: Declares per-block lifecycle and capability readiness, including Astro renderer availability.
+      location: docs/block-registry/registry.machine.json
+      relationship_to_domain: Determines whether an exact Astro counterpart exists.
+    - component: Astro registry projection
+      responsibility: Maps ready block keys to concrete Astro component paths.
+      location: astro-site/src/lib/astroRegistry.ts
+      relationship_to_domain: Domain depends on this for exact Astro counterpart lookup.
+    - component: Astro page-builder section dispatcher
+      responsibility: Renders Astro components for supported block keys.
+      location: astro-site/src/components/PageBuilderSection.astro
+      relationship_to_domain: Uses Astro renderer outputs.
+    - component: Astro shared menu renderer
+      responsibility: Renders the ready menu-category-photo-parallax-full-width block.
+      location: astro-site/src/components/MenuCategorySection.astro
+      relationship_to_domain: Nearest Astro analogue for the React parallax menu block.
+    - component: Astro universal header block 2 renderer
+      responsibility: Renders the ready editorial header/story block.
+      location: astro-site/src/components/UniversalHeaderBlock2Section.astro
+      relationship_to_domain: Exact Astro counterpart for the ready editorial/header variant.
+  interfaces_used_by_domain:
+    - interface: PageBuilderSection
+      location: astro-site/src/lib/types.ts:192
+      usage_pattern: Union type accepted by the Astro dispatcher after block-key validation.
+    - interface: SharedRegistryReadinessManifest
+      location: astro-site/src/lib/astroRegistry.ts:15
+      usage_pattern: Validates lifecycle and Astro readiness before resolving a component path.
+  data_flow_involving_domain: TemplatePage defines block-key usage in React preview -> shared registry docs/manifests declare block-key readiness -> astro-site/src/lib/astroRegistry.ts resolves only Astro-ready block keys -> astro-site/src/components/PageBuilderSection.astro dispatches to the matching Astro component.
+  key_relationships_to_domain:
+    - from: zip/src/pages/TemplatePage.tsx
+      to: docs/block-registry/registry.machine.json
+      relationship: imports block definitions whose keys are tracked in the readiness manifest
+    - from: docs/block-registry/registry.machine.json
+      to: astro-site/src/lib/astroRegistry.ts
+      relationship: astroRegistry reads and enforces readiness parity
+    - from: astro-site/src/lib/astroRegistry.ts
+      to: astro-site/src/components/PageBuilderSection.astro
+      relationship: provides resolved Astro renderer descriptors
+    - from: astro-site/src/components/PageBuilderSection.astro
+      to: astro-site/src/components/MenuCategorySection.astro
+      relationship: composes
+    - from: astro-site/src/components/PageBuilderSection.astro
+      to: astro-site/src/components/UniversalHeaderBlock2Section.astro
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - Astro
+    - CSS
+    - JSON
+    - Markdown
+  frameworks_used_in_domain:
+    - name: Astro
+      usage_in_domain: Static page-builder rendering in astro-site/src/components and astro-site/src/pages.
+    - name: React
+      usage_in_domain: Source block implementations and TemplatePage preview in zip/src.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Shared schema typing and validation for Astro page-builder section types.
+    - name: framer-motion
+      purpose_in_domain: Motion behavior inside React-only source components such as Project5c.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: React source components use PascalCase section names; shared registry uses snake_case or kebab-case block keys; Astro renderers use PascalCase *.astro file names tied to block-key projection.
+  structure_of_domain: Exact counterpart lookup is block-key first, then readiness manifest, then Astro projection path; composition-adjacent analogues are documented in block-registry markdown rather than inferred from filenames alone.
+  error_handling_in_domain: astroRegistry throws if a block key is missing, not ready, or mismatched between readiness data and the Astro projection.
+  testing_in_domain: astroRegistry.test.ts and pageBuilder.test.ts assert Astro readiness behavior and block dispatching; registry.machine.json is the source of truth for readiness parity.
+  documentation_in_domain: docs/block-registry/*.md documents current React renderer mappings and, where relevant, composition rules between blocks.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/index.ts
+      relationship_to_domain: Publishes docs paths and Astro renderer paths for shared registry reporting.
+      direction: outbound
+    - component: docs/block-registry/*.md
+      relationship_to_domain: Documents current renderer mappings and composition rules used to identify nearest Astro analogues.
+      direction: outbound
+    - component: astro-site/src/styles/global.css
+      relationship_to_domain: Supplies shared styling for MenuCategorySection.astro.
+      direction: outbound
+  external: []
+
+testing_patterns:
+  framework: node:test
+  coverage_areas:
+    - Astro renderer readiness parity in astro-site/src/lib/astroRegistry.test.ts
+    - Astro page-builder resolution behavior in astro-site/src/lib/pageBuilder.test.ts
+  test_organization: Focused unit-style tests colocated in astro-site/src/lib.
+  mock_patterns:
+    - Shared registry manifest assertions against resolved Astro projection paths.
+    - Section arrays parsed through pageBuilder schema before Astro resolution.
+
+open_questions:
+  - question: Should radius-contract alignment for menu_two_columns_with_with_heading_with_img_fullwidth_paralax target only exact block-key parity, or is the documented composition-adjacent Astro analogue menu-category-photo-parallax-full-width in scope for the first pass?
+    context: The exact block key is not Astro-ready, but its block doc explicitly derives it from menu-category-photo-parallax-full-width plus a shared lower menu panel treatment.
+    type: nice_to_know
+    affects:
+      - radius-contract-refactor
+
+gaps:
+  - area: Exact Astro counterpart coverage
+    description: universal_multilink_block, universal_header_block_1, and block_download have no Astro renderer registered in the shared readiness manifest, so there is no exact Astro file path to audit for radius handling today.
+    impact: research_blocker
+    affects:
+      - radius-contract-refactor
+  - area: Feature20 parity
+    description: Feature20 is not part of /template and has no page-builder block or Astro registry entry, so it cannot be matched to an Astro counterpart within the current shared registry system.
+    impact: nice_to_know
+    affects:
+      - radius-contract-refactor

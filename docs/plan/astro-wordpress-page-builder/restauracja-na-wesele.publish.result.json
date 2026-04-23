@@ -1,0 +1,1713 @@
+{
+  "mode": "publish",
+  "input": {
+    "draftFilePath": "C:\\Users\\macie\\Documents\\BULWAR APP\\docs\\plan\\astro-wordpress-page-builder\\restauracja-na-wesele.firebase-draft.json"
+  },
+  "sourceMappingsPath": "C:\\Users\\macie\\Documents\\BULWAR APP\\docs\\plan\\astro-wordpress-page-builder\\restauracja-na-wesele-source-mappings.json",
+  "result": {
+    "draft": {
+      "pageSlug": "restauracja-na-wesele",
+      "pageKind": "generic_page",
+      "wordpressPostId": 122,
+      "title": "Restauracja na wesele",
+      "templateKey": "blueprint-test-page",
+      "status": "draft",
+      "blocksOrder": [
+        "about-1-01",
+        "our-services-01",
+        "gallery-masonry-style1-01",
+        "menu-category-photo-parallax-full-width-01"
+      ],
+      "blocks": {
+        "about-1-01": {
+          "id": "about-1-01",
+          "blockKey": "about-1",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "leftImages": [
+              {
+                "src": "/react/images/about_1.jpg",
+                "alt": "Wnetrze restauracji Bulwar"
+              }
+            ],
+            "leftText": {
+              "title": "O restauracji",
+              "paragraphs": [
+                "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+              ],
+              "ctaButton": {
+                "href": "/o-restauracji",
+                "text": "Czytaj wiecej"
+              }
+            },
+            "rightText": {
+              "paragraphs": [
+                "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+              ]
+            },
+            "rightImages": [
+              {
+                "src": "/react/images/about_front.jpg",
+                "alt": "Detal frontu i atmosfery restauracji Bulwar"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {}
+        },
+        "our-services-01": {
+          "id": "our-services-01",
+          "blockKey": "our-services",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "title": "Nasze uslugi",
+            "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+            "primaryCta": {
+              "text": "Poznaj cala oferte",
+              "href": "/oferta"
+            },
+            "cards": [
+              {
+                "icon": "celebration",
+                "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                "ctaText": "Zobacz szczegoly",
+                "ctaHref": "/przyjecia-okolicznosciowe"
+              },
+              {
+                "icon": "local_shipping",
+                "title": "CATERING Z DOSTAWA",
+                "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                "ctaText": "Sprawdz catering",
+                "ctaHref": "/catering"
+              },
+              {
+                "icon": "groups",
+                "title": "SPOTKANIA FIRMOWE",
+                "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                "ctaText": "Umow spotkanie",
+                "ctaHref": "/kontakt"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {}
+        },
+        "gallery-masonry-style1-01": {
+          "id": "gallery-masonry-style1-01",
+          "blockKey": "gallery-masonry-style1",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "title": "Galeria Testowa",
+            "images": [
+              {
+                "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                "alt": "Zdjecie 1"
+              },
+              {
+                "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                "alt": "Zdjecie 2"
+              },
+              {
+                "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                "alt": "Zdjecie 3"
+              },
+              {
+                "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                "alt": "Zdjecie 4"
+              },
+              {
+                "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                "alt": "Zdjecie 5"
+              },
+              {
+                "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                "alt": "Zdjecie 6"
+              },
+              {
+                "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                "alt": "Zdjecie 7"
+              }
+            ]
+          },
+          "source": null,
+          "meta": {}
+        },
+        "menu-category-photo-parallax-full-width-01": {
+          "id": "menu-category-photo-parallax-full-width-01",
+          "blockKey": "menu-category-photo-parallax-full-width",
+          "blockVersion": 1,
+          "variant": null,
+          "enabled": true,
+          "data": {
+            "heroTitle": "Zestawy specjalne",
+            "backgroundImage": {
+              "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+              "alt": "Sekcja menu Bulwar"
+            },
+            "overlayOpacity": 0.2,
+            "layout": {
+              "columns": 2,
+              "heroHeight": "400px"
+            },
+            "menuColumns": [],
+            "emptyStateText": "Ladowanie produktow z WooCommerce..."
+          },
+          "source": {
+            "sourceType": "woo_category",
+            "sourceValue": "zestawy-specjalne",
+            "options": {
+              "splitIntoColumns": 2
+            }
+          },
+          "meta": {}
+        }
+      },
+      "compiled": {
+        "page_builder_schema": {
+          "version": 1,
+          "page": {
+            "slug": "restauracja-na-wesele",
+            "title": "Restauracja na wesele",
+            "status": "draft",
+            "templateKey": "blueprint-test-page"
+          },
+          "meta": {
+            "pageKind": "generic_page"
+          },
+          "sections": [
+            {
+              "id": "about-1-01",
+              "blockKey": "about-1",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "leftImages": [
+                  {
+                    "src": "/react/images/about_1.jpg",
+                    "alt": "Wnetrze restauracji Bulwar"
+                  }
+                ],
+                "leftText": {
+                  "title": "O restauracji",
+                  "paragraphs": [
+                    "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                    "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                  ],
+                  "ctaButton": {
+                    "href": "/o-restauracji",
+                    "text": "Czytaj wiecej"
+                  }
+                },
+                "rightText": {
+                  "paragraphs": [
+                    "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                    "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                  ]
+                },
+                "rightImages": [
+                  {
+                    "src": "/react/images/about_front.jpg",
+                    "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {}
+            },
+            {
+              "id": "our-services-01",
+              "blockKey": "our-services",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "title": "Nasze uslugi",
+                "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+                "primaryCta": {
+                  "text": "Poznaj cala oferte",
+                  "href": "/oferta"
+                },
+                "cards": [
+                  {
+                    "icon": "celebration",
+                    "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                    "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                    "ctaText": "Zobacz szczegoly",
+                    "ctaHref": "/przyjecia-okolicznosciowe"
+                  },
+                  {
+                    "icon": "local_shipping",
+                    "title": "CATERING Z DOSTAWA",
+                    "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                    "ctaText": "Sprawdz catering",
+                    "ctaHref": "/catering"
+                  },
+                  {
+                    "icon": "groups",
+                    "title": "SPOTKANIA FIRMOWE",
+                    "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                    "ctaText": "Umow spotkanie",
+                    "ctaHref": "/kontakt"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {}
+            },
+            {
+              "id": "gallery-masonry-style1-01",
+              "blockKey": "gallery-masonry-style1",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "title": "Galeria Testowa",
+                "images": [
+                  {
+                    "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                    "alt": "Zdjecie 1"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                    "alt": "Zdjecie 2"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                    "alt": "Zdjecie 3"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                    "alt": "Zdjecie 4"
+                  },
+                  {
+                    "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                    "alt": "Zdjecie 5"
+                  },
+                  {
+                    "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                    "alt": "Zdjecie 6"
+                  },
+                  {
+                    "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                    "alt": "Zdjecie 7"
+                  }
+                ]
+              },
+              "source": null,
+              "meta": {}
+            },
+            {
+              "id": "menu-category-photo-parallax-full-width-01",
+              "blockKey": "menu-category-photo-parallax-full-width",
+              "blockVersion": 1,
+              "variant": null,
+              "enabled": true,
+              "data": {
+                "heroTitle": "Zestawy specjalne",
+                "backgroundImage": {
+                  "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                  "alt": "Sekcja menu Bulwar"
+                },
+                "overlayOpacity": 0.2,
+                "layout": {
+                  "columns": 2,
+                  "heroHeight": "400px"
+                },
+                "menuColumns": [],
+                "emptyStateText": "Ladowanie produktow z WooCommerce..."
+              },
+              "source": {
+                "sourceType": "woo_category",
+                "sourceValue": "zestawy-specjalne",
+                "options": {
+                  "splitIntoColumns": 2
+                }
+              },
+              "meta": {}
+            }
+          ]
+        },
+        "page_builder_schema_for_ai": {
+          "version": 1,
+          "postId": 122,
+          "slug": "restauracja-na-wesele",
+          "title": "Restauracja na wesele",
+          "blocks": [
+            {
+              "id": "about-1-01",
+              "blockKey": "about-1",
+              "variant": null,
+              "description": "Instancja bloku about-1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.leftImages[].src",
+                "content.leftImages[].alt",
+                "content.leftText.title",
+                "content.leftText.paragraphs[]",
+                "content.leftText.ctaButton.text",
+                "content.leftText.ctaButton.href",
+                "content.rightText.paragraphs[]",
+                "content.rightImages[].src",
+                "content.rightImages[].alt"
+              ],
+              "editRoute": "Zmiany copy wprowadzaj bezposrednio w page_builder_schema_for_ai i odpowiadajacym page_builder_schema. Gdy trzeba podmienic obrazy, uzywaj narzedzi WordPress media. Link CTA powinien pozostac wewnetrzna sciezka strony Bulwaru.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "leftImages": [
+                  {
+                    "src": "/react/images/about_1.jpg",
+                    "alt": "Wnetrze restauracji Bulwar"
+                  }
+                ],
+                "leftText": {
+                  "title": "O restauracji",
+                  "paragraphs": [
+                    "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                    "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                  ],
+                  "ctaButton": {
+                    "href": "/o-restauracji",
+                    "text": "Czytaj wiecej"
+                  }
+                },
+                "rightText": {
+                  "paragraphs": [
+                    "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                    "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                  ]
+                },
+                "rightImages": [
+                  {
+                    "src": "/react/images/about_front.jpg",
+                    "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "our-services-01",
+              "blockKey": "our-services",
+              "variant": null,
+              "description": "Instancja bloku our-services bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.title",
+                "content.description",
+                "content.primaryCta.text",
+                "content.primaryCta.href",
+                "content.cards[].icon",
+                "content.cards[].title",
+                "content.cards[].description",
+                "content.cards[].ctaText",
+                "content.cards[].ctaHref"
+              ],
+              "editRoute": "Zmiany tresci i linkow kart wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie korzystaj z narzedzi WooCommerce dla tego bloku.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "title": "Nasze uslugi",
+                "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+                "primaryCta": {
+                  "text": "Poznaj cala oferte",
+                  "href": "/oferta"
+                },
+                "cards": [
+                  {
+                    "icon": "celebration",
+                    "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                    "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                    "ctaText": "Zobacz szczegoly",
+                    "ctaHref": "/przyjecia-okolicznosciowe"
+                  },
+                  {
+                    "icon": "local_shipping",
+                    "title": "CATERING Z DOSTAWA",
+                    "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                    "ctaText": "Sprawdz catering",
+                    "ctaHref": "/catering"
+                  },
+                  {
+                    "icon": "groups",
+                    "title": "SPOTKANIA FIRMOWE",
+                    "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                    "ctaText": "Umow spotkanie",
+                    "ctaHref": "/kontakt"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "gallery-masonry-style1-01",
+              "blockKey": "gallery-masonry-style1",
+              "variant": null,
+              "description": "Instancja bloku gallery-masonry-style1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+              "contentSource": "page_schema",
+              "editableFields": [
+                "content.title",
+                "content.images[].src",
+                "content.images[].alt"
+              ],
+              "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+              "doNotEditDirectly": [
+                "source",
+                "meta",
+                "layout"
+              ],
+              "content": {
+                "title": "Galeria Testowa",
+                "images": [
+                  {
+                    "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                    "alt": "Zdjecie 1"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                    "alt": "Zdjecie 2"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                    "alt": "Zdjecie 3"
+                  },
+                  {
+                    "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                    "alt": "Zdjecie 4"
+                  },
+                  {
+                    "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                    "alt": "Zdjecie 5"
+                  },
+                  {
+                    "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                    "alt": "Zdjecie 6"
+                  },
+                  {
+                    "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                    "alt": "Zdjecie 7"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "menu-category-photo-parallax-full-width-01",
+              "blockKey": "menu-category-photo-parallax-full-width",
+              "variant": null,
+              "description": "Instancja bloku menu-category-photo-parallax-full-width bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+              "contentSource": "woo_category",
+              "editableFields": [
+                "content.backgroundImage.src",
+                "content.backgroundImage.alt",
+                "content.source.sourceValue",
+                "content.emptyStateText"
+              ],
+              "editRoute": "Zmiana obrazu: narzedzia WordPress media. Zmiana kategorii wyswietlanej przez blok: content.source.sourceValue. Zmiana tresci dan: narzedzia WooCommerce do listowania, edycji, usuwania lub tworzenia produktow w wybranej kategorii.",
+              "doNotEditDirectly": [
+                "content.menuColumns",
+                "content.heroTitle",
+                "data.menuColumns"
+              ],
+              "context": {
+                "resolvedHeading": "Zestawy specjalne",
+                "presentation": "Obraz naglowka + nazwa kategorii + lista produktow z kategorii WooCommerce",
+                "notes": [
+                  "Hero title jest wyprowadzany z nazwy kategorii WooCommerce, gdy source jest ustawiony.",
+                  "Ten blok nie wyswietla obrazow produktow."
+                ]
+              },
+              "content": {
+                "backgroundImage": {
+                  "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                  "alt": "Sekcja menu Bulwar"
+                },
+                "source": {
+                  "sourceType": "woo_category",
+                  "sourceValue": "zestawy-specjalne",
+                  "options": {
+                    "splitIntoColumns": 2
+                  }
+                },
+                "emptyStateText": "Ladowanie produktow z WooCommerce..."
+              }
+            }
+          ]
+        }
+      },
+      "workflow": {
+        "requiresSourceMapping": false,
+        "unresolvedSourceBlockIds": [],
+        "sourceMappingNotes": {},
+        "needsCompile": false,
+        "needsPublish": false,
+        "needsDeploy": false
+      },
+      "needsCompile": false,
+      "needsPublish": false,
+      "needsDeploy": false
+    },
+    "ensuredPage": {
+      "id": 122,
+      "slug": "restauracja-na-wesele",
+      "title": "Restauracja na wesele",
+      "status": "draft"
+    },
+    "compiled": {
+      "page_builder_schema": {
+        "version": 1,
+        "page": {
+          "slug": "restauracja-na-wesele",
+          "title": "Restauracja na wesele",
+          "status": "draft",
+          "templateKey": "blueprint-test-page"
+        },
+        "meta": {
+          "pageKind": "generic_page"
+        },
+        "sections": [
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Wnetrze restauracji Bulwar"
+                }
+              ],
+              "leftText": {
+                "title": "O restauracji",
+                "paragraphs": [
+                  "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                  "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                ],
+                "ctaButton": {
+                  "href": "/o-restauracji",
+                  "text": "Czytaj wiecej"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                  "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {}
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Nasze uslugi",
+              "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+              "primaryCta": {
+                "text": "Poznaj cala oferte",
+                "href": "/oferta"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                  "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                  "ctaText": "Zobacz szczegoly",
+                  "ctaHref": "/przyjecia-okolicznosciowe"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "CATERING Z DOSTAWA",
+                  "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                  "ctaText": "Sprawdz catering",
+                  "ctaHref": "/catering"
+                },
+                {
+                  "icon": "groups",
+                  "title": "SPOTKANIA FIRMOWE",
+                  "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                  "ctaText": "Umow spotkanie",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {}
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Galeria Testowa",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Zdjecie 1"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 2"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 3"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 4"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Zdjecie 5"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Zdjecie 6"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Zdjecie 7"
+                }
+              ]
+            },
+            "source": null,
+            "meta": {}
+          },
+          {
+            "id": "menu-category-photo-parallax-full-width-01",
+            "blockKey": "menu-category-photo-parallax-full-width",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "heroTitle": "Zestawy specjalne",
+              "backgroundImage": {
+                "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                "alt": "Sekcja menu Bulwar"
+              },
+              "overlayOpacity": 0.2,
+              "layout": {
+                "columns": 2,
+                "heroHeight": "400px"
+              },
+              "menuColumns": [],
+              "emptyStateText": "Ladowanie produktow z WooCommerce..."
+            },
+            "source": {
+              "sourceType": "woo_category",
+              "sourceValue": "zestawy-specjalne",
+              "options": {
+                "splitIntoColumns": 2
+              }
+            },
+            "meta": {}
+          }
+        ]
+      },
+      "page_builder_schema_for_ai": {
+        "version": 1,
+        "postId": 122,
+        "slug": "restauracja-na-wesele",
+        "title": "Restauracja na wesele",
+        "blocks": [
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "variant": null,
+            "description": "Instancja bloku about-1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.leftImages[].src",
+              "content.leftImages[].alt",
+              "content.leftText.title",
+              "content.leftText.paragraphs[]",
+              "content.leftText.ctaButton.text",
+              "content.leftText.ctaButton.href",
+              "content.rightText.paragraphs[]",
+              "content.rightImages[].src",
+              "content.rightImages[].alt"
+            ],
+            "editRoute": "Zmiany copy wprowadzaj bezposrednio w page_builder_schema_for_ai i odpowiadajacym page_builder_schema. Gdy trzeba podmienic obrazy, uzywaj narzedzi WordPress media. Link CTA powinien pozostac wewnetrzna sciezka strony Bulwaru.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Wnetrze restauracji Bulwar"
+                }
+              ],
+              "leftText": {
+                "title": "O restauracji",
+                "paragraphs": [
+                  "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                  "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                ],
+                "ctaButton": {
+                  "href": "/o-restauracji",
+                  "text": "Czytaj wiecej"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                  "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                }
+              ]
+            }
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "variant": null,
+            "description": "Instancja bloku our-services bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.description",
+              "content.primaryCta.text",
+              "content.primaryCta.href",
+              "content.cards[].icon",
+              "content.cards[].title",
+              "content.cards[].description",
+              "content.cards[].ctaText",
+              "content.cards[].ctaHref"
+            ],
+            "editRoute": "Zmiany tresci i linkow kart wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie korzystaj z narzedzi WooCommerce dla tego bloku.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Nasze uslugi",
+              "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+              "primaryCta": {
+                "text": "Poznaj cala oferte",
+                "href": "/oferta"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                  "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                  "ctaText": "Zobacz szczegoly",
+                  "ctaHref": "/przyjecia-okolicznosciowe"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "CATERING Z DOSTAWA",
+                  "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                  "ctaText": "Sprawdz catering",
+                  "ctaHref": "/catering"
+                },
+                {
+                  "icon": "groups",
+                  "title": "SPOTKANIA FIRMOWE",
+                  "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                  "ctaText": "Umow spotkanie",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "variant": null,
+            "description": "Instancja bloku gallery-masonry-style1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.images[].src",
+              "content.images[].alt"
+            ],
+            "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Galeria Testowa",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Zdjecie 1"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 2"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 3"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 4"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Zdjecie 5"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Zdjecie 6"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Zdjecie 7"
+                }
+              ]
+            }
+          },
+          {
+            "id": "menu-category-photo-parallax-full-width-01",
+            "blockKey": "menu-category-photo-parallax-full-width",
+            "variant": null,
+            "description": "Instancja bloku menu-category-photo-parallax-full-width bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "woo_category",
+            "editableFields": [
+              "content.backgroundImage.src",
+              "content.backgroundImage.alt",
+              "content.source.sourceValue",
+              "content.emptyStateText"
+            ],
+            "editRoute": "Zmiana obrazu: narzedzia WordPress media. Zmiana kategorii wyswietlanej przez blok: content.source.sourceValue. Zmiana tresci dan: narzedzia WooCommerce do listowania, edycji, usuwania lub tworzenia produktow w wybranej kategorii.",
+            "doNotEditDirectly": [
+              "content.menuColumns",
+              "content.heroTitle",
+              "data.menuColumns"
+            ],
+            "context": {
+              "resolvedHeading": "Zestawy specjalne",
+              "presentation": "Obraz naglowka + nazwa kategorii + lista produktow z kategorii WooCommerce",
+              "notes": [
+                "Hero title jest wyprowadzany z nazwy kategorii WooCommerce, gdy source jest ustawiony.",
+                "Ten blok nie wyswietla obrazow produktow."
+              ]
+            },
+            "content": {
+              "backgroundImage": {
+                "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                "alt": "Sekcja menu Bulwar"
+              },
+              "source": {
+                "sourceType": "woo_category",
+                "sourceValue": "zestawy-specjalne",
+                "options": {
+                  "splitIntoColumns": 2
+                }
+              },
+              "emptyStateText": "Ladowanie produktow z WooCommerce..."
+            }
+          }
+        ]
+      }
+    },
+    "compileMeta": {
+      "appliedSourceBlockIds": [
+        "menu-category-photo-parallax-full-width-01"
+      ],
+      "ignoredSourceBlockIds": [],
+      "usedCurrentPageBuilderSchema": false,
+      "usedCurrentPageBuilderSchemaForAi": false
+    },
+    "published": {
+      "pageId": 122,
+      "schema": {
+        "version": 1,
+        "page": {
+          "slug": "restauracja-na-wesele",
+          "title": "Restauracja na wesele",
+          "status": "draft",
+          "templateKey": "blueprint-test-page"
+        },
+        "meta": {
+          "pageKind": "generic_page"
+        },
+        "sections": [
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Wnetrze restauracji Bulwar"
+                }
+              ],
+              "leftText": {
+                "title": "O restauracji",
+                "paragraphs": [
+                  "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                  "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                ],
+                "ctaButton": {
+                  "href": "/o-restauracji",
+                  "text": "Czytaj wiecej"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                  "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                }
+              ]
+            },
+            "source": null,
+            "meta": []
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Nasze uslugi",
+              "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+              "primaryCta": {
+                "text": "Poznaj cala oferte",
+                "href": "/oferta"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                  "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                  "ctaText": "Zobacz szczegoly",
+                  "ctaHref": "/przyjecia-okolicznosciowe"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "CATERING Z DOSTAWA",
+                  "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                  "ctaText": "Sprawdz catering",
+                  "ctaHref": "/catering"
+                },
+                {
+                  "icon": "groups",
+                  "title": "SPOTKANIA FIRMOWE",
+                  "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                  "ctaText": "Umow spotkanie",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            },
+            "source": null,
+            "meta": []
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Galeria Testowa",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Zdjecie 1"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 2"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 3"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 4"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Zdjecie 5"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Zdjecie 6"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Zdjecie 7"
+                }
+              ]
+            },
+            "source": null,
+            "meta": []
+          },
+          {
+            "id": "menu-category-photo-parallax-full-width-01",
+            "blockKey": "menu-category-photo-parallax-full-width",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "heroTitle": "Zestawy specjalne",
+              "backgroundImage": {
+                "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                "alt": "Sekcja menu Bulwar"
+              },
+              "overlayOpacity": 0.2,
+              "layout": {
+                "columns": 2,
+                "heroHeight": "400px"
+              },
+              "menuColumns": [],
+              "emptyStateText": "Ladowanie produktow z WooCommerce..."
+            },
+            "source": {
+              "sourceType": "woo_category",
+              "sourceValue": "zestawy-specjalne",
+              "options": {
+                "splitIntoColumns": 2
+              }
+            },
+            "meta": []
+          }
+        ]
+      },
+      "aiSchema": {
+        "version": 1,
+        "postId": 122,
+        "slug": "restauracja-na-wesele",
+        "title": "Restauracja na wesele",
+        "blocks": [
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "variant": null,
+            "description": "Instancja bloku about-1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.leftImages[].src",
+              "content.leftImages[].alt",
+              "content.leftText.title",
+              "content.leftText.paragraphs[]",
+              "content.leftText.ctaButton.text",
+              "content.leftText.ctaButton.href",
+              "content.rightText.paragraphs[]",
+              "content.rightImages[].src",
+              "content.rightImages[].alt"
+            ],
+            "editRoute": "Zmiany copy wprowadzaj bezposrednio w page_builder_schema_for_ai i odpowiadajacym page_builder_schema. Gdy trzeba podmienic obrazy, uzywaj narzedzi WordPress media. Link CTA powinien pozostac wewnetrzna sciezka strony Bulwaru.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Wnetrze restauracji Bulwar"
+                }
+              ],
+              "leftText": {
+                "title": "O restauracji",
+                "paragraphs": [
+                  "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                  "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                ],
+                "ctaButton": {
+                  "href": "/o-restauracji",
+                  "text": "Czytaj wiecej"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                  "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                }
+              ]
+            }
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "variant": null,
+            "description": "Instancja bloku our-services bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.description",
+              "content.primaryCta.text",
+              "content.primaryCta.href",
+              "content.cards[].icon",
+              "content.cards[].title",
+              "content.cards[].description",
+              "content.cards[].ctaText",
+              "content.cards[].ctaHref"
+            ],
+            "editRoute": "Zmiany tresci i linkow kart wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie korzystaj z narzedzi WooCommerce dla tego bloku.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Nasze uslugi",
+              "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+              "primaryCta": {
+                "text": "Poznaj cala oferte",
+                "href": "/oferta"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                  "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                  "ctaText": "Zobacz szczegoly",
+                  "ctaHref": "/przyjecia-okolicznosciowe"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "CATERING Z DOSTAWA",
+                  "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                  "ctaText": "Sprawdz catering",
+                  "ctaHref": "/catering"
+                },
+                {
+                  "icon": "groups",
+                  "title": "SPOTKANIA FIRMOWE",
+                  "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                  "ctaText": "Umow spotkanie",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "variant": null,
+            "description": "Instancja bloku gallery-masonry-style1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.images[].src",
+              "content.images[].alt"
+            ],
+            "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Galeria Testowa",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Zdjecie 1"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 2"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 3"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 4"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Zdjecie 5"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Zdjecie 6"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Zdjecie 7"
+                }
+              ]
+            }
+          },
+          {
+            "id": "menu-category-photo-parallax-full-width-01",
+            "blockKey": "menu-category-photo-parallax-full-width",
+            "variant": null,
+            "description": "Instancja bloku menu-category-photo-parallax-full-width bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "woo_category",
+            "editableFields": [
+              "content.backgroundImage.src",
+              "content.backgroundImage.alt",
+              "content.source.sourceValue",
+              "content.emptyStateText"
+            ],
+            "editRoute": "Zmiana obrazu: narzedzia WordPress media. Zmiana kategorii wyswietlanej przez blok: content.source.sourceValue. Zmiana tresci dan: narzedzia WooCommerce do listowania, edycji, usuwania lub tworzenia produktow w wybranej kategorii.",
+            "doNotEditDirectly": [
+              "content.menuColumns",
+              "content.heroTitle",
+              "data.menuColumns"
+            ],
+            "context": {
+              "resolvedHeading": "Zestawy specjalne",
+              "presentation": "Obraz naglowka + nazwa kategorii + lista produktow z kategorii WooCommerce",
+              "notes": [
+                "Hero title jest wyprowadzany z nazwy kategorii WooCommerce, gdy source jest ustawiony.",
+                "Ten blok nie wyswietla obrazow produktow."
+              ]
+            },
+            "content": {
+              "backgroundImage": {
+                "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                "alt": "Sekcja menu Bulwar"
+              },
+              "source": {
+                "sourceType": "woo_category",
+                "sourceValue": "zestawy-specjalne",
+                "options": {
+                  "splitIntoColumns": 2
+                }
+              },
+              "emptyStateText": "Ladowanie produktow z WooCommerce..."
+            }
+          }
+        ]
+      }
+    },
+    "readback": {
+      "pageId": 122,
+      "schema": {
+        "version": 1,
+        "page": {
+          "slug": "restauracja-na-wesele",
+          "title": "Restauracja na wesele",
+          "status": "draft",
+          "templateKey": "blueprint-test-page"
+        },
+        "meta": {
+          "pageKind": "generic_page"
+        },
+        "sections": [
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Wnetrze restauracji Bulwar"
+                }
+              ],
+              "leftText": {
+                "title": "O restauracji",
+                "paragraphs": [
+                  "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                  "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                ],
+                "ctaButton": {
+                  "href": "/o-restauracji",
+                  "text": "Czytaj wiecej"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                  "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                }
+              ]
+            },
+            "source": null,
+            "meta": []
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Nasze uslugi",
+              "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+              "primaryCta": {
+                "text": "Poznaj cala oferte",
+                "href": "/oferta"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                  "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                  "ctaText": "Zobacz szczegoly",
+                  "ctaHref": "/przyjecia-okolicznosciowe"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "CATERING Z DOSTAWA",
+                  "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                  "ctaText": "Sprawdz catering",
+                  "ctaHref": "/catering"
+                },
+                {
+                  "icon": "groups",
+                  "title": "SPOTKANIA FIRMOWE",
+                  "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                  "ctaText": "Umow spotkanie",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            },
+            "source": null,
+            "meta": []
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "title": "Galeria Testowa",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Zdjecie 1"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 2"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 3"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 4"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Zdjecie 5"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Zdjecie 6"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Zdjecie 7"
+                }
+              ]
+            },
+            "source": null,
+            "meta": []
+          },
+          {
+            "id": "menu-category-photo-parallax-full-width-01",
+            "blockKey": "menu-category-photo-parallax-full-width",
+            "blockVersion": 1,
+            "variant": null,
+            "enabled": true,
+            "data": {
+              "heroTitle": "Zestawy specjalne",
+              "backgroundImage": {
+                "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                "alt": "Sekcja menu Bulwar"
+              },
+              "overlayOpacity": 0.2,
+              "layout": {
+                "columns": 2,
+                "heroHeight": "400px"
+              },
+              "menuColumns": [],
+              "emptyStateText": "Ladowanie produktow z WooCommerce..."
+            },
+            "source": {
+              "sourceType": "woo_category",
+              "sourceValue": "zestawy-specjalne",
+              "options": {
+                "splitIntoColumns": 2
+              }
+            },
+            "meta": []
+          }
+        ]
+      },
+      "aiSchema": {
+        "version": 1,
+        "postId": 122,
+        "slug": "restauracja-na-wesele",
+        "title": "Restauracja na wesele",
+        "blocks": [
+          {
+            "id": "about-1-01",
+            "blockKey": "about-1",
+            "variant": null,
+            "description": "Instancja bloku about-1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.leftImages[].src",
+              "content.leftImages[].alt",
+              "content.leftText.title",
+              "content.leftText.paragraphs[]",
+              "content.leftText.ctaButton.text",
+              "content.leftText.ctaButton.href",
+              "content.rightText.paragraphs[]",
+              "content.rightImages[].src",
+              "content.rightImages[].alt"
+            ],
+            "editRoute": "Zmiany copy wprowadzaj bezposrednio w page_builder_schema_for_ai i odpowiadajacym page_builder_schema. Gdy trzeba podmienic obrazy, uzywaj narzedzi WordPress media. Link CTA powinien pozostac wewnetrzna sciezka strony Bulwaru.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "leftImages": [
+                {
+                  "src": "/react/images/about_1.jpg",
+                  "alt": "Wnetrze restauracji Bulwar"
+                }
+              ],
+              "leftText": {
+                "title": "O restauracji",
+                "paragraphs": [
+                  "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej.",
+                  "Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak, spokoj spotkania i goscinnosc blisko Wisly."
+                ],
+                "ctaButton": {
+                  "href": "/o-restauracji",
+                  "text": "Czytaj wiecej"
+                }
+              },
+              "rightText": {
+                "paragraphs": [
+                  "Z przyjemnoscia goscimy naszych gosci na lunchach, eleganckich kolacjach i rodzinnych spotkaniach przy wspolnym stole.",
+                  "W letnie dni ogrodek staje sie spokojna strefa odpoczynku oslonieta od miejskiego halasu."
+                ]
+              },
+              "rightImages": [
+                {
+                  "src": "/react/images/about_front.jpg",
+                  "alt": "Detal frontu i atmosfery restauracji Bulwar"
+                }
+              ]
+            }
+          },
+          {
+            "id": "our-services-01",
+            "blockKey": "our-services",
+            "variant": null,
+            "description": "Instancja bloku our-services bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.description",
+              "content.primaryCta.text",
+              "content.primaryCta.href",
+              "content.cards[].icon",
+              "content.cards[].title",
+              "content.cards[].description",
+              "content.cards[].ctaText",
+              "content.cards[].ctaHref"
+            ],
+            "editRoute": "Zmiany tresci i linkow kart wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie korzystaj z narzedzi WooCommerce dla tego bloku.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Nasze uslugi",
+              "description": "Bulwar przygotowuje format spotkania, menu i obsluge dopasowane do rodzinnych uroczystosci, eventow firmowych oraz kameralnych kolacji.",
+              "primaryCta": {
+                "text": "Poznaj cala oferte",
+                "href": "/oferta"
+              },
+              "cards": [
+                {
+                  "icon": "celebration",
+                  "title": "PRZYJECIA OKOLICZNOSCIOWE",
+                  "description": "Indywidualne menu, opieka sali i spokojna organizacja rodzinnych uroczystosci w restauracji lub poza nia.",
+                  "ctaText": "Zobacz szczegoly",
+                  "ctaHref": "/przyjecia-okolicznosciowe"
+                },
+                {
+                  "icon": "local_shipping",
+                  "title": "CATERING Z DOSTAWA",
+                  "description": "Gotowe zestawy swiateczne, lunche firmowe i catering dopasowany do liczby gosci oraz charakteru wydarzenia.",
+                  "ctaText": "Sprawdz catering",
+                  "ctaHref": "/catering"
+                },
+                {
+                  "icon": "groups",
+                  "title": "SPOTKANIA FIRMOWE",
+                  "description": "Scenariusze lunchow i kolacji biznesowych z elastycznym menu, serwisem i wsparciem organizacyjnym zespolu Bulwar.",
+                  "ctaText": "Umow spotkanie",
+                  "ctaHref": "/kontakt"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gallery-masonry-style1-01",
+            "blockKey": "gallery-masonry-style1",
+            "variant": null,
+            "description": "Instancja bloku gallery-masonry-style1 bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "page_schema",
+            "editableFields": [
+              "content.title",
+              "content.images[].src",
+              "content.images[].alt"
+            ],
+            "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+            "doNotEditDirectly": [
+              "source",
+              "meta",
+              "layout"
+            ],
+            "content": {
+              "title": "Galeria Testowa",
+              "images": [
+                {
+                  "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+                  "alt": "Zdjecie 1"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 2"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 3"
+                },
+                {
+                  "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+                  "alt": "Zdjecie 4"
+                },
+                {
+                  "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+                  "alt": "Zdjecie 5"
+                },
+                {
+                  "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+                  "alt": "Zdjecie 6"
+                },
+                {
+                  "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+                  "alt": "Zdjecie 7"
+                }
+              ]
+            }
+          },
+          {
+            "id": "menu-category-photo-parallax-full-width-01",
+            "blockKey": "menu-category-photo-parallax-full-width",
+            "variant": null,
+            "description": "Instancja bloku menu-category-photo-parallax-full-width bez opisu AI. Edytuj tylko pola wskazane przez editableFields i respektuj contentSource oraz doNotEditDirectly.",
+            "contentSource": "woo_category",
+            "editableFields": [
+              "content.backgroundImage.src",
+              "content.backgroundImage.alt",
+              "content.source.sourceValue",
+              "content.emptyStateText"
+            ],
+            "editRoute": "Zmiana obrazu: narzedzia WordPress media. Zmiana kategorii wyswietlanej przez blok: content.source.sourceValue. Zmiana tresci dan: narzedzia WooCommerce do listowania, edycji, usuwania lub tworzenia produktow w wybranej kategorii.",
+            "doNotEditDirectly": [
+              "content.menuColumns",
+              "content.heroTitle",
+              "data.menuColumns"
+            ],
+            "context": {
+              "resolvedHeading": "Zestawy specjalne",
+              "presentation": "Obraz naglowka + nazwa kategorii + lista produktow z kategorii WooCommerce",
+              "notes": [
+                "Hero title jest wyprowadzany z nazwy kategorii WooCommerce, gdy source jest ustawiony.",
+                "Ten blok nie wyswietla obrazow produktow."
+              ]
+            },
+            "content": {
+              "backgroundImage": {
+                "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+                "alt": "Sekcja menu Bulwar"
+              },
+              "source": {
+                "sourceType": "woo_category",
+                "sourceValue": "zestawy-specjalne",
+                "options": {
+                  "splitIntoColumns": 2
+                }
+              },
+              "emptyStateText": "Ladowanie produktow z WooCommerce..."
+            }
+          }
+        ]
+      },
+      "verified": true
+    },
+    "dryRun": false
+  }
+}

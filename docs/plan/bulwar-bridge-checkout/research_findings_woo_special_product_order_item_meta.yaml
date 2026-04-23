@@ -1,0 +1,287 @@
+plan_id: bulwar-bridge-checkout
+objective: >-
+  Ustalić dokładnie, gdzie i jak bridge zapisuje WooCommerce order item meta dla
+  konfiguracji produktu specjalnego oraz oddzielić warstwę storage od warstwy
+  prezentacji w panelu Woo.
+focus_area: woo_special_product_order_item_meta
+created_at: 2026-03-24
+created_by: GitHub Copilot
+status: completed
+
+tldr: |
+  - Zapis meta pozycji zamówienia dla produktu specjalnego odbywa się wyłącznie w OrderService po utworzeniu pozycji przez add_product.
+  - Bridge zapisuje jednocześnie meta techniczne i operator-friendly: bulwar_special_type, bulwar_special_schema_version, bulwar_special_config_json oraz bulwar_person_1 / bulwar_person_2.
+  - React dostarcza pełny obiekt configuration bez własnego mapowania do meta Woo; mapowanie Woo jest odpowiedzialnością PHP bridge.
+  - Wtyczka nie implementuje obecnie żadnych hooków Woo do osobnego filtrowania wyświetlania meta w panelu administracyjnym.
+
+research_metadata:
+  methodology: >-
+    Hybrid retrieval: semantic_search + grep_search do odnalezienia kluczy meta,
+    następnie read_file dla dokładnego przebiegu kontroler -> serwis -> zapis
+    pozycji Woo oraz dodatkowe grep_search dla hooków prezentacyjnych Woo.
+  scope: >-
+    Zbadano domenę order creation w wordpress-plugin/bulwar-bridge oraz wejściowy
+    kształt configuration w zip/src odpowiedzialny za payload checkout.
+  confidence: high
+  coverage: 95
+
+files_analyzed:
+  - file: OrderService.php
+    path: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+    purpose: Tworzy zamówienie Woo i zapisuje line item meta dla pozycji specjalnej.
+    key_elements:
+      - element: OrderService::create
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:15
+        description: >-
+          Główna ścieżka tworzenia zamówienia; dodaje produkty do Woo order,
+          a dla line_type = special_menu_for_2 zapisuje meta pozycji.
+      - element: special item meta write block
+        type: pattern
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:99
+        description: >-
+          Blok po add_product, który serializuje configuration do JSON i wywołuje
+          add_meta_data dla bulwar_special_type, bulwar_special_schema_version,
+          bulwar_special_config_json oraz bulwar_person_{n}.
+    language: PHP
+    lines: 163
+  - file: CheckoutController.php
+    path: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+    purpose: REST kontroler checkout, który przekazuje payload do OrderService.
+    key_elements:
+      - element: CheckoutController order submit action
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:145
+        description: Tworzy OrderService i wywołuje create($body) po walidacji requestu.
+    language: PHP
+    lines: 138
+  - file: cateringCart.ts
+    path: zip/src/lib/cateringCart.ts
+    purpose: Buduje cart lines wysyłane do bridge, w tym configuration dla pozycji specjalnej.
+    key_elements:
+      - element: buildBridgeCheckoutCartLines
+        type: function
+        location: zip/src/lib/cateringCart.ts:401
+        description: >-
+          Mapuje line.config do pola configuration w payloadzie bridge; nie zapisuje
+          Woo meta i nie decyduje o nazwach kluczy Woo.
+      - element: buildSpecialMenuFor2CartLine
+        type: function
+        location: zip/src/lib/cateringCart.ts:217
+        description: >-
+          Buduje pozycję koszyka z config i metaSummary używanym po stronie UI.
+    language: TypeScript
+    lines: 362
+  - file: cateringSpecialMenuFor2.ts
+    path: zip/src/data/cateringSpecialMenuFor2.ts
+    purpose: Definiuje kształt configu produktu specjalnego i generator czytelnych podsumowań.
+    key_elements:
+      - element: SpecialMenuFor2Config
+        type: pattern
+        location: zip/src/data/cateringSpecialMenuFor2.ts:28
+        description: Typ payloadu configuration przesyłanego do bridge.
+      - element: buildSpecialMenuFor2SummaryLines
+        type: function
+        location: zip/src/data/cateringSpecialMenuFor2.ts:244
+        description: "Generuje linie typu Osoba N: Zupa ... / Danie ... dla UI."
+    language: TypeScript
+    lines: 225
+  - file: Plugin.php
+    path: wordpress-plugin/bulwar-bridge/src/Plugin.php
+    purpose: Rejestruje wyłącznie bootstrap constants i REST routes; brak hooków admin display.
+    key_elements:
+      - element: Plugin::bootstrap
+        type: function
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:10
+        description: >-
+          Rejestruje tylko init i rest_api_init; nie rejestruje filtrów Woo dla wyświetlania meta.
+    language: PHP
+    lines: 20
+
+patterns_found:
+  - category: architecture
+    pattern: Bridge-owned Woo line item meta mapping
+    description: >-
+      Nazwy i wartości meta Woo są ustalane wyłącznie po stronie PHP bridge,
+      po utworzeniu pozycji Woo przez add_product.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:106
+        snippet: "$item->add_meta_data('bulwar_special_type', 'menu_for_2', true);"
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:108
+        snippet: "$item->add_meta_data('bulwar_special_config_json', $json, true);"
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:122
+        snippet: "$item->add_meta_data('bulwar_person_' . $personIndex, $summary, true);"
+    prevalence: common
+  - category: structure
+    pattern: Configuration passed through unchanged from React to PHP
+    description: >-
+      Frontend buduje configuration i wysyła go do bridge bez mapowania na Woo meta.
+    examples:
+      - file: zip/src/lib/cateringCart.ts
+        location: zip/src/lib/cateringCart.ts:415
+        snippet: "configuration: line.config,"
+      - file: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+        location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php:146
+        snippet: "$result = $service->create($body);"
+    prevalence: common
+  - category: structure
+    pattern: Readable summary already exists on frontend but is not reused server-side
+    description: >-
+      Repo posiada generator podsumowań dla osób w TypeScript, natomiast PHP
+      rekonstruuje osobny summary string inline zamiast współdzielonego formattera.
+    examples:
+      - file: zip/src/data/cateringSpecialMenuFor2.ts
+        location: zip/src/data/cateringSpecialMenuFor2.ts:244
+        snippet: "return config.persons.map((person) => buildSpecialMenuPersonSummary(person));"
+      - file: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+        location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:116
+        snippet: "'Zupa %s / Danie główne %s'"
+    prevalence: occasional
+  - category: structure
+    pattern: No Woo admin display hooks in plugin
+    description: >-
+      Wtyczka nie rejestruje filtrów ani akcji Woo do formatowania lub ukrywania
+      meta pozycji w panelu administracyjnym.
+    examples:
+      - file: wordpress-plugin/bulwar-bridge/src/Plugin.php
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:12
+        snippet: "add_action('init', [Constants::class, 'bootstrap']);"
+      - file: wordpress-plugin/bulwar-bridge/src/Plugin.php
+        location: wordpress-plugin/bulwar-bridge/src/Plugin.php:13
+        snippet: "add_action('rest_api_init', [Routes::class, 'register']);"
+    prevalence: rare
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: React cart payload builder
+      responsibility: Buduje cart_lines z configuration dla checkout bridge.
+      location: zip/src/lib/cateringCart.ts
+      relationship_to_domain: domain depends on this
+    - component: Checkout REST controller
+      responsibility: Waliduje request i przekazuje payload do serwisu tworzenia zamówienia.
+      location: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship_to_domain: domain depends on this
+    - component: Woo order writer
+      responsibility: Tworzy zamówienie i zapisuje order meta oraz line item meta.
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship_to_domain: domain is implemented here
+  interfaces_used_by_domain:
+    - interface: Bridge checkout cart line with configuration
+      location: zip/src/lib/cateringCart.ts
+      usage_pattern: configuration jest przekazywane bezpośrednio jako line.config
+    - interface: WC_Order_Item_Product::add_meta_data
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      usage_pattern: zapis pojedynczych kluczy meta do pozycji zamówienia
+  data_flow_involving_domain: >-
+    UI buduje SpecialMenuFor2Config -> koszyk serializuje config do cart_lines[].configuration
+    -> CheckoutController przekazuje body do OrderService -> OrderService tworzy pozycję Woo
+    i dopiero wtedy materializuje configuration do konkretnych kluczy order item meta.
+  key_relationships_to_domain:
+    - from: zip/src/lib/cateringCart.ts
+      to: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship: supplies request payload consumed by REST checkout
+    - from: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      to: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      relationship: calls
+    - from: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php
+      to: WooCommerce order item meta storage
+      relationship: writes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - PHP
+    - TypeScript
+  frameworks_used_in_domain:
+    - name: WooCommerce
+      usage_in_domain: Tworzenie zamówienia i zapis order item meta przez WC_Order / WC_Order_Item_Product.
+    - name: WordPress REST API
+      usage_in_domain: Endpoint checkout zamówienia wywołujący OrderService.
+    - name: React
+      usage_in_domain: Budowa configuration po stronie koszyka i checkout payloadu.
+  libraries_used_in_domain:
+    - name: WooCommerce core APIs
+      purpose_in_domain: wc_create_order, wc_get_product, add_product, add_meta_data
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Meta pozycji używa prefiksu bulwar_; meta całego zamówienia używa prefiksu
+    _bulwar_ i podkreślenia jako prywatnego klucza.
+  structure_of_domain: >-
+    Payload checkout jest walidowany w kontrolerze i materializowany do Woo w jednym
+    serwisie odpowiedzialnym za order creation.
+  error_handling_in_domain: >-
+    OrderService rzuca RuntimeException z kodami domenowymi, a kontroler mapuje je
+    na odpowiedzi REST.
+  testing_in_domain: >-
+    W badanym obszarze nie znaleziono testów PHP pokrywających zapis order item meta.
+  documentation_in_domain: >-
+    Plan i contracts opisują docelowo zarówno canonical JSON, jak i readable summary
+    meta dla produktu specjalnego.
+
+related_dependencies:
+  internal:
+    - component: zip/src/lib/cateringCart.ts
+      relationship_to_domain: Dostarcza configuration w request payloadzie.
+      direction: inbound
+    - component: zip/src/data/cateringSpecialMenuFor2.ts
+      relationship_to_domain: Definiuje shape configu i istniejący formatter summary dla UI.
+      direction: inbound
+    - component: wordpress-plugin/bulwar-bridge/src/Http/Controllers/CheckoutController.php
+      relationship_to_domain: Wywołuje OrderService.
+      direction: inbound
+  external:
+    - name: WooCommerce
+      purpose_for_domain: Persistencja zamówień i meta pozycji.
+    - name: WordPress
+      purpose_for_domain: REST routing i funkcje pomocnicze JSON.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: configuration JSON persistence
+      location: wordpress-plugin/bulwar-bridge/src/Checkout/OrderService.php:103
+      concern: >-
+        Bridge zapisuje cały client-supplied configuration jako canonical JSON, więc
+        czytelne meta powinno nadal powstawać z danych po walidacji serwerowej.
+  authentication_patterns_in_domain: Nie dotyczy bezpośrednio tego fragmentu.
+  authorization_patterns_in_domain: Nie dotyczy bezpośrednio tego fragmentu.
+  data_validation_in_domain: >-
+    Walidacja requestu i zgodności produktów zachodzi przed zapisem, ale sam blok meta
+    w OrderService nie ma osobnego formattera/normalizera dla storage display values.
+
+testing_patterns:
+  framework: null
+  coverage_areas:
+    - Brak testów PHP potwierdzających zawartość order item meta dla special_menu_for_2.
+  test_organization: Testy TS istnieją dla budowy configu i summary po stronie frontendowej.
+  mock_patterns:
+    - Frontend testy summary i configu w zip/src/data/*.test.ts
+
+open_questions:
+  - question: >-
+      Czy docelowy format operator-friendly ma zastąpić bulwar_special_config_json w UI,
+      czy tylko dodać/ukryć odpowiednie klucze w administracji przy zachowaniu canonical JSON?
+    context: >-
+      Repo pokazuje jednoczesną potrzebę readable summary i canonical JSON, ale nie definiuje
+      jeszcze finalnej polityki widoczności tych pól w panelu Woo.
+  - question: >-
+      Czy formatter readable summary ma być współdzielony z frontendowym wzorcem tekstu,
+      czy utrzymywany niezależnie po stronie PHP?
+    context: >-
+      Obecnie frontend i PHP generują summary oddzielnie, z nieco innym brzmieniem.
+
+gaps:
+  - area: Woo admin rendering policy
+    description: >-
+      W repo nie ma jeszcze implementacji hooków Woo dla prezentacji lub ukrywania meta pozycji.
+    impact: >-
+      Storage i display są dziś sprzężone zachowaniem domyślnym Woo; osobne formatowanie
+      prezentacji wymaga dodatkowej warstwy hooków.
+  - area: PHP meta formatter abstraction
+    description: >-
+      OrderService składa summary inline zamiast przez dedykowany formatter lub mapper.
+    impact: >-
+      To jest obecnie najwęższe gardło dla bezpiecznej zmiany formatu zapisywanego meta.

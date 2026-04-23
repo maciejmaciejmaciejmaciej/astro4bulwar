@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "postId": 118,
+  "slug": "testowa-blueprint",
+  "title": "Testowa Blueprint",
+  "blocks": [
+    {
+      "id": "gallery-masonry-style1-01",
+      "blockKey": "gallery-masonry-style1",
+      "description": "Ten blok wyswietla galerie zdjec na stronie. Tresc tego bloku jest sterowana bezposrednio przez dane strony, a nie przez WooCommerce. Jesli chcesz zmienic tytul galerii, edytuj content.title. Jesli chcesz podmienic albo dodac zdjecia, uzyj narzedzi listowania mediow WordPress, wybierz wlasciwe obrazy i zaktualizuj content.images. Nie uzywaj narzedzi WooCommerce do zmiany tresci tego bloku, poniewaz nie wyswietla on produktow ani kategorii menu.",
+      "contentSource": "page_schema",
+      "editableFields": [
+        "content.title",
+        "content.images[].src",
+        "content.images[].alt"
+      ],
+      "editRoute": "Zmiany tytulu i listy zdjec wprowadzaj w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do wyboru istniejacych obrazow uzywaj narzedzi WordPress media.",
+      "doNotEditDirectly": [
+        "source",
+        "meta",
+        "layout"
+      ],
+      "content": {
+        "title": "Galeria Testowa",
+        "images": [
+          {
+            "src": "/react/images/gallery/12-1024x680-1-640x640.webp",
+            "alt": "Zdjecie 1"
+          },
+          {
+            "src": "/react/images/gallery/20160511_123307-kopia-1024x576-1-640x576.webp",
+            "alt": "Zdjecie 2"
+          },
+          {
+            "src": "/react/images/gallery/20160511_125209-2-kopia-1024x576-1-640x576.webp",
+            "alt": "Zdjecie 3"
+          },
+          {
+            "src": "/react/images/gallery/20160511_125837-kopia-1024x576-1-640x576.webp",
+            "alt": "Zdjecie 4"
+          },
+          {
+            "src": "/react/images/gallery/21-1024x704-1-640x640.webp",
+            "alt": "Zdjecie 5"
+          },
+          {
+            "src": "/react/images/gallery/22-1024x642-1-640x640.webp",
+            "alt": "Zdjecie 6"
+          },
+          {
+            "src": "/react/images/gallery/23png-1024x718-1-640x640.webp",
+            "alt": "Zdjecie 7"
+          }
+        ]
+      }
+    },
+    {
+      "id": "menu-category-photo-parallax-full-width-01",
+      "blockKey": "menu-category-photo-parallax-full-width",
+      "description": "Ten blok wyswietla obraz naglowka kategorii menu, nazwe kategorii WooCommerce oraz liste produktow nalezacych do tej kategorii. Obraz naglowka jest sterowany przez content.backgroundImage.src. Kategoria produktow jest sterowana przez content.source.sourceValue. Jesli chcesz zmienic obraz naglowka, uzyj narzedzia do listowania mediow WordPress i podmien content.backgroundImage.src oraz ewentualnie content.backgroundImage.alt. Jesli chcesz, aby blok wyswietlal inna kategorie menu, zmien content.source.sourceValue na slug albo numeryczne id docelowej kategorii WooCommerce. Jesli chcesz zmienic nazwe, opis lub cene dania wyswietlanego w tym bloku, nie edytuj recznie listy produktow w page schema, tylko znajdz wlasciwy produkt WooCommerce w tej kategorii i zmien go przez narzedzia produktowe. Nie wpisuj recznie content.menuColumns ani data.menuColumns, gdy source jest ustawiony, poniewaz lista produktow jest generowana z WooCommerce.",
+      "contentSource": "woo_category",
+      "editableFields": [
+        "content.backgroundImage.src",
+        "content.backgroundImage.alt",
+        "content.source.sourceValue",
+        "content.emptyStateText"
+      ],
+      "editRoute": "Zmiana obrazu: narzedzia WordPress media. Zmiana kategorii wyswietlanej przez blok: content.source.sourceValue. Zmiana tresci dan: narzedzia WooCommerce do listowania, edycji, usuwania lub tworzenia produktow w wybranej kategorii.",
+      "doNotEditDirectly": [
+        "content.menuColumns",
+        "content.heroTitle",
+        "data.menuColumns"
+      ],
+      "context": {
+        "resolvedHeading": "Zestawy specjalne",
+        "presentation": "Obraz naglowka + nazwa kategorii + lista produktow z kategorii WooCommerce",
+        "notes": [
+          "Hero title jest wyprowadzany z nazwy kategorii WooCommerce, gdy source jest ustawiony.",
+          "Ten blok nie wyswietla obrazow produktow."
+        ]
+      },
+      "content": {
+        "backgroundImage": {
+          "src": "https://picsum.photos/seed/menu-specials/1920/1080",
+          "alt": "Sekcja menu Bulwar"
+        },
+        "source": {
+          "sourceType": "woo_category",
+          "sourceValue": "zestawy-specjalne",
+          "options": {
+            "splitIntoColumns": 2
+          }
+        },
+        "emptyStateText": "Ładowanie produktów z WooCommerce..."
+      }
+    }
+  ]
+}
