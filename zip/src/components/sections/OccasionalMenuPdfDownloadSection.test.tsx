@@ -10,7 +10,7 @@ import {
 test("OccasionalMenuPdfDownloadSection renders the default PDF download promo", () => {
   const markup = renderToStaticMarkup(<OccasionalMenuPdfDownloadSection />);
 
-  assert.match(markup, /Menu okolicznosciowe/);
+  assert.match(markup, /Menu okolicznościowe/);
   assert.match(markup, /Pobierz PDF/);
   assert.match(markup, /PDF 2025/);
   assert.match(markup, /2\.3 MB/);
@@ -57,5 +57,5 @@ test("OccasionalMenuPdfDownloadSection renders custom structured content", () =>
   assert.match(markup, /4\.1 MB/);
   assert.match(markup, /PDF gotowy do wysylki klientom/);
   assert.match(markup, /Rozbudowane propozycje dla gali i jubileuszy/);
-  assert.doesNotMatch(markup, /Menu okolicznosciowe/);
+  assert.doesNotMatch(markup, /Menu okolicznościowe/);
 });

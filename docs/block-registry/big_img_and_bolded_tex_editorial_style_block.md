@@ -16,6 +16,7 @@ It renders:
 
 - one tall portrait image
 - one bold editorial text block
+- one outlined button placed directly under the copy and aligned to the left edge of the text block
 - the same mobile-first image-over-copy stacking as the source component
 
 ## Geometry Rules
@@ -34,6 +35,8 @@ The following structure is part of the block identity and must not be changed du
 
 - `title`
 - `story`
+- `buttonLabel`
+- `buttonHref`
 - `image`
 
 ### `image`
@@ -51,6 +54,8 @@ This block is direct-edit only in MVP.
 
 - `title`
 - `story`
+- `buttonLabel`
+- `buttonHref`
 - `image.src`
 - `image.alt`
 
@@ -84,6 +89,8 @@ This block must follow:
   "data": {
     "title": "Editorial portrait",
     "story": "This variant keeps the tall image and the bold editorial copy block only.",
+    "buttonLabel": "przycisk",
+    "buttonHref": "#",
     "image": {
       "src": "/react/images/editorial-portrait.jpg",
       "alt": "Editorial portrait image"

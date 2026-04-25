@@ -44,8 +44,8 @@ const featureIcons = {
 } as const;
 
 export const DEFAULT_OCCASIONAL_MENU_PDF_DOWNLOAD_CONTENT: OccasionalMenuPdfDownloadContent = {
-  title: "Menu okolicznosciowe",
-  subtitle: "Pobierz aktualne menu w PDF i sprawdz propozycje na przyjecia rodzinne, bankiety oraz spotkania firmowe.",
+  title: "Menu okolicznościowe",
+  subtitle: "Pobierz aktualne menu w PDF i sprawdź propozycje na przyjęcia rodzinne, bankiety oraz spotkania firmowe.",
   primaryCta: {
     label: "Pobierz PDF",
     href: "#",
@@ -54,10 +54,10 @@ export const DEFAULT_OCCASIONAL_MENU_PDF_DOWNLOAD_CONTENT: OccasionalMenuPdfDown
     label: "Zobacz online",
     href: "/menu-okolicznosciowe-2025-skrocone",
   },
-  helperText: "Bez logowania • Szybki podglad • Gotowe do wyslania gosciom",
+  helperText: "Bez logowania • Szybki podgląd • Gotowe do wysłania gościom",
   versionLabel: "PDF 2025",
   fileMeta: "2.3 MB",
-  panelCaption: "Aktualne menu okolicznosciowe restauracji",
+  panelCaption: "Aktualne menu okolicznościowe restauracji",
   features: [
     {
       icon: "quality",
@@ -65,7 +65,7 @@ export const DEFAULT_OCCASIONAL_MENU_PDF_DOWNLOAD_CONTENT: OccasionalMenuPdfDown
     },
     {
       icon: "format",
-      title: "Wygodny plik PDF do wysylki, druku i szybkiej konsultacji z gosciami",
+      title: "Wygodny plik PDF do wysyłki, druku i szybkiej konsultacji z gośćmi",
     },
   ],
 };

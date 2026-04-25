@@ -1,0 +1,43 @@
+---
+import PageBuilderSection from '../../../components/PageBuilderSection.astro';
+import { templateBlockAstroValidationPage } from '../../../lib/templateBlockAstroValidation.ts';
+
+const VALIDATION_ASSET_ORIGIN = 'https://validation.example.test';
+const section = templateBlockAstroValidationPage.sections.find(
+  (candidate) => candidate.blockKey === 'restaurant_menu_drawer_type',
+);
+
+if (!section) {
+  throw new Error('Missing restaurant_menu_drawer_type validation section.');
+}
+
+const toAbsoluteAssetUrl = (src: string) => {
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+
+  return `${VALIDATION_ASSET_ORIGIN}${src.startsWith('/') ? '' : '/'}${src}`;
+};
+
+const toAbsoluteImageAssets = (images: Array<{ src: string; alt: string }>) => images.map((image) => ({
+  ...image,
+  src: toAbsoluteAssetUrl(image.src),
+}));
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Restaurant Menu Drawer Type Validation</title>
+  </head>
+  <body>
+    <main data-restaurant-menu-drawer-type-validation>
+      <PageBuilderSection
+        section={section}
+        toAbsoluteAssetUrl={toAbsoluteAssetUrl}
+        toAbsoluteImageAssets={toAbsoluteImageAssets}
+      />
+    </main>
+  </body>
+</html>

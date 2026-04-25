@@ -15,6 +15,14 @@ import {
   galleryMasonryStyle1DefaultData,
 } from "../gallery-masonry-style1/schema";
 import {
+  contact34BlockDefinition,
+  contact34DefaultData,
+} from "../contact34/schema";
+import {
+  featureGridSectionBlockDefinition,
+  featureGridSectionDefaultData,
+} from "../feature_grid_section/schema";
+import {
   heroSimpleNoTextNormalWideBlockDefinition,
   heroSimpleNoTextNormalWideDefaultData,
 } from "../hero_simple_no_text_normal_wide/schema";
@@ -51,9 +59,21 @@ import {
   ofertaPostsSectionDefaultData,
 } from "../oferta_posts_section/schema";
 import {
+  offerHeroBlockDefinition,
+  offerHeroDefaultData,
+} from "../offer_hero/schema";
+import {
   ourServicesBlockDefinition,
   ourServicesDefaultData,
 } from "../our-services/schema";
+import {
+  regionalCuisineBlockDefinition,
+  regionalCuisineDefaultData,
+} from "../regional_cuisine/schema";
+import {
+  restaurantMenuDrawerTypeBlockDefinition,
+  restaurantMenuDrawerTypeDefaultData,
+} from "../restaurant_menu_drawer_type/schema";
 import {
   premiumCallToActionWithImageCarouselBlockDefinition,
   premiumCallToActionWithImageCarouselDefaultData,
@@ -68,6 +88,10 @@ import {
   storyTeamShowcaseBlockDefinition,
   storyTeamShowcaseDefaultData,
 } from "../story-team-showcase/schema";
+import {
+  testimonial7BlockDefinition,
+  testimonial7DefaultData,
+} from "../testimonial7/schema";
 import {
   universalHeaderBlock1Definition,
   universalHeaderBlock1DefaultData,
@@ -110,6 +134,8 @@ const baseBlockRegistry = {
   [about1BlockDefinition.blockKey]: about1BlockDefinition,
   [bigImgAndBoldedTexEditorialStyleBlockDefinition.blockKey]: bigImgAndBoldedTexEditorialStyleBlockDefinition,
   [blockDownloadBlockDefinition.blockKey]: blockDownloadBlockDefinition,
+  [contact34BlockDefinition.blockKey]: contact34BlockDefinition,
+  [featureGridSectionBlockDefinition.blockKey]: featureGridSectionBlockDefinition,
   [galleryMasonryStyle1BlockDefinition.blockKey]: galleryMasonryStyle1BlockDefinition,
   [heroSimpleNoTextNormalWideBlockDefinition.blockKey]: heroSimpleNoTextNormalWideBlockDefinition,
   [heroSimpleNoTextPy32BlockDefinition.blockKey]: heroSimpleNoTextPy32BlockDefinition,
@@ -120,12 +146,16 @@ const baseBlockRegistry = {
   [menuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlockDefinition.blockKey]: menuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlockDefinition,
   [menuCategoryPhotoParallaxFullWidthBlockDefinition.blockKey]: menuCategoryPhotoParallaxFullWidthBlockDefinition,
   [ofertaPostsSectionBlockDefinition.blockKey]: ofertaPostsSectionBlockDefinition,
+  [offerHeroBlockDefinition.blockKey]: offerHeroBlockDefinition,
   [ourServicesBlockDefinition.blockKey]: ourServicesBlockDefinition,
   [premiumCallToActionWithImageCarouselBlockDefinition.blockKey]: premiumCallToActionWithImageCarouselBlockDefinition,
   [promo2BlockDefinition.blockKey]: promo2BlockDefinition,
   [promo3BlockDefinition.blockKey]: promo3BlockDefinition,
+  [regionalCuisineBlockDefinition.blockKey]: regionalCuisineBlockDefinition,
+  [restaurantMenuDrawerTypeBlockDefinition.blockKey]: restaurantMenuDrawerTypeBlockDefinition,
   [simpleHeadingAndParagraphBlockDefinition.blockKey]: simpleHeadingAndParagraphBlockDefinition,
   [storyTeamShowcaseBlockDefinition.blockKey]: storyTeamShowcaseBlockDefinition,
+  [testimonial7BlockDefinition.blockKey]: testimonial7BlockDefinition,
   [universalHeaderBlock1Definition.blockKey]: universalHeaderBlock1Definition,
   [universalHeaderBlock2Definition.blockKey]: universalHeaderBlock2Definition,
   [universalMultilinkBlockDefinition.blockKey]: universalMultilinkBlockDefinition,
@@ -140,7 +170,7 @@ const workflow1SupportingDesignReferences = [
   "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md",
   "docs/plan/astro-wordpress-page-builder/design-token-and-layout-whitelist.md",
 ] as const;
-const machineRegistryManifestUpdatedAt = "2026-04-22";
+const machineRegistryManifestUpdatedAt = "2026-04-24";
 
 export {
   blockRefinementWorkflowRequestFields,
@@ -153,6 +183,8 @@ const docsPathByBlockKey = {
   big_img_and_bolded_tex_editorial_style_block:
     "docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md",
   block_download: "docs/block-registry/block_download.md",
+  contact34: "docs/block-registry/contact34.md",
+  feature_grid_section: "docs/block-registry/feature_grid_section.md",
   "gallery-masonry-style1": "docs/block-registry/gallery-masonry-style1.md",
   hero_simple_no_text_normal_wide: "docs/block-registry/hero_simple_no_text_normal_wide.md",
   hero_simple_no_text_py32: "docs/block-registry/hero_simple_no_text_py32.md",
@@ -167,26 +199,50 @@ const docsPathByBlockKey = {
   menu_two_columns_with_with_heading_with_img_fullwidth_paralax:
     "docs/block-registry/menu_two_columns_with_with_heading_with_img_fullwidth_paralax.md",
   oferta_posts_section: "docs/block-registry/oferta_posts_section.md",
+  offer_hero: "docs/block-registry/offer_hero.md",
   "our-services": "docs/block-registry/our-services.md",
   premium_call_to_action_with_image_carousel:
     "docs/block-registry/premium_call_to_action_with_image_carousel.md",
   promo2: "docs/block-registry/promo2.md",
   promo3: "docs/block-registry/promo3.md",
+  regional_cuisine: "docs/block-registry/regional_cuisine.md",
+  restaurant_menu_drawer_type: "docs/block-registry/restaurant_menu_drawer_type.md",
   simple_heading_and_paragraph: "docs/block-registry/simple_heading_and_paragraph.md",
   "story-team-showcase": "docs/block-registry/story-team-showcase.md",
+  testimonial7: "docs/block-registry/testimonial7.md",
   universal_header_block_1: "docs/block-registry/universal_header_block_1.md",
   universal_header_block_2: "docs/block-registry/universal_header_block_2.md",
   universal_multilink_block: "docs/block-registry/universal_multilink_block.md",
 } satisfies Record<RegisteredBlockKey, string>;
 
 const astroRendererPathByBlockKey: Partial<Record<RegisteredBlockKey, string>> = {
+  about_2_simple: "astro-site/src/components/About2SimpleSection.astro",
   "about-1": "astro-site/src/components/AboutSection.astro",
+  big_img_and_bolded_tex_editorial_style_block:
+    "astro-site/src/components/BigImgAndBoldedTexEditorialStyleBlockSection.astro",
   block_download: "astro-site/src/components/BlockDownloadSection.astro",
+  contact34: "astro-site/src/components/Contact34Section.astro",
+  feature_grid_section: "astro-site/src/components/FeatureGridSection.astro",
   "gallery-masonry-style1": "astro-site/src/components/GallerySection.astro",
+  hero_simple_no_text_normal_wide: "astro-site/src/components/HeroSimpleNoTextNormalWideSection.astro",
+  hero_simple_no_text_py32: "astro-site/src/components/HeroSimpleNoTextPy32Section.astro",
+  just_pralax_img_horizontal: "astro-site/src/components/JustPralaxImgHorizontalSection.astro",
   "menu-category-photo-parallax-full-width": "astro-site/src/components/MenuCategorySection.astro",
+  menu_three_columns_with_with_heading_no_img: "astro-site/src/components/StandaloneMenuSection.astro",
+  menu_two_columns_with_no_heading_no_img: "astro-site/src/components/StandaloneMenuSection.astro",
+  menu_two_columns_with_with_heading_no_img: "astro-site/src/components/StandaloneMenuSection.astro",
   menu_two_columns_with_with_heading_with_img_fullwidth_paralax:
     "astro-site/src/components/MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.astro",
+  oferta_posts_section: "astro-site/src/components/OfertaPostsSection.astro",
+  offer_hero: "astro-site/src/components/OfferHeroSection.astro",
   "our-services": "astro-site/src/components/OurServicesSection.astro",
+  premium_call_to_action_with_image_carousel:
+    "astro-site/src/components/PremiumCallToActionWithImageCarouselSection.astro",
+  promo2: "astro-site/src/components/Promo2Section.astro",
+  regional_cuisine: "astro-site/src/components/RegionalCuisineSection.astro",
+  restaurant_menu_drawer_type: "astro-site/src/components/RestaurantMenuDrawerTypeSection.astro",
+  simple_heading_and_paragraph: "astro-site/src/components/SimpleHeadingAndParagraphSection.astro",
+  testimonial7: "astro-site/src/components/Testimonial7Section.astro",
   universal_header_block_1: "astro-site/src/components/UniversalHeaderBlock1Section.astro",
   universal_header_block_2: "astro-site/src/components/UniversalHeaderBlock2Section.astro",
   universal_multilink_block: "astro-site/src/components/UniversalMultilinkBlockSection.astro",
@@ -587,6 +643,8 @@ export const mvpBlockDefaults = {
   about1: about1DefaultData,
   big_img_and_bolded_tex_editorial_style_block: bigImgAndBoldedTexEditorialStyleBlockDefinition.defaultData,
   block_download: blockDownloadDefaultData,
+  contact34: contact34DefaultData,
+  feature_grid_section: featureGridSectionDefaultData,
   galleryMasonryStyle1: galleryMasonryStyle1DefaultData,
   hero_simple_no_text_normal_wide: heroSimpleNoTextNormalWideDefaultData,
   hero_simple_no_text_py32: heroSimpleNoTextPy32DefaultData,
@@ -598,12 +656,16 @@ export const mvpBlockDefaults = {
     menuTwoColumnsWithWithHeadingWithImgFullwidthParalaxDefaultData,
   menuCategoryPhotoParallaxFullWidth: menuCategoryPhotoParallaxFullWidthDefaultData,
   oferta_posts_section: ofertaPostsSectionDefaultData,
+  offer_hero: offerHeroDefaultData,
   ourServices: ourServicesDefaultData,
   premium_call_to_action_with_image_carousel: premiumCallToActionWithImageCarouselDefaultData,
   promo2: promo2DefaultData,
   promo3: promo3DefaultData,
+  regional_cuisine: regionalCuisineDefaultData,
+  restaurant_menu_drawer_type: restaurantMenuDrawerTypeDefaultData,
   simple_heading_and_paragraph: simpleHeadingAndParagraphDefaultData,
   storyTeamShowcase: storyTeamShowcaseDefaultData,
+  testimonial7: testimonial7DefaultData,
   universal_header_block_1: universalHeaderBlock1DefaultData,
   universal_header_block_2: universalHeaderBlock2DefaultData,
   universal_multilink_block: universalMultilinkBlockDefaultData,

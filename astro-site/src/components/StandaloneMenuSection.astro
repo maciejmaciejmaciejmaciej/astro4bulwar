@@ -1,0 +1,360 @@
+---
+type StandaloneMenuVariant = 'white' | 'surface' | 'white-outlined' | 'inverted';
+
+interface MenuItem {
+  title: string;
+  description?: string;
+  priceLabel: string;
+  tagSlugs?: string[];
+}
+
+interface MenuColumn {
+  items: MenuItem[];
+}
+
+interface Props {
+  title?: string;
+  menuColumns: MenuColumn[];
+  emptyStateText?: string;
+  columns?: 2 | 3;
+  withHeading?: boolean;
+  variant?: StandaloneMenuVariant | null;
+}
+
+const {
+  title,
+  menuColumns,
+  emptyStateText = 'Brak pozycji w tej kategorii.',
+  columns = 2,
+  withHeading = false,
+  variant = 'surface',
+} = Astro.props;
+
+const safeColumns = columns === 3 ? 3 : 2;
+const safeVariant: StandaloneMenuVariant = variant ?? 'surface';
+const shouldRenderHeading = withHeading && Boolean(title?.trim());
+const safeMenuColumns = menuColumns.filter((column) => column.items.length > 0);
+
+const MENU_ITEM_PILL_LABELS: Record<string, string> = {
+  '500-ml': '500 ml',
+  vegan: 'Vegan',
+  vege: 'Vege',
+  ostre: 'Ostre',
+  'bardzo-ostre': 'Bardzo ostre',
+};
+
+const getOptionalMenuText = (value: string | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeMenuMetadataValue = (value: string): string => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+};
+
+const getMenuItemPills = (tagSlugs: readonly string[] | undefined): Array<{ slug: string; label: string }> => {
+  if (!tagSlugs || tagSlugs.length === 0) {
+    return [];
+  }
+
+  const uniquePills = new Map<string, string>();
+
+  for (const tagSlug of tagSlugs) {
+    const safeTag = getOptionalMenuText(tagSlug);
+
+    if (!safeTag) {
+      continue;
+    }
+
+    const normalized = normalizeMenuMetadataValue(safeTag);
+
+    if (!uniquePills.has(normalized)) {
+      uniquePills.set(normalized, safeTag);
+    }
+  }
+
+  return Array.from(uniquePills.entries()).map(([slug, label]) => ({
+    slug,
+    label: MENU_ITEM_PILL_LABELS[slug] ?? label,
+  }));
+};
+---
+
+<section class="standalone-menu" data-variant={safeVariant} data-columns={String(safeColumns)}>
+  <div class="standalone-menu__inner theme-section-wrapper">
+    <div class="standalone-menu__panel theme-radius-surface">
+      {shouldRenderHeading ? (
+        <div class="standalone-menu__heading-group">
+          <h2 class="standalone-menu__heading">{title}</h2>
+          <div class="standalone-menu__rule" aria-hidden="true"></div>
+        </div>
+      ) : null}
+
+      {safeMenuColumns.length > 0 ? (
+        <div class="standalone-menu__grid">
+          {safeMenuColumns.map((column) => (
+            <div class="standalone-menu__column">
+              {column.items.map((item) => {
+                const description = getOptionalMenuText(item.description);
+                const pills = getMenuItemPills(item.tagSlugs);
+                const hasDetails = Boolean(description) || pills.length > 0;
+
+                return (
+                  <div class="standalone-menu__item">
+                    <div class="standalone-menu__copy">
+                      <span class="standalone-menu__item-title">{item.title}</span>
+
+                      {hasDetails ? (
+                        <div class="standalone-menu__details">
+                          {description ? <p class="standalone-menu__item-description">{description}</p> : null}
+
+                          {pills.length > 0 ? (
+                            <div class="standalone-menu__pills" data-menu-item-pills>
+                              {pills.map((pill) => (
+                                <span class="standalone-menu__pill">{pill.label}</span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div class="standalone-menu__price-row">
+                      <div class="standalone-menu__leader" aria-hidden="true"></div>
+                      <span class="standalone-menu__price">{item.priceLabel}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p class="standalone-menu__empty">{emptyStateText}</p>
+      )}
+    </div>
+  </div>
+</section>
+
+<style>
+  .standalone-menu {
+    --standalone-menu-panel-bg: var(--color-surface-container-low);
+    --standalone-menu-heading: var(--color-on-surface);
+    --standalone-menu-divider: var(--color-foreground);
+    --standalone-menu-title: var(--color-on-surface);
+    --standalone-menu-description: var(--color-muted-foreground);
+    --standalone-menu-price: var(--color-on-surface);
+    --standalone-menu-empty: var(--color-muted-foreground);
+    --standalone-menu-leader: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+    --standalone-menu-pill-border: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+    padding: 8rem 0;
+    background: var(--color-background);
+  }
+
+  .standalone-menu[data-variant='white'] {
+    --standalone-menu-panel-bg: #ffffff;
+  }
+
+  .standalone-menu[data-variant='white-outlined'] {
+    --standalone-menu-panel-bg: #ffffff;
+  }
+
+  .standalone-menu[data-variant='inverted'] {
+    --standalone-menu-panel-bg: var(--color-foreground);
+    --standalone-menu-heading: #ffffff;
+    --standalone-menu-divider: #ffffff;
+    --standalone-menu-title: #ffffff;
+    --standalone-menu-description: rgba(255, 255, 255, 0.72);
+    --standalone-menu-price: #ffffff;
+    --standalone-menu-empty: rgba(255, 255, 255, 0.72);
+    --standalone-menu-leader: rgba(255, 255, 255, 0.4);
+    --standalone-menu-pill-border: rgba(255, 255, 255, 0.4);
+  }
+
+  .standalone-menu__panel {
+    background: var(--standalone-menu-panel-bg);
+    padding: clamp(2rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem);
+  }
+
+  .standalone-menu[data-variant='white-outlined'] .standalone-menu__panel {
+    border: 1px solid color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  }
+
+  .standalone-menu__heading-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: clamp(3rem, 5vw, 5rem);
+    text-align: center;
+  }
+
+  .standalone-menu__heading,
+  .standalone-menu__item-title,
+  .standalone-menu__price,
+  .standalone-menu__empty {
+    margin: 0;
+  }
+
+  .standalone-menu__heading {
+    color: var(--standalone-menu-heading);
+    font-family: var(--font-headline);
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 400;
+    letter-spacing: 0.3rem;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+
+  .standalone-menu__rule {
+    width: 4rem;
+    height: 1px;
+    background: var(--standalone-menu-divider);
+  }
+
+  .standalone-menu__grid {
+    display: grid;
+    gap: 3rem;
+    width: min(100%, 70rem);
+    margin: 0 auto;
+  }
+
+  .standalone-menu[data-columns='3'] .standalone-menu__grid {
+    width: min(100%, 84rem);
+  }
+
+  .standalone-menu__column {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .standalone-menu__item {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .standalone-menu__copy {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .standalone-menu__item-title {
+    display: block;
+    color: var(--standalone-menu-title);
+    font-family: var(--font-label);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+  }
+
+  .standalone-menu__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  .standalone-menu__item-description,
+  .standalone-menu__empty {
+    color: var(--standalone-menu-description);
+    font-family: var(--font-label);
+    line-height: 1.35;
+  }
+
+  .standalone-menu__item-description {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+  }
+
+  .standalone-menu__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .standalone-menu__pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--standalone-menu-pill-border);
+    border-radius: 999px;
+    color: var(--standalone-menu-description);
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    padding: 0.4rem 0.6rem;
+    text-transform: uppercase;
+  }
+
+  .standalone-menu__price-row {
+    display: flex;
+    min-width: 6rem;
+    flex: 1 1 auto;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .standalone-menu__leader {
+    flex: 1 1 auto;
+    border-bottom: 1px solid var(--standalone-menu-leader);
+    transform: translateY(-0.3rem);
+  }
+
+  .standalone-menu__price {
+    color: var(--standalone-menu-price);
+    font-family: var(--font-label);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  .standalone-menu__empty {
+    width: min(100%, 70rem);
+    margin: 0 auto;
+    font-size: 0.9375rem;
+  }
+
+  @media (min-width: 768px) {
+    .standalone-menu__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3rem 5rem;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .standalone-menu[data-columns='3'] .standalone-menu__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 3rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .standalone-menu {
+      padding: 5rem 0;
+    }
+
+    .standalone-menu__item {
+      gap: 0.5rem;
+    }
+
+    .standalone-menu__price-row {
+      min-width: 4.5rem;
+      gap: 0.5rem;
+    }
+  }
+</style>

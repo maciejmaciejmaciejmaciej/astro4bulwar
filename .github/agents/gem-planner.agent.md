@@ -2,7 +2,7 @@
 description: "DAG-based execution plans — task decomposition, wave scheduling, risk analysis."
 name: gem-planner
 disable-model-invocation: false
-user-invocable: false
+user-invocable: true
 ---
 
 # Role

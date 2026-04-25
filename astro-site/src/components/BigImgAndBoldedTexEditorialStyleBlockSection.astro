@@ -1,0 +1,154 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface Props {
+  title: string;
+  story: string;
+  buttonLabel?: string;
+  buttonHref?: string;
+  image: ImageAsset;
+}
+
+const {
+  title,
+  story,
+  buttonLabel = 'przycisk',
+  buttonHref = '#',
+  image,
+} = Astro.props;
+const shouldRenderButton = buttonLabel.trim().length > 0 && buttonHref.trim().length > 0;
+---
+
+<section class="editorial-style-block" aria-label={title}>
+  <div class="editorial-style-block__inner theme-section-wrapper">
+    <div class="editorial-style-block__grid">
+      <div class="editorial-style-block__media-column">
+        <div class="editorial-style-block__image-frame theme-radius-media">
+          <img src={image.src} alt={image.alt} loading="eager" />
+        </div>
+      </div>
+
+      <div class="editorial-style-block__copy-column">
+        <h2 class="editorial-style-block__sr-only">{title}</h2>
+        <div class="editorial-style-block__copy-stack">
+          <p class="editorial-style-block__story">{story}</p>
+
+          {shouldRenderButton ? (
+            <a class="editorial-style-block__button theme-radius-control" href={buttonHref}>{buttonLabel}</a>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .editorial-style-block {
+    background: #ffffff;
+    padding: 8rem 0;
+  }
+
+  .editorial-style-block__grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .editorial-style-block__media-column {
+    display: flex;
+    justify-content: center;
+  }
+
+  .editorial-style-block__image-frame {
+    width: min(52vw, 24rem);
+    max-width: 100%;
+    overflow: hidden;
+    aspect-ratio: 1 / 2;
+    background: var(--color-surface-container-low);
+  }
+
+  .editorial-style-block__image-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .editorial-style-block__copy-column {
+    display: flex;
+    align-items: center;
+  }
+
+  .editorial-style-block__copy-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .editorial-style-block__story {
+    margin: 0;
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: clamp(1.75rem, 3.4vw, 3rem);
+    line-height: 1.15;
+  }
+
+  .editorial-style-block__button {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-on-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    padding: 0.875rem 1rem;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+  }
+
+  .editorial-style-block__button:hover {
+    background: var(--color-on-surface);
+    color: var(--color-background);
+  }
+
+  .editorial-style-block__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (min-width: 1024px) {
+    .editorial-style-block__grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 4rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .editorial-style-block {
+      padding: 5rem 0;
+    }
+
+    .editorial-style-block__image-frame {
+      width: min(72vw, 20rem);
+    }
+
+    .editorial-style-block__copy-stack {
+      gap: 1.25rem;
+    }
+  }
+</style>

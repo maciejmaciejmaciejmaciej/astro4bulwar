@@ -23,8 +23,8 @@ export const premiumCallToActionWithImageCarouselDefaultData:
   PremiumCallToActionWithImageCarouselData = premiumCallToActionWithImageCarouselDataSchema.parse({
     heading: "Catering Wielkanocny",
     description:
-      "Zamow z dostawa lub odbiorem w contained sekcji zgodnej z rytmem Promo2. Najwyzsza jakosc i starannie wyselekcjonowane swiateczne propozycje trafiaja prosto na stol.",
-    buttonText: "ZAMOW ONLINE",
+      "Zamów z dostawą lub odbiorem w contained sekcji zgodnej z rytmem Promo2. Najwyższa jakość i starannie wyselekcjonowane świąteczne propozycje trafiają prosto na stół.",
+    buttonText: "ZAMÓW ONLINE",
     buttonHref: "/catering-wielkanocny",
     images: [
       {

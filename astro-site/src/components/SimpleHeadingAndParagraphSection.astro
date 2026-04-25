@@ -1,0 +1,166 @@
+---
+interface Props {
+  eyebrow: string;
+  title: string;
+  richTextHtml: string;
+}
+
+const { eyebrow, title, richTextHtml } = Astro.props;
+
+const escapeHtml = (value: string): string => {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+};
+
+const restoreAllowedTags = (value: string): string => {
+  return value
+    .replace(/&lt;(\/?)(strong|b|em|i|u|p|ul|ol|li)\s*&gt;/gi, '<$1$2>')
+    .replace(/&lt;br\s*\/?\s*&gt;/gi, '<br>');
+};
+
+const sanitizedRichTextHtml = restoreAllowedTags(escapeHtml(richTextHtml));
+---
+
+<section class="simple-heading-and-paragraph">
+  <div class="simple-heading-and-paragraph__inner theme-section-wrapper">
+    <header class="simple-heading-and-paragraph__header">
+      <div class="simple-heading-and-paragraph__header-copy">
+        <p class="simple-heading-and-paragraph__eyebrow">{eyebrow}</p>
+        <div class="simple-heading-and-paragraph__title-group">
+          <h2 class="simple-heading-and-paragraph__title">{title}</h2>
+          <div class="simple-heading-and-paragraph__accent" aria-hidden="true"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="simple-heading-and-paragraph__body" set:html={sanitizedRichTextHtml}></div>
+  </div>
+</section>
+
+<style>
+  .simple-heading-and-paragraph {
+    background: #ffffff;
+    color: var(--color-on-surface);
+    padding: 8rem 0;
+  }
+
+  .simple-heading-and-paragraph__inner {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .simple-heading-and-paragraph__header {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-on-surface) 18%, transparent);
+    padding-bottom: 3rem;
+  }
+
+  .simple-heading-and-paragraph__header-copy,
+  .simple-heading-and-paragraph__body {
+    max-width: 64rem;
+  }
+
+  .simple-heading-and-paragraph__header-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .simple-heading-and-paragraph__eyebrow {
+    margin: 0;
+    color: rgb(113 113 122);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .simple-heading-and-paragraph__title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .simple-heading-and-paragraph__title {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    line-height: 1.02;
+    text-transform: uppercase;
+  }
+
+  .simple-heading-and-paragraph__accent {
+    width: 3rem;
+    height: 1px;
+    background: var(--color-primary);
+  }
+
+  .simple-heading-and-paragraph__body {
+    padding-top: 3rem;
+    color: rgb(113 113 122);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.85;
+  }
+
+  .simple-heading-and-paragraph__body :global(p),
+  .simple-heading-and-paragraph__body :global(ul),
+  .simple-heading-and-paragraph__body :global(ol) {
+    margin: 0 0 1rem;
+  }
+
+  .simple-heading-and-paragraph__body :global(p:last-child),
+  .simple-heading-and-paragraph__body :global(ul:last-child),
+  .simple-heading-and-paragraph__body :global(ol:last-child) {
+    margin-bottom: 0;
+  }
+
+  .simple-heading-and-paragraph__body :global(ul),
+  .simple-heading-and-paragraph__body :global(ol) {
+    padding-left: 1.5rem;
+  }
+
+  .simple-heading-and-paragraph__body :global(ul) {
+    list-style: disc;
+  }
+
+  .simple-heading-and-paragraph__body :global(ol) {
+    list-style: decimal;
+  }
+
+  .simple-heading-and-paragraph__body :global(li) {
+    margin-bottom: 0.5rem;
+  }
+
+  .simple-heading-and-paragraph__body :global(strong),
+  .simple-heading-and-paragraph__body :global(b) {
+    color: var(--color-on-surface);
+    font-weight: 600;
+  }
+
+  .simple-heading-and-paragraph__body :global(em),
+  .simple-heading-and-paragraph__body :global(i) {
+    font-style: italic;
+  }
+
+  .simple-heading-and-paragraph__body :global(u) {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 767px) {
+    .simple-heading-and-paragraph {
+      padding: 5rem 0;
+    }
+
+    .simple-heading-and-paragraph__header {
+      padding-bottom: 2.5rem;
+    }
+
+    .simple-heading-and-paragraph__body {
+      padding-top: 2.5rem;
+    }
+  }
+</style>

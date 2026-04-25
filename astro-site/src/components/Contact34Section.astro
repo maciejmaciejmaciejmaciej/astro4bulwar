@@ -1,0 +1,191 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface ContactItem {
+  label: string;
+  value: string;
+  href?: string;
+}
+
+interface FormContent {
+  nameLabel: string;
+  namePlaceholder: string;
+  emailLabel: string;
+  emailPlaceholder: string;
+  messageLabel: string;
+  messagePlaceholder: string;
+  submitLabel: string;
+}
+
+interface Props {
+  tagline: string;
+  title: string;
+  image: ImageAsset;
+  contactItems: ContactItem[];
+  form: FormContent;
+}
+
+const { tagline, title, image, contactItems, form } = Astro.props;
+---
+
+<section class="contact34">
+  <div class="contact34__inner theme-section-wrapper">
+    <div class="contact34__grid">
+      <div class="contact34__media-column">
+        <div class="contact34__image-frame">
+          <img src={image.src} alt={image.alt} loading="eager" />
+        </div>
+        <div class="contact34__contact-panel">
+          <div class="contact34__contact-grid">
+            {contactItems.map((item: ContactItem) => (
+              <div>
+                <p class="contact34__meta">{item.label}</p>
+                {item.href ? <a href={item.href}>{item.value}</a> : <p>{item.value}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div class="contact34__form-column">
+        <p class="contact34__meta contact34__meta--tagline">{tagline}</p>
+        <h2 class="contact34__title">{title}</h2>
+
+        <form class="contact34__form">
+          <label>
+            <span>{form.nameLabel}</span>
+            <input placeholder={form.namePlaceholder} />
+          </label>
+          <label>
+            <span>{form.emailLabel}</span>
+            <input type="email" placeholder={form.emailPlaceholder} />
+          </label>
+          <label>
+            <span>{form.messageLabel}</span>
+            <textarea placeholder={form.messagePlaceholder}></textarea>
+          </label>
+          <button type="submit">{form.submitLabel}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact34 {
+    padding: 8rem 0;
+  }
+
+  .contact34__grid {
+    display: grid;
+    gap: 3rem;
+  }
+
+  .contact34__media-column {
+    position: relative;
+  }
+
+  .contact34__image-frame {
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  .contact34__image-frame img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .contact34__contact-panel {
+    margin: -4rem 1.5rem 0;
+    position: relative;
+    z-index: 1;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-background) 95%, transparent);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(12px);
+  }
+
+  .contact34__contact-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .contact34__meta {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted-foreground);
+  }
+
+  .contact34__form-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .contact34__title {
+    margin: 0 0 2rem;
+    font-family: var(--font-headline);
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+  }
+
+  .contact34__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .contact34__form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .contact34__form input,
+  .contact34__form textarea {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-background);
+    padding: 0.875rem 1rem;
+    font: inherit;
+  }
+
+  .contact34__form textarea {
+    min-height: 8rem;
+    resize: vertical;
+  }
+
+  .contact34__form button {
+    border: 0;
+    border-radius: 4px;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    padding: 0.875rem 1.25rem;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  @media (min-width: 1024px) {
+    .contact34__grid {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 4rem;
+    }
+
+    .contact34__image-frame img {
+      aspect-ratio: 3 / 4;
+    }
+
+    .contact34__contact-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

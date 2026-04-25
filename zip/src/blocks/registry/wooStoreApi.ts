@@ -53,6 +53,11 @@ interface WooStoreTag {
   link?: string;
 }
 
+export interface WooMenuCategorySection {
+  heading: string;
+  menuColumns: MenuColumn[];
+}
+
 const fetchWooStoreJson = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
   const response = await fetch(`${getWordPressBaseUrl()}${path}`, {
     method: "GET",
@@ -169,15 +174,17 @@ const fetchWooProductsByIds = async (productIds: readonly number[], signal?: Abo
   });
 };
 
-const fetchWooCategoryByIdentifier = async (
-  identifier: string | number,
-  signal?: AbortSignal,
-): Promise<WooStoreCategory | null> => {
-  const categories = await fetchWooStoreJson<WooStoreCategory[]>(
+const fetchWooCategories = async (signal?: AbortSignal): Promise<WooStoreCategory[]> => {
+  return fetchWooStoreJson<WooStoreCategory[]>(
     "/wp-json/wc/store/v1/products/categories?per_page=100",
     signal,
   );
+};
 
+const findWooCategoryByIdentifier = (
+  categories: readonly WooStoreCategory[],
+  identifier: string | number,
+): WooStoreCategory | null => {
   return categories.find((category) => {
     if (typeof identifier === "number") {
       return category.id === identifier;
@@ -185,6 +192,13 @@ const fetchWooCategoryByIdentifier = async (
 
     return category.slug === identifier;
   }) ?? null;
+};
+
+const fetchWooCategoryByIdentifier = async (
+  identifier: string | number,
+  signal?: AbortSignal,
+): Promise<WooStoreCategory | null> => {
+  return findWooCategoryByIdentifier(await fetchWooCategories(signal), identifier);
 };
 
 const fetchWooProductsByCategory = async (
@@ -220,6 +234,43 @@ const fetchWooProductsByCategory = async (
     category,
     products,
   };
+};
+
+export const resolveWooMenuSectionsByCategoryIds = async (
+  categoryIds: readonly number[],
+  signal?: AbortSignal,
+): Promise<readonly WooMenuCategorySection[]> => {
+  const sanitizedIds = categoryIds.filter((categoryId): categoryId is number => Number.isInteger(categoryId) && categoryId > 0);
+
+  if (sanitizedIds.length === 0) {
+    return [];
+  }
+
+  const categories = await fetchWooCategories(signal);
+
+  return Promise.all(
+    sanitizedIds.map(async (categoryId) => {
+      const category = findWooCategoryByIdentifier(categories, categoryId);
+
+      if (!category) {
+        throw new Error(`Woo category not found for identifier: ${String(categoryId)}`);
+      }
+
+      const params = new URLSearchParams({
+        category: String(category.id),
+        per_page: "20",
+      });
+      const products = await fetchWooStoreJson<WooStoreProduct[]>(`/wp-json/wc/store/v1/products?${params.toString()}`, signal);
+
+      return {
+        heading: category.name,
+        menuColumns: splitMenuItemsIntoColumns(
+          products.map(mapWooProductToMenuItem),
+          1,
+        ),
+      } satisfies WooMenuCategorySection;
+    }),
+  );
 };
 
 export const resolveMenuCategoryPhotoParallaxFullWidthSource = async (

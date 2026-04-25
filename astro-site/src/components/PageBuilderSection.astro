@@ -1,26 +1,60 @@
 ---
 import AboutSection from './AboutSection.astro';
+import About2SimpleSection from './About2SimpleSection.astro';
+import BigImgAndBoldedTexEditorialStyleBlockSection from './BigImgAndBoldedTexEditorialStyleBlockSection.astro';
 import BlockDownloadSection from './BlockDownloadSection.astro';
+import Contact34Section from './Contact34Section.astro';
+import FeatureGridSection from './FeatureGridSection.astro';
 import GallerySection from './GallerySection.astro';
+import HeroSimpleNoTextNormalWideSection from './HeroSimpleNoTextNormalWideSection.astro';
+import HeroSimpleNoTextPy32Section from './HeroSimpleNoTextPy32Section.astro';
+import JustPralaxImgHorizontalSection from './JustPralaxImgHorizontalSection.astro';
 import MenuCategorySection from './MenuCategorySection.astro';
 import MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection from './MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxSection.astro';
+import OfertaPostsSection from './OfertaPostsSection.astro';
+import OfferHeroSection from './OfferHeroSection.astro';
 import OurServicesSection from './OurServicesSection.astro';
+import PremiumCallToActionWithImageCarouselSection from './PremiumCallToActionWithImageCarouselSection.astro';
+import Promo2Section from './Promo2Section.astro';
+import RegionalCuisineSection from './RegionalCuisineSection.astro';
+import RestaurantMenuDrawerTypeSection from './RestaurantMenuDrawerTypeSection.astro';
+import SimpleHeadingAndParagraphSection from './SimpleHeadingAndParagraphSection.astro';
+import StandaloneMenuSection from './StandaloneMenuSection.astro';
+import Testimonial7Section from './Testimonial7Section.astro';
 import UniversalHeaderBlock1Section from './UniversalHeaderBlock1Section.astro';
 import UniversalHeaderBlock2Section from './UniversalHeaderBlock2Section.astro';
 import UniversalMultilinkBlockSection from './UniversalMultilinkBlockSection.astro';
-import { resolveAstroRenderer } from '../lib/astroRegistry.ts';
+import { resolveAstroRenderer } from '../lib/astroRegistry';
 import type {
   AboutBlock,
+  About2SimpleBlock,
+  BigImgAndBoldedTexEditorialStyleBlock,
   BlockDownloadSectionBlock,
+  Contact34Block,
+  FeatureGridSectionBlock,
   GalleryBlock,
+  HeroSimpleNoTextNormalWideBlock,
+  HeroSimpleNoTextPy32Block,
+  JustPralaxImgHorizontalBlock,
   MenuBlock,
+  MenuThreeColumnsWithWithHeadingNoImgBlock,
+  MenuTwoColumnsWithNoHeadingNoImgBlock,
+  MenuTwoColumnsWithWithHeadingNoImgBlock,
   MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock,
+  OfertaPostsSectionBlock,
+  OfferHeroBlock,
   PageBuilderSection,
+  PremiumCallToActionWithImageCarouselBlock,
+  Promo2Block,
+  RegionalCuisineBlock,
+  RestaurantMenuDrawerTypeBlock,
+  SimpleHeadingAndParagraphBlock,
+  Testimonial7Block,
   OurServicesBlock,
   UniversalHeaderBlock1SectionBlock,
   UniversalHeaderBlock2SectionBlock,
   UniversalMultilinkSectionBlock,
-} from '../lib/types.ts';
+} from '../lib/types';
 
 type ImageAsset = {
   src: string;
@@ -43,6 +77,23 @@ const renderer = resolveAstroRenderer(section.blockKey);
     leftText={(section as AboutBlock).data.leftText}
     rightText={(section as AboutBlock).data.rightText}
     rightImages={toAbsoluteImageAssets((section as AboutBlock).data.rightImages)}
+  />
+)}
+
+{renderer.blockKey === 'about_2_simple' && (
+  <About2SimpleSection
+    title={(section as About2SimpleBlock).data.title}
+    paragraphs={(section as About2SimpleBlock).data.paragraphs}
+    buttonText={(section as About2SimpleBlock).data.buttonText}
+    buttonLink={(section as About2SimpleBlock).data.buttonLink}
+    image1={{
+      ...(section as About2SimpleBlock).data.image1,
+      src: toAbsoluteAssetUrl((section as About2SimpleBlock).data.image1.src),
+    }}
+    image2={{
+      ...(section as About2SimpleBlock).data.image2,
+      src: toAbsoluteAssetUrl((section as About2SimpleBlock).data.image2.src),
+    }}
   />
 )}
 
@@ -69,6 +120,57 @@ const renderer = resolveAstroRenderer(section.blockKey);
   />
 )}
 
+{renderer.blockKey === 'hero_simple_no_text_py32' && (
+  <HeroSimpleNoTextPy32Section
+    section={{
+      ...(section as HeroSimpleNoTextPy32Block),
+      data: {
+        ...(section as HeroSimpleNoTextPy32Block).data,
+        imageSrc: toAbsoluteAssetUrl((section as HeroSimpleNoTextPy32Block).data.imageSrc),
+      },
+    }}
+  />
+)}
+
+{renderer.blockKey === 'hero_simple_no_text_normal_wide' && (
+  <HeroSimpleNoTextNormalWideSection
+    section={{
+      ...(section as HeroSimpleNoTextNormalWideBlock),
+      data: {
+        ...(section as HeroSimpleNoTextNormalWideBlock).data,
+        imageSrc: toAbsoluteAssetUrl((section as HeroSimpleNoTextNormalWideBlock).data.imageSrc),
+      },
+    }}
+  />
+)}
+
+{renderer.blockKey === 'contact34' && (
+  <Contact34Section
+    tagline={(section as Contact34Block).data.tagline}
+    title={(section as Contact34Block).data.title}
+    image={{
+      ...(section as Contact34Block).data.image,
+      src: toAbsoluteAssetUrl((section as Contact34Block).data.image.src),
+    }}
+    contactItems={(section as Contact34Block).data.contactItems}
+    form={(section as Contact34Block).data.form}
+  />
+)}
+
+{renderer.blockKey === 'feature_grid_section' && (
+  <FeatureGridSection
+    items={(section as FeatureGridSectionBlock).data.items}
+  />
+)}
+
+{renderer.blockKey === 'simple_heading_and_paragraph' && (
+  <SimpleHeadingAndParagraphSection
+    eyebrow={(section as SimpleHeadingAndParagraphBlock).data.eyebrow}
+    title={(section as SimpleHeadingAndParagraphBlock).data.title}
+    richTextHtml={(section as SimpleHeadingAndParagraphBlock).data.richTextHtml}
+  />
+)}
+
 {renderer.blockKey === 'gallery-masonry-style1' && (
   <GallerySection
     title={(section as GalleryBlock).data.title}
@@ -76,6 +178,19 @@ const renderer = resolveAstroRenderer(section.blockKey);
       ...image,
       src: toAbsoluteAssetUrl(image.src),
     }))}
+  />
+)}
+
+{renderer.blockKey === 'big_img_and_bolded_tex_editorial_style_block' && (
+  <BigImgAndBoldedTexEditorialStyleBlockSection
+    title={(section as BigImgAndBoldedTexEditorialStyleBlock).data.title}
+    story={(section as BigImgAndBoldedTexEditorialStyleBlock).data.story}
+    buttonLabel={(section as BigImgAndBoldedTexEditorialStyleBlock).data.buttonLabel}
+    buttonHref={(section as BigImgAndBoldedTexEditorialStyleBlock).data.buttonHref}
+    image={{
+      ...(section as BigImgAndBoldedTexEditorialStyleBlock).data.image,
+      src: toAbsoluteAssetUrl((section as BigImgAndBoldedTexEditorialStyleBlock).data.image.src),
+    }}
   />
 )}
 
@@ -88,6 +203,80 @@ const renderer = resolveAstroRenderer(section.blockKey);
     heroHeight={(section as MenuBlock).data.layout.heroHeight}
     menuColumns={(section as MenuBlock).data.menuColumns}
     emptyStateText={(section as MenuBlock).data.emptyStateText}
+  />
+)}
+
+{renderer.blockKey === 'menu_two_columns_with_no_heading_no_img' && (
+  <StandaloneMenuSection
+    menuColumns={(section as MenuTwoColumnsWithNoHeadingNoImgBlock).data.menuColumns}
+    emptyStateText={(section as MenuTwoColumnsWithNoHeadingNoImgBlock).data.emptyStateText}
+    columns={2}
+    withHeading={false}
+  />
+)}
+
+{renderer.blockKey === 'menu_two_columns_with_with_heading_no_img' && (
+  <StandaloneMenuSection
+    title={(section as MenuTwoColumnsWithWithHeadingNoImgBlock).data.title}
+    menuColumns={(section as MenuTwoColumnsWithWithHeadingNoImgBlock).data.menuColumns}
+    emptyStateText={(section as MenuTwoColumnsWithWithHeadingNoImgBlock).data.emptyStateText}
+    columns={2}
+    withHeading={true}
+  />
+)}
+
+{renderer.blockKey === 'menu_three_columns_with_with_heading_no_img' && (
+  <StandaloneMenuSection
+    title={(section as MenuThreeColumnsWithWithHeadingNoImgBlock).data.title}
+    menuColumns={(section as MenuThreeColumnsWithWithHeadingNoImgBlock).data.menuColumns}
+    emptyStateText={(section as MenuThreeColumnsWithWithHeadingNoImgBlock).data.emptyStateText}
+    columns={3}
+    withHeading={true}
+  />
+)}
+
+{renderer.blockKey === 'promo2' && (
+  <Promo2Section
+    eyebrow={(section as Promo2Block).data.eyebrow}
+    title={(section as Promo2Block).data.title}
+    members={(section as Promo2Block).data.members}
+    story={(section as Promo2Block).data.story}
+    image={{
+      ...(section as Promo2Block).data.image,
+      src: toAbsoluteAssetUrl((section as Promo2Block).data.image.src),
+    }}
+    menuColumns={(section as Promo2Block).data.menuColumns}
+    emptyStateText={(section as Promo2Block).data.emptyStateText}
+  />
+)}
+
+{renderer.blockKey === 'offer_hero' && (
+  <OfferHeroSection
+    eyebrow={(section as OfferHeroBlock).data.eyebrow}
+    titleLines={(section as OfferHeroBlock).data.titleLines}
+    lead={(section as OfferHeroBlock).data.lead}
+    infoItems={(section as OfferHeroBlock).data.infoItems}
+    mainImage={{
+      ...(section as OfferHeroBlock).data.mainImage,
+      src: toAbsoluteAssetUrl((section as OfferHeroBlock).data.mainImage.src),
+    }}
+    offerEyebrow={(section as OfferHeroBlock).data.offerEyebrow}
+    offerTitleLines={(section as OfferHeroBlock).data.offerTitleLines}
+    offerParagraphs={(section as OfferHeroBlock).data.offerParagraphs}
+    saleNotice={(section as OfferHeroBlock).data.saleNotice}
+    secondaryImages={toAbsoluteImageAssets((section as OfferHeroBlock).data.secondaryImages)}
+  />
+)}
+
+{renderer.blockKey === 'just_pralax_img_horizontal' && (
+  <JustPralaxImgHorizontalSection
+    section={{
+      ...(section as JustPralaxImgHorizontalBlock),
+      data: {
+        ...(section as JustPralaxImgHorizontalBlock).data,
+        imageUrl: toAbsoluteAssetUrl((section as JustPralaxImgHorizontalBlock).data.imageUrl),
+      },
+    }}
   />
 )}
 
@@ -104,6 +293,72 @@ const renderer = resolveAstroRenderer(section.blockKey);
     heroHeight={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.layout.heroHeight}
     menuColumns={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.menuColumns}
     emptyStateText={(section as MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock).data.emptyStateText}
+  />
+)}
+
+{renderer.blockKey === 'premium_call_to_action_with_image_carousel' && (
+  <PremiumCallToActionWithImageCarouselSection
+    heading={(section as PremiumCallToActionWithImageCarouselBlock).data.heading}
+    description={(section as PremiumCallToActionWithImageCarouselBlock).data.description}
+    buttonText={(section as PremiumCallToActionWithImageCarouselBlock).data.buttonText}
+    buttonHref={(section as PremiumCallToActionWithImageCarouselBlock).data.buttonHref}
+    images={toAbsoluteImageAssets((section as PremiumCallToActionWithImageCarouselBlock).data.images)}
+  />
+)}
+
+{renderer.blockKey === 'oferta_posts_section' && (
+  <OfertaPostsSection
+    title={(section as OfertaPostsSectionBlock).data.title}
+    items={(section as OfertaPostsSectionBlock).data.items.map((item: OfertaPostsSectionBlock['data']['items'][number]) => ({
+      ...item,
+      image: {
+        ...item.image,
+        src: toAbsoluteAssetUrl(item.image.src),
+      },
+    }))}
+  />
+)}
+
+{renderer.blockKey === 'regional_cuisine' && (
+  <RegionalCuisineSection
+    titleLines={(section as RegionalCuisineBlock).data.titleLines}
+    description={(section as RegionalCuisineBlock).data.description}
+    actions={(section as RegionalCuisineBlock).data.actions}
+    image={{
+      ...(section as RegionalCuisineBlock).data.image,
+      src: toAbsoluteAssetUrl((section as RegionalCuisineBlock).data.image.src),
+    }}
+  />
+)}
+
+{renderer.blockKey === 'restaurant_menu_drawer_type' && (
+  <RestaurantMenuDrawerTypeSection
+    section={{
+      ...(section as RestaurantMenuDrawerTypeBlock),
+      data: {
+        ...(section as RestaurantMenuDrawerTypeBlock).data,
+        intro: {
+          ...(section as RestaurantMenuDrawerTypeBlock).data.intro,
+          imageUrl: (section as RestaurantMenuDrawerTypeBlock).data.intro.imageUrl
+            ? toAbsoluteAssetUrl((section as RestaurantMenuDrawerTypeBlock).data.intro.imageUrl)
+            : '',
+        },
+        collections: (section as RestaurantMenuDrawerTypeBlock).data.collections.map((collection) => ({
+          ...collection,
+          visualUrl: collection.visualUrl ? toAbsoluteAssetUrl(collection.visualUrl) : undefined,
+        })),
+      },
+    }}
+  />
+)}
+
+{renderer.blockKey === 'testimonial7' && (
+  <Testimonial7Section
+    badge={(section as Testimonial7Block).data.badge}
+    title={(section as Testimonial7Block).data.title}
+    description={(section as Testimonial7Block).data.description}
+    firstRow={(section as Testimonial7Block).data.firstRow}
+    secondRow={(section as Testimonial7Block).data.secondRow}
   />
 )}
 

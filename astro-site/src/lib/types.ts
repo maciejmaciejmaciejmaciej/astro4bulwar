@@ -53,6 +53,10 @@ const labeledLinkSchema = z.object({
   href: z.string().min(1),
 });
 
+const ofertaPostsSectionLinkSchema = z.object({
+  href: z.string().min(1),
+});
+
 const optionalCtaLinkSchema = z.object({
   text: z.string().min(1),
   href: z.string().min(1).optional(),
@@ -70,6 +74,62 @@ const serviceCardSchema = z.object({
   description: z.string().min(1),
   ctaText: z.string().min(1),
   ctaHref: z.string().min(1),
+});
+
+const offerHeroInfoItemSchema = z.object({
+  label: z.string().min(1),
+  value: z.string().min(1),
+  note: z.string().min(1).optional(),
+});
+
+const testimonial7ItemSchema = z.object({
+  name: z.string().min(1),
+  role: z.string().min(1),
+  avatar: z.string().min(1),
+  content: z.string().min(1),
+});
+
+const storyTeamShowcaseIconSchema = z.enum([
+  'calendar-days',
+  'utensils-crossed',
+]);
+
+const storyTeamShowcaseMemberSchema = z.object({
+  icon: storyTeamShowcaseIconSchema,
+  name: z.string().min(1),
+  role: z.string().min(1),
+});
+
+const contact34ContactItemSchema = z.object({
+  label: z.string().min(1),
+  value: z.string().min(1),
+  href: z.string().min(1).optional(),
+});
+
+const contact34FormSchema = z.object({
+  nameLabel: z.string().min(1),
+  namePlaceholder: z.string().min(1),
+  emailLabel: z.string().min(1),
+  emailPlaceholder: z.string().min(1),
+  messageLabel: z.string().min(1),
+  messagePlaceholder: z.string().min(1),
+  submitLabel: z.string().min(1),
+});
+
+const featureGridIconSchema = z.enum(['globe', 'rocket', 'expand', 'wrench']);
+
+const featureGridItemSchema = z.object({
+  icon: featureGridIconSchema,
+  title: z.string().min(1),
+  description: z.string().min(1),
+});
+
+const regionalCuisineActionSchema = z.object({
+  icon: z.enum(['heart', 'conciergeBell']),
+  titleLines: z.array(z.string().min(1)).min(1),
+  description: z.string().min(1),
+  href: z.string().min(1),
+  linkLabel: z.string().min(1),
 });
 
 const universalHeaderBlock2MetadataItemSchema = z.object({
@@ -102,13 +162,44 @@ const blockDownloadFeatureSchema = z.object({
   title: z.string().min(1),
 });
 
+const ofertaPostsSectionItemSchema = z.object({
+  image: imageAssetSchema,
+  title: z.string().min(1),
+  description: z.string().min(1),
+  link: ofertaPostsSectionLinkSchema,
+});
+
+const ofertaPostsSectionSourceSchema = z.object({
+  sourceType: z.literal('wordpress_posts'),
+  sourceValue: z.array(z.number().int().positive()).min(1),
+  options: z.object({}).default({}),
+});
+
 const dedicatedAstroBlockKeys = new Set([
   'about-1',
+  'about_2_simple',
+  'big_img_and_bolded_tex_editorial_style_block',
   'block_download',
+  'contact34',
+  'feature_grid_section',
   'gallery-masonry-style1',
+  'hero_simple_no_text_normal_wide',
+  'hero_simple_no_text_py32',
+  'just_pralax_img_horizontal',
   'menu-category-photo-parallax-full-width',
+  'menu_three_columns_with_with_heading_no_img',
+  'menu_two_columns_with_no_heading_no_img',
+  'menu_two_columns_with_with_heading_no_img',
   'menu_two_columns_with_with_heading_with_img_fullwidth_paralax',
+  'oferta_posts_section',
+  'offer_hero',
   'our-services',
+  'premium_call_to_action_with_image_carousel',
+  'promo2',
+  'regional_cuisine',
+  'restaurant_menu_drawer_type',
+  'simple_heading_and_paragraph',
+  'testimonial7',
   'universal_header_block_1',
   'universal_header_block_2',
   'universal_multilink_block',
@@ -141,6 +232,91 @@ export const ourServicesBlockSchema = z.object({
     description: z.string().min(1),
     primaryCta: optionalCtaLinkSchema.optional(),
     cards: z.array(serviceCardSchema).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const offerHeroBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('offer_hero'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    eyebrow: z.string().min(1),
+    titleLines: z.array(z.string().min(1)).min(1),
+    lead: z.string().min(1),
+    infoItems: z.array(offerHeroInfoItemSchema).default([]),
+    mainImage: imageAssetSchema,
+    offerEyebrow: z.string().min(1),
+    offerTitleLines: z.array(z.string().min(1)).min(1),
+    offerParagraphs: z.array(z.string().min(1)).default([]),
+    saleNotice: z.string().min(1).optional(),
+    secondaryImages: z.array(imageAssetSchema).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const testimonial7BlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('testimonial7'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    badge: z.string().min(1),
+    title: z.string().min(1),
+    description: z.string().min(1),
+    firstRow: z.array(testimonial7ItemSchema).default([]),
+    secondRow: z.array(testimonial7ItemSchema).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const contact34BlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('contact34'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    tagline: z.string().min(1),
+    title: z.string().min(1),
+    image: imageAssetSchema,
+    contactItems: z.array(contact34ContactItemSchema).default([]),
+    form: contact34FormSchema,
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const featureGridSectionBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('feature_grid_section'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    items: z.array(featureGridItemSchema).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const regionalCuisineBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('regional_cuisine'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    titleLines: z.array(z.string().min(1)).min(1),
+    description: z.string().min(1),
+    actions: z.array(regionalCuisineActionSchema).default([]),
+    image: imageAssetSchema,
   }),
   source: z.null(),
   meta: z.record(z.string(), z.unknown()).default({}),
@@ -282,6 +458,218 @@ export const menuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlockSchema = z
   meta: z.record(z.string(), z.unknown()).default({}),
 });
 
+export const heroSimpleNoTextPy32BlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('hero_simple_no_text_py32'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    imageSrc: z.string().min(1),
+    alt: z.string().min(1),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const heroSimpleNoTextNormalWideBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('hero_simple_no_text_normal_wide'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    imageSrc: z.string().min(1),
+    alt: z.string().min(1),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const about2SimpleBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('about_2_simple'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    title: z.string().min(1),
+    paragraphs: z.array(z.string().min(1)).min(1),
+    buttonText: z.string().min(1),
+    buttonLink: z.string().min(1),
+    image1: imageAssetSchema,
+    image2: imageAssetSchema,
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const promo2BlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('promo2'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    eyebrow: z.string().min(1),
+    title: z.string().min(1),
+    members: z.array(storyTeamShowcaseMemberSchema).min(1),
+    story: z.string().min(1),
+    image: imageAssetSchema,
+    menuColumns: z.array(menuColumnSchema).default([]),
+    emptyStateText: z.string().default('Brak pozycji w tej kategorii.'),
+  }),
+  source: wooCategorySourceSchema.nullable(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const simpleHeadingAndParagraphBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('simple_heading_and_paragraph'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    eyebrow: z.string().min(1),
+    title: z.string().min(1),
+    richTextHtml: z.string().min(1),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const bigImgAndBoldedTexEditorialStyleBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('big_img_and_bolded_tex_editorial_style_block'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    title: z.string().min(1),
+    story: z.string().min(1),
+    buttonLabel: z.string().min(1).default('przycisk'),
+    buttonHref: z.string().min(1).default('#'),
+    image: imageAssetSchema,
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const menuTwoColumnsWithNoHeadingNoImgBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('menu_two_columns_with_no_heading_no_img'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    menuColumns: z.array(menuColumnSchema).default([]),
+    emptyStateText: z.string().default('Brak pozycji w tej kategorii.'),
+  }),
+  source: wooCategorySourceSchema.nullable(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const menuTwoColumnsWithWithHeadingNoImgBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('menu_two_columns_with_with_heading_no_img'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    title: z.string().min(1),
+    menuColumns: z.array(menuColumnSchema).default([]),
+    emptyStateText: z.string().default('Brak pozycji w tej kategorii.'),
+  }),
+  source: wooCategorySourceSchema.nullable(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const justPralaxImgHorizontalBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('just_pralax_img_horizontal'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    imageUrl: z.string().min(1),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const menuThreeColumnsWithWithHeadingNoImgBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('menu_three_columns_with_with_heading_no_img'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    title: z.string().min(1),
+    menuColumns: z.array(menuColumnSchema).default([]),
+    emptyStateText: z.string().default('Brak pozycji w tej kategorii.'),
+  }),
+  source: wooCategorySourceSchema.nullable(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const restaurantMenuDrawerTypeBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('restaurant_menu_drawer_type'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    intro: z.object({
+      heading: z.string().min(1),
+      description: z.string().min(1),
+      buttonLabel: z.string().default(''),
+      buttonTarget: z.string().default(''),
+      imageUrl: z.string().default(''),
+      imageAlt: z.string().default(''),
+    }),
+    collections: z.array(z.object({
+      visualUrl: z.string().optional(),
+      collectionTitle: z.string().min(1),
+      collectionDescription: z.string().min(1),
+      buttonLabel: z.string().min(1),
+      wooCategoryIds: z.array(z.number().int().positive()).min(1),
+    })).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const premiumCallToActionWithImageCarouselBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('premium_call_to_action_with_image_carousel'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    heading: z.string().min(1),
+    description: z.string().min(1),
+    buttonText: z.string().min(1),
+    buttonHref: z.string().min(1),
+    images: z.array(imageAssetSchema).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const ofertaPostsSectionBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('oferta_posts_section'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    title: z.string().min(1),
+    items: z.array(ofertaPostsSectionItemSchema).default([]),
+  }),
+  source: ofertaPostsSectionSourceSchema.nullable(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
 export const sharedRegistryBlockSchema = z.object({
   id: z.string().min(1),
   blockKey: z.string().min(1).refine(
@@ -300,8 +688,26 @@ export const sharedRegistryBlockSchema = z.object({
 
 export const pageBuilderSectionSchema = z.union([
   aboutBlockSchema,
+  about2SimpleBlockSchema,
+  bigImgAndBoldedTexEditorialStyleBlockSchema,
   blockDownloadSectionBlockSchema,
+  contact34BlockSchema,
+  featureGridSectionBlockSchema,
+  heroSimpleNoTextNormalWideBlockSchema,
+  heroSimpleNoTextPy32BlockSchema,
+  justPralaxImgHorizontalBlockSchema,
   ourServicesBlockSchema,
+  menuThreeColumnsWithWithHeadingNoImgBlockSchema,
+  offerHeroBlockSchema,
+  menuTwoColumnsWithNoHeadingNoImgBlockSchema,
+  menuTwoColumnsWithWithHeadingNoImgBlockSchema,
+  ofertaPostsSectionBlockSchema,
+  premiumCallToActionWithImageCarouselBlockSchema,
+  promo2BlockSchema,
+  regionalCuisineBlockSchema,
+  restaurantMenuDrawerTypeBlockSchema,
+  simpleHeadingAndParagraphBlockSchema,
+  testimonial7BlockSchema,
   galleryBlockSchema,
   menuBlockSchema,
   menuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlockSchema,
@@ -357,13 +763,41 @@ export const pageBuilderSchema = z.object({
 export type PageBuilderSchema = z.infer<typeof pageBuilderSchema>;
 export type PageBuilderSection = z.infer<typeof pageBuilderSectionSchema>;
 export type AboutBlock = z.infer<typeof aboutBlockSchema>;
+export type About2SimpleBlock = z.infer<typeof about2SimpleBlockSchema>;
+export type BigImgAndBoldedTexEditorialStyleBlock = z.infer<
+  typeof bigImgAndBoldedTexEditorialStyleBlockSchema
+>;
+export type HeroSimpleNoTextNormalWideBlock = z.infer<typeof heroSimpleNoTextNormalWideBlockSchema>;
+export type HeroSimpleNoTextPy32Block = z.infer<typeof heroSimpleNoTextPy32BlockSchema>;
+export type JustPralaxImgHorizontalBlock = z.infer<typeof justPralaxImgHorizontalBlockSchema>;
 export type GalleryBlock = z.infer<typeof galleryBlockSchema>;
 export type MenuBlock = z.infer<typeof menuBlockSchema>;
+export type MenuThreeColumnsWithWithHeadingNoImgBlock = z.infer<
+  typeof menuThreeColumnsWithWithHeadingNoImgBlockSchema
+>;
+export type MenuTwoColumnsWithNoHeadingNoImgBlock = z.infer<
+  typeof menuTwoColumnsWithNoHeadingNoImgBlockSchema
+>;
+export type MenuTwoColumnsWithWithHeadingNoImgBlock = z.infer<
+  typeof menuTwoColumnsWithWithHeadingNoImgBlockSchema
+>;
 export type MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock = z.infer<
   typeof menuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlockSchema
 >;
+export type OfertaPostsSectionBlock = z.infer<typeof ofertaPostsSectionBlockSchema>;
+export type OfferHeroBlock = z.infer<typeof offerHeroBlockSchema>;
+export type PremiumCallToActionWithImageCarouselBlock = z.infer<
+  typeof premiumCallToActionWithImageCarouselBlockSchema
+>;
+export type Promo2Block = z.infer<typeof promo2BlockSchema>;
+export type RestaurantMenuDrawerTypeBlock = z.infer<typeof restaurantMenuDrawerTypeBlockSchema>;
+export type Testimonial7Block = z.infer<typeof testimonial7BlockSchema>;
+export type Contact34Block = z.infer<typeof contact34BlockSchema>;
+export type FeatureGridSectionBlock = z.infer<typeof featureGridSectionBlockSchema>;
+export type RegionalCuisineBlock = z.infer<typeof regionalCuisineBlockSchema>;
 export type OurServicesBlock = z.infer<typeof ourServicesBlockSchema>;
 export type BlockDownloadSectionBlock = z.infer<typeof blockDownloadSectionBlockSchema>;
+export type SimpleHeadingAndParagraphBlock = z.infer<typeof simpleHeadingAndParagraphBlockSchema>;
 export type UniversalHeaderBlock1SectionBlock = z.infer<typeof universalHeaderBlock1SectionBlockSchema>;
 export type UniversalHeaderBlock2SectionBlock = z.infer<typeof universalHeaderBlock2SectionBlockSchema>;
 export type UniversalMultilinkSectionBlock = z.infer<typeof universalMultilinkSectionBlockSchema>;
@@ -371,6 +805,7 @@ export type SharedRegistryBlock = z.infer<typeof sharedRegistryBlockSchema>;
 export type MenuSource = z.infer<typeof menuCategorySourceSchema>;
 export type ParallaxMenuSource = z.infer<typeof wooCategorySourceSchema>;
 export type MenuColumn = z.infer<typeof menuColumnSchema>;
+export type OfertaPostsSectionSource = z.infer<typeof ofertaPostsSectionSourceSchema>;
 export type PageSeo = z.infer<typeof pageSeoSchema>;
 export type PageSeoRobots = z.infer<typeof pageSeoRobotsSchema>;
 export type PageSeoOpenGraph = z.infer<typeof pageSeoOpenGraphSchema>;

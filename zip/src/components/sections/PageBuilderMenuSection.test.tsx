@@ -29,12 +29,13 @@ test("PageBuilderMenuSection uses the shared mobile-safe menu row layout", () =>
   );
 
   assert.match(markup, /data-section-variant="surface"/);
-  assert.match(markup, /rounded-\[4px\]/);
+  assert.match(markup, /theme-radius-surface/);
   assert.match(markup, /flex items-end gap-1 md:gap-3/);
   assert.match(markup, /flex min-w-0 w-fit max-w-\[calc\(100%-6rem\)\] flex-col md:max-w-none md:flex-1/);
   assert.match(markup, /flex min-w-0 flex-1 items-end gap-1 md:gap-3/);
   assert.match(markup, /menu-leader !m-0 min-w-\[20px\] flex-1 !mb-\[0\.3rem\] border-outline-variant/);
-  assert.match(markup, /shrink-0 whitespace-nowrap text-right font-headline text-lg text-on-surface/);
+  assert.match(markup, /block break-words font-label text-base leading-snug tracking-wider mb-1 text-on-surface/);
+  assert.match(markup, /shrink-0 whitespace-nowrap text-right font-label text-base leading-snug tracking-wider text-on-surface/);
   assert.match(markup, /data-menu-item-pills/);
   assert.match(markup, /flex flex-wrap gap-1.5/);
   assert.match(markup, /Vegan/);

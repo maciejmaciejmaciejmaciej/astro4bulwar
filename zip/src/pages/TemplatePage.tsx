@@ -11,6 +11,7 @@ import { ArrowRight } from "lucide-react";
 import { ProductItem } from "../components/sections/ProductItem";
 import { Project5a } from "../components/sections/Project5a";
 import { Projects17a } from "../components/sections/Projects17a";
+import { RestaurantMenuDrawerType } from "../components/sections/RestaurantMenuDrawerType";
 import { About28 } from "../components/sections/About28";
 import { NavbarBigSpaceBetweenElements_py32 } from "../components/sections/NavbarBigSpaceBetweenElements_py32";
 import {
@@ -461,6 +462,14 @@ export default function TemplatePage() {
         {renderPageBuilderSections(featureHeaderPreviewSchema)}
         {renderPageBuilderSections(promoPreviewSchema)}
         {renderPageBuilderSections(ourServicesPreviewSchema)}
+        <div>
+          <div className="page-margin mb-5 md:mb-6">
+            <p className="font-label text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+              RestaurantMenuDrawerType
+            </p>
+          </div>
+          <RestaurantMenuDrawerType />
+        </div>
         {renderPageBuilderSections(remainingPreviewSchema)}
         {sourceError ? (
           <div className="page-margin py-6">

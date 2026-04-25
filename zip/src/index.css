@@ -64,10 +64,14 @@
       padding-left: 5rem;
       padding-right: 5rem;
     }
+    .theme-section-wrapper {
+      padding-left: 5rem;
+      padding-right: 5rem;
+    }
   }
   @media (min-width: 1024px) {
     .theme-section-wrapper {
-      width: var(--theme-section-wrapper-width);
+      width: min(calc(100% - 10rem), 96rem);
       padding-left: 0;
       padding-right: 0;
     }
@@ -246,10 +250,10 @@
   --sidebar-accent-foreground: oklch(0.21 0 0);
   --sidebar-border: oklch(0.84 0.01 264.59);
   --sidebar-ring: oklch(0.45 0.14 11.26);
-  --font-sans: "Inter", sans-serif;
-  --font-serif: "Lora", serif;
-  --font-mono: "Fira Code", monospace;
-  --radius: 0.75rem;
+  --font-sans: "Space Grotesk", sans-serif;
+  --font-serif: "Space Grotesk", sans-serif;
+  --font-mono: "Space Grotesk", sans-serif;
+  --radius: 0.25rem;
   --shadow-2xs: 0 1px 1.5rem -0.25rem oklch(0.57 0.01 286.32 / 0.05);
   --shadow-xs: 0 1px 1.5rem -0.25rem oklch(0.57 0.01 286.32 / 0.05);
   --shadow-sm: 0 1px 1.5rem -0.25rem oklch(0.57 0.01 286.32 / 0.10), 0 1px 2px -1.25px oklch(0.57 0.01 286.32 / 0.10);

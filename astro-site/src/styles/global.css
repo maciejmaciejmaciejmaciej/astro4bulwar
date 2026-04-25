@@ -456,9 +456,10 @@ button {
 .menu-section__item-title {
   display: block;
   margin-bottom: 0.25rem;
-  font-family: var(--font-headline);
+  font-family: var(--font-label);
   font-size: 0.875rem;
   font-weight: 400;
+  line-height: 1.35;
   letter-spacing: 0.1em;
   overflow-wrap: break-word;
 }
@@ -474,9 +475,11 @@ button {
 
 .menu-section__item-price {
   white-space: nowrap;
-  font-family: var(--font-headline);
+  font-family: var(--font-label);
   font-size: 1rem;
   font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.1em;
   text-align: right;
 }
 

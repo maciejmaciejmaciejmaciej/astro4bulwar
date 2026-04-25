@@ -1,10 +1,14 @@
-import { getWordPressBaseUrl } from './config';
+import { getWordPressBaseUrl } from './config.ts';
 import type {
   MenuBlock,
   MenuColumn,
+  MenuThreeColumnsWithWithHeadingNoImgBlock,
+  MenuTwoColumnsWithNoHeadingNoImgBlock,
+  MenuTwoColumnsWithWithHeadingNoImgBlock,
   MenuSource,
   MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock,
-} from './types';
+  Promo2Block,
+} from './types.ts';
 
 interface WooProductPrices {
   price: string;
@@ -129,7 +133,31 @@ const fetchProductsByCategory = async (
   };
 };
 
-type ResolvableMenuBlock = MenuBlock | MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock;
+type ResolvableMenuBlock =
+  | MenuBlock
+  | MenuThreeColumnsWithWithHeadingNoImgBlock
+  | MenuTwoColumnsWithNoHeadingNoImgBlock
+  | MenuTwoColumnsWithWithHeadingNoImgBlock
+  | MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock
+  | Promo2Block;
+
+const resolveRequestedColumnCount = (block: ResolvableMenuBlock): number => {
+  switch (block.blockKey) {
+    case 'menu-category-photo-parallax-full-width':
+      return block.source?.options.splitIntoColumns ?? block.data.layout.columns;
+    case 'menu_three_columns_with_with_heading_no_img':
+      return 3;
+    case 'promo2': {
+      const requestedColumns = block.source?.options.splitIntoColumns;
+
+      return typeof requestedColumns === 'number'
+        ? Math.max(1, Math.min(2, requestedColumns))
+        : 2;
+    }
+    default:
+      return 2;
+  }
+};
 
 export const resolveMenuBlock = async <T extends ResolvableMenuBlock>(block: T): Promise<T> => {
   if (!block.source) {
@@ -147,11 +175,22 @@ export const resolveMenuBlock = async <T extends ResolvableMenuBlock>(block: T):
     ...block,
     data: {
       ...block.data,
-      heroTitle: resolved.category?.name ?? block.data.heroTitle,
       menuColumns: splitIntoColumns(
         resolved.products,
-        block.source.options.splitIntoColumns ?? block.data.layout.columns,
+        resolveRequestedColumnCount(block),
       ),
+      ...(block.blockKey === 'menu-category-photo-parallax-full-width'
+        || block.blockKey === 'menu_two_columns_with_with_heading_with_img_fullwidth_paralax'
+        ? {
+            heroTitle: resolved.category?.name ?? block.data.heroTitle,
+          }
+        : {}),
+      ...(block.blockKey === 'menu_two_columns_with_with_heading_no_img'
+        || block.blockKey === 'menu_three_columns_with_with_heading_no_img'
+        ? {
+            title: resolved.category?.name ?? block.data.title,
+          }
+        : {}),
     },
   } as T;
 };

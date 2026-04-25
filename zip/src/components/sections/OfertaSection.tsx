@@ -91,7 +91,7 @@ export function OfertaSection(props: OfertaSectionProps) {
   return (
     <section className="bg-white py-32">
       <div className="theme-section-wrapper">
-        <div className="mx-auto max-w-7xl px-4 md:px-8">
+        <div className="mx-auto max-w-screen-2xl">
         <h2 className="mb-10 text-3xl font-headline uppercase md:mb-14 md:text-4xl">
           {content.title}
         </h2>

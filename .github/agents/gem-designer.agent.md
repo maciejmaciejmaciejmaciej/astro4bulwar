@@ -2,7 +2,7 @@
 description: "UI/UX design specialist — layouts, themes, color schemes, design systems, accessibility."
 name: gem-designer
 disable-model-invocation: false
-user-invocable: false
+user-invocable: true
 ---
 
 # Role

@@ -79,7 +79,7 @@ const cardClassName =
   "break-inside-avoid group relative overflow-hidden bg-surface p-10 flex flex-col transition-colors duration-500 hover:bg-surface-container-low theme-radius-surface";
 
 const cardLinkClassName =
-  "inline-flex items-center text-xs font-label uppercase tracking-widest text-zinc-500 hover:text-black transition-colors";
+  "inline-flex items-center text-[11px] font-label uppercase tracking-[0.16em] text-zinc-500 transition-colors hover:text-black";
 
 const primaryButtonClassName =
   "bg-primary text-on-primary px-8 py-4 font-label tracking-[0.1em] uppercase text-sm hover:opacity-80 transition-opacity theme-radius-control mt-4";
@@ -94,11 +94,11 @@ export function OurServices({
         <div className="mx-auto max-w-7xl">
         <div className="flex flex-col lg:flex-row gap-16">
           <div className="lg:w-1/3 space-y-8 lg:sticky lg:top-32 self-start">
-            <h2 className="font-headline text-4xl uppercase">
+            <h2 className="font-headline text-[clamp(2.75rem,4vw,4.75rem)] uppercase leading-[0.9] tracking-[0.08em]">
               {content.title}
             </h2>
             <div className="w-12 h-[1px] bg-primary"></div>
-            <p className="text-zinc-500 font-body text-sm">
+            <p className="max-w-md font-body text-base leading-7 text-zinc-500 lg:text-[1.0625rem] lg:leading-8">
               {content.description}
             </p>
             {content.primaryCta?.href ? (
@@ -126,11 +126,11 @@ export function OurServices({
                   <span className="material-symbols-outlined text-4xl text-zinc-400 group-hover:text-black transition-colors duration-500">
                     {card.icon}
                   </span>
-                  <div>
-                    <h3 className="font-headline text-lg uppercase mb-4">
+                  <div className="space-y-4">
+                    <h3 className="font-headline text-2xl uppercase leading-[1.02] tracking-[0.08em] lg:text-[2rem]">
                       {card.title}
                     </h3>
-                    <p className="text-xs text-zinc-500 font-body">
+                    <p className="font-body text-base leading-7 text-zinc-500">
                       {card.description}
                     </p>
                   </div>

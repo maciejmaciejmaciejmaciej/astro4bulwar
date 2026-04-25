@@ -1,0 +1,1053 @@
+plan_id: "template-missing-blocks-astro-readiness-20260424"
+objective: >-
+  Prepare Astro readiness for the remaining /template page-builder blocks
+  hero_simple_no_text_py32, hero_simple_no_text_normal_wide,
+  about_2_simple, promo2, simple_heading_and_paragraph,
+  big_img_and_bolded_tex_editorial_style_block,
+  menu_two_columns_with_no_heading_no_img,
+  menu_two_columns_with_with_heading_no_img, just_pralax_img_horizontal,
+  menu_three_columns_with_with_heading_no_img,
+  premium_call_to_action_with_image_carousel, and oferta_posts_section,
+  while minimizing rollout risk for source-backed blocks and preserving
+  visual parity with TemplatePage. Sources: zip/src/pages/TemplatePage.tsx,
+  docs/block-registry/registry.machine.json,
+  astro-site/src/lib/astroRegistry.ts,
+  astro-site/src/lib/pageBuilder.ts.
+created_at: "2026-04-24T00:00:00Z"
+created_by: "gem-planner"
+status: "pending"
+research_confidence: "high"
+
+plan_metrics:
+  wave_1_task_count: 2
+  total_dependencies: 25
+  risk_score: "high"
+
+tldr: |
+  Variant C keeps the same 12-block scope as the earlier alternatives, but it
+  optimizes the sequence around two risks already visible in the repo state:
+  1) all 12 targets already have React runtime, docs, AI descriptor, and tests,
+  while Astro remains the missing capability, so the critical path should focus
+  on Astro projection rather than reopening registry groundwork; 2) the most
+  failure-prone blocks are the source-backed Promo2/menu family and
+  oferta_posts_section, because React currently hydrates them through explicit
+  source resolvers before render, while Astro only resolves a narrower menu
+  subset today. Sources: docs/block-registry/registry.machine.json,
+  zip/src/blocks/registry/resolvePageBuilderSources.ts,
+  astro-site/src/lib/pageBuilder.ts, astro-site/src/lib/woo.ts,
+  astro-site/src/lib/wordpress.ts.
+  The plan therefore front-loads a TemplatePage parity matrix and Astro type
+  contract, lands source-hydration seams before renderer work for source-backed
+  blocks, batches direct-edit renderers by visual family, and flips readiness in
+  the shared manifest only after Astro projection, tests, and build evidence are
+  complete. Sources: zip/src/pages/TemplatePage.tsx,
+  docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md,
+  astro-site/src/lib/astroRegistry.ts,
+  astro-site/src/lib/pageBuilder.test.ts.
+
+open_questions:
+  - >-
+    Can the hero pair share one Astro presenter with thin block-specific shells
+    if the `py32` and `normal_wide` spacing differences remain exact, or should
+    each block keep a dedicated renderer to make parity review simpler?
+    Sources: docs/block-registry/hero_simple_no_text_py32.md,
+    docs/block-registry/hero_simple_no_text_normal_wide.md,
+    zip/src/pages/TemplatePage.tsx.
+  - >-
+    Is one mocked source-backed validation per source type sufficient for ready
+    promotion, or does the rollout require one live client-data smoke pass for
+    Woo-backed and WordPress-backed sections before `astroRenderer.available`
+    becomes true in the manifest? Sources: astro-site/src/lib/pageBuilder.test.ts,
+    astro-site/src/lib/woo.ts, astro-site/src/lib/wordpress.ts,
+    docs/block-registry/promo2.md, docs/block-registry/oferta_posts_section.md.
+
+pre_mortem:
+  overall_risk_level: "high"
+  critical_failure_modes:
+    - scenario: >-
+        Astro renderers for Promo2 and the menu blocks ship without matching the
+        existing React source-hydration semantics, so category-derived titles,
+        column splitting, or empty-state behavior drift from the runtime already
+        used by TemplatePage and page-builder publishing.
+      likelihood: "high"
+      impact: "critical"
+      mitigation: >-
+        Land the Astro Woo-resolution seam before the source-backed renderers,
+        derive its behavior from the existing Astro menu resolver and React
+        source resolver, and do not mark any of the Promo2/menu family blocks
+        Astro-ready until resolver tests and projection parity both pass.
+        Sources: astro-site/src/lib/woo.ts,
+        astro-site/src/lib/pageBuilder.ts,
+        zip/src/blocks/registry/resolvePageBuilderSources.ts,
+        docs/block-registry/promo2.md.
+    - scenario: >-
+        Direct-edit blocks become technically renderable in Astro but lose the
+        visual rhythm, wrapper width, or shell geometry that TemplatePage uses as
+        the canonical reference, creating false-ready blocks that diverge from
+        the approved design language.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >-
+        Freeze a per-block parity matrix first, validate against the global CSS
+        adaptation contract, and keep the readiness flip separated from renderer
+        implementation so parity evidence is reviewed before the manifest is
+        updated. Sources: zip/src/pages/TemplatePage.tsx,
+        docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md,
+        .github/instructions/design-system.instructions.md.
+    - scenario: >-
+        The shared readiness manifest and Astro projection drift apart, leaving
+        blocks marked Astro-ready in docs/block-registry/registry.machine.json
+        while astro-site/src/lib/astroRegistry.ts is missing the renderer entry or
+        points at the wrong file.
+      likelihood: "medium"
+      impact: "high"
+      mitigation: >-
+        Keep all readiness flips in one late integration task that updates the
+        projection, manifest, and parity test together, and require the existing
+        Astro registry parity test plus build validation before completion.
+        Sources: astro-site/src/lib/astroRegistry.ts,
+        astro-site/src/lib/astroRegistry.test.ts,
+        docs/block-registry/registry.machine.json.
+  assumptions:
+    - >-
+      The 12 target blocks are already registered and marked `refining`, with
+      React runtime, AI descriptors, docs, and contract tests available, so this
+      rollout should avoid redesigning block contracts and concentrate on Astro
+      types, renderers, resolvers, and readiness projection. Sources:
+      docs/block-registry/registry.machine.json,
+      zip/src/blocks/registry/index.ts,
+      zip/src/blocks/registry/ai/descriptors.cjs.
+    - >-
+      Astro already treats `resolveAstroRenderer()` and
+      `resolveAstroPageSections()` as the ready gate for enabled sections, so the
+      safest implementation path is to extend those seams instead of adding a new
+      parallel dispatcher. Sources: astro-site/src/lib/astroRegistry.ts,
+      astro-site/src/lib/pageBuilder.ts,
+      astro-site/src/lib/pageBuilder.test.ts.
+    - >-
+      TemplatePage remains the canonical visual reference, and the adaptation
+      contract explicitly allows token and styling normalization but forbids
+      casual changes to outer geometry, width strategy, or section composition.
+      Sources: zip/src/pages/TemplatePage.tsx,
+      docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md,
+      .github/instructions/design-system.instructions.md.
+
+implementation_specification:
+  code_structure: |
+    The safest code structure keeps Astro support on the same boundaries that
+    already govern Astro builds today. The Astro-side payload contract remains in
+    astro-site/src/lib/types.ts. Source hydration stays centralized in
+    astro-site/src/lib/pageBuilder.ts and delegates to astro-site/src/lib/woo.ts
+    for Woo-backed sections and astro-site/src/lib/wordpress.ts for
+    WordPress-backed sections. Presentation stays in dedicated Astro section
+    components under astro-site/src/components/, grouped by visual family so
+    direct-edit blocks and source-backed blocks can evolve independently. The
+    only place that flips blocks from refining to Astro-ready is the late shared
+    projection task that updates astro-site/src/lib/astroRegistry.ts and
+    docs/block-registry/registry.machine.json together. Sources:
+    astro-site/src/lib/types.ts, astro-site/src/lib/pageBuilder.ts,
+    astro-site/src/lib/woo.ts, astro-site/src/lib/wordpress.ts,
+    astro-site/src/lib/astroRegistry.ts,
+    docs/block-registry/registry.machine.json.
+  affected_areas:
+    - "astro-site/src/components/**"
+    - "astro-site/src/lib/types.ts"
+    - "astro-site/src/lib/pageBuilder.ts"
+    - "astro-site/src/lib/woo.ts"
+    - "astro-site/src/lib/wordpress.ts"
+    - "astro-site/src/lib/astroRegistry.ts"
+    - "astro-site/src/lib/*.test.ts"
+    - "docs/block-registry/registry.machine.json"
+    - "docs/block-registry/index.md"
+    - "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+  component_details:
+    - component: "TemplatePage parity matrix"
+      responsibility: >-
+        Freeze the approved shell, width, spacing, heading rhythm, image
+        composition, and source-backed safety invariants for the 12 target blocks
+        so renderer tasks have one parity contract instead of inferring visual
+        behavior from multiple files.
+      interfaces:
+        - "block family manifest for hero, editorial, media/CTA, Promo2/menu, and oferta groups"
+        - "per-block parity checklist bound to TemplatePage and block-registry docs"
+    - component: "Astro payload type contract"
+      responsibility: >-
+        Extend Astro-side Zod and TypeScript parsing so all 12 block keys can be
+        parsed with the same direct-edit or source-backed constraints already
+        documented in the shared registry docs.
+      interfaces:
+        - "pageBuilderSchema block unions for the 12 target block keys"
+        - "typed source contracts for woo_category and wordpress_posts blocks"
+    - component: "Astro source-hydration seam"
+      responsibility: >-
+        Resolve Woo-backed and WordPress-backed sections before render so Astro
+        receives already-hydrated block data instead of teaching each renderer to
+        fetch live data ad hoc.
+      interfaces:
+        - "resolveAstroPageSections(sections)"
+        - "resolveMenuBlock(block)"
+        - "fetchWordPressPageBuilderSchema(slug) and post-mapping helpers"
+    - component: "Astro section renderer packs"
+      responsibility: >-
+        Implement family-specific Astro presenters that preserve TemplatePage
+        geometry while rendering parsed block data for direct-edit and
+        source-backed families.
+      interfaces:
+        - "Hero and editorial renderer components"
+        - "Promo2/menu renderer components"
+        - "Oferta posts and CTA/media renderer components"
+    - component: "Shared readiness projection"
+      responsibility: >-
+        Keep Astro renderer lookup, readiness state, and registry parity tests in
+        sync so the 12 blocks become Astro-ready only when the renderers,
+        resolvers, and tests exist together.
+      interfaces:
+        - "resolveAstroRenderer(blockKey)"
+        - "listAstroRendererBlockKeys()"
+        - "registry.machine.json readiness capabilities"
+  dependencies:
+    - component: "TemplatePage parity matrix"
+      relationship: "Feeds all renderer tasks with the approved visual shell and no-redesign constraints."
+    - component: "Astro payload type contract"
+      relationship: "Supplies parseable section types to the resolver and renderer tasks."
+    - component: "Astro source-hydration seam"
+      relationship: "Must exist before Promo2/menu and oferta renderers can be trusted as Astro-ready."
+    - component: "Shared readiness projection"
+      relationship: "Consumes renderer and resolver outputs and is the only layer allowed to mark Astro readiness true."
+  integration_points:
+    - "zip/src/pages/TemplatePage.tsx"
+    - "docs/block-registry/registry.machine.json"
+    - "docs/block-registry/promo2.md"
+    - "docs/block-registry/oferta_posts_section.md"
+    - "zip/src/blocks/registry/resolvePageBuilderSources.ts"
+    - "astro-site/src/lib/types.ts"
+    - "astro-site/src/lib/pageBuilder.ts"
+    - "astro-site/src/lib/woo.ts"
+    - "astro-site/src/lib/wordpress.ts"
+    - "astro-site/src/lib/astroRegistry.ts"
+
+contracts:
+  - from_task: "lock_templatepage_parity_matrix"
+    to_task: "add_astro_renderers_for_hero_pair"
+    interface: "Approved hero shell, spacing, and width distinctions for py32 and normal-wide variants."
+    format: "Per-block parity checklist tied to TemplatePage and block docs"
+  - from_task: "lock_templatepage_parity_matrix"
+    to_task: "add_astro_renderers_for_editorial_text_blocks"
+    interface: "Approved editorial/text composition rules for about, simple heading, and editorial image blocks."
+    format: "Per-block parity checklist tied to TemplatePage and block docs"
+  - from_task: "extend_astro_types_for_missing_template_blocks"
+    to_task: "generalize_astro_woo_resolution_for_promo_menu_blocks"
+    interface: "Typed Astro block unions and source shapes for Promo2 and menu-family sections."
+    format: "Zod schema and TypeScript block contract"
+  - from_task: "extend_astro_types_for_missing_template_blocks"
+    to_task: "generalize_astro_wordpress_resolution_for_oferta_posts"
+    interface: "Typed Astro block unions and source shapes for oferta_posts_section."
+    format: "Zod schema and TypeScript block contract"
+  - from_task: "generalize_astro_woo_resolution_for_promo_menu_blocks"
+    to_task: "add_astro_renderers_for_promo_menu_family"
+    interface: "Hydrated Promo2/menu data contract with Woo-derived title and menuColumns semantics."
+    format: "Resolved Astro section data passed through resolveAstroPageSections"
+  - from_task: "generalize_astro_wordpress_resolution_for_oferta_posts"
+    to_task: "add_astro_renderer_for_oferta_posts_section"
+    interface: "Hydrated oferta item data preserving row order, CTA fallback, and featured-media mapping."
+    format: "Resolved Astro section data passed through resolveAstroPageSections"
+  - from_task: "add_astro_renderers_for_hero_pair"
+    to_task: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    interface: "Astro component paths and ready-to-register hero renderers."
+    format: "Component file paths plus blockKey mapping"
+  - from_task: "add_astro_renderers_for_editorial_text_blocks"
+    to_task: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    interface: "Astro component paths and ready-to-register editorial/text renderers."
+    format: "Component file paths plus blockKey mapping"
+  - from_task: "add_astro_renderers_for_media_cta_blocks"
+    to_task: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    interface: "Astro component paths and ready-to-register media/CTA renderers."
+    format: "Component file paths plus blockKey mapping"
+  - from_task: "add_astro_renderers_for_promo_menu_family"
+    to_task: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    interface: "Astro component paths for Promo2/menu family plus proof they rely on shared source hydration."
+    format: "Component file paths plus resolver-backed render contract"
+  - from_task: "add_astro_renderer_for_oferta_posts_section"
+    to_task: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    interface: "Astro component path for oferta_posts_section plus proof it relies on shared WordPress hydration."
+    format: "Component file path plus resolver-backed render contract"
+  - from_task: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    to_task: "validate_astro_template_block_rollout"
+    interface: "Single source of truth for Astro-ready block keys and renderer paths after rollout."
+    format: "Updated astroRegistry projection, manifest, and parity tests"
+  - from_task: "validate_astro_template_block_rollout"
+    to_task: "review_source_backed_safety_and_parity"
+    interface: "Build and test evidence for direct-edit, Woo-backed, and WordPress-backed block families."
+    format: "Validation logs and scenario outcomes"
+  - from_task: "review_source_backed_safety_and_parity"
+    to_task: "update_astro_readiness_docs_for_template_blocks"
+    interface: "Approved rollout notes, residual risks, and operator guidance."
+    format: "Review findings and accepted caveats"
+
+tasks:
+  - id: "lock_templatepage_parity_matrix"
+    title: "Lock the TemplatePage parity matrix for the 12 missing Astro blocks"
+    description: |
+      Produce one execution-facing parity matrix before code changes begin. The
+      matrix should group the 12 blocks into the hero pair, editorial/text,
+      media/CTA, Promo2/menu, and oferta families; freeze the approved shell,
+      width, spacing, and geometry rules from TemplatePage; and explicitly mark
+      which blocks are direct-edit only versus Woo-backed or WordPress-backed.
+      This keeps later implementation tasks from silently redesigning blocks or
+      treating source-backed blocks like static content. Sources:
+      zip/src/pages/TemplatePage.tsx,
+      docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md,
+      docs/block-registry/promo2.md,
+      docs/block-registry/oferta_posts_section.md,
+      docs/block-registry/about_2_simple.md.
+    wave: 1
+    agent: "gem-designer"
+    prototype: false
+    covers:
+      - "TemplatePage visual parity for all 12 blocks"
+      - "Source-backed risk classification"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Canonical preview surface already instantiating the target block set."
+      - path: "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md"
+        description: "No-redesign rule for geometry, width, and composition."
+      - path: "docs/block-registry/promo2.md"
+        description: "Representative source-backed block doc defining attached-panel geometry and Woo mode."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Visual and source-backed invariants need to be frozen before family renderer work begins."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 180
+        focus_area: "parity contract"
+        verification:
+          - "Every target block has a named parity reference and family classification."
+          - "The matrix distinguishes direct-edit, Woo-backed, and WordPress-backed blocks."
+          - "The matrix names the no-redesign constraints that later tasks must preserve."
+        acceptance_criteria:
+          - "All 12 block keys are present in the matrix."
+          - "Each block has explicit shell, spacing, and geometry guidance tied to TemplatePage."
+          - "Each source-backed block has explicit data-ownership guidance."
+        failure_modes:
+          - scenario: "The parity matrix is too generic and allows later tasks to reinterpret geometry."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Describe family-specific shell and attachment rules instead of generic design guidance."
+
+  - id: "extend_astro_types_for_missing_template_blocks"
+    title: "Extend Astro page-builder types for the 12 missing block contracts"
+    description: |
+      Expand Astro-side parsing so the missing /template blocks can be represented
+      with typed data and source contracts before renderer work starts. The task
+      should mirror the documented direct-edit and source-backed constraints that
+      already exist in the shared block docs and React registry contracts, rather
+      than introducing Astro-only shapes. Sources:
+      astro-site/src/lib/types.ts,
+      docs/block-registry/about_2_simple.md,
+      docs/block-registry/promo2.md,
+      docs/block-registry/oferta_posts_section.md,
+      zip/src/blocks/registry/index.ts.
+    wave: 1
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Astro can parse all 12 block keys"
+      - "Source-backed blocks keep typed source contracts"
+    priority: "high"
+    status: "pending"
+    dependencies: []
+    conflicts_with:
+      - "generalize_astro_woo_resolution_for_promo_menu_blocks"
+      - "generalize_astro_wordpress_resolution_for_oferta_posts"
+      - "add_astro_renderers_for_hero_pair"
+      - "add_astro_renderers_for_editorial_text_blocks"
+      - "add_astro_renderers_for_media_cta_blocks"
+      - "add_astro_renderers_for_promo_menu_family"
+      - "add_astro_renderer_for_oferta_posts_section"
+    context_files:
+      - path: "astro-site/src/lib/types.ts"
+        description: "Current Astro-side page-builder schema and block unions."
+      - path: "docs/block-registry/promo2.md"
+        description: "Defines Woo-backed source semantics and safe editable fields."
+      - path: "docs/block-registry/oferta_posts_section.md"
+        description: "Defines WordPress post source semantics and fallback behavior."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Typed parsing is the cheapest way to prevent downstream renderer and resolver drift."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 240
+        focus_area: "Astro payload schemas"
+        verification:
+          - "Astro-side schema parsing accepts all 12 block keys."
+          - "Direct-edit blocks keep source null, and source-backed blocks keep constrained source shapes."
+          - "At least one direct-edit and one source-backed parse path are covered by tests."
+        acceptance_criteria:
+          - "No target block remains unknown to the Astro parser."
+          - "Woo-backed and WordPress-backed source types are explicit in Astro types."
+          - "The type contract matches the documented field ownership in the block docs."
+        failure_modes:
+          - scenario: "Schemas become permissive catch-alls and stop protecting source-backed contracts."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Model source-backed blocks with specific unions, not generic records."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+          - "Zod"
+        test_coverage: "Extend Astro type and page-builder parsing tests for the new block families."
+
+  - id: "generalize_astro_woo_resolution_for_promo_menu_blocks"
+    title: "Generalize Astro Woo resolution for Promo2 and the standalone menu family"
+    description: |
+      Extend Astro source hydration so Promo2,
+      menu_two_columns_with_no_heading_no_img,
+      menu_two_columns_with_with_heading_no_img, and
+      menu_three_columns_with_with_heading_no_img are resolved before render
+      using the same category-driven semantics already established by the Astro
+      menu resolver and the React page-builder source resolver. Sources:
+      astro-site/src/lib/woo.ts,
+      astro-site/src/lib/pageBuilder.ts,
+      zip/src/blocks/registry/resolvePageBuilderSources.ts,
+      docs/block-registry/promo2.md,
+      docs/block-registry/menu_two_columns_with_with_heading_no_img.md.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Woo-backed Astro source hydration for Promo2/menu blocks"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "extend_astro_types_for_missing_template_blocks"
+    conflicts_with:
+      - "generalize_astro_wordpress_resolution_for_oferta_posts"
+    context_files:
+      - path: "astro-site/src/lib/woo.ts"
+        description: "Current Astro Woo resolver used by existing menu-family blocks."
+      - path: "astro-site/src/lib/pageBuilder.ts"
+        description: "Central Astro source-hydration gate before render."
+      - path: "zip/src/blocks/registry/resolvePageBuilderSources.ts"
+        description: "React-side source resolver that current publish/runtime flow already trusts."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Source-backed Woo behavior is the highest-risk gap and should be solved before source-backed renderers land."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 260
+        focus_area: "Woo-backed Astro hydration"
+        verification:
+          - "resolveAstroPageSections hydrates all four Woo-backed target block keys."
+          - "Resolved title and menuColumns behavior matches the intended family semantics."
+          - "Tests cover a happy path and an empty-state or pass-through path."
+        acceptance_criteria:
+          - "Promo2 no longer fails Astro readiness solely because source hydration is missing."
+          - "Standalone menu variants hydrate from woo_category without renderer-local fetching."
+          - "No target block mutates source-backed data inside the renderer layer."
+        failure_modes:
+          - scenario: "Column splitting or category-title propagation diverges from the current runtime contract."
+            likelihood: "high"
+            impact: "critical"
+            mitigation: "Base the Astro resolver on the existing Astro menu helper and React resolver semantics, then cover them with tests."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Extend Astro pageBuilder tests around Woo-backed section hydration for Promo2 and menu variants."
+
+  - id: "generalize_astro_wordpress_resolution_for_oferta_posts"
+    title: "Generalize Astro WordPress resolution for oferta_posts_section"
+    description: |
+      Extend Astro source hydration so oferta_posts_section can resolve ordered
+      WordPress post ids into rendered rows before the Astro renderer runs,
+      preserving current row order, CTA fallback behavior, featured-media mapping,
+      and the distinction between preview fallback data and production source
+      data. Sources: astro-site/src/lib/wordpress.ts,
+      astro-site/src/lib/pageBuilder.ts,
+      docs/block-registry/oferta_posts_section.md,
+      zip/src/blocks/registry/resolvePageBuilderSources.ts.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "WordPress-backed Astro source hydration for oferta_posts_section"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "extend_astro_types_for_missing_template_blocks"
+    conflicts_with:
+      - "generalize_astro_woo_resolution_for_promo_menu_blocks"
+    context_files:
+      - path: "astro-site/src/lib/wordpress.ts"
+        description: "Current Astro-side WordPress fetching and schema normalization boundary."
+      - path: "astro-site/src/lib/pageBuilder.ts"
+        description: "Current Astro section-resolution pipeline."
+      - path: "docs/block-registry/oferta_posts_section.md"
+        description: "Authoritative source and fallback mapping for oferta_posts_section."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "The WordPress-backed section uses a different source type and should not be coupled to Woo-backed rollout logic."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "WordPress-backed Astro hydration"
+        verification:
+          - "resolveAstroPageSections hydrates oferta_posts_section from wordpress_posts."
+          - "Resolved order matches source.sourceValue order."
+          - "Link fallback and media fallback behavior are covered by tests."
+        acceptance_criteria:
+          - "oferta_posts_section can render with source-backed rows in Astro."
+          - "Renderer input stays normalized before presentation."
+          - "Fallback preview mode still works when source is null."
+        failure_modes:
+          - scenario: "The Astro mapper loses post ordering or CTA fallback semantics from the current contract."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Keep the resolver centralized and assert order plus fallback behavior in tests."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Add Astro pageBuilder coverage for wordpress_posts hydration and fallback handling."
+
+  - id: "add_astro_renderers_for_hero_pair"
+    title: "Add Astro renderers for the no-text hero pair"
+    description: |
+      Implement Astro renderers for hero_simple_no_text_py32 and
+      hero_simple_no_text_normal_wide, preserving the no-text hero geometry and
+      the spacing distinction between the two variants. This task should avoid
+      inventing new width wrappers or collapsing the pair into one generic hero if
+      doing so would hide the py32 versus normal-wide parity contract. Sources:
+      docs/block-registry/hero_simple_no_text_py32.md,
+      docs/block-registry/hero_simple_no_text_normal_wide.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Astro renderers for hero_simple_no_text_py32 and hero_simple_no_text_normal_wide"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "lock_templatepage_parity_matrix"
+      - "extend_astro_types_for_missing_template_blocks"
+    conflicts_with: []
+    context_files:
+      - path: "docs/block-registry/hero_simple_no_text_py32.md"
+        description: "Documents the py32 hero contract."
+      - path: "docs/block-registry/hero_simple_no_text_normal_wide.md"
+        description: "Documents the normal-wide hero contract."
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Preview surface already rendering both hero variants."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "The hero pair is low data-risk but high parity-sensitivity, making it a good early renderer slice."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 210
+        focus_area: "hero renderers"
+        verification:
+          - "Both hero variants render from Astro with no ready-gate error once wired."
+          - "The py32 and normal-wide shells remain visibly distinct."
+          - "No extra wrapper width is introduced outside the parity matrix."
+        acceptance_criteria:
+          - "Each hero block has an Astro renderer path ready for registration."
+          - "Shared code, if used, does not erase the spacing distinction."
+          - "Renderer inputs remain direct-edit and source null."
+        failure_modes:
+          - scenario: "A shared abstraction flattens the spacing difference between the two hero variants."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Keep block-specific shells or explicit variant props with parity review against TemplatePage."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Covered by later Astro projection/build validation plus a parity review of both hero variants."
+
+  - id: "add_astro_renderers_for_editorial_text_blocks"
+    title: "Add Astro renderers for the editorial and text direct-edit blocks"
+    description: |
+      Implement Astro renderers for about_2_simple,
+      simple_heading_and_paragraph, and
+      big_img_and_bolded_tex_editorial_style_block, preserving their documented
+      editorial hierarchy, layered media composition, and CTA/text structure from
+      the existing /template preview. Sources:
+      docs/block-registry/about_2_simple.md,
+      docs/block-registry/simple_heading_and_paragraph.md,
+      docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Astro renderers for about_2_simple, simple_heading_and_paragraph, and editorial image block"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "lock_templatepage_parity_matrix"
+      - "extend_astro_types_for_missing_template_blocks"
+    conflicts_with: []
+    context_files:
+      - path: "docs/block-registry/about_2_simple.md"
+        description: "Direct-edit about block with layered imagery and CTA guidance."
+      - path: "docs/block-registry/simple_heading_and_paragraph.md"
+        description: "Direct-edit heading/text block contract."
+      - path: "docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md"
+        description: "Editorial image/text block contract."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "These blocks share low source risk and can be implemented as one direct-edit family slice."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 280
+        focus_area: "editorial and text renderers"
+        verification:
+          - "All three blocks render from parsed Astro data without source resolution."
+          - "Editorial hierarchy and image layering remain consistent with TemplatePage."
+          - "Button/link semantics remain data-driven only where documented."
+        acceptance_criteria:
+          - "Each block has a dedicated Astro renderer path ready for registration."
+          - "No renderer introduces unsupported geometry changes."
+          - "simple_heading_and_paragraph stops being blocked only after renderer and projection wiring are complete."
+        failure_modes:
+          - scenario: "The editorial block loses layered-media emphasis or text rhythm during translation to Astro markup."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Review each renderer against the parity matrix before projection wiring."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Covered downstream by Astro projection/build validation with family-specific parity checks."
+
+  - id: "add_astro_renderers_for_media_cta_blocks"
+    title: "Add Astro renderers for the media and CTA direct-edit blocks"
+    description: |
+      Implement Astro renderers for just_pralax_img_horizontal and
+      premium_call_to_action_with_image_carousel, preserving the contained-width
+      and media-led composition described in their block docs and already previewed
+      on TemplatePage. Sources:
+      docs/block-registry/just_pralax_img_horizontal.md,
+      docs/block-registry/premium_call_to_action_with_image_carousel.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 2
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Astro renderers for just_pralax_img_horizontal and premium_call_to_action_with_image_carousel"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "lock_templatepage_parity_matrix"
+      - "extend_astro_types_for_missing_template_blocks"
+    conflicts_with: []
+    context_files:
+      - path: "docs/block-registry/just_pralax_img_horizontal.md"
+        description: "Horizontal parallax image block aligned to Promo2 width behavior."
+      - path: "docs/block-registry/premium_call_to_action_with_image_carousel.md"
+        description: "Contained CTA block contract tied to CateringSection geometry."
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Preview surface including both target blocks."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "These blocks are direct-edit and visually distinct enough to validate as one media-led slice."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 210
+        focus_area: "media and CTA renderers"
+        verification:
+          - "Both blocks render from parsed Astro data without runtime fetching."
+          - "Contained width and media rhythm remain aligned to TemplatePage."
+          - "CTA block keeps its contained shell and does not inherit Promo2 lower-panel behavior by accident."
+        acceptance_criteria:
+          - "Each block has a dedicated Astro renderer path ready for registration."
+          - "No source contract is added where the block docs define direct-edit behavior only."
+          - "The renderer markup stays compatible with the Astro build pipeline."
+        failure_modes:
+          - scenario: "The CTA block is visually normalized to the wrong contained-width contract and loses parity with the React reference."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Use the parity matrix and the existing block docs, not a generic section wrapper."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Covered downstream by Astro projection/build validation and parity review."
+
+  - id: "add_astro_renderers_for_promo_menu_family"
+    title: "Add Astro renderers for Promo2 and the standalone menu family"
+    description: |
+      Implement Astro renderers for promo2,
+      menu_two_columns_with_no_heading_no_img,
+      menu_two_columns_with_with_heading_no_img, and
+      menu_three_columns_with_with_heading_no_img using shared presentation only
+      where it does not break the attachment behavior, heading/no-heading
+      distinctions, or column-count differences documented in the block registry.
+      Sources: docs/block-registry/promo2.md,
+      docs/block-registry/menu_two_columns_with_no_heading_no_img.md,
+      docs/block-registry/menu_two_columns_with_with_heading_no_img.md,
+      docs/block-registry/menu_three_columns_with_with_heading_no_img.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Astro renderers for promo2 and all standalone menu variants"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "lock_templatepage_parity_matrix"
+      - "extend_astro_types_for_missing_template_blocks"
+      - "generalize_astro_woo_resolution_for_promo_menu_blocks"
+    conflicts_with: []
+    context_files:
+      - path: "docs/block-registry/promo2.md"
+        description: "Defines the attached image-to-panel geometry and Woo-backed mode for Promo2."
+      - path: "docs/block-registry/menu_two_columns_with_with_heading_no_img.md"
+        description: "Representative standalone menu panel with heading variant."
+      - path: "astro-site/src/lib/woo.ts"
+        description: "Hydration boundary that source-backed renderers must consume instead of fetching directly."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "The shared visual language and shared source risk make this the most important family slice after the Woo resolver exists."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 300
+        focus_area: "Promo2/menu renderers"
+        verification:
+          - "Promo2 renders the attached lower panel with zero-gap behavior from hydrated data."
+          - "Menu variants preserve heading/no-heading and two-column versus three-column distinctions."
+          - "No renderer performs source fetching directly."
+        acceptance_criteria:
+          - "All four block keys have Astro renderers ready for projection wiring."
+          - "Promo2 and menu variants consume already-hydrated data from resolveAstroPageSections."
+          - "The family remains visually consistent with the Promo2-derived TemplatePage reference."
+        failure_modes:
+          - scenario: "A shared menu presenter collapses block identity and removes heading/no-heading or column-count distinctions."
+            likelihood: "medium"
+            impact: "critical"
+            mitigation: "Share only the row/panel primitives; keep block-specific shell decisions explicit."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Covered by Woo-backed Astro pageBuilder tests plus final build and parity validation."
+
+  - id: "add_astro_renderer_for_oferta_posts_section"
+    title: "Add the Astro renderer for oferta_posts_section"
+    description: |
+      Implement the Astro renderer for oferta_posts_section so it preserves the
+      current heading, divider, row ordering, and fixed CTA treatment while
+      consuming data that has already been normalized from WordPress post ids.
+      Sources: docs/block-registry/oferta_posts_section.md,
+      zip/src/pages/TemplatePage.tsx,
+      astro-site/src/lib/wordpress.ts.
+    wave: 3
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Astro renderer for oferta_posts_section"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "lock_templatepage_parity_matrix"
+      - "extend_astro_types_for_missing_template_blocks"
+      - "generalize_astro_wordpress_resolution_for_oferta_posts"
+    conflicts_with: []
+    context_files:
+      - path: "docs/block-registry/oferta_posts_section.md"
+        description: "Defines source, fallback, and CTA rules for oferta_posts_section."
+      - path: "astro-site/src/lib/wordpress.ts"
+        description: "WordPress data-fetching boundary feeding the Astro resolver."
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Preview surface already rendering the oferta posts section."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "The WordPress-backed section is distinct enough to validate separately from the Woo-backed family."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: "oferta renderer"
+        verification:
+          - "The renderer accepts hydrated oferta rows and preserves their order."
+          - "The fixed CTA treatment remains outside editable row data."
+          - "Fallback preview mode still renders when source is null."
+        acceptance_criteria:
+          - "oferta_posts_section has an Astro renderer path ready for registration."
+          - "The renderer remains presentation-only and does not fetch post data directly."
+          - "Row structure matches the documented four-column desktop composition."
+        failure_modes:
+          - scenario: "The renderer makes CTA text or row geometry editable and breaks the documented contract."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Keep CTA text fixed in the renderer and consume only normalized row data."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+        test_coverage: "Covered by WordPress-backed Astro pageBuilder tests plus final build and parity validation."
+
+  - id: "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    title: "Wire Astro projection and shared readiness updates for the 12-block rollout"
+    description: |
+      Update astro-site/src/lib/astroRegistry.ts,
+      astro-site/src/lib/astroRegistry.test.ts, and
+      docs/block-registry/registry.machine.json together so the 12 target blocks
+      are projected into Astro and marked Astro-ready only after their renderers
+      and source-hydration seams exist. This task is intentionally late to avoid
+      false-ready manifest states. Sources: astro-site/src/lib/astroRegistry.ts,
+      astro-site/src/lib/astroRegistry.test.ts,
+      docs/block-registry/registry.machine.json.
+    wave: 4
+    agent: "gem-implementer"
+    prototype: false
+    covers:
+      - "Central Astro projection for all 12 target blocks"
+      - "Shared readiness flip only after implementation evidence exists"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "add_astro_renderers_for_hero_pair"
+      - "add_astro_renderers_for_editorial_text_blocks"
+      - "add_astro_renderers_for_media_cta_blocks"
+      - "add_astro_renderers_for_promo_menu_family"
+      - "add_astro_renderer_for_oferta_posts_section"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/lib/astroRegistry.ts"
+        description: "Single Astro-ready projection and guardrail for enabled sections."
+      - path: "astro-site/src/lib/astroRegistry.test.ts"
+        description: "Parity test ensuring projection stays aligned with the readiness manifest."
+      - path: "docs/block-registry/registry.machine.json"
+        description: "Shared readiness manifest that currently marks all 12 targets as not Astro-ready."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Projection and manifest updates should happen atomically to avoid false-ready drift."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "medium"
+        estimated_files: 3
+        estimated_lines: 240
+        focus_area: "Astro-ready projection"
+        verification:
+          - "Projection contains the same 12 new block keys that the manifest marks Astro-ready."
+          - "Astro registry parity tests pass after the update."
+          - "No block is marked Astro-ready without a component path in the projection."
+        acceptance_criteria:
+          - "All 12 target blocks become discoverable through resolveAstroRenderer."
+          - "The shared readiness manifest records the correct Astro component path for each block."
+          - "Non-target blocks remain untouched."
+        failure_modes:
+          - scenario: "Manifest and projection paths diverge, causing ready blocks to fail at runtime."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Update projection, manifest, and parity tests in the same task."
+        tech_stack:
+          - "Astro"
+          - "TypeScript"
+          - "JSON"
+        test_coverage: "Extend the Astro registry parity test to cover the new block keys and paths."
+
+  - id: "validate_astro_template_block_rollout"
+    title: "Validate the 12-block Astro rollout across direct-edit and source-backed scenarios"
+    description: |
+      Run focused validation after projection wiring. The validation should prove
+      that direct-edit blocks render through the Astro-ready gate, Woo-backed
+      Promo2/menu blocks hydrate correctly before render, WordPress-backed oferta
+      rows preserve order and fallback semantics, and the Astro build stays green
+      with the expanded projection. Sources: astro-site/src/lib/pageBuilder.test.ts,
+      astro-site/src/lib/astroRegistry.test.ts,
+      astro-site/package.json,
+      docs/block-registry/promo2.md,
+      docs/block-registry/oferta_posts_section.md.
+    wave: 5
+    agent: "gem-browser-tester"
+    prototype: false
+    covers:
+      - "Executable validation for all 12 Astro-ready blocks"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "wire_astro_projection_and_readiness_for_missing_template_blocks"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/lib/pageBuilder.test.ts"
+        description: "Existing Astro-side source-resolution tests that should grow with the rollout."
+      - path: "astro-site/src/lib/astroRegistry.test.ts"
+        description: "Astro-ready parity test guarding central projection drift."
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Reference surface for expected block ordering and visual parity."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "Ready promotion needs executable evidence, not only manifest updates."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 160
+        focus_area: "validation evidence"
+        verification:
+          - "Astro build completes with the 12 new renderers projected."
+          - "Direct-edit, Woo-backed, and WordPress-backed validation scenarios all pass."
+          - "No enabled target block still throws the not-Astro-ready guard."
+        acceptance_criteria:
+          - "Validation evidence exists for at least one direct-edit, one Woo-backed, and one WordPress-backed scenario."
+          - "Astro registry parity and pageBuilder tests both pass."
+          - "Astro build passes after the rollout."
+        failure_modes:
+          - scenario: "Validation relies only on type-level checks and misses runtime hydration failures."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Include resolver-backed scenarios and a full Astro build in the validation matrix."
+    validation_matrix:
+      - scenario: "Direct-edit family renders through Astro-ready gate"
+        steps:
+          - "Run Astro tests covering pageBuilder parsing and registry projection."
+          - "Build or render representative direct-edit blocks from the hero and editorial families."
+          - "Confirm no target block throws a not-Astro-ready error once enabled."
+        expected_result: "Direct-edit blocks render without guard failures and keep expected block order."
+      - scenario: "Woo-backed Promo2/menu family hydrates before render"
+        steps:
+          - "Run the Astro pageBuilder tests that exercise woo_category hydration for the target family."
+          - "Inspect the resolved data for category title and menuColumns behavior."
+          - "Verify the renderers consume hydrated data rather than fetching directly."
+        expected_result: "Promo2 and menu variants render with correct hydrated menu data and preserved family distinctions."
+      - scenario: "WordPress-backed oferta posts preserve order and fallback"
+        steps:
+          - "Run the Astro pageBuilder tests for oferta_posts_section source resolution."
+          - "Verify rendered rows preserve source order and CTA fallback rules."
+          - "Run an Astro build to confirm the projection compiles end-to-end."
+        expected_result: "oferta_posts_section renders normalized WordPress rows with stable order and valid CTA links."
+
+  - id: "review_source_backed_safety_and_parity"
+    title: "Review source-backed safety and TemplatePage parity before sign-off"
+    description: |
+      Perform a read-only review focused on the two areas Variant C is meant to
+      protect: source-backed safety and visual parity. The review should confirm
+      that ready blocks only fetch through the centralized Astro hydration seams,
+      that source-owned content is not made directly editable in renderers, and
+      that the final markup and shell decisions do not drift from the locked
+      TemplatePage parity matrix. Sources:
+      astro-site/src/lib/pageBuilder.ts,
+      astro-site/src/lib/woo.ts,
+      astro-site/src/lib/wordpress.ts,
+      zip/src/pages/TemplatePage.tsx,
+      docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md.
+    wave: 5
+    agent: "gem-reviewer"
+    prototype: false
+    covers:
+      - "Source-backed safety review"
+      - "TemplatePage parity review"
+    priority: "high"
+    status: "pending"
+    dependencies:
+      - "validate_astro_template_block_rollout"
+    conflicts_with: []
+    context_files:
+      - path: "astro-site/src/lib/pageBuilder.ts"
+        description: "Central source-hydration gate for enabled sections."
+      - path: "zip/src/pages/TemplatePage.tsx"
+        description: "Visual reference for parity review."
+      - path: "docs/plan/astro-wordpress-page-builder/global-css-adaptation-contract.md"
+        description: "Explicit no-redesign contract used to judge parity drift."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "The rollout target is not just buildability; it is safe, parity-preserving readiness."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 120
+        focus_area: "risk review"
+        verification:
+          - "Review explicitly checks source-backed ownership boundaries."
+          - "Review explicitly checks parity against the locked TemplatePage matrix."
+          - "Residual risks are documented for operator sign-off."
+        acceptance_criteria:
+          - "The review states whether any source-backed renderer bypasses centralized hydration."
+          - "The review states whether any target block breaks the no-redesign geometry rule."
+          - "Any residual risks are concrete and tied to affected block families."
+        failure_modes:
+          - scenario: "The review focuses on generic code quality and misses the source-backed and parity risks this variant is supposed to control."
+            likelihood: "medium"
+            impact: "high"
+            mitigation: "Constrain review scope explicitly to source safety and parity evidence."
+        requires_review: true
+        review_depth: "full"
+        review_security_sensitive: true
+
+  - id: "update_astro_readiness_docs_for_template_blocks"
+    title: "Update shared documentation for the Astro-ready template-block rollout"
+    description: |
+      Update the shared operator-facing docs after validation and review are
+      complete. The update should describe that the 12 previously refining
+      /template blocks are now covered by Astro projection, explain the central
+      ready gate, and document the residual caveats for source-backed validation
+      so future page-builder work does not regress into renderer-local fetching or
+      geometry drift. Sources: docs/block-registry/index.md,
+      docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md,
+      docs/block-registry/registry.machine.json,
+      approved findings from the validation and review tasks.
+    wave: 6
+    agent: "gem-documentation-writer"
+    prototype: false
+    covers:
+      - "Operator documentation for the Astro-ready rollout"
+    priority: "medium"
+    status: "pending"
+    dependencies:
+      - "validate_astro_template_block_rollout"
+      - "review_source_backed_safety_and_parity"
+    conflicts_with: []
+    context_files:
+      - path: "docs/block-registry/index.md"
+        description: "Shared human-readable registry index."
+      - path: "docs/plan/astro-wordpress-page-builder/page-builder-authoring-workflow.md"
+        description: "Operator workflow doc for page-builder composition and publish flow."
+      - path: "docs/block-registry/registry.machine.json"
+        description: "Machine-readable readiness source that should be reflected in shared docs."
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: "The rollout changes operator expectations around which /template blocks are Astro-ready and how source-backed blocks are validated."
+        timestamp: "2026-04-24T00:00:00Z"
+        estimated_effort: "small"
+        estimated_files: 3
+        estimated_lines: 180
+        focus_area: "shared docs update"
+        verification:
+          - "Shared docs mention the new Astro-ready block coverage."
+          - "Shared docs describe the centralized ready gate and source-backed caveats."
+          - "Documentation reflects validation and review outcomes instead of aspirational language."
+        acceptance_criteria:
+          - "Operators can tell which target blocks are now Astro-ready from shared docs."
+          - "Docs explain that source-backed validation relies on centralized hydration and evidence."
+          - "Docs avoid claiming parity or readiness beyond what validation and review proved."
+        failure_modes:
+          - scenario: "Documentation announces Astro readiness without mentioning the source-backed validation caveats."
+            likelihood: "medium"
+            impact: "medium"
+            mitigation: "Base the update directly on approved validation and review evidence."
+        task_type: "update"
+        audience: "developers"
+        coverage_matrix:
+          - "Astro-ready block coverage for the 12 /template targets"
+          - "Central ready gate: astroRegistry + registry.machine parity"
+          - "Source-backed validation caveats for Woo and WordPress sections"

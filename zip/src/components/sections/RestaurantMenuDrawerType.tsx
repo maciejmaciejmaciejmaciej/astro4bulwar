@@ -2,23 +2,43 @@ import { useEffect, useRef, useState } from "react";
 
 import { X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { MenuColumn } from "@/src/blocks/registry/common";
 
 import { PageBuilderMenuColumns } from "./PageBuilderMenuSection";
 
+export interface RestaurantMenuDrawerTypeCardImage {
+  src?: string;
+  alt: string;
+}
+
+export interface RestaurantMenuDrawerTypeMenuSection {
+  heading: string;
+  menuColumns: MenuColumn[];
+  emptyStateText?: string;
+}
+
 export interface RestaurantMenuDrawerTypeCardContent {
-  icon: string;
+  icon?: string;
+  image?: RestaurantMenuDrawerTypeCardImage;
   title: string;
   description: string;
   ctaText: string;
   ctaHref: string;
+  wooCategoryIds?: number[];
+  drawerSections?: RestaurantMenuDrawerTypeMenuSection[];
 }
 
 export interface RestaurantMenuDrawerTypeContent {
   title: string;
-  introImage: {
-    src: string;
+  description: string;
+  primaryCta?: {
+    text: string;
+    href?: string;
+  };
+  introImage?: {
+    src?: string;
     alt: string;
   };
   cards: RestaurantMenuDrawerTypeCardContent[];
@@ -27,10 +47,21 @@ export interface RestaurantMenuDrawerTypeContent {
 export interface RestaurantMenuDrawerTypeProps {
   content?: RestaurantMenuDrawerTypeContent;
   className?: string;
+  drawerHeaderSource?: "card" | "block";
+  resolveMenuSections?: (
+    card: RestaurantMenuDrawerTypeCardContent,
+    signal: AbortSignal,
+  ) => Promise<readonly RestaurantMenuDrawerTypeMenuSection[]>;
 }
 
 export const DEFAULT_RESTAURANT_MENU_DRAWER_TYPE_CONTENT: RestaurantMenuDrawerTypeContent = {
   title: "Our Services",
+  description:
+    "From intimate chef's table experiences to grand private events, we offer a range of bespoke culinary services designed to elevate your dining experience. Every detail is meticulously crafted to ensure unforgettable moments.",
+  primaryCta: {
+    text: "VIEW ALL SERVICES",
+    href: "#",
+  },
   introImage: {
     src: "/react/images/about_front.jpg",
     alt: "Pionowe ujęcie restauracyjnego wnętrza",
@@ -82,12 +113,24 @@ export const DEFAULT_RESTAURANT_MENU_DRAWER_TYPE_CONTENT: RestaurantMenuDrawerTy
 const cardClassName =
   "break-inside-avoid group relative flex w-full cursor-pointer flex-col overflow-hidden bg-surface p-10 text-left transition-colors duration-500 hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-black";
 
+const cardLinkClassName =
+  "inline-flex items-center text-[11px] font-label uppercase tracking-[0.16em] text-zinc-500 transition-colors group-hover:text-black";
+
+const primaryButtonClassName =
+  "theme-radius-control mt-4 bg-primary px-8 py-4 font-label text-sm uppercase tracking-[0.1em] text-on-primary transition-opacity hover:opacity-80";
+
 const DRAWER_TRANSITION_MS = 450;
 
-const DRAWER_MENU_SECTIONS: ReadonlyArray<{
-  heading: string;
-  menuColumns: MenuColumn[];
-}> = [
+const isSameDrawerCard = (
+  left: RestaurantMenuDrawerTypeCardContent,
+  right: RestaurantMenuDrawerTypeCardContent,
+) => {
+  return left.title === right.title
+    && left.ctaText === right.ctaText
+    && left.ctaHref === right.ctaHref;
+};
+
+const DRAWER_MENU_SECTIONS: ReadonlyArray<RestaurantMenuDrawerTypeMenuSection> = [
   {
     heading: "STARTERS",
     menuColumns: [
@@ -189,12 +232,49 @@ const DRAWER_MENU_SECTIONS: ReadonlyArray<{
 export function RestaurantMenuDrawerType({
   content = DEFAULT_RESTAURANT_MENU_DRAWER_TYPE_CONTENT,
   className,
+  drawerHeaderSource = "card",
+  resolveMenuSections,
 }: RestaurantMenuDrawerTypeProps) {
-  const [drawerCard, setDrawerCard] = useState<RestaurantMenuDrawerTypeCardContent>(content.cards[0]);
+  const shouldRenderIntroImage = Boolean(content.introImage?.src);
+
+  const [drawerCard, setDrawerCard] = useState<RestaurantMenuDrawerTypeCardContent | null>(
+    content.cards[0] ?? null,
+  );
+  const [drawerSections, setDrawerSections] = useState<readonly RestaurantMenuDrawerTypeMenuSection[]>(
+    content.cards[0]?.drawerSections ?? DRAWER_MENU_SECTIONS,
+  );
+  const [drawerError, setDrawerError] = useState<string | null>(null);
+  const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerLeft, setDrawerLeft] = useState<number | null>(null);
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const cardsColumnRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (content.cards.length === 0) {
+      setDrawerCard(null);
+      setDrawerSections([]);
+      setDrawerError(null);
+      setIsDrawerLoading(false);
+      setIsDrawerOpen(false);
+      return;
+    }
+
+    const firstCard = content.cards[0];
+
+    setDrawerCard((currentCard) => {
+      if (currentCard) {
+        const matchingCard = content.cards.find((card) => isSameDrawerCard(card, currentCard));
+
+        if (matchingCard) {
+          return matchingCard;
+        }
+      }
+
+      return firstCard;
+    });
+    setDrawerSections(firstCard.drawerSections ?? DRAWER_MENU_SECTIONS);
+  }, [content.cards]);
 
   useEffect(() => {
     const cardsColumn = cardsColumnRef.current;
@@ -250,6 +330,67 @@ export function RestaurantMenuDrawerType({
     };
   }, [isDrawerOpen]);
 
+  useEffect(() => {
+    if (!drawerCard) {
+      setDrawerSections([]);
+      setDrawerError(null);
+      setIsDrawerLoading(false);
+      return;
+    }
+
+    const fallbackSections = drawerCard.drawerSections ?? DRAWER_MENU_SECTIONS;
+
+    if (!isDrawerOpen || !resolveMenuSections) {
+      setDrawerSections(fallbackSections);
+      setDrawerError(null);
+      setIsDrawerLoading(false);
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    setDrawerSections(fallbackSections);
+    setDrawerError(null);
+    setIsDrawerLoading(true);
+
+    resolveMenuSections(drawerCard, abortController.signal)
+      .then((sections) => {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        setDrawerSections(sections);
+      })
+      .catch((error: unknown) => {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        setDrawerSections([]);
+        setDrawerError(
+          error instanceof Error && error.message.trim().length > 0
+            ? error.message
+            : "Nie udalo sie zaladowac menu.",
+        );
+      })
+      .finally(() => {
+        if (!abortController.signal.aborted) {
+          setIsDrawerLoading(false);
+        }
+      });
+
+    return () => {
+      abortController.abort();
+    };
+  }, [drawerCard, isDrawerOpen, resolveMenuSections]);
+
+  const drawerTitle = drawerHeaderSource === "block"
+    ? content.title
+    : drawerCard?.title ?? content.title;
+  const drawerDescription = drawerHeaderSource === "block"
+    ? content.description
+    : drawerCard?.description ?? content.description;
+
   return (
     <section
       data-section-id="restaurant_menu_drawer_type"
@@ -258,17 +399,31 @@ export function RestaurantMenuDrawerType({
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-16 lg:flex-row">
           <div className="space-y-8 self-start lg:sticky lg:top-32 lg:w-1/3">
-            <h2 className="font-headline text-4xl uppercase">
+            <h2 className="font-headline text-[clamp(2.75rem,4vw,4.75rem)] uppercase leading-[0.9] tracking-[0.08em]">
               {content.title}
             </h2>
             <div className="h-[1px] w-12 bg-primary"></div>
-            <div className="overflow-hidden bg-surface">
-              <img
-                src={content.introImage.src}
-                alt={content.introImage.alt}
-                className="aspect-[4/5] w-full object-cover"
-              />
-            </div>
+            <p className="max-w-md font-body text-base leading-7 text-zinc-500 lg:text-[1.0625rem] lg:leading-8">
+              {content.description}
+            </p>
+            {content.primaryCta?.href ? (
+              <Button
+                nativeButton={false}
+                className={primaryButtonClassName}
+                render={<a href={content.primaryCta.href} />}
+              >
+                {content.primaryCta.text}
+              </Button>
+            ) : null}
+            {shouldRenderIntroImage ? (
+              <div className="overflow-hidden bg-surface">
+                <img
+                  src={content.introImage?.src}
+                  alt={content.introImage?.alt ?? ""}
+                  className="aspect-[4/5] w-full object-cover"
+                />
+              </div>
+            ) : null}
           </div>
 
           <div ref={cardsColumnRef} className="relative lg:w-2/3">
@@ -285,19 +440,29 @@ export function RestaurantMenuDrawerType({
                   aria-label={`Open ${card.title} drawer`}
                 >
                   <div className="relative z-10 space-y-8">
-                    <span className="material-symbols-outlined text-4xl text-zinc-400 transition-colors duration-500 group-hover:text-black">
-                      {card.icon}
-                    </span>
-                    <div>
-                      <h3 className="mb-4 font-headline text-lg uppercase">
+                    {card.image?.src ? (
+                      <div className="overflow-hidden bg-surface-container-low">
+                        <img
+                          src={card.image.src}
+                          alt={card.image.alt}
+                          className="aspect-[4/3] w-full object-cover"
+                        />
+                      </div>
+                    ) : card.icon ? (
+                      <span className="material-symbols-outlined text-4xl text-zinc-400 transition-colors duration-500 group-hover:text-black">
+                        {card.icon}
+                      </span>
+                    ) : null}
+                    <div className="space-y-4">
+                      <h3 className="font-headline text-2xl uppercase leading-[1.02] tracking-[0.08em] lg:text-[2rem]">
                         {card.title}
                       </h3>
-                      <p className="font-body text-xs text-zinc-500">
+                      <p className="font-body text-base leading-7 text-zinc-500">
                         {card.description}
                       </p>
                     </div>
                     <div className="pt-4">
-                      <span className="inline-flex items-center text-xs font-label uppercase text-zinc-500 transition-colors group-hover:text-black">
+                      <span className={cardLinkClassName}>
                         {card.ctaText}
                         <span className="material-symbols-outlined ml-2 text-sm">
                           arrow_forward
@@ -339,23 +504,32 @@ export function RestaurantMenuDrawerType({
 
                 <div className="min-h-full px-8 pb-12 pt-24 sm:px-10 sm:pt-28 lg:px-12 lg:pb-16 lg:pt-16">
                   <div className="max-w-2xl space-y-4 border-b border-black/10 pb-8">
-                    <h3 className="font-headline text-3xl uppercase sm:text-4xl">
-                      {drawerCard.title}
+                    <h3 className="font-headline text-[clamp(2.25rem,3vw,3.75rem)] uppercase leading-[0.92] tracking-[0.08em]">
+                      {drawerTitle}
                     </h3>
-                    <p className="max-w-xl font-body text-sm text-zinc-500">
-                      {drawerCard.description}
+                    <p className="max-w-xl font-body text-base leading-7 text-zinc-500 lg:text-[1.0625rem] lg:leading-8">
+                      {drawerDescription}
                     </p>
                   </div>
 
                   <div className="mx-auto max-w-3xl space-y-14 pt-10 lg:space-y-16 lg:pt-12">
-                    {DRAWER_MENU_SECTIONS.map((section) => (
+                    {isDrawerLoading ? (
+                      <p className="font-body text-sm leading-6 text-zinc-500">Ladowanie menu...</p>
+                    ) : null}
+                    {drawerError ? (
+                      <p className="font-body text-sm leading-6 text-zinc-500">{drawerError}</p>
+                    ) : null}
+                    {!isDrawerLoading && !drawerError && drawerSections.length === 0 ? (
+                      <p className="font-body text-sm leading-6 text-zinc-500">Brak pozycji w tej sekcji.</p>
+                    ) : null}
+                    {drawerSections.map((section) => (
                       <div key={section.heading} className="space-y-6 lg:space-y-7">
                         <h4 className="text-left font-label text-[11px] uppercase text-zinc-500">
                           {section.heading}
                         </h4>
                         <PageBuilderMenuColumns
                           menuColumns={section.menuColumns}
-                          emptyStateText="Brak pozycji w tej sekcji."
+                          emptyStateText={section.emptyStateText ?? "Brak pozycji w tej sekcji."}
                           variant="white"
                           gridClassName="mx-auto max-w-3xl gap-y-10"
                           columnClassName="space-y-10"

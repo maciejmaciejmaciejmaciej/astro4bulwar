@@ -1,0 +1,255 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface InfoItem {
+  label: string;
+  value: string;
+  note?: string;
+}
+
+interface Props {
+  eyebrow: string;
+  titleLines: string[];
+  lead: string;
+  infoItems: InfoItem[];
+  mainImage: ImageAsset;
+  offerEyebrow: string;
+  offerTitleLines: string[];
+  offerParagraphs: string[];
+  saleNotice?: string;
+  secondaryImages?: ImageAsset[];
+}
+
+const {
+  eyebrow,
+  titleLines,
+  lead,
+  infoItems,
+  mainImage,
+  offerEyebrow,
+  offerTitleLines,
+  offerParagraphs,
+  saleNotice,
+  secondaryImages = [],
+} = Astro.props;
+---
+
+<section class="offer-hero">
+  <div class="offer-hero__inner theme-section-wrapper">
+    <header class="offer-hero__header">
+      <div class="offer-hero__lead-copy">
+        <div class="offer-hero__eyebrow-row">
+          <span class="offer-hero__rule" aria-hidden="true"></span>
+          <span class="offer-hero__eyebrow">{eyebrow}</span>
+        </div>
+        <h1 class="offer-hero__title">
+          {titleLines.map((line: string, index: number) => (
+            <span>
+              {line}
+              {index < titleLines.length - 1 ? <br /> : null}
+            </span>
+          ))}
+        </h1>
+        <p class="offer-hero__lead">{lead}</p>
+      </div>
+
+      <div class="offer-hero__facts">
+        {infoItems.map((item: InfoItem) => (
+          <div class="offer-hero__fact-item">
+            <div class="offer-hero__fact-topline">
+              <span class="offer-hero__fact-label">{item.label}</span>
+              <span class="offer-hero__fact-value">{item.value}</span>
+            </div>
+            {item.note ? <div class="offer-hero__fact-note">{item.note}</div> : null}
+          </div>
+        ))}
+      </div>
+    </header>
+
+    <div class="offer-hero__main-image-frame">
+      <img src={mainImage.src} alt={mainImage.alt} loading="eager" />
+    </div>
+
+    <div class="offer-hero__secondary-grid">
+      <div class="offer-hero__secondary-copy">
+        <div class="offer-hero__eyebrow-row offer-hero__eyebrow-row--secondary">
+          <span class="offer-hero__rule" aria-hidden="true"></span>
+          <span class="offer-hero__eyebrow">{offerEyebrow}</span>
+        </div>
+        <h2 class="offer-hero__secondary-title">
+          {offerTitleLines.map((line: string, index: number) => (
+            <span>
+              {line}
+              {index < offerTitleLines.length - 1 ? <br /> : null}
+            </span>
+          ))}
+        </h2>
+        <div class="offer-hero__paragraphs">
+          {offerParagraphs.map((paragraph: string) => <p>{paragraph}</p>)}
+          {saleNotice ? <p class="offer-hero__sale-notice">{saleNotice}</p> : null}
+        </div>
+      </div>
+
+      <div class="offer-hero__secondary-images">
+        {secondaryImages.map((image: ImageAsset) => (
+          <div class="offer-hero__secondary-image-frame">
+            <img src={image.src} alt={image.alt} loading="lazy" />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .offer-hero {
+    padding: 6rem 0 8rem;
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  .offer-hero__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .offer-hero__header,
+  .offer-hero__secondary-grid {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .offer-hero__eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .offer-hero__rule {
+    width: 2rem;
+    height: 1px;
+    background: var(--color-primary);
+  }
+
+  .offer-hero__eyebrow,
+  .offer-hero__fact-label {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+
+  .offer-hero__title,
+  .offer-hero__secondary-title {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    text-transform: uppercase;
+    line-height: 1.05;
+  }
+
+  .offer-hero__lead,
+  .offer-hero__paragraphs p,
+  .offer-hero__fact-note {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--color-muted-foreground);
+    line-height: 1.8;
+  }
+
+  .offer-hero__facts {
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    gap: 1rem;
+  }
+
+  .offer-hero__fact-item {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.5rem;
+  }
+
+  .offer-hero__fact-topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .offer-hero__fact-value {
+    font-family: var(--font-headline);
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: right;
+  }
+
+  .offer-hero__fact-note {
+    margin-top: 0.5rem;
+    text-align: right;
+    font-size: 0.6875rem;
+  }
+
+  .offer-hero__main-image-frame,
+  .offer-hero__secondary-image-frame {
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--color-surface-container-low);
+  }
+
+  .offer-hero__main-image-frame {
+    aspect-ratio: 16 / 9;
+  }
+
+  .offer-hero__secondary-image-frame {
+    aspect-ratio: 16 / 9;
+  }
+
+  .offer-hero__main-image-frame img,
+  .offer-hero__secondary-image-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .offer-hero__paragraphs {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .offer-hero__sale-notice {
+    color: var(--color-primary);
+    font-family: var(--font-headline);
+    font-size: 1.5rem;
+  }
+
+  .offer-hero__secondary-images {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .offer-hero__header {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      align-items: end;
+    }
+
+    .offer-hero__secondary-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .offer-hero {
+      padding: 5rem 0;
+    }
+  }
+</style>

@@ -1,0 +1,204 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface OfertaLink {
+  href: string;
+}
+
+interface OfertaItem {
+  image: ImageAsset;
+  title: string;
+  description: string;
+  link: OfertaLink;
+}
+
+interface Props {
+  title: string;
+  items: OfertaItem[];
+}
+
+const { title, items } = Astro.props;
+const safeItems = items;
+const ARROW_RIGHT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
+---
+
+<section class="oferta-posts-section">
+  <div class="oferta-posts-section__inner theme-section-wrapper">
+    <div class="oferta-posts-section__content">
+      <h2 class="oferta-posts-section__title">{title}</h2>
+
+      <div class="oferta-posts-section__rows">
+        <div class="oferta-posts-section__divider" aria-hidden="true"></div>
+
+        {safeItems.map((item) => (
+          <div class="oferta-posts-section__row-shell">
+            <div class="oferta-posts-section__row">
+              <div class="oferta-posts-section__media theme-radius-media">
+                <img src={item.image.src} alt={item.image.alt} loading="lazy" />
+              </div>
+
+              <div class="oferta-posts-section__copy">
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+
+              <div class="oferta-posts-section__cta-wrap">
+                <a class="oferta-posts-section__cta theme-radius-control" href={item.link.href || '#'}>
+                  <span>Zobacz więcej</span>
+                  <span class="oferta-posts-section__cta-icon" aria-hidden="true" set:html={ARROW_RIGHT_SVG}></span>
+                </a>
+              </div>
+            </div>
+
+            <div class="oferta-posts-section__divider" aria-hidden="true"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .oferta-posts-section {
+    background: #ffffff;
+    padding: 8rem 0;
+  }
+
+  .oferta-posts-section__content {
+    width: min(100%, 96rem);
+    margin: 0 auto;
+  }
+
+  .oferta-posts-section__title,
+  .oferta-posts-section__copy h3,
+  .oferta-posts-section__copy p {
+    margin: 0;
+  }
+
+  .oferta-posts-section__title {
+    margin-bottom: clamp(2.5rem, 4vw, 3.5rem);
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+
+  .oferta-posts-section__rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .oferta-posts-section__divider {
+    width: 100%;
+    height: 1px;
+    background: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  }
+
+  .oferta-posts-section__row {
+    display: grid;
+    gap: 1.5rem;
+    padding: 2rem 0;
+  }
+
+  .oferta-posts-section__media {
+    overflow: hidden;
+    background: var(--color-surface-container-low);
+    min-height: 12.5rem;
+  }
+
+  .oferta-posts-section__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s ease;
+  }
+
+  .oferta-posts-section__row-shell:hover .oferta-posts-section__media img {
+    transform: scale(1.05);
+  }
+
+  .oferta-posts-section__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .oferta-posts-section__copy h3 {
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 400;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+
+  .oferta-posts-section__copy p {
+    color: var(--color-muted-foreground);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+  }
+
+  .oferta-posts-section__cta-wrap {
+    display: flex;
+    align-items: center;
+  }
+
+  .oferta-posts-section__cta {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 0.625rem;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    padding: 0.875rem 1rem;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+  }
+
+  .oferta-posts-section__cta:hover {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+
+  .oferta-posts-section__cta-icon {
+    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .oferta-posts-section__cta-icon :global(svg) {
+    width: 100%;
+    height: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .oferta-posts-section__row {
+      align-items: center;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr) auto;
+      gap: 2rem;
+    }
+
+    .oferta-posts-section__cta-wrap {
+      justify-content: flex-end;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .oferta-posts-section {
+      padding: 5rem 0;
+    }
+  }
+</style>

@@ -8,6 +8,21 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 
+export type Testimonial7Item = {
+  name: string;
+  role: string;
+  avatar: string;
+  content: string;
+};
+
+export type Testimonial7Content = {
+  badge: string;
+  title: string;
+  description: string;
+  firstRow: Testimonial7Item[];
+  secondRow: Testimonial7Item[];
+};
+
 const testimonials1 = [
   {
     name: "Sarah Chen",
@@ -110,11 +125,24 @@ const testimonials2 = [
   },
 ];
 
+export const DEFAULT_TESTIMONIAL7_CONTENT: Testimonial7Content = {
+  badge: "Testimonials",
+  title: "Meet Our Happy Clients",
+  description:
+    "Hear from the teams who have transformed their workflow with our components.",
+  firstRow: testimonials1,
+  secondRow: testimonials2,
+};
+
 interface Testimonial7Props {
   className?: string;
+  content?: Testimonial7Content;
 }
 
-export const Testimonial7 = ({ className }: Testimonial7Props) => {
+export const Testimonial7 = ({
+  className,
+  content = DEFAULT_TESTIMONIAL7_CONTENT,
+}: Testimonial7Props) => {
   const [plugins, setPlugins] = React.useState<[CarouselPlugins, CarouselPlugins]>([
     [],
     [],
@@ -162,19 +190,18 @@ export const Testimonial7 = ({ className }: Testimonial7Props) => {
     <section className={cn("py-32", className)}>
       <div className="theme-section-wrapper flex flex-col gap-16">
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 text-center">
-          <TestimonialBadge>Testimonials</TestimonialBadge>
+          <TestimonialBadge>{content.badge}</TestimonialBadge>
           <h2 className="text-center text-3xl lg:text-5xl">
-            Meet Our Happy Clients
+            {content.title}
           </h2>
           <p className="text-center text-muted-foreground lg:text-lg">
-            Hear from the teams who have transformed their workflow with our
-            components.
+            {content.description}
           </p>
         </div>
         <div className="w-full space-y-6 [mask-image:linear-gradient(90deg,transparent,black_10%,black_90%,transparent)]">
           <Carousel opts={{ loop: true }} plugins={plugins[0]}>
             <CarouselContent className="-ml-4">
-              {testimonials1.map((testimonial) => (
+              {content.firstRow.map((testimonial) => (
                 <CarouselItem
                   key={testimonial.name}
                   className="basis-auto py-px pl-4"
@@ -202,7 +229,7 @@ export const Testimonial7 = ({ className }: Testimonial7Props) => {
           </Carousel>
           <Carousel opts={{ loop: true }} plugins={plugins[1]}>
             <CarouselContent className="-ml-4">
-              {testimonials2.map((testimonial) => (
+              {content.secondRow.map((testimonial) => (
                 <CarouselItem
                   key={testimonial.name}
                   className="basis-auto py-px pl-4"
@@ -269,3 +296,5 @@ const TestimonialCard = ({ className, ...props }: TestimonialCardProps) => {
     />
   );
 };
+
+export type { Testimonial7Props };

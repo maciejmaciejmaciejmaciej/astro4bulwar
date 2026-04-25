@@ -92,6 +92,75 @@ function createAiBlockRegistry(helpers) {
     };
   }
 
+  function buildRestaurantMenuDrawerTypeContent(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+
+    return {
+      intro: clone(assertObject(data.intro, `${section.id}.data.intro`)),
+      collections: clone(Array.isArray(data.collections) ? data.collections : []),
+    };
+  }
+
+  function buildOfferHeroContent(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+
+    return {
+      eyebrow: typeof data.eyebrow === 'string' ? data.eyebrow : '',
+      titleLines: clone(Array.isArray(data.titleLines) ? data.titleLines : []),
+      lead: typeof data.lead === 'string' ? data.lead : '',
+      infoItems: clone(Array.isArray(data.infoItems) ? data.infoItems : []),
+      mainImage: clone(assertObject(data.mainImage, `${section.id}.data.mainImage`)),
+      offerEyebrow: typeof data.offerEyebrow === 'string' ? data.offerEyebrow : '',
+      offerTitleLines: clone(Array.isArray(data.offerTitleLines) ? data.offerTitleLines : []),
+      offerParagraphs: clone(Array.isArray(data.offerParagraphs) ? data.offerParagraphs : []),
+      saleNotice: typeof data.saleNotice === 'string' ? data.saleNotice : '',
+      secondaryImages: clone(Array.isArray(data.secondaryImages) ? data.secondaryImages : []),
+    };
+  }
+
+  function buildTestimonial7Content(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+
+    return {
+      badge: typeof data.badge === 'string' ? data.badge : '',
+      title: typeof data.title === 'string' ? data.title : '',
+      description: typeof data.description === 'string' ? data.description : '',
+      firstRow: clone(Array.isArray(data.firstRow) ? data.firstRow : []),
+      secondRow: clone(Array.isArray(data.secondRow) ? data.secondRow : []),
+    };
+  }
+
+  function buildContact34Content(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+
+    return {
+      tagline: typeof data.tagline === 'string' ? data.tagline : '',
+      title: typeof data.title === 'string' ? data.title : '',
+      image: clone(assertObject(data.image, `${section.id}.data.image`)),
+      contactItems: clone(Array.isArray(data.contactItems) ? data.contactItems : []),
+      form: clone(assertObject(data.form, `${section.id}.data.form`)),
+    };
+  }
+
+  function buildFeatureGridSectionContent(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+
+    return {
+      items: clone(Array.isArray(data.items) ? data.items : []),
+    };
+  }
+
+  function buildRegionalCuisineContent(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+
+    return {
+      titleLines: clone(Array.isArray(data.titleLines) ? data.titleLines : []),
+      description: typeof data.description === 'string' ? data.description : '',
+      actions: clone(Array.isArray(data.actions) ? data.actions : []),
+      image: clone(assertObject(data.image, `${section.id}.data.image`)),
+    };
+  }
+
   function buildStoryTeamShowcaseContent(section) {
     const data = assertObject(section.data, `${section.id}.data`);
     const members = getArray(data.members, `${section.id}.data.members`);
@@ -491,6 +560,140 @@ function createAiBlockRegistry(helpers) {
       build(section) {
         return {
           content: buildOurServicesContent(section),
+        };
+      },
+    },
+    'restaurant_menu_drawer_type': {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.intro.heading',
+        'content.intro.description',
+        'content.intro.buttonLabel',
+        'content.intro.buttonTarget',
+        'content.intro.imageUrl',
+        'content.intro.imageAlt',
+        'content.collections[].visualUrl',
+        'content.collections[].collectionTitle',
+        'content.collections[].collectionDescription',
+        'content.collections[].buttonLabel',
+        'content.collections[].wooCategoryIds[]',
+      ],
+      editRoute: 'Zmiany intro i kolekcji wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Aby zmienic to, co pokazuje drawer, aktualizuj content.collections[].wooCategoryIds albo edytuj produkty WooCommerce we wskazanych kategoriach.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildRestaurantMenuDrawerTypeContent(section),
+        };
+      },
+    },
+    offer_hero: {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.eyebrow',
+        'content.titleLines[]',
+        'content.lead',
+        'content.infoItems[].label',
+        'content.infoItems[].value',
+        'content.infoItems[].note',
+        'content.mainImage.src',
+        'content.mainImage.alt',
+        'content.offerEyebrow',
+        'content.offerTitleLines[]',
+        'content.offerParagraphs[]',
+        'content.saleNotice',
+        'content.secondaryImages[].src',
+        'content.secondaryImages[].alt',
+      ],
+      editRoute: 'Zmiany copy, list linii naglowka oraz obrazow wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Do podmiany obrazow korzystaj z WordPress media.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildOfferHeroContent(section),
+        };
+      },
+    },
+    testimonial7: {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.badge',
+        'content.title',
+        'content.description',
+        'content.firstRow[].name',
+        'content.firstRow[].role',
+        'content.firstRow[].avatar',
+        'content.firstRow[].content',
+        'content.secondRow[].name',
+        'content.secondRow[].role',
+        'content.secondRow[].avatar',
+        'content.secondRow[].content',
+      ],
+      editRoute: 'Zmiany naglowka i kart opinii wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Adresy avatarow utrzymuj jako obrazy z WordPress media lub zaufanych zasobow CDN.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildTestimonial7Content(section),
+        };
+      },
+    },
+    contact34: {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.tagline',
+        'content.title',
+        'content.image.src',
+        'content.image.alt',
+        'content.contactItems[].label',
+        'content.contactItems[].value',
+        'content.contactItems[].href',
+        'content.form.nameLabel',
+        'content.form.namePlaceholder',
+        'content.form.emailLabel',
+        'content.form.emailPlaceholder',
+        'content.form.messageLabel',
+        'content.form.messagePlaceholder',
+        'content.form.submitLabel',
+      ],
+      editRoute: 'Zmiany obrazu, danych kontaktowych i tekstow formularza wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Nie zmieniaj struktury formularza ani geometrii sekcji.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildContact34Content(section),
+        };
+      },
+    },
+    feature_grid_section: {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.items[].icon',
+        'content.items[].title',
+        'content.items[].description',
+      ],
+      editRoute: 'Zmiany kart siatki cech wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Icon musi pozostac jednym z dozwolonych kluczy systemowych.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildFeatureGridSectionContent(section),
+        };
+      },
+    },
+    regional_cuisine: {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.titleLines[]',
+        'content.description',
+        'content.actions[].icon',
+        'content.actions[].titleLines[]',
+        'content.actions[].description',
+        'content.actions[].href',
+        'content.actions[].linkLabel',
+        'content.image.src',
+        'content.image.alt',
+      ],
+      editRoute: 'Zmiany naglowka, listy akcji i obrazu wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Obraz wybieraj przez WordPress media.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildRegionalCuisineContent(section),
         };
       },
     },

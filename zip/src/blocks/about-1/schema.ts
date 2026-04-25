@@ -43,23 +43,23 @@ export const about1DefaultData: About1Data = about1DataSchema.parse({
   leftText: {
     title: "Nasza historia",
     paragraphs: [
-      "Bulwar laczy kuchnie i atmosfere miejsca.",
-      "Ta sekcja otwiera narracje strony.",
+      "Bulwar łączy kuchnię i atmosferę miejsca.",
+      "Ta sekcja otwiera narrację strony.",
     ],
     ctaButton: {
       href: "/kontakt",
-      text: "Skontaktuj sie",
+      text: "Skontaktuj się",
     },
   },
   rightText: {
     paragraphs: [
-      "Druga kolumna rozwija glowny przekaz sekcji.",
+      "Druga kolumna rozwija główny przekaz sekcji.",
     ],
   },
   rightImages: [
     {
       src: "/images/about-right-1.webp",
-      alt: "Detal wnetrza",
+      alt: "Detal wnętrza",
     },
   ],
 });

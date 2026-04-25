@@ -1,0 +1,190 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface Action {
+  icon: 'heart' | 'conciergeBell';
+  titleLines: string[];
+  description: string;
+  href: string;
+  linkLabel: string;
+}
+
+interface Props {
+  titleLines: string[];
+  description: string;
+  actions: Action[];
+  image: ImageAsset;
+}
+
+const { titleLines, description, actions, image } = Astro.props;
+
+const ACTION_ICON_MAP: Record<Action['icon'], string> = {
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 21-1.4-1.3C5 14.6 2 11.9 2 8.5A4.5 4.5 0 0 1 6.5 4C8.2 4 9.9 4.8 11 6.1 12.1 4.8 13.8 4 15.5 4A4.5 4.5 0 0 1 20 8.5c0 3.4-3 6.1-8.6 11.2Z"></path></svg>',
+  conciergeBell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16"></path><path d="M6 18a6 6 0 0 1 12 0"></path><path d="M12 12v-1"></path><path d="M8 18a4 4 0 0 1 8 0"></path><path d="M12 7a2 2 0 1 0 0-4"></path></svg>',
+};
+---
+
+<section class="regional-cuisine">
+  <div class="regional-cuisine__inner theme-section-wrapper">
+    <div class="regional-cuisine__desktop-image-frame">
+      <img src={image.src} alt={image.alt} loading="eager" />
+    </div>
+
+    <div class="regional-cuisine__grid">
+      <div class="regional-cuisine__copy">
+        <h2 class="regional-cuisine__title">
+          {titleLines.map((line: string, index: number) => (
+            <span>
+              {line}
+              {index < titleLines.length - 1 ? <br /> : null}
+            </span>
+          ))}
+        </h2>
+        <p class="regional-cuisine__description">{description}</p>
+
+        <div class="regional-cuisine__actions">
+          {actions.map((action: Action) => (
+            <article class="regional-cuisine__action">
+              <span class="regional-cuisine__action-icon" set:html={ACTION_ICON_MAP[action.icon]} aria-hidden="true"></span>
+              <div>
+                <h3 class="regional-cuisine__action-title">
+                  {action.titleLines.map((line: string, index: number) => (
+                    <span>
+                      {line}
+                      {index < action.titleLines.length - 1 ? <br /> : null}
+                    </span>
+                  ))}
+                </h3>
+                <p class="regional-cuisine__action-description">{action.description}</p>
+                <a class="regional-cuisine__action-link" href={action.href}>{action.linkLabel}</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div class="regional-cuisine__mobile-image-frame">
+        <img src={image.src} alt={image.alt} loading="lazy" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .regional-cuisine {
+    padding: 8rem 0;
+    background: var(--color-background);
+  }
+
+  .regional-cuisine__inner {
+    position: relative;
+  }
+
+  .regional-cuisine__desktop-image-frame {
+    display: none;
+  }
+
+  .regional-cuisine__grid {
+    display: grid;
+    gap: 3rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .regional-cuisine__copy {
+    max-width: 40rem;
+  }
+
+  .regional-cuisine__title {
+    margin: 0 0 1.5rem;
+    font-family: var(--font-headline);
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    line-height: 1.05;
+  }
+
+  .regional-cuisine__description,
+  .regional-cuisine__action-description {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    line-height: 1.8;
+  }
+
+  .regional-cuisine__actions {
+    display: grid;
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+
+  .regional-cuisine__action {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .regional-cuisine__action-icon {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+  }
+
+  .regional-cuisine__action-icon :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .regional-cuisine__action-title {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-headline);
+    font-size: 1.125rem;
+  }
+
+  .regional-cuisine__action-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    border-bottom: 2px solid color-mix(in srgb, var(--color-foreground) 20%, transparent);
+    padding-bottom: 0.25rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .regional-cuisine__mobile-image-frame img,
+  .regional-cuisine__desktop-image-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  .regional-cuisine__mobile-image-frame {
+    max-width: 863px;
+  }
+
+  @media (min-width: 768px) {
+    .regional-cuisine__desktop-image-frame {
+      display: block;
+      position: absolute;
+      top: 50%;
+      right: -150px;
+      width: 863px;
+      max-width: 50vw;
+      height: 1080px;
+      transform: translateY(-50%);
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .regional-cuisine__mobile-image-frame {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .regional-cuisine__actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

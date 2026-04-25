@@ -107,6 +107,8 @@ const getGridClassName = (columns: 2 | 3) => {
   return "max-w-5xl gap-y-12 md:grid-cols-2 md:gap-x-20";
 };
 
+const menuItemPrimaryTextClassName = "font-label text-base leading-snug tracking-wider";
+
 export function PageBuilderMenuColumns({
   menuColumns,
   emptyStateText,
@@ -144,7 +146,8 @@ export function PageBuilderMenuColumns({
                 <div className="flex min-w-0 w-fit max-w-[calc(100%-6rem)] flex-col md:max-w-none md:flex-1">
                   <span
                     className={cn(
-                      "block break-words font-headline text-base leading-tight tracking-widest",
+                      "block break-words",
+                      menuItemPrimaryTextClassName,
                       hasDetails ? "mb-1" : null,
                       styles.titleClassName,
                     )}
@@ -156,7 +159,8 @@ export function PageBuilderMenuColumns({
                       {description ? (
                         <p
                           className={cn(
-                            "break-words font-label text-base leading-snug tracking-wider",
+                            "break-words",
+                            menuItemPrimaryTextClassName,
                             styles.descriptionClassName,
                           )}
                         >
@@ -191,7 +195,8 @@ export function PageBuilderMenuColumns({
                   />
                   <span
                     className={cn(
-                      "shrink-0 whitespace-nowrap text-right font-headline text-lg",
+                      "shrink-0 whitespace-nowrap text-right",
+                      menuItemPrimaryTextClassName,
                       styles.priceClassName,
                     )}
                   >

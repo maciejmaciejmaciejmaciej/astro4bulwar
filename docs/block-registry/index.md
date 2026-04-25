@@ -41,15 +41,26 @@ It exists to give every later workflow one stable source for:
 
 - `about-1`
 - `about_2_simple`
+- `big_img_and_bolded_tex_editorial_style_block`
+- `block_download`
 - `simple_heading_and_paragraph`
 - `our-services`
 - `promo2`
 - `promo3`
+- `premium_call_to_action_with_image_carousel`
+- `offer_hero`
+- `testimonial7`
+- `contact34`
+- `feature_grid_section`
+- `regional_cuisine`
 - `story-team-showcase`
 - `hero_simple_no_text_py32`
 - `hero_simple_no_text_normal_wide`
 - `just_pralax_img_horizontal`
 - `menu-category-photo-parallax-full-width`
+- `menu_two_columns_with_no_heading_no_img`
+- `menu_two_columns_with_with_heading_no_img`
+- `menu_three_columns_with_with_heading_no_img`
 - `gallery-masonry-style1`
 - `oferta_posts_section`
 - `universal_header_block_2`
@@ -57,5 +68,7 @@ It exists to give every later workflow one stable source for:
 ## Current Phase
 
 The registry now contains a mix of `ready` and `refining` entries.
+
+The non-preview `/template` Astro rollout is complete for the previously missing 12 page-builder blocks. Preview-only components still remain outside the Astro-ready set.
 
 Readiness must be checked per block in the block docs or in `registry.machine.json` before the block is treated as ready for page composition.

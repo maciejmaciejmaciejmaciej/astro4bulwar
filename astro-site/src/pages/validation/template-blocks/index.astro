@@ -1,0 +1,43 @@
+---
+import PageBuilderSection from '../../../components/PageBuilderSection.astro';
+import {
+  templateBlockAstroValidationRenderableSections,
+} from '../../../lib/templateBlockAstroValidation.ts';
+
+const VALIDATION_ASSET_ORIGIN = 'https://validation.example.test';
+const sections = templateBlockAstroValidationRenderableSections;
+
+const toAbsoluteAssetUrl = (src: string) => {
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+
+  return `${VALIDATION_ASSET_ORIGIN}${src.startsWith('/') ? '' : '/'}${src}`;
+};
+
+const toAbsoluteImageAssets = (images: Array<{ src: string; alt: string }>) => images.map((image) => ({
+  ...image,
+  src: toAbsoluteAssetUrl(image.src),
+}));
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Template Block Astro Validation</title>
+  </head>
+  <body>
+    <main hidden aria-hidden="true" data-template-block-validation-count={sections.length}>
+      {sections.map((section) => (
+        <section data-template-block-validation={section.blockKey}>
+          <PageBuilderSection
+            section={section}
+            toAbsoluteAssetUrl={toAbsoluteAssetUrl}
+            toAbsoluteImageAssets={toAbsoluteImageAssets}
+          />
+        </section>
+      ))}
+    </main>
+  </body>
+</html>

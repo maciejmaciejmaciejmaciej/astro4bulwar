@@ -7,6 +7,7 @@ import CateringWielkanocnyPage from "./pages/CateringWielkanocnyPage";
 import CateringWielkanocnyThankYouPage from "./pages/CateringWielkanocnyThankYouPage";
 import TemplatePage from "./pages/TemplatePage";
 import TemplatePage2 from "./pages/TemplatePage2";
+import TemplatePage3 from "./pages/TemplatePage3";
 import TestowaBlueprintPage from "./pages/TestowaBlueprintPage";
 import RootLayout from "./layouts/RootLayout";
 import {
@@ -23,6 +24,7 @@ export default function App() {
         <Route path={BLOCK_REGISTRY_SHOWCASE_PATH} element={<BlockRegistryShowcasePage />} />
         <Route path="/template" element={<TemplatePage />} />
         <Route path="/template2" element={<TemplatePage2 />} />
+        <Route path="/template3" element={<TemplatePage3 />} />
         <Route path="/testowa-blueprint" element={<TestowaBlueprintPage />} />
       </Route>
       <Route path={CATERING_WIELKANOCNY_PATH} element={<CateringWielkanocnyPage />} />

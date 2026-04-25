@@ -1,0 +1,192 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface Props {
+  title: string;
+  paragraphs: string[];
+  buttonText: string;
+  buttonLink: string;
+  image1: ImageAsset;
+  image2: ImageAsset;
+}
+
+const { title, paragraphs, buttonText, buttonLink, image1, image2 } = Astro.props;
+
+const safeParagraphs = paragraphs.filter((paragraph): paragraph is string => paragraph.trim().length > 0);
+---
+
+<section class="about-2-simple">
+  <div class="about-2-simple__inner theme-section-wrapper">
+    <div class="about-2-simple__grid">
+      <div class="about-2-simple__copy-column">
+        <div class="about-2-simple__heading-group">
+          <h2 class="about-2-simple__title">{title}</h2>
+          <div class="about-2-simple__rule" aria-hidden="true"></div>
+        </div>
+
+        <div class="about-2-simple__body">
+          {safeParagraphs.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+
+        <a class="about-2-simple__cta theme-radius-control" href={buttonLink}>{buttonText}</a>
+      </div>
+
+      <div class="about-2-simple__media-column" aria-label="Zdjecia sekcji o restauracji">
+        <div class="about-2-simple__image-frame about-2-simple__image-frame--primary theme-radius-media">
+          <img src={image1.src} alt={image1.alt} loading="eager" />
+        </div>
+        <div class="about-2-simple__image-frame about-2-simple__image-frame--secondary theme-radius-media">
+          <img src={image2.src} alt={image2.alt} loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .about-2-simple {
+    background: #ffffff;
+    padding: 8rem 0;
+    overflow: hidden;
+  }
+
+  .about-2-simple__grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .about-2-simple__copy-column {
+    display: flex;
+    max-width: 36rem;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  .about-2-simple__heading-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .about-2-simple__title {
+    margin: 0;
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: clamp(2.25rem, 4vw, 3rem);
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+
+  .about-2-simple__rule {
+    width: 3rem;
+    height: 1px;
+    background: var(--color-primary);
+  }
+
+  .about-2-simple__body {
+    display: flex;
+    max-width: 80%;
+    flex-direction: column;
+    gap: 1.5rem;
+    color: rgb(113 113 122);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    text-align: justify;
+  }
+
+  .about-2-simple__body p {
+    margin: 0;
+  }
+
+  .about-2-simple__cta {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-on-surface);
+    color: #ffffff;
+    padding: 1.25rem 2rem;
+    font-family: var(--font-label);
+    font-size: 0.875rem;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: opacity 0.2s ease;
+  }
+
+  .about-2-simple__cta:hover {
+    opacity: 0.82;
+  }
+
+  .about-2-simple__media-column {
+    position: relative;
+    min-height: 30rem;
+    margin-top: 1rem;
+  }
+
+  .about-2-simple__image-frame {
+    position: absolute;
+    overflow: hidden;
+    background: var(--color-surface-container-low);
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+  }
+
+  .about-2-simple__image-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .about-2-simple__image-frame--primary {
+    top: 0;
+    right: 0;
+    width: min(82%, 34rem);
+    aspect-ratio: 4 / 5;
+  }
+
+  .about-2-simple__image-frame--secondary {
+    left: 0;
+    bottom: 0;
+    width: min(56%, 22rem);
+    aspect-ratio: 4 / 5;
+    z-index: 1;
+  }
+
+  @media (min-width: 1024px) {
+    .about-2-simple__grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 4rem;
+    }
+
+    .about-2-simple__media-column {
+      min-height: 37.5rem;
+      margin-top: 0;
+    }
+
+    .about-2-simple__image-frame--secondary {
+      bottom: 2.5rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .about-2-simple {
+      padding: 5rem 0;
+    }
+
+    .about-2-simple__body {
+      max-width: 100%;
+    }
+
+    .about-2-simple__media-column {
+      min-height: 24rem;
+    }
+  }
+</style>

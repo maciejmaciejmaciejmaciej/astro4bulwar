@@ -1,0 +1,799 @@
+plan_id: template-astro-readiness-missing-blocks-20260424
+objective: >-
+  Retry the Astro-readiness rollout for the missing non-preview `/template`
+  page-builder blocks only: hero_simple_no_text_py32,
+  hero_simple_no_text_normal_wide, about_2_simple, promo2,
+  simple_heading_and_paragraph,
+  big_img_and_bolded_tex_editorial_style_block,
+  menu_two_columns_with_no_heading_no_img,
+  menu_two_columns_with_with_heading_no_img, just_pralax_img_horizontal,
+  menu_three_columns_with_with_heading_no_img,
+  premium_call_to_action_with_image_carousel, and oferta_posts_section.
+  Exclude preview-only components, keep React component-to-block conversion out of
+  scope, and optimize for minimal cross-file churn with fast validation gates.
+created_at: '2026-04-24T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 11
+  risk_score: high
+
+tldr: |
+  The retry plan keeps the scope fixed to the 12 missing non-preview `/template`
+  block keys, but changes the gate order in four ways.
+  1. Astro parsing still lands first in astro-site/src/lib/types.ts and is blocked by
+     astro-site/src/lib/types.test.ts.
+  2. Source-backed work is collapsed into one pageBuilder-centric resolver pass for
+     Promo2, the standalone menu family, and oferta_posts_section so the plan does not
+     churn astro-site/src/lib/pageBuilder.ts twice. Sources: astro-site/src/lib/pageBuilder.ts,
+     astro-site/src/lib/woo.ts, astro-site/src/lib/wordpress.ts.
+  3. Renderer packs still land before integration, but the plan now adds a real
+     Astro render-path validation gate: a hidden validation route or equivalent fixture
+     page that forces all 12 target blocks through astro-site/src/components/PageBuilderSection.astro
+     during `npm.cmd run build`, instead of trusting a generic build that may never touch
+     `/template`-only branches. Sources: astro-site/src/components/PageBuilderSection.astro,
+     astro-site/package.json.
+  4. Readiness is no longer promoted in the projection-wiring task. The shared manifest
+     stays `refining` until the render-path gate passes; only the final docs + manifest
+     parity task may flip the 12 target blocks to `ready`. The plan explicitly carries
+     forward the current manual dispatcher pattern in PageBuilderSection.astro as tactical
+     debt for this immediate rollout and contains that debt with dedicated projection-parity
+     and render-path validation rather than reopening a dispatcher refactor. Sources:
+     astro-site/src/components/PageBuilderSection.astro,
+     astro-site/src/lib/astroRegistry.ts,
+     docs/block-registry/registry.machine.json.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: high
+  critical_failure_modes:
+    - scenario: >-
+        The build still passes without compiling the new `/template` branches because no
+        generated Astro page actually renders the 12 target block keys through
+        PageBuilderSection.astro.
+      likelihood: high
+      impact: critical
+      mitigation: >-
+        Add a dedicated hidden validation route or equivalent build fixture that renders
+        all 12 target blocks via astro-site/src/components/PageBuilderSection.astro, and
+        require that route to be part of the `npm.cmd run build` output before the ready
+        flip is allowed. Sources: astro-site/src/components/PageBuilderSection.astro,
+        astro-site/package.json.
+    - scenario: >-
+        The manual dispatcher pattern in PageBuilderSection.astro drifts away from the
+        astroRegistry projection or the shared readiness manifest, creating a false sense
+        of readiness for one or more blocks.
+      likelihood: medium
+      impact: critical
+      mitigation: >-
+        Keep projection wiring, dispatcher branching, and any candidate-only validation
+        support in one integration task, then block the final manifest flip on both the
+        real render-path gate and astro-site/src/lib/astroRegistry.test.ts parity coverage.
+        Sources: astro-site/src/components/PageBuilderSection.astro,
+        astro-site/src/lib/astroRegistry.ts,
+        astro-site/src/lib/astroRegistry.test.ts,
+        docs/block-registry/registry.machine.json.
+    - scenario: >-
+        Promo2, the standalone menu family, and oferta_posts_section are implemented in
+        separate resolver passes that all touch astro-site/src/lib/pageBuilder.ts, causing
+        unnecessary churn and increasing the chance of parity drift between Woo and
+        WordPress source-backed sections.
+      likelihood: medium
+      impact: high
+      mitigation: >-
+        Collapse source-backed resolver work into one pageBuilder-centric task with one
+        focused astro-site/src/lib/pageBuilder.test.ts checkpoint covering Promo2, one
+        headingless menu variant, one heading-bearing menu variant, and oferta CTA/source-order
+        fallback behavior. Sources: astro-site/src/lib/pageBuilder.ts,
+        astro-site/src/lib/pageBuilder.test.ts,
+        astro-site/src/lib/woo.ts,
+        astro-site/src/lib/wordpress.ts.
+  assumptions:
+    - >-
+      The target blocks already have React runtime, registry docs, AI descriptors, and
+      shared-registry coverage, and the remaining gap is Astro readiness only. Sources:
+      docs/block-registry/registry.machine.json, docs/block-registry/index.md,
+      zip/src/pages/TemplatePage.tsx.
+    - >-
+      The current Astro-ready gate is controlled by astro-site/src/lib/types.ts,
+      astro-site/src/lib/pageBuilder.ts, astro-site/src/lib/astroRegistry.ts, and
+      astro-site/src/components/PageBuilderSection.astro, so extending those seams is the
+      smallest credible implementation path. Sources: astro-site/src/lib/types.ts,
+      astro-site/src/lib/pageBuilder.ts, astro-site/src/lib/astroRegistry.ts,
+      astro-site/src/components/PageBuilderSection.astro.
+    - >-
+      Immediate implementation matters more than refactoring the dispatcher architecture,
+      so the existing manual branch table in PageBuilderSection.astro is accepted as tactical
+      debt for this rollout and must be contained with executable validation rather than
+      redesigned now. Sources: astro-site/src/components/PageBuilderSection.astro,
+      user request.
+    - >-
+      The active PRD does not define this ad hoc `/template` Astro-readiness objective,
+      so scope is locked by the explicit user request and the current repo state rather than
+      by docs/PRD.yaml features. Sources: docs/PRD.yaml, user request,
+      zip/src/pages/TemplatePage.tsx.
+
+implementation_specification:
+  code_structure: |
+    Keep the rollout Astro-local and seam-driven. The shared registry and React page-builder
+    contracts already exist under zip/src/blocks/** and zip/src/pages/TemplatePage.tsx; this
+    plan should not reopen those files except as references. New code should land in five
+    bounded slices only: Astro-side block schemas in astro-site/src/lib/types.ts, a single
+    pageBuilder-centric source-resolution pass in astro-site/src/lib/pageBuilder.ts plus the
+    minimal helper additions required in astro-site/src/lib/woo.ts and astro-site/src/lib/wordpress.ts,
+    presentational Astro components under astro-site/src/components/, projection/dispatch support in
+    astro-site/src/lib/astroRegistry.ts and astro-site/src/components/PageBuilderSection.astro,
+    and a hidden Astro validation route or equivalent build fixture under astro-site/src/pages/**
+    that renders all 12 target blocks through the real dispatcher path. The shared readiness
+    manifest in docs/block-registry/registry.machine.json and the note in docs/block-registry/index.md
+    must remain untouched until the final gate. Do not broaden scope into a dispatcher refactor;
+    if candidate-only validation support is needed before the final flip, keep it internal to the
+    Astro site and treat it as tactical debt.
+  affected_areas:
+    - astro-site/src/lib/types.ts
+    - astro-site/src/lib/pageBuilder.ts
+    - astro-site/src/lib/woo.ts
+    - astro-site/src/lib/wordpress.ts
+    - astro-site/src/lib/astroRegistry.ts
+    - astro-site/src/components/PageBuilderSection.astro
+    - astro-site/src/components/*.astro
+    - astro-site/src/pages/**
+    - astro-site/src/lib/*.test.ts
+    - docs/block-registry/registry.machine.json
+    - docs/block-registry/index.md
+  component_details:
+    - component: Astro payload contract
+      responsibility: >-
+        Parse all 12 target block keys with block-specific Astro-side schemas while keeping
+        direct-edit and source-backed variants distinct.
+      interfaces:
+        - pageBuilderSchema accepts the 12 target block keys in astro-site/src/lib/types.ts
+        - Dedicated exported Astro block types remain available to resolver and renderer code
+    - component: Consolidated Astro source-resolution seam
+      responsibility: >-
+        Resolve Promo2, the standalone menu family, and oferta_posts_section in one
+        pageBuilder-centric pass before any Astro component renders, only extending helper
+        seams where pageBuilder cannot absorb the behavior cleanly.
+      interfaces:
+        - resolveAstroPageSections(sections)
+        - resolveMenuBlock(block)
+        - WordPress helper for oferta_posts_section source hydration
+    - component: Direct-edit Astro renderer packs
+      responsibility: >-
+        Render the seven direct-edit `/template` blocks using TemplatePage-aligned geometry
+        and normalized absolute asset URLs without introducing fetch logic.
+      interfaces:
+        - hero/media renderer files for both hero variants plus just_pralax_img_horizontal
+        - editorial renderer files for about_2_simple, simple_heading_and_paragraph, and the editorial image block
+        - one renderer file for premium_call_to_action_with_image_carousel
+    - component: Source-backed Astro renderer pack
+      responsibility: >-
+        Render Promo2, the standalone menu family, and oferta_posts_section from already-resolved
+        data contracts shared with the consolidated resolver seam.
+      interfaces:
+        - Promo2Section.astro
+        - Standalone menu Astro section component for the two-column and three-column variants
+        - OfertaPostsSection.astro
+    - component: Candidate projection and dispatcher support
+      responsibility: >-
+        Extend astro-site/src/lib/astroRegistry.ts and the manual dispatcher in
+        astro-site/src/components/PageBuilderSection.astro for all 12 target blocks without
+        flipping manifest readiness yet. Any candidate-only support added to exercise the real
+        render path before the final flip must stay internal to Astro and is tactical debt.
+      interfaces:
+        - resolveAstroRenderer(blockKey)
+        - listAstroRendererBlockKeys()
+        - Internal candidate-only helper or allowlist, if needed for validation
+    - component: Hidden render-path validation harness
+      responsibility: >-
+        Force all 12 target block keys through the real Astro dispatch path during build so
+        `npm.cmd run build` becomes a meaningful readiness check instead of a generic compile.
+      interfaces:
+        - Hidden Astro route or equivalent fixture page under astro-site/src/pages/**
+        - Fixture payload covering all 12 target block keys through PageBuilderSection.astro
+        - Deterministic markers or assertions proving the generated output includes every target block
+    - component: Final readiness and docs gate
+      responsibility: >-
+        Update docs/block-registry/index.md, promote the 12 target blocks to `ready` in
+        docs/block-registry/registry.machine.json, and align astro-site/src/lib/astroRegistry.test.ts
+        only after the hidden render-path gate and focused Astro tests succeed.
+      interfaces:
+        - readiness.blocks[*].capabilities.astroRenderer
+        - Registry overview note in docs/block-registry/index.md
+        - Astro projection parity test suite
+  dependencies:
+    - component: Astro payload contract
+      relationship: Supplies parseable types to the consolidated source-resolution task and all renderer tasks.
+    - component: Consolidated Astro source-resolution seam
+      relationship: Must stabilize before the source-backed renderer pack and before any readiness validation claims.
+    - component: Direct-edit Astro renderer packs
+      relationship: Feed candidate projection wiring with stable component paths for the static blocks.
+    - component: Source-backed Astro renderer pack
+      relationship: Consumes resolved data shapes defined by the consolidated source-resolution seam.
+    - component: Candidate projection and dispatcher support
+      relationship: Enables the real render-path validation harness while keeping the shared manifest unchanged.
+    - component: Hidden render-path validation harness
+      relationship: Must pass before docs/block-registry/registry.machine.json or docs/block-registry/index.md may claim ready status.
+    - component: Final readiness and docs gate
+      relationship: Depends on renderer completion, candidate wiring, and passing validation evidence.
+  integration_points:
+    - zip/src/pages/TemplatePage.tsx
+    - zip/src/blocks/registry/resolvePageBuilderSources.ts
+    - docs/block-registry/registry.machine.json
+    - docs/block-registry/index.md
+    - astro-site/src/lib/types.ts
+    - astro-site/src/lib/pageBuilder.ts
+    - astro-site/src/lib/astroRegistry.ts
+    - astro-site/src/components/PageBuilderSection.astro
+    - astro-site/src/pages/**
+
+contracts:
+  - from_task: extend_astro_types_for_template_blocks
+    to_task: generalize_astro_source_resolution_for_template_source_backed_blocks
+    interface: Typed Astro contracts for Promo2, the standalone menu family, and oferta_posts_section.
+    format: astro-site/src/lib/types.ts block unions and source shapes
+  - from_task: extend_astro_types_for_template_blocks
+    to_task: add_astro_renderers_for_template_media_shells
+    interface: Typed direct-edit data contracts for the hero/media block family.
+    format: Astro block types and asset field definitions
+  - from_task: extend_astro_types_for_template_blocks
+    to_task: add_astro_renderers_for_template_editorial_shells
+    interface: Typed direct-edit data contracts for the editorial block family.
+    format: Astro block types and rich-text/image field definitions
+  - from_task: extend_astro_types_for_template_blocks
+    to_task: add_astro_renderer_for_template_premium_cta
+    interface: Typed direct-edit contract for premium_call_to_action_with_image_carousel.
+    format: Astro block type and CTA/carousel field definitions
+  - from_task: generalize_astro_source_resolution_for_template_source_backed_blocks
+    to_task: add_astro_renderers_for_template_source_backed_family
+    interface: Resolved Promo2/menu/oferta data with stable title, menuColumns, source order, and CTA fallback semantics.
+    format: Resolved Astro section payload returned from resolveAstroPageSections
+  - from_task: add_astro_renderers_for_template_media_shells
+    to_task: wire_candidate_projection_and_dispatch_for_template_blocks
+    interface: Component paths for hero/media blocks.
+    format: astro-site/src/components/*.astro file paths keyed by blockKey
+  - from_task: add_astro_renderers_for_template_editorial_shells
+    to_task: wire_candidate_projection_and_dispatch_for_template_blocks
+    interface: Component paths for editorial direct-edit blocks.
+    format: astro-site/src/components/*.astro file paths keyed by blockKey
+  - from_task: add_astro_renderer_for_template_premium_cta
+    to_task: wire_candidate_projection_and_dispatch_for_template_blocks
+    interface: Component path for premium_call_to_action_with_image_carousel.
+    format: astro-site/src/components/*.astro file path keyed by blockKey
+  - from_task: add_astro_renderers_for_template_source_backed_family
+    to_task: wire_candidate_projection_and_dispatch_for_template_blocks
+    interface: Component paths for Promo2, standalone menu, and oferta blocks.
+    format: astro-site/src/components/*.astro file paths keyed by blockKey
+  - from_task: wire_candidate_projection_and_dispatch_for_template_blocks
+    to_task: add_real_astro_render_path_validation_for_template_blocks
+    interface: Candidate projection entries, dispatcher branches, and any internal validation-only support required before the manifest flip.
+    format: astro-site/src/lib/astroRegistry.ts projection entries and PageBuilderSection.astro branch coverage
+  - from_task: add_real_astro_render_path_validation_for_template_blocks
+    to_task: finalize_template_block_readiness_docs_and_manifest_parity
+    interface: Passing render-path validation evidence and preview-only exclusion audit for the 12 target blocks.
+    format: Focused test/build checkpoint summary tied to the hidden Astro validation route
+
+tasks:
+  - id: extend_astro_types_for_template_blocks
+    title: Extend Astro parsing for the 12 `/template` block contracts
+    description: |
+      Expand astro-site/src/lib/types.ts so Astro can parse the 12 missing non-preview
+      `/template` blocks from the shared registry without widening them to anonymous shapes.
+      Keep the contract split between direct-edit blocks and source-backed blocks, and use
+      astro-site/src/lib/types.test.ts as the first validation gate before any renderer,
+      resolver, or readiness work starts. Sources: astro-site/src/lib/types.ts,
+      astro-site/src/lib/types.test.ts, zip/src/pages/TemplatePage.tsx,
+      docs/block-registry/registry.machine.json.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers: [AC1, AC4, AC6]
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/types.ts
+        description: Current Astro page-builder schemas and shared-registry gate.
+      - path: astro-site/src/lib/types.test.ts
+        description: Existing Astro schema tests, including the current simple_heading fixture.
+      - path: zip/src/pages/TemplatePage.tsx
+        description: Canonical `/template` source showing the in-scope shared-registry blocks and preview-only exclusions.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: The retry still starts with the cheapest parseable contract gate before any source, component, or readiness work.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 240
+        focus_area: Astro schema coverage
+        verification:
+          - Fast checkpoint: astro-site/src/lib/types.test.ts parses at least one direct-edit target block and one source-backed target block.
+          - The 12 target keys parse without enabling any preview-only component names.
+          - Shared-registry blocks already marked ready remain parseable after the change.
+        acceptance_criteria:
+          - All 12 requested block keys are represented in Astro-side Zod/TypeScript contracts.
+          - Direct-edit and source-backed blocks stay distinguishable in Astro code.
+          - The task does not touch React block definitions or `/template` preview content.
+        failure_modes:
+          - scenario: Type coverage is added through an overly broad union that hides block-specific data bugs.
+            likelihood: medium
+            impact: high
+            mitigation: Add block-specific parse cases in astro-site/src/lib/types.test.ts instead of relying on a permissive fallback.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Zod
+    test_coverage: Extend and run astro-site/src/lib/types.test.ts as the first blocking checkpoint.
+
+  - id: generalize_astro_source_resolution_for_template_source_backed_blocks
+    title: Collapse Astro source resolution for Promo2, standalone menus, and oferta posts into one seam pass
+    description: |
+      Extend astro-site/src/lib/pageBuilder.ts so Astro resolves Promo2,
+      menu_two_columns_with_no_heading_no_img,
+      menu_two_columns_with_with_heading_no_img,
+      menu_three_columns_with_with_heading_no_img, and oferta_posts_section through one
+      pageBuilder-centric source-resolution pass. Touch astro-site/src/lib/woo.ts and
+      astro-site/src/lib/wordpress.ts only where pageBuilder cannot absorb the behavior cleanly,
+      and prove Woo plus WordPress semantics together in astro-site/src/lib/pageBuilder.test.ts
+      before any readiness work is attempted. Sources:
+      astro-site/src/lib/pageBuilder.ts,
+      astro-site/src/lib/pageBuilder.test.ts,
+      astro-site/src/lib/woo.ts,
+      astro-site/src/lib/wordpress.ts,
+      zip/src/blocks/registry/resolvePageBuilderSources.ts,
+      docs/block-registry/promo2.md,
+      docs/block-registry/menu_two_columns_with_no_heading_no_img.md,
+      docs/block-registry/menu_two_columns_with_with_heading_no_img.md,
+      docs/block-registry/menu_three_columns_with_with_heading_no_img.md,
+      docs/block-registry/oferta_posts_section.md.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers: [AC2, AC3, AC5]
+    priority: high
+    status: pending
+    dependencies:
+      - extend_astro_types_for_template_blocks
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/pageBuilder.ts
+        description: Central resolver gate that should absorb the source-backed rollout in one pass.
+      - path: astro-site/src/lib/pageBuilder.test.ts
+        description: Cheapest behavior seam for proving both Woo and WordPress source-backed parity.
+      - path: astro-site/src/lib/woo.ts
+        description: Existing Woo helper already used for Astro menu-family hydration.
+      - path: astro-site/src/lib/wordpress.ts
+        description: Existing WordPress helper seam that can absorb oferta-post fetch/mapping work.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: The critique correctly calls out avoidable churn in pageBuilder.ts, so Woo and WordPress source-backed changes are now sequenced as one resolver task.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 290
+        focus_area: PageBuilder-centric source-resolution parity
+        verification:
+          - Fast checkpoint: astro-site/src/lib/pageBuilder.test.ts passes one Promo2 case, one headingless menu case, one heading-bearing menu case, and one oferta CTA/source-order case.
+          - Existing Astro-ready menu behavior remains green after the consolidation.
+          - No Astro component markup, projection, or manifest changes occur in this task.
+        acceptance_criteria:
+          - The four Woo-backed target blocks and oferta_posts_section resolve before render in one pageBuilder-centric pass.
+          - Resolver behavior mirrors the documented React/source semantics closely enough for `/template` parity.
+          - Helper seams are touched only where the central pageBuilder pass cannot express the needed behavior cleanly.
+        failure_modes:
+          - scenario: The consolidated task still spreads behavior across helpers and pageBuilder in a way that hides parity drift.
+            likelihood: medium
+            impact: high
+            mitigation: Keep pageBuilder.test.ts as the single source-backed checkpoint covering Woo and WordPress cases together.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Fetch API
+    test_coverage: Extend and run astro-site/src/lib/pageBuilder.test.ts for Promo2, standalone menu variants, and oferta_posts_section.
+
+  - id: add_astro_renderers_for_template_media_shells
+    title: Add Astro renderers for the hero/media `/template` shells
+    description: |
+      Create the Astro section files for hero_simple_no_text_py32,
+      hero_simple_no_text_normal_wide, and just_pralax_img_horizontal. Preserve the documented
+      shell geometry and asset behavior from the block docs and TemplatePage, but keep this task
+      component-only so it can validate later through the real Astro render-path gate. Sources:
+      docs/block-registry/hero_simple_no_text_py32.md,
+      docs/block-registry/hero_simple_no_text_normal_wide.md,
+      docs/block-registry/just_pralax_img_horizontal.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers: [AC2, AC4]
+    priority: medium
+    status: pending
+    dependencies:
+      - extend_astro_types_for_template_blocks
+    conflicts_with: []
+    context_files:
+      - path: docs/block-registry/hero_simple_no_text_py32.md
+        description: Direct-edit contract and geometry rules for the py32 hero block.
+      - path: docs/block-registry/hero_simple_no_text_normal_wide.md
+        description: Direct-edit contract and geometry rules for the normal-wide hero block.
+      - path: docs/block-registry/just_pralax_img_horizontal.md
+        description: Direct-edit parallax image shell and width rules.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: These remain the cleanest component-only wins once Astro types exist.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: Hero and media Astro components
+        verification:
+          - The components consume typed direct-edit props only.
+          - Desktop wrapper and image geometry remain aligned with TemplatePage and the shared layout-spacing memory guidance.
+          - No source hydration code appears in these component files.
+        acceptance_criteria:
+          - Both hero variants preserve their documented spacing differences.
+          - just_pralax_img_horizontal preserves the documented contained width and image-mask behavior.
+          - The task adds only component files.
+        failure_modes:
+          - scenario: The two hero variants collapse into one simplified shell and lose the required spacing distinction.
+            likelihood: medium
+            impact: medium
+            mitigation: Keep block-specific props and verify the py32 vs normal-wide differences against the docs before integration.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Tailwind CSS
+    test_coverage: Validation is deferred to the real Astro render-path gate after candidate projection wiring.
+
+  - id: add_astro_renderers_for_template_editorial_shells
+    title: Add Astro renderers for the editorial `/template` shells
+    description: |
+      Create the Astro section files for about_2_simple,
+      simple_heading_and_paragraph, and
+      big_img_and_bolded_tex_editorial_style_block. Preserve the documented geometry, editorial
+      rhythm, and rich-text boundaries, but keep the task limited to component files. Sources:
+      docs/block-registry/about_2_simple.md,
+      docs/block-registry/simple_heading_and_paragraph.md,
+      docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers: [AC2, AC4]
+    priority: medium
+    status: pending
+    dependencies:
+      - extend_astro_types_for_template_blocks
+    conflicts_with: []
+    context_files:
+      - path: docs/block-registry/about_2_simple.md
+        description: ModernInterior-derived editorial block contract.
+      - path: docs/block-registry/simple_heading_and_paragraph.md
+        description: Editorial heading and paragraph contract, including rich-text field rules.
+      - path: docs/block-registry/big_img_and_bolded_tex_editorial_style_block.md
+        description: Editorial image block contract derived from Promo3.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: Grouping the editorial surfaces together still minimizes shared parsing churn while keeping the file count under control.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 260
+        focus_area: Editorial Astro components
+        verification:
+          - about_2_simple keeps the layered image + copy composition.
+          - simple_heading_and_paragraph preserves the documented heading/divider/rich-text contract.
+          - The editorial image block keeps its contained layout rather than drifting to a generic text-image split.
+        acceptance_criteria:
+          - All three editorial blocks render from direct-edit data only.
+          - Geometry and safe-edit boundaries remain consistent with the block docs.
+          - The task adds only component files.
+        failure_modes:
+          - scenario: Rich-text rendering in Astro expands beyond the documented supported content and creates unreviewed formatting behavior.
+            likelihood: medium
+            impact: high
+            mitigation: Keep rich-text handling limited to the documented field contract and rely on the final real render-path gate rather than optimistic component review.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Tailwind CSS
+    test_coverage: Validation is deferred to the real Astro render-path gate after candidate projection wiring.
+
+  - id: add_astro_renderer_for_template_premium_cta
+    title: Add the Astro renderer for premium_call_to_action_with_image_carousel
+    description: |
+      Create the Astro section file for premium_call_to_action_with_image_carousel and preserve
+      the contained CTA shell and image-carousel treatment documented for the block. Keep the
+      implementation isolated to the component file so this slice can validate through the shared
+      render-path gate instead of inventing a bespoke test seam. Sources:
+      docs/block-registry/premium_call_to_action_with_image_carousel.md,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers: [AC2, AC4]
+    priority: medium
+    status: pending
+    dependencies:
+      - extend_astro_types_for_template_blocks
+    conflicts_with: []
+    context_files:
+      - path: docs/block-registry/premium_call_to_action_with_image_carousel.md
+        description: Direct-edit CTA and image-carousel block contract.
+      - path: zip/src/pages/TemplatePage.tsx
+        description: Canonical `/template` placement and shell rhythm for the block.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: This block remains direct-edit but visually distinct enough to stay isolated from the editorial pack.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 120
+        focus_area: CTA/carousel Astro component
+        verification:
+          - The component consumes direct-edit props only.
+          - The contained shell stays aligned with the Promo2-width rhythm documented for the block.
+          - No source hydration, projection, or manifest changes occur here.
+        acceptance_criteria:
+          - premium_call_to_action_with_image_carousel has a standalone Astro renderer.
+          - The renderer preserves the documented CTA and image-carousel structure.
+          - The task adds only one component file.
+        failure_modes:
+          - scenario: The carousel treatment is simplified too aggressively and no longer matches the documented block identity.
+            likelihood: low
+            impact: medium
+            mitigation: Use the block docs and TemplatePage as parity references and rely on the shared render-path gate before readiness can change.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Tailwind CSS
+    test_coverage: Validation is deferred to the real Astro render-path gate after candidate projection wiring.
+
+  - id: add_astro_renderers_for_template_source_backed_family
+    title: Add Astro renderers for Promo2, standalone menus, and oferta posts
+    description: |
+      Create the source-backed Astro component pack after the consolidated resolver contract is
+      stable: one Promo2 renderer, one reusable standalone menu renderer covering the two-column
+      and three-column menu variants, and one oferta posts renderer. Each component must accept
+      already-resolved data and must not fetch live data on its own. Sources:
+      docs/block-registry/promo2.md,
+      docs/block-registry/menu_two_columns_with_no_heading_no_img.md,
+      docs/block-registry/menu_two_columns_with_with_heading_no_img.md,
+      docs/block-registry/menu_three_columns_with_with_heading_no_img.md,
+      docs/block-registry/oferta_posts_section.md,
+      astro-site/src/lib/pageBuilder.ts.
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers: [AC2, AC3, AC4]
+    priority: high
+    status: pending
+    dependencies:
+      - generalize_astro_source_resolution_for_template_source_backed_blocks
+    conflicts_with: []
+    context_files:
+      - path: docs/block-registry/promo2.md
+        description: Promo2 structure and source semantics.
+      - path: docs/block-registry/oferta_posts_section.md
+        description: Oferta posts field mapping and CTA fallback rules.
+      - path: astro-site/src/lib/pageBuilder.ts
+        description: Resolved Astro section payloads that the new components must consume.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: Deferring this pack until the resolver seam is stable still avoids encoding unstable props in the components.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 280
+        focus_area: Source-backed Astro components
+        verification:
+          - Promo2 renders from resolved menuColumns plus static copy/image data.
+          - The standalone menu renderer covers no-heading, heading, and three-column variants via props rather than duplicated fetch logic.
+          - oferta_posts_section renders resolved rows in source order.
+        acceptance_criteria:
+          - Promo2, the three standalone menu variants, and oferta_posts_section all have Astro renderer coverage.
+          - The component pack consumes resolved data only.
+          - The task stays limited to component files.
+        failure_modes:
+          - scenario: The shared standalone-menu component over-generalizes and drops a variant-specific heading or divider rule.
+            likelihood: medium
+            impact: high
+            mitigation: Encode heading presence and column count explicitly in renderer props and rely on the real render-path gate before readiness can change.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Tailwind CSS
+    test_coverage: Validation is deferred to the real Astro render-path gate after candidate projection wiring.
+
+  - id: wire_candidate_projection_and_dispatch_for_template_blocks
+    title: Wire candidate projection and manual dispatch for the 12 target blocks without flipping readiness
+    description: |
+      Register the new renderer pack in astro-site/src/lib/astroRegistry.ts and extend the
+      manual branch table in astro-site/src/components/PageBuilderSection.astro for the 12 target
+      block keys, but do not change docs/block-registry/registry.machine.json in this task.
+      If a candidate-only helper or allowlist is needed to let the real Astro render-path gate
+      exercise PageBuilderSection.astro before the final readiness flip, keep it internal to the
+      Astro site and explicitly treat it as tactical debt rather than broadening scope into a
+      dispatcher refactor. Sources: astro-site/src/lib/astroRegistry.ts,
+      astro-site/src/components/PageBuilderSection.astro,
+      docs/block-registry/registry.machine.json,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 4
+    agent: gem-implementer
+    prototype: false
+    covers: [AC1, AC2, AC4, AC6]
+    priority: high
+    status: pending
+    dependencies:
+      - add_astro_renderers_for_template_media_shells
+      - add_astro_renderers_for_template_editorial_shells
+      - add_astro_renderer_for_template_premium_cta
+      - add_astro_renderers_for_template_source_backed_family
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/astroRegistry.ts
+        description: Current Astro projection map and readiness guard.
+      - path: astro-site/src/components/PageBuilderSection.astro
+        description: Current manual Astro block dispatch surface.
+      - path: docs/block-registry/registry.machine.json
+        description: Shared readiness manifest that must remain refining until the final gate.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: The critique requires projection/dispatch wiring to stop claiming ready state early, so readiness promotion is split out of this integration step.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 2
+        estimated_lines: 220
+        focus_area: Candidate projection and manual dispatcher wiring
+        verification:
+          - The 12 target block keys are present in candidate projection and PageBuilderSection branch coverage.
+          - docs/block-registry/registry.machine.json remains unchanged in this task.
+          - NavbarBigSpaceBetweenElements_py32 and Projects17a remain absent from candidate projection and dispatch.
+        acceptance_criteria:
+          - Astro projection and manual dispatch are wired for all 12 target block keys without promoting readiness.
+          - Any candidate-only support needed for the pre-readiness validation gate stays internal to Astro and is clearly treated as tactical debt.
+          - No docs or shared readiness-manifest changes occur yet.
+        failure_modes:
+          - scenario: Candidate projection wiring silently reintroduces early ready-state assumptions through the shared manifest.
+            likelihood: medium
+            impact: high
+            mitigation: Keep the manifest untouched in this task and reserve lifecycle changes for the final docs + manifest parity gate.
+    tech_stack:
+      - Astro
+      - TypeScript
+    test_coverage: This task prepares the real render-path gate but does not change the shared ready-state tests yet.
+
+  - id: add_real_astro_render_path_validation_for_template_blocks
+    title: Add a real Astro render-path gate for the 12 target blocks and run the focused validation bundle
+    description: |
+      Add a hidden Astro validation route or equivalent build fixture under astro-site/src/pages/**
+      that renders all 12 target block keys through astro-site/src/components/PageBuilderSection.astro
+      using the candidate projection/dispatch support from the previous task. The route must be
+      part of the built Astro output so `npm.cmd run build` actually compiles the new dispatcher
+      branches. Run the focused validation bundle here: astro-site/src/lib/types.test.ts,
+      astro-site/src/lib/pageBuilder.test.ts, and `npm.cmd run build` inside astro-site, plus a
+      deterministic check that the generated validation output includes markers for all 12 target
+      blocks. Keep docs/block-registry/registry.machine.json unchanged in this task; passing this
+      gate is the prerequisite for the final ready flip. Sources:
+      astro-site/src/components/PageBuilderSection.astro,
+      astro-site/src/lib/pageBuilder.test.ts,
+      astro-site/src/lib/types.test.ts,
+      astro-site/package.json,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 5
+    agent: gem-implementer
+    prototype: false
+    covers: [AC5, AC6]
+    priority: high
+    status: pending
+    dependencies:
+      - wire_candidate_projection_and_dispatch_for_template_blocks
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/components/PageBuilderSection.astro
+        description: The real dispatcher path that must be exercised by the validation route.
+      - path: astro-site/src/lib/pageBuilder.test.ts
+        description: Resolver behavior checkpoint for enabled Astro sections.
+      - path: astro-site/src/lib/types.test.ts
+        description: Parser checkpoint proving Astro contract coverage.
+      - path: astro-site/package.json
+        description: Astro build script used by the final render-path gate.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: "`npm.cmd run build` is only meaningful here if the plan guarantees a real Astro route compiles the new dispatcher branches, so the render-path harness is now explicit."
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 180
+        focus_area: Real render-path validation
+        verification:
+          - The hidden validation route or fixture page renders all 12 target block keys through PageBuilderSection.astro, not through direct component imports.
+          - Focused tests pass for parsing and source-resolution parity.
+          - "`npm.cmd run build` includes the validation route in the built output and the generated output proves all 12 markers rendered."
+          - The scope audit confirms preview-only components never enter the validation payload.
+        acceptance_criteria:
+          - A real Astro render-path validation exists for the 12 target blocks.
+          - The focused validation bundle passes before any shared readiness or docs claim changes.
+          - The task does not change docs/block-registry/registry.machine.json or docs/block-registry/index.md.
+        failure_modes:
+          - scenario: The validation route bypasses PageBuilderSection.astro and therefore misses the dispatcher branch risk called out in the critique.
+            likelihood: low
+            impact: critical
+            mitigation: Require the route or fixture to render through PageBuilderSection.astro and prove that with block markers tied to the target block keys.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Node.js test runner
+    test_coverage: This task owns the pre-readiness executable gate for parsing, source-resolution parity, and real Astro render-path compilation.
+
+  - id: finalize_template_block_readiness_docs_and_manifest_parity
+    title: Update docs, flip readiness, and align manifest parity only after the real render-path gate passes
+    description: |
+      After the real Astro render-path gate succeeds, update docs/block-registry/index.md and
+      promote only the 12 target blocks from `refining` to `ready` in
+      docs/block-registry/registry.machine.json, then update astro-site/src/lib/astroRegistry.test.ts
+      so the final projection-parity suite matches the new manifest-driven ready set. This is the
+      first and only task allowed to change shared readiness state for the target blocks. Sources:
+      docs/block-registry/index.md,
+      docs/block-registry/registry.machine.json,
+      astro-site/src/lib/astroRegistry.test.ts,
+      astro-site/src/lib/astroRegistry.ts,
+      zip/src/pages/TemplatePage.tsx.
+    wave: 6
+    agent: gem-documentation-writer
+    prototype: false
+    covers: [AC5, AC6]
+    priority: high
+    status: pending
+    dependencies:
+      - add_real_astro_render_path_validation_for_template_blocks
+    conflicts_with: []
+    context_files:
+      - path: docs/block-registry/index.md
+        description: Registry overview and readiness guidance.
+      - path: docs/block-registry/registry.machine.json
+        description: Shared readiness manifest still marking the target blocks as refining.
+      - path: astro-site/src/lib/astroRegistry.test.ts
+        description: Projection parity test suite that must match the final manifest-driven ready set.
+    planning_pass: 3
+    planning_history:
+      - pass: 3
+        reason: The critique requires the ready flip to be last, with docs included in the same final gate instead of trailing behind validation.
+        timestamp: '2026-04-24T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 110
+        focus_area: Final readiness and docs parity
+        verification:
+          - The docs change reflects the validated ready state rather than a planned state.
+          - Only the 12 target block keys are promoted in docs/block-registry/registry.machine.json.
+          - astro-site/src/lib/astroRegistry.test.ts passes against the final manifest-driven ready set.
+          - Preview-only TemplatePage components remain explicitly excluded.
+        acceptance_criteria:
+          - Readiness is promoted only after the real render-path gate passes.
+          - docs/block-registry/index.md and docs/block-registry/registry.machine.json change in the same final gate.
+          - The final manifest parity test matches the shared ready state without broadening scope beyond the 12 target blocks.
+        failure_modes:
+          - scenario: The final docs note or manifest flip over-claims broader `/template` Astro readiness than the validated rollout actually delivered.
+            likelihood: low
+            impact: medium
+            mitigation: Scope the final note and the manifest delta strictly to the 12 target keys and restate the preview-only exclusion.
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - Registry overview reflects the closed non-preview `/template` Astro-readiness gap only after the render-path gate passes.
+      - Preview-only TemplatePage components remain explicitly excluded.
+      - The shared readiness manifest is flipped only in the same final gate that updates docs and parity tests.

@@ -581,7 +581,7 @@ test("about_2_simple registers stable defaults and renders the ModernInterior di
           buttonLink: "/o-restauracji",
           image1: {
             src: "/react/images/about_1.jpg",
-            alt: "Wnetrze restauracji",
+            alt: "Wnętrze restauracji",
           },
           image2: {
             src: "/react/images/about_front.jpg",
@@ -602,7 +602,7 @@ test("about_2_simple registers stable defaults and renders the ModernInterior di
 
   assert.match(markup, /O restauracji/);
   assert.match(markup, /CZYTAJ WIECEJ/);
-  assert.match(markup, /Wnetrze restauracji/);
+  assert.match(markup, /Wnętrze restauracji/);
   assert.match(markup, /Detale dekoracji/);
 });
 
@@ -613,14 +613,22 @@ test("big_img_and_bolded_tex_editorial_style_block reuses Promo3 defaults under 
   assert.equal(block.blockKey, bigImgAndBoldedTexEditorialStyleBlockDefinition.blockKey);
   assert.deepEqual(
     mvpBlockDefaults.big_img_and_bolded_tex_editorial_style_block,
-    DEFAULT_PROMO3_CONTENT,
+    {
+      ...DEFAULT_PROMO3_CONTENT,
+      buttonLabel: "przycisk",
+      buttonHref: "#",
+    },
   );
 
   const instance = createDefaultBlockInstance("big_img_and_bolded_tex_editorial_style_block", 7);
 
   assert.equal(instance.id, "big_img_and_bolded_tex_editorial_style_block-07");
   assert.equal(instance.source, null);
-  assert.deepEqual(instance.data, DEFAULT_PROMO3_CONTENT);
+  assert.deepEqual(instance.data, {
+    ...DEFAULT_PROMO3_CONTENT,
+    buttonLabel: "przycisk",
+    buttonHref: "#",
+  });
 
   const schema = parsePageBuilderSchema({
     version: 1,
@@ -639,6 +647,8 @@ test("big_img_and_bolded_tex_editorial_style_block reuses Promo3 defaults under 
         data: validateBlockData("big_img_and_bolded_tex_editorial_style_block", {
           title: "Editorial portrait",
           story: "This variant keeps the tall image and the bold editorial copy block only.",
+          buttonLabel: "przycisk",
+          buttonHref: "#",
           image: {
             src: "/react/images/editorial-portrait.jpg",
             alt: "Editorial portrait image",
@@ -658,6 +668,8 @@ test("big_img_and_bolded_tex_editorial_style_block reuses Promo3 defaults under 
 
   assert.match(markup, /Editorial portrait image/);
   assert.match(markup, /This variant keeps the tall image and the bold editorial copy block only\./);
+  assert.match(markup, />przycisk</);
+  assert.match(markup, /href="#"/);
   assert.doesNotMatch(markup, /Creative Director/);
 });
 

@@ -9,6 +9,8 @@ export interface Promo3Content {
   title: string;
   story: string;
   image: Promo3ImageContent;
+  buttonLabel?: string;
+  buttonHref?: string;
 }
 
 export interface Promo3Props {
@@ -30,6 +32,12 @@ export function Promo3({
   content = DEFAULT_PROMO3_CONTENT,
   className,
 }: Promo3Props) {
+  const shouldRenderButton =
+    typeof content.buttonLabel === "string" &&
+    content.buttonLabel.trim().length > 0 &&
+    typeof content.buttonHref === "string" &&
+    content.buttonHref.trim().length > 0;
+
   return (
     <section className={cn("page-margin py-32", className)}>
       <div className="mx-auto max-w-screen-2xl">
@@ -42,10 +50,19 @@ export function Promo3({
             />
           </div>
 
-          <div>
+          <div className="flex flex-col items-start gap-6">
             <h2 className="lead-copy text-on-surface">
               {content.story}
             </h2>
+
+            {shouldRenderButton ? (
+              <a
+                className="theme-radius-control inline-flex w-fit items-center border border-on-surface px-4 py-2 font-label text-xs uppercase tracking-[0.12em] text-on-surface transition-colors hover:bg-on-surface hover:text-background"
+                href={content.buttonHref}
+              >
+                {content.buttonLabel}
+              </a>
+            ) : null}
           </div>
         </div>
       </div>

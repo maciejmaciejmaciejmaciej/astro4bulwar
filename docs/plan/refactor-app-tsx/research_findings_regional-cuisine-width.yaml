@@ -1,0 +1,245 @@
+plan_id: refactor-app-tsx
+objective: Inspect the Regional Cuisine block across React, pagebuilder, and Astro and identify the smallest change needed to keep the right-side image from exceeding half of the viewport width on non-phone screens.
+focus_area: regional-cuisine-width
+created_at: 2026-04-25
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The pagebuilder path does not size the image; it only routes Regional Cuisine content into the React and Astro section renderers.
+  - The direct overflow control in React is the desktop image wrapper in zip/src/components/sections/RegionalCuisine.tsx at line 32, which uses a fixed width of 863px and a negative right offset of -150px from the md breakpoint upward.
+  - The Astro implementation reproduces the same behavior in astro-site/src/components/RegionalCuisineSection.astro at lines 167-173 with width: 863px and right: -150px inside the min-width: 768px media query.
+  - A small-tablet overflow is locally explained by the combination of the early desktop breakpoint and the fixed 863px width; on a 768px-wide viewport the image can cover nearly the full viewport instead of staying within 50vw.
+  - The smallest safe enforcement change is to keep the existing 863px desktop target and add a non-phone max-width cap of 50vw on the desktop image frame in both renderers.
+
+research_metadata:
+  methodology: Hybrid retrieval using targeted grep_search and read_file on the block schema, React section, Astro section, and Astro pagebuilder renderer; PRD read for repo scope context; package.json reads for domain stack versions; terminal line-count pass for analyzed files.
+  scope: Narrow, behavior-scoped inspection of the Regional Cuisine block control path only, including React render, pagebuilder registration, and Astro render.
+  confidence: high
+  coverage: 95
+  decision_blockers: 0
+  research_blockers: 0
+
+files_analyzed:
+  - file: RegionalCuisine.tsx
+    path: zip/src/components/sections/RegionalCuisine.tsx
+    purpose: React section component that directly controls the right-side image wrapper geometry on mobile and non-phone breakpoints.
+    key_elements:
+      - element: RegionalCuisine
+        type: function
+        location: zip/src/components/sections/RegionalCuisine.tsx:21
+        description: Section component used by the pagebuilder runtime and direct React pages.
+      - element: desktop image wrapper
+        type: pattern
+        location: zip/src/components/sections/RegionalCuisine.tsx:30-38
+        description: Absolute-positioned right-side image frame with fixed width 863px, height 1080px, right offset -150px, and md visibility toggle.
+      - element: mobile image wrapper
+        type: pattern
+        location: zip/src/components/sections/RegionalCuisine.tsx:82-87
+        description: Mobile-only inline image shown below md and not involved in the tablet overflow once md activates.
+    language: TSX
+    lines: 88
+
+  - file: schema.ts
+    path: zip/src/blocks/regional_cuisine/schema.ts
+    purpose: Pagebuilder block definition for Regional Cuisine.
+    key_elements:
+      - element: regionalCuisineBlockDefinition
+        type: variable
+        location: zip/src/blocks/regional_cuisine/schema.ts:73-95
+        description: Registers the regional_cuisine block and routes section data into the React RegionalCuisine component.
+      - element: componentImportPath
+        type: variable
+        location: zip/src/blocks/regional_cuisine/schema.ts:82-83
+        description: Declares the React renderer path used by the pagebuilder runtime.
+      - element: renderSection
+        type: function
+        location: zip/src/blocks/regional_cuisine/schema.ts:87-103
+        description: Passes content props only and does not modify layout or image sizing.
+    language: TS
+    lines: 97
+
+  - file: index.ts
+    path: zip/src/blocks/registry/index.ts
+    purpose: Registry map from block key to Astro renderer path.
+    key_elements:
+      - element: astroRendererPathByBlockKey.regional_cuisine
+        type: variable
+        location: zip/src/blocks/registry/index.ts:242
+        description: Connects the regional_cuisine block to the Astro RegionalCuisineSection component.
+    language: TS
+    lines: 620
+
+  - file: PageBuilderSection.astro
+    path: astro-site/src/components/PageBuilderSection.astro
+    purpose: Astro pagebuilder dispatcher that selects the renderer for each block.
+    key_elements:
+      - element: regional_cuisine dispatch branch
+        type: pattern
+        location: astro-site/src/components/PageBuilderSection.astro:322-329
+        description: Renders RegionalCuisineSection with normalized image URLs and content props only.
+    language: Astro
+    lines: 376
+
+  - file: RegionalCuisineSection.astro
+    path: astro-site/src/components/RegionalCuisineSection.astro
+    purpose: Astro implementation of the Regional Cuisine block that directly controls right-side image layout in the static site.
+    key_elements:
+      - element: desktop image frame markup
+        type: pattern
+        location: astro-site/src/components/RegionalCuisineSection.astro:32-34
+        description: Dedicated desktop image frame element for the right-side image.
+      - element: desktop image frame CSS
+        type: pattern
+        location: astro-site/src/components/RegionalCuisineSection.astro:167-177
+        description: Non-phone media-query rule that sets position absolute, right -150px, width 863px, height 1080px, and translateY(-50%).
+      - element: mobile image frame CSS
+        type: pattern
+        location: astro-site/src/components/RegionalCuisineSection.astro:162-164
+        description: Mobile-only max-width 863px frame that is hidden once the non-phone media query activates.
+    language: Astro
+    lines: 163
+
+patterns_found:
+  - category: architecture
+    pattern: Content-only pagebuilder registration
+    description: The pagebuilder layer wires content props into renderer components and does not participate in image geometry decisions.
+    examples:
+      - file: zip/src/blocks/regional_cuisine/schema.ts
+        location: zip/src/blocks/regional_cuisine/schema.ts:87-103
+        snippet: >-
+          renderSection maps data into the RegionalCuisine props without any sizing logic.
+      - file: astro-site/src/components/PageBuilderSection.astro
+        location: astro-site/src/components/PageBuilderSection.astro:322-329
+        snippet: >-
+          The regional_cuisine branch forwards titleLines, description, actions, and image into RegionalCuisineSection.
+    prevalence: common
+
+  - category: responsive-layout
+    pattern: Fixed desktop image geometry with breakpoint switch at tablet width
+    description: Both React and Astro change from mobile inline image to an absolute right-side image at 768px and assign it the same fixed width and negative right offset.
+    examples:
+      - file: zip/src/components/sections/RegionalCuisine.tsx
+        location: zip/src/components/sections/RegionalCuisine.tsx:32
+        snippet: >-
+          className="absolute top-1/2 right-[-150px] hidden h-[1080px] w-[863px] -translate-y-1/2 md:block ..."
+      - file: astro-site/src/components/RegionalCuisineSection.astro
+        location: astro-site/src/components/RegionalCuisineSection.astro:167-173
+        snippet: >-
+          right: -150px; width: 863px; height: 1080px; inside @media (min-width: 768px)
+    prevalence: specific
+
+  - category: layout-risk
+    pattern: Viewport-relative overflow driven by fixed width plus negative offset
+    description: On narrow non-phone viewports, a fixed 863px width can exceed half of the viewport before any container-based centering or clipping reduces it, and the negative right offset does not compensate enough on small tablets.
+    examples:
+      - file: zip/src/components/sections/RegionalCuisine.tsx
+        location: zip/src/components/sections/RegionalCuisine.tsx:30-40
+        snippet: >-
+          The image frame is absolutely positioned against the theme-section-wrapper and sits above the grid content.
+      - file: astro-site/src/components/RegionalCuisineSection.astro
+        location: astro-site/src/components/RegionalCuisineSection.astro:167-177
+        snippet: >-
+          The Astro desktop frame reproduces the same fixed-size geometry in CSS.
+    prevalence: specific
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: RegionalCuisine React section
+      responsibility: Owns the interactive React layout and the desktop/mobile image switch.
+      location: zip/src/components/sections/RegionalCuisine.tsx
+      relationship_to_domain: domain depends on this
+    - component: Regional Cuisine block definition
+      responsibility: Registers the pagebuilder block and routes structured data into the React section.
+      location: zip/src/blocks/regional_cuisine/schema.ts
+      relationship_to_domain: domain depends on this
+    - component: Astro pagebuilder dispatcher
+      responsibility: Selects RegionalCuisineSection for the regional_cuisine block.
+      location: astro-site/src/components/PageBuilderSection.astro
+      relationship_to_domain: this uses domain outputs
+    - component: RegionalCuisine Astro section
+      responsibility: Owns the static-site layout and the desktop/mobile image switch.
+      location: astro-site/src/components/RegionalCuisineSection.astro
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: RegionalCuisineProps
+      location: zip/src/components/sections/RegionalCuisine.tsx:13-19
+      usage_pattern: Typed React props for the section content.
+    - interface: Props
+      location: astro-site/src/components/RegionalCuisineSection.astro:11-16
+      usage_pattern: Astro props describing title lines, actions, and image asset.
+  data_flow_involving_domain: Pagebuilder content enters through zip/src/blocks/regional_cuisine/schema.ts, renders via the React RegionalCuisine section in the React app, and is separately dispatched through astro-site/src/components/PageBuilderSection.astro into astro-site/src/components/RegionalCuisineSection.astro for the Astro site; both renderers own their own CSS/layout geometry.
+  key_relationships_to_domain:
+    - from: zip/src/blocks/regional_cuisine/schema.ts
+      to: zip/src/components/sections/RegionalCuisine.tsx
+      relationship: imports
+    - from: zip/src/blocks/registry/index.ts
+      to: astro-site/src/components/RegionalCuisineSection.astro
+      relationship: maps
+    - from: astro-site/src/components/PageBuilderSection.astro
+      to: astro-site/src/components/RegionalCuisineSection.astro
+      relationship: composes
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - Astro
+    - CSS
+  frameworks_used_in_domain:
+    - name: React 19.0.0
+      usage_in_domain: React renderer for the pagebuilder block and direct site pages.
+    - name: Astro 5.14.2
+      usage_in_domain: Static-site renderer for the same block.
+    - name: Vite 6.2.0
+      usage_in_domain: Development/build tool for the React application containing the source section component.
+  libraries_used_in_domain:
+    - name: react-router-dom 7.13.1
+      purpose_in_domain: Link component used by RegionalCuisine action links in React.
+    - name: lucide-react 0.546.0
+      purpose_in_domain: Icon source for action cards in the React block runtime.
+    - name: zod 4.3.6
+      purpose_in_domain: Schema validation for pagebuilder block data in both codebases.
+    - name: Tailwind CSS 4.1.14
+      purpose_in_domain: Utility-class layout control in the React RegionalCuisine component.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Block keys use snake_case such as regional_cuisine; React section components use PascalCase; Astro section filenames mirror the block name with Section suffix.
+  structure_of_domain: Block schema files live under zip/src/blocks, React section components live under zip/src/components/sections, and Astro block renderers live under astro-site/src/components.
+  error_handling_in_domain: Layout code is declarative; data-shape validation is handled in zod schemas before rendering.
+  testing_in_domain: No Regional Cuisine-specific visual test or width assertion was found in the inspected path.
+  documentation_in_domain: Registry metadata points to docs/block-registry/regional_cuisine.md, while Astro renderer mapping is declared in the block registry and Astro registry.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/regional_cuisine/schema.ts
+      relationship_to_domain: Provides the pagebuilder registration and props mapping into React.
+      direction: inbound
+    - component: zip/src/blocks/registry/index.ts
+      relationship_to_domain: Maps the block key to the Astro renderer path.
+      direction: inbound
+    - component: astro-site/src/components/PageBuilderSection.astro
+      relationship_to_domain: Dispatches the Astro block renderer with normalized image URLs.
+      direction: inbound
+  external:
+    - name: react-router-dom
+      purpose_for_domain: Action links in the React section.
+    - name: lucide-react
+      purpose_for_domain: Action icons in the React runtime mapping.
+    - name: zod
+      purpose_for_domain: Block schema validation.
+
+open_questions:
+  - question: Should the existing negative right offset remain unchanged after the width cap is added, or should it also become viewport-responsive?
+    context: The smallest enforcement change can be width-only because pagebuilder does not control geometry, but offset tuning affects how much of the image remains on-screen at each desktop width.
+    type: nice_to_know
+    affects:
+      - regional-cuisine-width
+
+gaps:
+  - area: automated visual validation
+    description: No existing inspected test or snapshot asserted the right-side image visible width against viewport width for this block.
+    impact: research_blocker
+    affects:
+      - regional-cuisine-width

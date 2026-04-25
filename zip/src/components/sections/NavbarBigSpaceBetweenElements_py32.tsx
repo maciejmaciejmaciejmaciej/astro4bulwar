@@ -2,6 +2,7 @@ import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
+import type { GlobalLayoutNavbar } from "../../blocks/registry/globalLayoutContract";
 
 const NAV_ITEMS = [
   {
@@ -69,18 +70,26 @@ const COMPANY_LINKS = [
 interface NavbarBigSpaceBetweenElements_py32Props {
   className?: string;
   logoSrc?: string;
+  navbar?: GlobalLayoutNavbar;
 }
 
 export function NavbarBigSpaceBetweenElements_py32({
   className,
   logoSrc,
+  navbar,
 }: NavbarBigSpaceBetweenElements_py32Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const brandName = navbar?.brand.name ?? "BULWAR";
+  const brandHref = navbar?.brand.href ?? "#";
+  const brandLogoSrc = navbar?.brand.logoSrc ?? logoSrc;
+  const brandLogoAlt = navbar?.brand.logoAlt ?? brandName;
+  const primaryItems = navbar?.primaryItems ?? NAV_ITEMS;
+  const companyLinks = navbar?.companyLinks ?? COMPANY_LINKS;
+  const footerLinks = navbar?.legalLinks ?? FOOTER_LINKS;
 
   return (
     <section className={clsx("bg-white text-on-surface", className)}>
-      <div className="page-margin">
-        <div className="mx-auto max-w-screen-2xl">
+      <div className="theme-section-wrapper">
           <nav className={clsx("relative transition-colors duration-200", isOpen ? "bg-surface-container-low" : "bg-white")}>
           <div
             className={clsx(
@@ -90,16 +99,16 @@ export function NavbarBigSpaceBetweenElements_py32({
           >
             <div className="flex items-center justify-between gap-4 lg:hidden">
               <div className="min-w-[132px]">
-                <a href="#" className="inline-flex items-center transition-opacity hover:opacity-70">
-                  {logoSrc ? (
+                <a href={brandHref} className="inline-flex items-center transition-opacity hover:opacity-70">
+                  {brandLogoSrc ? (
                     <img
-                      src={logoSrc}
-                      alt="Bulwar"
+                      src={brandLogoSrc}
+                      alt={brandLogoAlt}
                       className="h-12 w-auto object-contain md:h-14"
                     />
                   ) : (
                     <span className="font-headline text-4xl text-black">
-                      BULWAR
+                      {brandName.toUpperCase()}
                     </span>
                   )}
                 </a>
@@ -112,23 +121,23 @@ export function NavbarBigSpaceBetweenElements_py32({
 
             <div className="hidden lg:grid lg:grid-cols-[180px_minmax(0,1fr)_80px] lg:items-center lg:gap-10">
               <div className="flex items-center justify-start">
-                <a href="#" className="inline-flex items-center transition-opacity hover:opacity-70">
-                  {logoSrc ? (
+                <a href={brandHref} className="inline-flex items-center transition-opacity hover:opacity-70">
+                  {brandLogoSrc ? (
                     <img
-                      src={logoSrc}
-                      alt="Bulwar"
+                      src={brandLogoSrc}
+                      alt={brandLogoAlt}
                       className="h-14 w-auto object-contain"
                     />
                   ) : (
                     <span className="font-headline text-4xl text-black">
-                      BULWAR
+                      {brandName.toUpperCase()}
                     </span>
                   )}
                 </a>
               </div>
 
               <div className="grid grid-cols-5 gap-10 xl:gap-14">
-                {NAV_ITEMS.map((item) => (
+                {primaryItems.map((item) => (
                   <a
                     key={item.label}
                     href={item.href}
@@ -159,7 +168,7 @@ export function NavbarBigSpaceBetweenElements_py32({
               >
                 <div className="flex lg:hidden">
                   <ul className="flex w-full flex-col gap-6 sm:gap-7">
-                    {NAV_ITEMS.map((item) => (
+                    {primaryItems.map((item) => (
                       <li key={item.label}>
                         <a href={item.href} className="inline-flex items-center gap-3 font-headline text-2xl uppercase transition-opacity hover:opacity-70 sm:text-3xl">
                           <span>{item.label}</span>
@@ -183,7 +192,7 @@ export function NavbarBigSpaceBetweenElements_py32({
                   <div aria-hidden="true" />
 
                   <div className="grid grid-cols-5 gap-10 xl:gap-14">
-                    {NAV_ITEMS.map((section) => (
+                    {primaryItems.map((section) => (
                       <ul key={section.label} className="space-y-4 text-left">
                         {section.items.map((item) => (
                           <li
@@ -208,7 +217,7 @@ export function NavbarBigSpaceBetweenElements_py32({
 
                 <div className="mt-10 flex w-full flex-col gap-3 border-t border-zinc-200 pt-6 text-sm text-secondary lg:mt-24 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-8">
-                    {COMPANY_LINKS.map((item) => (
+                    {companyLinks.map((item) => (
                       <a key={item.label} href={item.href} className="font-label text-[11px] uppercase transition-colors hover:text-on-surface">
                         {item.label}
                       </a>
@@ -216,7 +225,7 @@ export function NavbarBigSpaceBetweenElements_py32({
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-8">
-                    {FOOTER_LINKS.map((item) => (
+                    {footerLinks.map((item) => (
                       <a key={item.label} href={item.href} className="font-label text-[11px] uppercase transition-colors hover:text-on-surface">
                         {item.label}
                       </a>
@@ -227,7 +236,6 @@ export function NavbarBigSpaceBetweenElements_py32({
             ) : null}
           </AnimatePresence>
         </nav>
-        </div>
       </div>
     </section>
   );

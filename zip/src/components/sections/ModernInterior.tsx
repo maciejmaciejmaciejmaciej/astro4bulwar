@@ -19,14 +19,14 @@ export interface ModernInteriorContent {
 export const DEFAULT_MODERN_INTERIOR_CONTENT: ModernInteriorContent = {
   title: "O restauracji",
   paragraphs: [
-    "Od 2011 roku prowadzimy restauracje z autorska kuchnia, w ktorej czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej. Naszym glownym zalozeniem przy kreowaniu nowych dan jest smak.",
-    "Z przyjemnoscia ugoscimy Panstwa na wyjatkowym lunchu, eleganckiej kolacji, a takze w niedzielne przedpoludnia przy obfitym rodzinnym stole. W letnie dni udostepniamy zielony ogrodek letni, ktory staje sie oaza, osloniata od miejskiego halasu.",
+    "Od 2011 roku prowadzimy restaurację z autorską kuchnią, w której czerpiemy z dobrych, sprawdzonych tradycji kuchni europejskiej. Naszym głównym założeniem przy kreowaniu nowych dań jest smak.",
+    "Z przyjemnością ugościmy Państwa na wyjątkowym lunchu, eleganckiej kolacji, a także w niedzielne przedpołudnia przy obfitym rodzinnym stole. W letnie dni udostępniamy zielony ogródek letni, który staje się oazą, osłoniętą od miejskiego hałasu.",
   ],
-  buttonText: "CZYTAJ WIECEJ",
+  buttonText: "CZYTAJ WIĘCEJ",
   buttonLink: "/o-restauracji",
   image1: {
     src: "/react/images/about_1.jpg",
-    alt: "Wnetrze restauracji",
+    alt: "Wnętrze restauracji",
   },
   image2: {
     src: "/react/images/about_front.jpg",

@@ -1,0 +1,470 @@
+---
+interface ImageAsset {
+  src: string;
+  alt: string;
+}
+
+interface StoryMember {
+  icon: string;
+  name: string;
+  role: string;
+}
+
+interface MenuItem {
+  title: string;
+  description?: string;
+  priceLabel: string;
+  tagSlugs?: string[];
+}
+
+interface MenuColumn {
+  items: MenuItem[];
+}
+
+interface Props {
+  eyebrow: string;
+  title: string;
+  members: StoryMember[];
+  story: string;
+  image: ImageAsset;
+  menuColumns: MenuColumn[];
+  emptyStateText?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  members,
+  story,
+  image,
+  menuColumns,
+  emptyStateText = 'Brak pozycji w tej kategorii.',
+} = Astro.props;
+
+const safeMembers = members.filter((member): member is StoryMember => member.name.trim().length > 0);
+const safeMenuColumns = menuColumns.filter((column) => column.items.length > 0);
+
+const STORY_ICON_SVG_MAP: Record<string, string> = {
+  'calendar-days': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg>',
+  'utensils-crossed': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2c0 2.5 1.5 4 3 5.5"></path><path d="M5 3v6"></path><path d="M8 3v6"></path><path d="M6.5 9v12"></path><path d="M13 21 21 5"></path><path d="m14.5 9.5 4 4"></path></svg>',
+};
+
+const MENU_ITEM_PILL_LABELS: Record<string, string> = {
+  '500-ml': '500 ml',
+  vegan: 'Vegan',
+  vege: 'Vege',
+  ostre: 'Ostre',
+  'bardzo-ostre': 'Bardzo ostre',
+};
+
+const getOptionalMenuText = (value: string | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeMenuMetadataValue = (value: string): string => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+};
+
+const getMenuItemPills = (tagSlugs: readonly string[] | undefined): Array<{ slug: string; label: string }> => {
+  if (!tagSlugs || tagSlugs.length === 0) {
+    return [];
+  }
+
+  const uniquePills = new Map<string, string>();
+
+  for (const tagSlug of tagSlugs) {
+    const safeTag = getOptionalMenuText(tagSlug);
+
+    if (!safeTag) {
+      continue;
+    }
+
+    const normalized = normalizeMenuMetadataValue(safeTag);
+
+    if (!uniquePills.has(normalized)) {
+      uniquePills.set(normalized, safeTag);
+    }
+  }
+
+  return Array.from(uniquePills.entries()).map(([slug, label]) => ({
+    slug,
+    label: MENU_ITEM_PILL_LABELS[slug] ?? label,
+  }));
+};
+---
+
+<section class="promo2-section">
+  <div class="promo2-section__inner theme-section-wrapper">
+    <div class="promo2-section__title-row">
+      <div class="promo2-section__title-spacer" aria-hidden="true"></div>
+      <h2 class="promo2-section__title">{title}</h2>
+    </div>
+
+    <div class="promo2-section__story-grid">
+      <p class="promo2-section__eyebrow">{eyebrow}</p>
+
+      <div class="promo2-section__members">
+        {safeMembers.map((member) => (
+          <div class="promo2-section__member">
+            <div class="promo2-section__member-icon" aria-hidden="true" set:html={STORY_ICON_SVG_MAP[member.icon] ?? STORY_ICON_SVG_MAP['calendar-days']}></div>
+            <div class="promo2-section__member-copy">
+              <h3>{member.name}</h3>
+              <p>{member.role}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="promo2-section__story-copy">
+        <p>{story}</p>
+      </div>
+    </div>
+
+    <div class="promo2-section__media-stack">
+      <div class="promo2-section__image-frame theme-radius-media">
+        <img src={image.src} alt={image.alt} loading="eager" />
+      </div>
+
+      <div class="promo2-section__menu-panel theme-radius-surface">
+        {safeMenuColumns.length > 0 ? (
+          <div class="promo2-section__menu-grid">
+            {safeMenuColumns.map((column) => (
+              <div class="promo2-section__menu-column">
+                {column.items.map((item) => {
+                  const description = getOptionalMenuText(item.description);
+                  const pills = getMenuItemPills(item.tagSlugs);
+                  const hasDetails = Boolean(description) || pills.length > 0;
+
+                  return (
+                    <div class="promo2-section__menu-item">
+                      <div class="promo2-section__menu-copy">
+                        <span class="promo2-section__menu-title">{item.title}</span>
+
+                        {hasDetails ? (
+                          <div class="promo2-section__menu-details">
+                            {description ? <p class="promo2-section__menu-description">{description}</p> : null}
+
+                            {pills.length > 0 ? (
+                              <div class="promo2-section__menu-pills" data-menu-item-pills>
+                                {pills.map((pill) => (
+                                  <span class="promo2-section__menu-pill">{pill.label}</span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div class="promo2-section__menu-price-row">
+                        <div class="promo2-section__menu-leader" aria-hidden="true"></div>
+                        <span class="promo2-section__menu-price">{item.priceLabel}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p class="promo2-section__empty">{emptyStateText}</p>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .promo2-section {
+    background: var(--color-background);
+    padding: 8rem 0;
+  }
+
+  .promo2-section__inner {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 4vw, 5rem);
+  }
+
+  .promo2-section__title-row,
+  .promo2-section__story-grid {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .promo2-section__title {
+    margin: 0;
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: clamp(2.5rem, 8vw, 5.75rem);
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  .promo2-section__eyebrow {
+    display: none;
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .promo2-section__members {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .promo2-section__member {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .promo2-section__member-icon {
+    display: inline-flex;
+    width: 3rem;
+    height: 3rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    background: var(--color-surface-container-low);
+    color: var(--color-on-surface);
+  }
+
+  .promo2-section__member-icon :global(svg) {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .promo2-section__member-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .promo2-section__member-copy h3,
+  .promo2-section__member-copy p,
+  .promo2-section__story-copy p,
+  .promo2-section__menu-description,
+  .promo2-section__empty {
+    margin: 0;
+  }
+
+  .promo2-section__member-copy h3 {
+    color: var(--color-on-surface);
+    font-family: var(--font-headline);
+    font-size: 1.125rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+
+  .promo2-section__member-copy p {
+    color: var(--color-muted-foreground);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .promo2-section__story-copy {
+    max-width: 42rem;
+  }
+
+  .promo2-section__story-copy p {
+    color: var(--color-on-surface);
+    font-family: var(--font-body);
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    line-height: 1.7;
+  }
+
+  .promo2-section__media-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .promo2-section__image-frame {
+    overflow: hidden;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background: var(--color-surface-container-low);
+    aspect-ratio: 16 / 9;
+  }
+
+  .promo2-section__image-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .promo2-section__menu-panel {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    background: var(--color-surface-container-low);
+    padding: clamp(2rem, 4vw, 4rem) clamp(1rem, 4vw, 2rem);
+  }
+
+  .promo2-section__menu-grid {
+    display: grid;
+    gap: 3rem;
+    width: min(100%, 70rem);
+    margin: 0 auto;
+  }
+
+  .promo2-section__menu-column {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .promo2-section__menu-item {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .promo2-section__menu-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .promo2-section__menu-title {
+    display: block;
+    color: var(--color-on-surface);
+    font-family: var(--font-label);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+  }
+
+  .promo2-section__menu-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  .promo2-section__menu-description {
+    color: var(--color-muted-foreground);
+    font-family: var(--font-label);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+  }
+
+  .promo2-section__menu-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .promo2-section__menu-pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--color-foreground) 12%, transparent);
+    border-radius: 999px;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    padding: 0.4rem 0.6rem;
+    text-transform: uppercase;
+  }
+
+  .promo2-section__menu-price-row {
+    display: flex;
+    min-width: 6rem;
+    flex: 1 1 auto;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .promo2-section__menu-leader {
+    flex: 1 1 auto;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 12%, transparent);
+    transform: translateY(-0.3rem);
+  }
+
+  .promo2-section__menu-price {
+    color: var(--color-on-surface);
+    font-family: var(--font-label);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  .promo2-section__empty {
+    width: min(100%, 70rem);
+    margin: 0 auto;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+  }
+
+  @media (min-width: 1024px) {
+    .promo2-section__title-row,
+    .promo2-section__story-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    .promo2-section__title {
+      grid-column: 2 / span 4;
+      padding-left: 2.5rem;
+    }
+
+    .promo2-section__eyebrow {
+      display: block;
+    }
+
+    .promo2-section__members {
+      grid-column: 2 / span 2;
+      padding-left: 2.5rem;
+    }
+
+    .promo2-section__story-copy {
+      grid-column: 4 / span 3;
+      padding-left: 2.5rem;
+    }
+
+    .promo2-section__menu-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3rem 5rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .promo2-section {
+      padding: 5rem 0;
+    }
+
+    .promo2-section__menu-item {
+      gap: 0.5rem;
+    }
+
+    .promo2-section__menu-price-row {
+      min-width: 4.5rem;
+      gap: 0.5rem;
+    }
+  }
+</style>

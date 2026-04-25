@@ -1,11 +1,64 @@
-import { fetchWordPressPageBuilderSchema } from './wordpress';
-import { resolveMenuBlock } from './woo';
-import { resolveAstroRenderer } from './astroRegistry';
+import {
+  fetchWordPressPageBuilderSchema,
+  resolveOfertaPostsSectionSource,
+} from './wordpress.ts';
+import { resolveMenuBlock } from './woo.ts';
+import { resolveAstroRenderer } from './astroRegistry.ts';
 import type {
   MenuBlock,
+  MenuThreeColumnsWithWithHeadingNoImgBlock,
+  MenuTwoColumnsWithNoHeadingNoImgBlock,
+  MenuTwoColumnsWithWithHeadingNoImgBlock,
   MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock,
+  OfertaPostsSectionBlock,
   PageBuilderSchema,
-} from './types';
+  PageBuilderSection,
+  Promo2Block,
+} from './types.ts';
+
+type SourceBackedAstroSection =
+  | MenuBlock
+  | MenuThreeColumnsWithWithHeadingNoImgBlock
+  | MenuTwoColumnsWithNoHeadingNoImgBlock
+  | MenuTwoColumnsWithWithHeadingNoImgBlock
+  | MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock
+  | OfertaPostsSectionBlock
+  | Promo2Block;
+
+const resolveAstroSectionSource = async <T extends PageBuilderSection>(section: T): Promise<T> => {
+  if (!section.enabled || !section.source) {
+    return section;
+  }
+
+  switch (section.blockKey) {
+    case 'menu-category-photo-parallax-full-width':
+    case 'menu_three_columns_with_with_heading_no_img':
+    case 'menu_two_columns_with_no_heading_no_img':
+    case 'menu_two_columns_with_with_heading_no_img':
+    case 'menu_two_columns_with_with_heading_with_img_fullwidth_paralax':
+    case 'promo2':
+      return resolveMenuBlock(section as Extract<SourceBackedAstroSection, { blockKey: T['blockKey'] }>) as Promise<T>;
+    case 'oferta_posts_section': {
+      const resolvedData = await resolveOfertaPostsSectionSource(
+        (section as OfertaPostsSectionBlock).data,
+        (section as OfertaPostsSectionBlock).source,
+      );
+
+      return {
+        ...section,
+        data: resolvedData,
+      } as T;
+    }
+    default:
+      return section;
+  }
+};
+
+export const resolveAstroSectionSources = async (
+  sections: PageBuilderSchema['sections'],
+): Promise<PageBuilderSchema['sections']> => {
+  return Promise.all(sections.map((section) => resolveAstroSectionSource(section)));
+};
 
 export const resolveAstroPageSections = async (
   sections: PageBuilderSchema['sections'],
@@ -17,16 +70,7 @@ export const resolveAstroPageSections = async (
 
     resolveAstroRenderer(section.blockKey);
 
-    if (
-      section.blockKey === 'menu-category-photo-parallax-full-width'
-      || section.blockKey === 'menu_two_columns_with_with_heading_with_img_fullwidth_paralax'
-    ) {
-      return resolveMenuBlock(
-        section as MenuBlock | MenuTwoColumnsWithWithHeadingWithImgFullwidthParalaxBlock,
-      );
-    }
-
-    return section;
+    return resolveAstroSectionSource(section);
   }));
 };
 

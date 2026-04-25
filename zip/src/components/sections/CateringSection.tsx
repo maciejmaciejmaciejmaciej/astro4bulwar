@@ -48,8 +48,8 @@ export function CateringSection({
     <section className={cn(className)}>
       <div className="theme-section-wrapper">
         <div className={cn(widthMode === "promo2-contained" ? "mx-auto max-w-screen-2xl" : null)}>
-        <div className="py-32 bg-surface-container-low px-4 md:px-12 lg:px-24 theme-radius-surface">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="py-32 bg-surface-container-low theme-radius-surface">
+          <div className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-16 items-center lg:grid-cols-2">
         {/* Left side text */}
         <div className="space-y-10 max-w-xl">
           <div className="space-y-8">

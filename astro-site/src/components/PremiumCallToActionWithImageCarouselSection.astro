@@ -1,0 +1,324 @@
+---
+interface ImageAsset {
+  src: string;
+  alt?: string;
+}
+
+interface Props {
+  heading: string;
+  description: string;
+  buttonText: string;
+  buttonHref?: string;
+  images?: ImageAsset[];
+}
+
+const {
+  heading,
+  description,
+  buttonText,
+  buttonHref = '#',
+  images = [],
+} = Astro.props;
+
+const splitIndex = Math.ceil(images.length / 2);
+const primaryImages = images.slice(0, splitIndex);
+const secondaryImages = images.slice(splitIndex);
+const secondaryColumnImages = secondaryImages.length > 0 ? secondaryImages : primaryImages;
+const hasCarouselImages = primaryImages.length > 0;
+---
+
+<section class="premium-carousel">
+  <div class="premium-carousel__outer theme-section-wrapper">
+    <div class="premium-carousel__contained">
+      <div class="premium-carousel__panel theme-radius-surface">
+        <div class="premium-carousel__grid">
+          <div class="premium-carousel__copy">
+            <div class="premium-carousel__copy-header">
+              <h2 class="premium-carousel__heading">{heading}</h2>
+              <span class="premium-carousel__rule" aria-hidden="true"></span>
+            </div>
+
+            <p class="premium-carousel__description">{description}</p>
+
+            <a class="premium-carousel__button theme-radius-control" href={buttonHref}>{buttonText}</a>
+          </div>
+
+          <div class="premium-carousel__media theme-radius-media" aria-label="Karuzela zdjec promocyjnych">
+            {hasCarouselImages ? (
+              <>
+                <div class="premium-carousel__fade premium-carousel__fade--top" aria-hidden="true"></div>
+
+                <div class="premium-carousel__columns">
+                  <div class="premium-carousel__column">
+                    <div class="premium-carousel__track">
+                      <div class="premium-carousel__stack">
+                        {primaryImages.map((image: ImageAsset, index: number) => (
+                          <figure class="premium-carousel__card theme-radius-media">
+                            <img src={image.src} alt={image.alt ?? ''} loading={index === 0 ? 'eager' : 'lazy'} />
+                          </figure>
+                        ))}
+                      </div>
+
+                      <div class="premium-carousel__stack" aria-hidden="true">
+                        {primaryImages.map((image: ImageAsset) => (
+                          <figure class="premium-carousel__card theme-radius-media">
+                            <img src={image.src} alt="" loading="lazy" />
+                          </figure>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="premium-carousel__column premium-carousel__column--secondary">
+                    <div class="premium-carousel__track premium-carousel__track--reverse">
+                      <div class="premium-carousel__stack">
+                        {secondaryColumnImages.map((image: ImageAsset, index: number) => (
+                          <figure class="premium-carousel__card theme-radius-media">
+                            <img src={image.src} alt={image.alt ?? ''} loading={index === 0 ? 'eager' : 'lazy'} />
+                          </figure>
+                        ))}
+                      </div>
+
+                      <div class="premium-carousel__stack" aria-hidden="true">
+                        {secondaryColumnImages.map((image: ImageAsset) => (
+                          <figure class="premium-carousel__card theme-radius-media">
+                            <img src={image.src} alt="" loading="lazy" />
+                          </figure>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="premium-carousel__fade premium-carousel__fade--bottom" aria-hidden="true"></div>
+              </>
+            ) : (
+              <div class="premium-carousel__empty theme-radius-media" aria-hidden="true"></div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .premium-carousel {
+    padding: 8rem 0;
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  .premium-carousel__contained {
+    width: min(100%, 96rem);
+    margin: 0 auto;
+  }
+
+  .premium-carousel__panel {
+    background: var(--color-surface-container-low);
+    overflow: hidden;
+  }
+
+  .premium-carousel__grid {
+    display: grid;
+    gap: clamp(2.5rem, 4vw, 4rem);
+    align-items: center;
+    padding: clamp(2rem, 4vw, 4rem);
+  }
+
+  .premium-carousel__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 34rem;
+  }
+
+  .premium-carousel__copy-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .premium-carousel__heading {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-size: clamp(2.25rem, 4vw, 4rem);
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+
+  .premium-carousel__rule {
+    width: 3rem;
+    height: 1px;
+    background: var(--color-primary);
+  }
+
+  .premium-carousel__description {
+    margin: 0;
+    max-width: 30rem;
+    font-family: var(--font-body);
+    color: var(--color-muted-foreground);
+    line-height: 1.8;
+  }
+
+  .premium-carousel__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 3.5rem;
+    padding: 0.875rem 2rem;
+    background: var(--color-foreground);
+    color: var(--color-background);
+    font-family: var(--font-label);
+    font-size: 0.8125rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: opacity 0.2s ease;
+  }
+
+  .premium-carousel__button:hover {
+    opacity: 0.82;
+  }
+
+  .premium-carousel__media {
+    --marquee-gap: 1rem;
+    position: relative;
+    min-height: 34rem;
+    padding: 0.75rem;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-background) 22%, transparent);
+  }
+
+  .premium-carousel__columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--marquee-gap);
+    height: 100%;
+  }
+
+  .premium-carousel__column {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .premium-carousel__track {
+    display: flex;
+    flex-direction: column;
+    gap: var(--marquee-gap);
+    animation: premium-carousel-scroll 40s linear infinite;
+    will-change: transform;
+  }
+
+  .premium-carousel__track--reverse {
+    animation-direction: reverse;
+  }
+
+  .premium-carousel__column:hover .premium-carousel__track {
+    animation-play-state: paused;
+  }
+
+  .premium-carousel__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--marquee-gap);
+  }
+
+  .premium-carousel__card {
+    margin: 0;
+    overflow: hidden;
+    aspect-ratio: 4 / 5;
+    background: var(--color-surface-container);
+  }
+
+  .premium-carousel__card img,
+  .premium-carousel__empty {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .premium-carousel__card img {
+    object-fit: cover;
+  }
+
+  .premium-carousel__empty {
+    min-height: 100%;
+    background: color-mix(in srgb, var(--color-surface-container) 70%, var(--color-background));
+  }
+
+  .premium-carousel__fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    height: 4rem;
+    pointer-events: none;
+  }
+
+  .premium-carousel__fade--top {
+    top: 0;
+    background: linear-gradient(to bottom, var(--color-surface-container-low), transparent);
+  }
+
+  .premium-carousel__fade--bottom {
+    bottom: 0;
+    background: linear-gradient(to top, var(--color-surface-container-low), transparent);
+  }
+
+  @keyframes premium-carousel-scroll {
+    from {
+      transform: translateY(0);
+    }
+
+    to {
+      transform: translateY(calc(-50% - (var(--marquee-gap) / 2)));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .premium-carousel__grid {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .premium-carousel {
+      padding: 6rem 0;
+    }
+
+    .premium-carousel__media {
+      min-height: 28rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .premium-carousel {
+      padding: 5rem 0;
+    }
+
+    .premium-carousel__grid {
+      padding: 1.5rem;
+    }
+
+    .premium-carousel__heading {
+      font-size: 1.875rem;
+    }
+
+    .premium-carousel__description {
+      max-width: none;
+    }
+
+    .premium-carousel__columns {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .premium-carousel__column--secondary {
+      display: none;
+    }
+
+    .premium-carousel__media {
+      min-height: 24rem;
+    }
+  }
+</style>

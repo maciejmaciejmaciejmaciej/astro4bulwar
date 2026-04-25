@@ -4,7 +4,7 @@ import {
   parseGlobalLayoutData,
   type GlobalLayoutData,
 } from "../blocks/registry/globalLayoutContract";
-import { Navbar2 } from "../components/sections/NavbarBigSpaceBetweenElements";
+import { NavbarBigSpaceBetweenElements_py32 } from "../components/sections/NavbarBigSpaceBetweenElements_py32";
 import { Footer } from "../components/sections/Footer";
 import { StickyCartControls } from "../components/sections/StickyCartControls";
 import { CheckoutDrawer } from "@/components/CheckoutDrawer";
@@ -148,7 +148,7 @@ export function RootLayout({ initialGlobalLayout }: RootLayoutProps) {
 
   return (
     <div className="bg-background text-foreground font-body selection:bg-primary-fixed min-h-screen pb-16">
-      {globalLayout ? <Navbar2 navbar={globalLayout.navbar} /> : null}
+      {globalLayout ? <NavbarBigSpaceBetweenElements_py32 navbar={globalLayout.navbar} /> : null}
 
       <Outlet />
 

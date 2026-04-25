@@ -4,6 +4,7 @@ import { CateringSection } from "../components/sections/CateringSection";
 import { RegionalCuisine } from "../components/sections/RegionalCuisine";
 import { OfertaSection } from "../components/sections/OfertaSection";
 import { GallerySection } from "../components/sections/GallerySection";
+import { Heart, ConciergeBell } from "lucide-react";
 import { portfolioItems } from "../data/ofertaData";
 import {
   promo3BlockDefinition,
@@ -98,7 +99,28 @@ export default function HomePage() {
           ]}
         />
 
-        <RegionalCuisine />
+        <RegionalCuisine
+          title={<>Kuchnia <br />regionalna</>}
+          description="Restauracja Bulwar na Starym Rynku w Poznaniu oferuje niecodzienne połączenie tradycyjnej, regionalnej kuchni z nowoczesnymi trendami w gotowaniu."
+          actions={[
+            {
+              icon: Heart,
+              title: <>Zobacz menu a'la<br />carte</>,
+              description: "Wyjątkowe dania na bazie ekologicznych produktów z regionu",
+              href: "/menu",
+              linkLabel: "Zobacz menu",
+            },
+            {
+              icon: ConciergeBell,
+              title: <>Zorganizujemy Twoje<br />przyjęcie</>,
+              description: "Imprezy okolicznościowe na najwyższym poziomie",
+              href: "/oferta",
+              linkLabel: "Zobacz ofertę",
+            },
+          ]}
+          imageSrc="/react/images/widok-na-ratusz.jpg"
+          imageAlt="Widok na Stary Rynek w Poznaniu"
+        />
 
         {renderPageBuilderSections(HOME_PAGE_PROMO3_SCHEMA)}
         
