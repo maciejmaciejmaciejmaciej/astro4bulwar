@@ -30,6 +30,7 @@ const EXPECTED_RENDERERS = {
   universal_header_block_1: 'astro-site/src/components/UniversalHeaderBlock1Section.astro',
   universal_header_block_2: 'astro-site/src/components/UniversalHeaderBlock2Section.astro',
   universal_multilink_block: 'astro-site/src/components/UniversalMultilinkBlockSection.astro',
+  universal_multilink_block_simple: 'astro-site/src/components/UniversalMultilinkBlockSimpleSection.astro',
 } as const;
 
 test('Astro projection stays aligned with the shared readiness manifest', () => {

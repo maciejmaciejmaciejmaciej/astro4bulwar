@@ -24,6 +24,7 @@ import Testimonial7Section from './Testimonial7Section.astro';
 import UniversalHeaderBlock1Section from './UniversalHeaderBlock1Section.astro';
 import UniversalHeaderBlock2Section from './UniversalHeaderBlock2Section.astro';
 import UniversalMultilinkBlockSection from './UniversalMultilinkBlockSection.astro';
+import UniversalMultilinkBlockSimpleSection from './UniversalMultilinkBlockSimpleSection.astro';
 import { resolveAstroRenderer } from '../lib/astroRegistry';
 import type {
   AboutBlock,
@@ -54,6 +55,7 @@ import type {
   UniversalHeaderBlock1SectionBlock,
   UniversalHeaderBlock2SectionBlock,
   UniversalMultilinkSectionBlock,
+  UniversalMultilinkSimpleSectionBlock,
 } from '../lib/types';
 
 type ImageAsset = {
@@ -402,5 +404,13 @@ const renderer = resolveAstroRenderer(section.blockKey);
     title={(section as UniversalMultilinkSectionBlock).data.leftColumn.title}
     primaryCta={(section as UniversalMultilinkSectionBlock).data.leftColumn.primaryCta}
     cards={(section as UniversalMultilinkSectionBlock).data.cards}
+  />
+)}
+
+{renderer.blockKey === 'universal_multilink_block_simple' && (
+  <UniversalMultilinkBlockSimpleSection
+    title={(section as UniversalMultilinkSimpleSectionBlock).data.leftColumn.title}
+    primaryCta={(section as UniversalMultilinkSimpleSectionBlock).data.leftColumn.primaryCta}
+    cards={(section as UniversalMultilinkSimpleSectionBlock).data.cards}
   />
 )}

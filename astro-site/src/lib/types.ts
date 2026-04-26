@@ -53,6 +53,11 @@ const labeledLinkSchema = z.object({
   href: z.string().min(1),
 });
 
+const optionalLabeledLinkSchema = z.object({
+  label: z.string().min(1),
+  href: z.string().min(1).optional(),
+});
+
 const ofertaPostsSectionLinkSchema = z.object({
   href: z.string().min(1),
 });
@@ -157,6 +162,12 @@ const universalMultilinkCardSchema = z.object({
   linkHref: z.string().min(1),
 });
 
+const universalMultilinkSimpleCardSchema = z.object({
+  title: z.string().min(1),
+  linkLabel: z.string().min(1),
+  linkHref: z.string().min(1),
+});
+
 const blockDownloadFeatureSchema = z.object({
   icon: z.enum(['groups', 'quality', 'format', 'events']),
   title: z.string().min(1),
@@ -203,6 +214,7 @@ const dedicatedAstroBlockKeys = new Set([
   'universal_header_block_1',
   'universal_header_block_2',
   'universal_multilink_block',
+  'universal_multilink_block_simple',
 ] as const);
 
 export const aboutBlockSchema = z.object({
@@ -388,6 +400,23 @@ export const universalMultilinkSectionBlockSchema = z.object({
       primaryCta: labeledLinkSchema,
     }),
     cards: z.array(universalMultilinkCardSchema).default([]),
+  }),
+  source: z.null(),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const universalMultilinkSimpleSectionBlockSchema = z.object({
+  id: z.string().min(1),
+  blockKey: z.literal('universal_multilink_block_simple'),
+  blockVersion: z.number().int().positive(),
+  variant: z.string().nullable(),
+  enabled: z.boolean(),
+  data: z.object({
+    leftColumn: z.object({
+      title: z.string().min(1),
+      primaryCta: optionalLabeledLinkSchema,
+    }),
+    cards: z.array(universalMultilinkSimpleCardSchema).default([]),
   }),
   source: z.null(),
   meta: z.record(z.string(), z.unknown()).default({}),
@@ -714,6 +743,7 @@ export const pageBuilderSectionSchema = z.union([
   universalHeaderBlock1SectionBlockSchema,
   universalHeaderBlock2SectionBlockSchema,
   universalMultilinkSectionBlockSchema,
+  universalMultilinkSimpleSectionBlockSchema,
   sharedRegistryBlockSchema,
 ]);
 
@@ -801,6 +831,7 @@ export type SimpleHeadingAndParagraphBlock = z.infer<typeof simpleHeadingAndPara
 export type UniversalHeaderBlock1SectionBlock = z.infer<typeof universalHeaderBlock1SectionBlockSchema>;
 export type UniversalHeaderBlock2SectionBlock = z.infer<typeof universalHeaderBlock2SectionBlockSchema>;
 export type UniversalMultilinkSectionBlock = z.infer<typeof universalMultilinkSectionBlockSchema>;
+export type UniversalMultilinkSimpleSectionBlock = z.infer<typeof universalMultilinkSimpleSectionBlockSchema>;
 export type SharedRegistryBlock = z.infer<typeof sharedRegistryBlockSchema>;
 export type MenuSource = z.infer<typeof menuCategorySourceSchema>;
 export type ParallaxMenuSource = z.infer<typeof wooCategorySourceSchema>;

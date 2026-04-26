@@ -1,0 +1,76 @@
+---
+import PageBuilderSection from '../../../components/PageBuilderSection.astro';
+import { pageBuilderSchema } from '../../../lib/types.ts';
+
+const VALIDATION_ASSET_ORIGIN = 'https://validation.example.test';
+
+const section = pageBuilderSchema.parse({
+  version: 1,
+  page: {
+    slug: '__validation-universal-multilink-block-simple',
+    title: 'Universal Multilink Block Simple Validation',
+    status: 'published',
+  },
+  sections: [
+    {
+      id: 'universal-multilink-block-simple-validation',
+      blockKey: 'universal_multilink_block_simple',
+      blockVersion: 1,
+      variant: null,
+      enabled: true,
+      data: {
+        leftColumn: {
+          title: 'Szybkie linki',
+          primaryCta: {
+            label: 'Nie renderuj bez URL',
+          },
+        },
+        cards: [
+          {
+            title: 'Lunch dnia',
+            linkLabel: 'Learn more',
+            linkHref: '/menu#lunch-dnia',
+          },
+          {
+            title: 'Desery',
+            linkLabel: 'Learn more',
+            linkHref: '/menu#desery',
+          },
+        ],
+      },
+      source: null,
+      meta: {},
+    },
+  ],
+}).sections[0];
+
+const toAbsoluteAssetUrl = (src: string) => {
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+
+  return `${VALIDATION_ASSET_ORIGIN}${src.startsWith('/') ? '' : '/'}${src}`;
+};
+
+const toAbsoluteImageAssets = (images: Array<{ src: string; alt: string }>) => images.map((image) => ({
+  ...image,
+  src: toAbsoluteAssetUrl(image.src),
+}));
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Universal Multilink Block Simple Validation</title>
+  </head>
+  <body>
+    <main data-universal-multilink-block-simple-validation>
+      <PageBuilderSection
+        section={section}
+        toAbsoluteAssetUrl={toAbsoluteAssetUrl}
+        toAbsoluteImageAssets={toAbsoluteImageAssets}
+      />
+    </main>
+  </body>
+</html>

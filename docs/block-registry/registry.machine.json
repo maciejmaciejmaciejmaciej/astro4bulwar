@@ -915,6 +915,36 @@
             "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
           }
         }
+      },
+      "universal_multilink_block_simple": {
+        "lifecycle": "ready",
+        "capabilities": {
+          "reactRuntime": {
+            "available": true,
+            "path": "zip/src/components/sections/Feature18.tsx",
+            "notes": "Feature18Simple is registered through runtime.renderSection."
+          },
+          "astroRenderer": {
+            "available": true,
+            "path": "astro-site/src/components/UniversalMultilinkBlockSimpleSection.astro",
+            "notes": "Astro renderer is registered in the current Astro projection."
+          },
+          "aiDescriptor": {
+            "available": true,
+            "path": "zip/src/blocks/registry/ai/descriptors.cjs",
+            "notes": "AI descriptor coverage is validated by the shared registry invariants test."
+          },
+          "docs": {
+            "available": true,
+            "path": "docs/block-registry/universal_multilink_block_simple.md",
+            "notes": "Block documentation exists in the shared block registry docs folder."
+          },
+          "tests": {
+            "available": true,
+            "path": "zip/src/blocks/registry/registry-invariants.test.tsx",
+            "notes": "Shared contract tests validate registry, AI schema, and readiness parity."
+          }
+        }
       }
     }
   }

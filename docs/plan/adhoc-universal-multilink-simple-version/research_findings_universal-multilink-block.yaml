@@ -1,0 +1,479 @@
+plan_id: adhoc-universal-multilink-simple-version
+objective: Research the existing Universal Multilink Block so a new derived sibling block can be scoped without implementation.
+focus_area: universal-multilink-block
+created_at: 2026-04-26
+created_by: GitHub Copilot GPT-5.4
+status: completed
+
+tldr: |
+  - The existing block is owned by `zip/src/blocks/universal_multilink_block/schema.ts`, which delegates React runtime rendering to `zip/src/components/sections/Feature18.tsx` and Astro rendering to `astro-site/src/components/UniversalMultilinkBlockSection.astro`.
+  - The live contract is strict: `leftColumn.primaryCta` is required, and each card requires `meta`, `title`, `description`, `linkLabel`, and `linkHref`; there is no current optional-main-CTA behavior.
+  - The per-box time label is rendered from `card.meta` and the per-box description from `card.description` in both React and Astro; the small learn-more text is `card.linkLabel`.
+  - A new sibling block key will need a new block definition plus registry, AI descriptor, Astro type/registry wiring, docs, and tests; the existing machine manifest is a consumed parity artifact that will also need regeneration or update.
+  - The smallest behavior delta is not in styling but in contract/rendering: the base block always renders the top CTA and always expects meta and description fields.
+
+research_metadata:
+  methodology: Hybrid retrieval with file_search, grep_search, targeted read_file reads, memory review, and one PowerShell line-count pass via run_in_terminal.
+  scope: Focused on the universal_multilink_block implementation chain across page-builder schema, React runtime, shared registry, AI descriptor registry, Astro renderer, Astro type system, preview seed, and test coverage.
+  confidence: high
+  coverage: 92
+  decision_blockers: 2
+  research_blockers: 0
+
+files_analyzed:
+  - file: schema.ts
+    path: zip/src/blocks/universal_multilink_block/schema.ts
+    purpose: First-class page-builder definition for the existing block.
+    key_elements:
+      - element: universalMultilinkCardSchema
+        type: pattern
+        location: zip/src/blocks/universal_multilink_block/schema.ts:12
+        description: Requires `meta`, `title`, `description`, `linkLabel`, and `linkHref` on each card.
+      - element: universalMultilinkBlockDataSchema
+        type: variable
+        location: zip/src/blocks/universal_multilink_block/schema.ts:20
+        description: Requires `leftColumn.title`, `leftColumn.primaryCta`, and `cards[]`.
+      - element: universalMultilinkBlockDefinition
+        type: variable
+        location: zip/src/blocks/universal_multilink_block/schema.ts:62
+        description: Registers block key `universal_multilink_block` and delegates runtime rendering to `Feature18`.
+    language: typescript
+    lines: 83
+
+  - file: Feature18.tsx
+    path: zip/src/components/sections/Feature18.tsx
+    purpose: Existing React section component that the block reuses at runtime.
+    key_elements:
+      - element: Feature18Content
+        type: interface
+        location: zip/src/components/sections/Feature18.tsx:16
+        description: Defines the React-side content shape used by the block runtime.
+      - element: DEFAULT_FEATURE18_CONTENT
+        type: variable
+        location: zip/src/components/sections/Feature18.tsx:32
+        description: Seeds default heading, CTA, and four example cards with `meta`, `description`, and `linkLabel`.
+      - element: Feature18
+        type: function
+        location: zip/src/components/sections/Feature18.tsx:76
+        description: Renders the large heading, top CTA button, and card grid.
+    language: tsx
+    lines: 132
+
+  - file: universal_multilink_block.md
+    path: docs/block-registry/universal_multilink_block.md
+    purpose: Human-readable registry documentation for the existing block.
+    key_elements:
+      - element: Current Data Contract
+        type: pattern
+        location: docs/block-registry/universal_multilink_block.md:28
+        description: Documents `leftColumn` and `cards[]` field ownership.
+      - element: Safe AI-Editable Fields
+        type: pattern
+        location: docs/block-registry/universal_multilink_block.md:55
+        description: Lists editable paths including CTA, meta, description, and card links.
+      - element: Example Render Payload
+        type: pattern
+        location: docs/block-registry/universal_multilink_block.md:95
+        description: Shows the payload shape used by page_builder_schema.
+    language: markdown
+    lines: 116
+
+  - file: index.ts
+    path: zip/src/blocks/registry/index.ts
+    purpose: Shared registry wiring and readiness projection for page-builder blocks.
+    key_elements:
+      - element: baseBlockRegistry entry
+        type: pattern
+        location: zip/src/blocks/registry/index.ts:161
+        description: Registers `universal_multilink_block` in the block registry.
+      - element: docsPathByBlockKey entry
+        type: variable
+        location: zip/src/blocks/registry/index.ts:215
+        description: Maps the block key to its markdown doc.
+      - element: astroRendererPathByBlockKey entry
+        type: variable
+        location: zip/src/blocks/registry/index.ts:248
+        description: Maps the block key to `UniversalMultilinkBlockSection.astro` for readiness projection.
+      - element: mvpBlockDefaults entry
+        type: variable
+        location: zip/src/blocks/registry/index.ts:671
+        description: Exposes default data for default-instance creation and tests.
+    language: typescript
+    lines: 620
+
+  - file: descriptors.cjs
+    path: zip/src/blocks/registry/ai/descriptors.cjs
+    purpose: AI editing descriptor registry consumed by the AI schema generator.
+    key_elements:
+      - element: universal_multilink_block descriptor
+        type: pattern
+        location: zip/src/blocks/registry/ai/descriptors.cjs:700
+        description: Declares editable fields and builder output for the block.
+    language: javascript
+    lines: 1036
+
+  - file: TemplatePage.tsx
+    path: zip/src/pages/TemplatePage.tsx
+    purpose: Local preview page that seeds the existing block into the template preview schema.
+    key_elements:
+      - element: universalMultilink imports
+        type: pattern
+        location: zip/src/pages/TemplatePage.tsx:88
+        description: Imports the block definition and default data.
+      - element: template-universal-multilink-01
+        type: pattern
+        location: zip/src/pages/TemplatePage.tsx:163
+        description: Adds the block instance to the template preview schema.
+    language: tsx
+    lines: 458
+
+  - file: UniversalMultilinkBlockSection.astro
+    path: astro-site/src/components/UniversalMultilinkBlockSection.astro
+    purpose: Astro renderer for the existing block.
+    key_elements:
+      - element: Props
+        type: interface
+        location: astro-site/src/components/UniversalMultilinkBlockSection.astro:15
+        description: Accepts `title`, `primaryCta`, and `cards`.
+      - element: CTA anchor
+        type: pattern
+        location: astro-site/src/components/UniversalMultilinkBlockSection.astro:37
+        description: Renders the top CTA unconditionally from `primaryCta.href` and `primaryCta.label`.
+      - element: card meta and description markup
+        type: pattern
+        location: astro-site/src/components/UniversalMultilinkBlockSection.astro:45
+        description: Renders `card.meta` and `card.description`.
+    language: astro
+    lines: 218
+
+  - file: PageBuilderSection.astro
+    path: astro-site/src/components/PageBuilderSection.astro
+    purpose: Astro page-builder dispatcher that maps block keys to Astro components.
+    key_elements:
+      - element: UniversalMultilinkBlockSection import
+        type: pattern
+        location: astro-site/src/components/PageBuilderSection.astro:26
+        description: Imports the Astro renderer.
+      - element: universal_multilink_block branch
+        type: pattern
+        location: astro-site/src/components/PageBuilderSection.astro:400
+        description: Passes `leftColumn.title`, `leftColumn.primaryCta`, and `cards` into the Astro renderer.
+    language: astro
+    lines: 376
+
+  - file: types.ts
+    path: astro-site/src/lib/types.ts
+    purpose: Astro-side schema and type union for page-builder sections.
+    key_elements:
+      - element: PageBuilder block-key union entry
+        type: pattern
+        location: astro-site/src/lib/types.ts:205
+        description: Includes `universal_multilink_block` in the allowed Astro block keys.
+      - element: universalMultilinkSectionBlockSchema
+        type: variable
+        location: astro-site/src/lib/types.ts:379
+        description: Re-declares the block schema for Astro consumption with required `primaryCta` and `cards[]` fields.
+    language: typescript
+    lines: 765
+
+  - file: astroRegistry.ts
+    path: astro-site/src/lib/astroRegistry.ts
+    purpose: Astro renderer projection backed by the shared registry manifest.
+    key_elements:
+      - element: universal_multilink_block renderer descriptor
+        type: variable
+        location: astro-site/src/lib/astroRegistry.ts:137
+        description: Resolves the block key to `UniversalMultilinkBlockSection.astro`.
+    language: typescript
+    lines: 172
+
+  - file: registry.machine.json
+    path: docs/block-registry/registry.machine.json
+    purpose: Machine-readable readiness and capability manifest consumed by Astro and preview tooling.
+    key_elements:
+      - element: universal_multilink_block readiness entry
+        type: pattern
+        location: docs/block-registry/registry.machine.json:889
+        description: Declares the block as ready and points to the Astro renderer, docs, AI descriptor, and tests.
+    language: json
+    lines: 921
+
+  - file: wave2-pagebuilder.test.tsx
+    path: zip/src/blocks/registry/wave2-pagebuilder.test.tsx
+    purpose: Focused React/page-builder test coverage for the existing block.
+    key_elements:
+      - element: universal_multilink_block registers stable defaults and renders schema-driven cards
+        type: function
+        location: zip/src/blocks/registry/wave2-pagebuilder.test.tsx:1319
+        description: Verifies defaults, instance creation, validation, and rendered markup for multiple cards.
+    language: tsx
+    lines: 1467
+
+  - file: registry-invariants.test.tsx
+    path: zip/src/blocks/registry/registry-invariants.test.tsx
+    purpose: Generic registry and shared-manifest parity tests that indirectly cover the block.
+    key_elements:
+      - element: core page-builder workflow invariants
+        type: function
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:31
+        description: Validates every registered block's schema, default instance creation, and runtime renderability.
+      - element: shared registry readiness contract exposes one gate with machine-manifest parity
+        type: function
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:69
+        description: Confirms emitted readiness data matches `registry.machine.json`.
+    language: tsx
+    lines: 322
+
+  - file: astroRegistry.test.ts
+    path: astro-site/src/lib/astroRegistry.test.ts
+    purpose: Astro renderer projection test coverage.
+    key_elements:
+      - element: EXPECTED_RENDERERS entry
+        type: variable
+        location: astro-site/src/lib/astroRegistry.test.ts:9
+        description: Includes `universal_multilink_block` in the expected Astro-ready block map.
+      - element: resolveAstroRenderer approved template follow-up renderers
+        type: function
+        location: astro-site/src/lib/astroRegistry.test.ts:66
+        description: Verifies the block resolves to `UniversalMultilinkBlockSection.astro`.
+    language: typescript
+    lines: 74
+
+patterns_found:
+  - category: architecture
+    pattern: The first-class block delegates React rendering to an existing section component while Astro keeps a separate explicit renderer.
+    description: The block definition does not implement its own JSX; it wraps `Feature18` for React and uses a dedicated Astro component for static rendering.
+    examples:
+      - file: zip/src/blocks/universal_multilink_block/schema.ts
+        location: zip/src/blocks/universal_multilink_block/schema.ts:74
+        snippet: "componentName: 'Feature18'"
+      - file: zip/src/blocks/universal_multilink_block/schema.ts
+        location: zip/src/blocks/universal_multilink_block/schema.ts:81
+        snippet: "return createElement(Feature18, { key: section.id, content: data })"
+      - file: astro-site/src/components/PageBuilderSection.astro
+        location: astro-site/src/components/PageBuilderSection.astro:400
+        snippet: "renderer.blockKey === 'universal_multilink_block'"
+    prevalence: common
+
+  - category: contract
+    pattern: The existing block contract is fully required and content-only.
+    description: Top CTA label and href are both mandatory, and every card must supply meta, description, link text, and link target; `source` is null.
+    examples:
+      - file: zip/src/blocks/registry/common.ts
+        location: zip/src/blocks/registry/common.ts:8
+        snippet: "label: z.string().min(1), href: z.string().min(1)"
+      - file: zip/src/blocks/universal_multilink_block/schema.ts
+        location: zip/src/blocks/universal_multilink_block/schema.ts:13
+        snippet: "meta: z.string().min(1)"
+      - file: zip/src/blocks/universal_multilink_block/schema.ts
+        location: zip/src/blocks/universal_multilink_block/schema.ts:15
+        snippet: "description: z.string().min(1)"
+      - file: docs/block-registry/universal_multilink_block.md
+        location: docs/block-registry/universal_multilink_block.md:66
+        snippet: "source = null"
+    prevalence: common
+
+  - category: rendering
+    pattern: Card time label, description, and learn-more text are direct field-to-markup bindings in both runtimes.
+    description: There is no formatting or fallback layer between the schema fields and rendered text nodes for `meta`, `description`, and `linkLabel`.
+    examples:
+      - file: zip/src/components/sections/Feature18.tsx
+        location: zip/src/components/sections/Feature18.tsx:114
+        snippet: "{card.meta}"
+      - file: zip/src/components/sections/Feature18.tsx
+        location: zip/src/components/sections/Feature18.tsx:121
+        snippet: "{card.description}"
+      - file: zip/src/components/sections/Feature18.tsx
+        location: zip/src/components/sections/Feature18.tsx:129
+        snippet: "{card.linkLabel}"
+      - file: astro-site/src/components/UniversalMultilinkBlockSection.astro
+        location: astro-site/src/components/UniversalMultilinkBlockSection.astro:45
+        snippet: "<p class='universal-multilink-block__meta'>{card.meta}</p>"
+      - file: astro-site/src/components/UniversalMultilinkBlockSection.astro
+        location: astro-site/src/components/UniversalMultilinkBlockSection.astro:49
+        snippet: "<p class='universal-multilink-block__description'>{card.description}</p>"
+    prevalence: common
+
+  - category: testing
+    pattern: Coverage is split between one block-focused React test and generic registry/Astro parity tests.
+    description: The most specific test is in `wave2-pagebuilder.test.tsx`; the remaining tests verify registry readiness and Astro projection at the shared-system level.
+    examples:
+      - file: zip/src/blocks/registry/wave2-pagebuilder.test.tsx
+        location: zip/src/blocks/registry/wave2-pagebuilder.test.tsx:1319
+        snippet: "test('universal_multilink_block registers stable defaults and renders schema-driven cards'"
+      - file: zip/src/blocks/registry/registry-invariants.test.tsx
+        location: zip/src/blocks/registry/registry-invariants.test.tsx:69
+        snippet: "shared registry readiness contract exposes one gate with machine-manifest parity"
+      - file: astro-site/src/lib/astroRegistry.test.ts
+        location: astro-site/src/lib/astroRegistry.test.ts:66
+        snippet: "resolveAstroRenderer resolves the approved template follow-up renderers"
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: universal_multilink_block page-builder definition
+      responsibility: Owns the block key, version, Zod schema, defaults, examples, and React runtime binding.
+      location: zip/src/blocks/universal_multilink_block/schema.ts
+      relationship_to_domain: domain root
+    - component: Feature18
+      responsibility: React runtime renderer for the current block layout.
+      location: zip/src/components/sections/Feature18.tsx
+      relationship_to_domain: domain depends on this
+    - component: shared registry index
+      responsibility: Registers block definitions, docs paths, readiness mappings, and default-data exposure.
+      location: zip/src/blocks/registry/index.ts
+      relationship_to_domain: domain depends on this
+    - component: AI descriptor registry
+      responsibility: Builds AI-editable field metadata used by page_builder_schema_for_ai generation.
+      location: zip/src/blocks/registry/ai/descriptors.cjs
+      relationship_to_domain: domain depends on this
+    - component: UniversalMultilinkBlockSection
+      responsibility: Astro renderer for the current block.
+      location: astro-site/src/components/UniversalMultilinkBlockSection.astro
+      relationship_to_domain: domain depends on this
+    - component: Astro page-builder dispatcher
+      responsibility: Routes Astro block keys to concrete section components.
+      location: astro-site/src/components/PageBuilderSection.astro
+      relationship_to_domain: this uses domain outputs
+    - component: Astro type contract
+      responsibility: Validates page-builder sections on the Astro side.
+      location: astro-site/src/lib/types.ts
+      relationship_to_domain: domain depends on this
+  interfaces_used_by_domain:
+    - interface: Feature18Content
+      location: zip/src/components/sections/Feature18.tsx:16
+      usage_pattern: React runtime data shape reused as `UniversalMultilinkBlockData`.
+    - interface: PageBuilderBlockDefinition
+      location: zip/src/blocks/universal_multilink_block/schema.ts:62
+      usage_pattern: First-class block definition contract.
+    - interface: universalMultilinkSectionBlockSchema
+      location: astro-site/src/lib/types.ts:379
+      usage_pattern: Astro-side parser contract for section payloads.
+  data_flow_involving_domain: Page-builder JSON is validated by `universalMultilinkBlockDataSchema`, rendered in React through `runtime.renderSection -> Feature18`, described for AI through `createAiBlockRegistry`, represented in `registry.machine.json` readiness, then revalidated in Astro through `universalMultilinkSectionBlockSchema` and dispatched by `PageBuilderSection.astro` into `UniversalMultilinkBlockSection.astro`.
+  key_relationships_to_domain:
+    - from: zip/src/blocks/universal_multilink_block/schema.ts
+      to: zip/src/components/sections/Feature18.tsx
+      relationship: imports
+    - from: zip/src/blocks/registry/index.ts
+      to: zip/src/blocks/universal_multilink_block/schema.ts
+      relationship: imports
+    - from: zip/src/blocks/registry/ai/descriptors.cjs
+      to: universal_multilink_block data shape
+      relationship: mirrors
+    - from: astro-site/src/components/PageBuilderSection.astro
+      to: astro-site/src/components/UniversalMultilinkBlockSection.astro
+      relationship: composes
+    - from: astro-site/src/lib/types.ts
+      to: universal_multilink_block payload
+      relationship: validates
+    - from: astro-site/src/lib/astroRegistry.ts
+      to: docs/block-registry/registry.machine.json
+      relationship: reads
+
+related_technology_stack:
+  languages_used_in_domain:
+    - TypeScript
+    - TSX
+    - Astro
+    - JavaScript
+    - Markdown
+    - JSON
+  frameworks_used_in_domain:
+    - name: React
+      usage_in_domain: React runtime rendering through `Feature18` and page-builder test rendering.
+    - name: Astro
+      usage_in_domain: Static rendering through `UniversalMultilinkBlockSection.astro` and Astro registry dispatch.
+  libraries_used_in_domain:
+    - name: zod
+      purpose_in_domain: Enforces the block contract in React-side schema and Astro-side types.
+    - name: lucide-react
+      purpose_in_domain: Supplies the `ChevronRight` icon in the React per-card learn-more link.
+    - name: react-router-dom
+      purpose_in_domain: Test harness for React static markup rendering in registry tests.
+  external_apis_used_in_domain: []
+
+related_conventions:
+  naming_patterns_in_domain: Business block keys use snake_case (`universal_multilink_block`); block docs and manifest reuse the key; React and Astro component files use PascalCase section names (`Feature18`, `UniversalMultilinkBlockSection`).
+  structure_of_domain: Each first-class block owns a `schema.ts`; shared registration happens in `zip/src/blocks/registry/index.ts`; AI editing metadata lives in `zip/src/blocks/registry/ai/descriptors.cjs`; Astro requires a renderer component, Astro registry entry, Astro type schema, and dispatcher branch.
+  error_handling_in_domain: Contract errors are validation-time failures via `z.string().min(1)` and `safeParse`-style tests rather than runtime null guards.
+  testing_in_domain: Specific block behavior is asserted in `wave2-pagebuilder.test.tsx`; registry and Astro readiness parity are asserted generically in shared invariant tests.
+  documentation_in_domain: Human-facing block docs live in `docs/block-registry/<blockKey>.md`; machine-facing readiness lives in `docs/block-registry/registry.machine.json`.
+
+related_dependencies:
+  internal:
+    - component: zip/src/blocks/registry/common.ts
+      relationship_to_domain: Provides the required CTA schema used by `leftColumn.primaryCta`.
+      direction: outbound
+    - component: zip/src/components/sections/Feature18.tsx
+      relationship_to_domain: Supplies the current React layout and default content type.
+      direction: outbound
+    - component: zip/src/blocks/registry/index.ts
+      relationship_to_domain: Registers the block and exposes defaults/readiness.
+      direction: bidirectional
+    - component: zip/src/blocks/registry/ai/descriptors.cjs
+      relationship_to_domain: Supplies AI editing metadata for the block.
+      direction: bidirectional
+    - component: astro-site/src/lib/types.ts
+      relationship_to_domain: Revalidates the block contract on the Astro side.
+      direction: bidirectional
+    - component: astro-site/src/components/PageBuilderSection.astro
+      relationship_to_domain: Dispatches the block to its Astro renderer.
+      direction: inbound
+    - component: docs/block-registry/registry.machine.json
+      relationship_to_domain: Stores consumed readiness metadata for Astro and preview tooling.
+      direction: bidirectional
+  external:
+    - name: zod
+      purpose_for_domain: Schema validation for both React and Astro payload parsing.
+    - name: react
+      purpose_for_domain: Runtime rendering of the existing section component.
+    - name: lucide-react
+      purpose_for_domain: Card-link icon rendering in the React component.
+
+domain_security_considerations:
+  sensitive_areas:
+    - area: Page-builder payload validation
+      location: zip/src/blocks/universal_multilink_block/schema.ts
+      concern: The block is content-only, but it depends on schema validation to prevent malformed CTA and card payloads from reaching renderers.
+    - area: Astro payload validation
+      location: astro-site/src/lib/types.ts
+      concern: Astro consumes shared page-builder data and depends on mirrored required-field validation.
+  authentication_patterns_in_domain: None observed in this domain; `source` is null and the block does not call external services.
+  authorization_patterns_in_domain: None observed in the block implementation chain reviewed.
+  data_validation_in_domain: Required strings are enforced for CTA label/href and card meta/title/description/linkLabel/linkHref via Zod on both React and Astro sides.
+
+testing_patterns:
+  framework: node:test with assert, plus React static markup rendering and Astro registry projection assertions.
+  coverage_areas:
+    - Default data parity and default-instance creation.
+    - React render output for schema-driven cards.
+    - Shared registry readiness parity against `registry.machine.json`.
+    - Astro renderer projection resolution.
+  test_organization: One focused block test in `zip/src/blocks/registry/wave2-pagebuilder.test.tsx` plus generic shared-registry tests in `zip/src/blocks/registry/registry-invariants.test.tsx` and Astro projection tests in `astro-site/src/lib/astroRegistry.test.ts`.
+  mock_patterns:
+    - MemoryRouter wraps rendered React sections during static markup tests.
+    - JSON manifest is loaded from `docs/block-registry/registry.machine.json` for parity assertions.
+
+open_questions:
+  - question: What exact sibling block key and file naming convention should be used for "Universal Multilink Block simple version"?
+    context: The current domain uses snake_case business keys, but the requested new name was provided only as a human label.
+    type: decision_blocker
+    affects:
+      - adhoc-universal-multilink-simple-version
+  - question: Should the simple sibling omit `cards[].meta` and `cards[].description` from its contract entirely, or keep the fields optional while suppressing rendering?
+    context: The current schema and both renderers require and render those fields unconditionally, so the answer changes whether the new work is a new data contract or only a new render variant.
+    type: decision_blocker
+    affects:
+      - adhoc-universal-multilink-simple-version
+
+gaps:
+  - area: Machine manifest update workflow
+    description: The reviewed files confirm that `docs/block-registry/registry.machine.json` is consumed directly by Astro and registry tests, but the exact authoring/regeneration workflow for committing a new block entry was not established in this pass.
+    impact: nice_to_know
+    affects:
+      - adhoc-universal-multilink-simple-version
+  - area: Dedicated Astro markup test coverage for universal_multilink_block
+    description: The reviewed Astro tests verify registry projection, but no block-specific Astro markup snapshot or content assertion for `UniversalMultilinkBlockSection.astro` was located in this pass.
+    impact: nice_to_know
+    affects:
+      - adhoc-universal-multilink-simple-version

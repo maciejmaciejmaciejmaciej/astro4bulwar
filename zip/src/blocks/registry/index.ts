@@ -104,6 +104,10 @@ import {
   universalMultilinkBlockDefinition,
   universalMultilinkBlockDefaultData,
 } from "../universal_multilink_block/schema";
+import {
+  universalMultilinkBlockSimpleDefinition,
+  universalMultilinkBlockSimpleDefaultData,
+} from "../universal_multilink_block_simple/schema";
 import type {
   BlockCapabilityDescriptor,
   BlockReadinessGateSnapshot,
@@ -159,6 +163,7 @@ const baseBlockRegistry = {
   [universalHeaderBlock1Definition.blockKey]: universalHeaderBlock1Definition,
   [universalHeaderBlock2Definition.blockKey]: universalHeaderBlock2Definition,
   [universalMultilinkBlockDefinition.blockKey]: universalMultilinkBlockDefinition,
+  [universalMultilinkBlockSimpleDefinition.blockKey]: universalMultilinkBlockSimpleDefinition,
 } satisfies PageBuilderBlockRegistry;
 
 export type RegisteredBlockKey = Extract<keyof typeof baseBlockRegistry, string>;
@@ -213,6 +218,7 @@ const docsPathByBlockKey = {
   universal_header_block_1: "docs/block-registry/universal_header_block_1.md",
   universal_header_block_2: "docs/block-registry/universal_header_block_2.md",
   universal_multilink_block: "docs/block-registry/universal_multilink_block.md",
+  universal_multilink_block_simple: "docs/block-registry/universal_multilink_block_simple.md",
 } satisfies Record<RegisteredBlockKey, string>;
 
 const astroRendererPathByBlockKey: Partial<Record<RegisteredBlockKey, string>> = {
@@ -246,6 +252,7 @@ const astroRendererPathByBlockKey: Partial<Record<RegisteredBlockKey, string>> =
   universal_header_block_1: "astro-site/src/components/UniversalHeaderBlock1Section.astro",
   universal_header_block_2: "astro-site/src/components/UniversalHeaderBlock2Section.astro",
   universal_multilink_block: "astro-site/src/components/UniversalMultilinkBlockSection.astro",
+  universal_multilink_block_simple: "astro-site/src/components/UniversalMultilinkBlockSimpleSection.astro",
 };
 
 const createCapabilityDescriptor = (
@@ -669,4 +676,5 @@ export const mvpBlockDefaults = {
   universal_header_block_1: universalHeaderBlock1DefaultData,
   universal_header_block_2: universalHeaderBlock2DefaultData,
   universal_multilink_block: universalMultilinkBlockDefaultData,
+  universal_multilink_block_simple: universalMultilinkBlockSimpleDefaultData,
 } as const;

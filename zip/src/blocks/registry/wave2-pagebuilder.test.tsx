@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
@@ -60,6 +61,10 @@ import {
   universalMultilinkBlockDefinition,
 } from "../universal_multilink_block/schema";
 import {
+  universalMultilinkBlockSimpleDefinition,
+  universalMultilinkBlockSimpleDefaultData,
+} from "../universal_multilink_block_simple/schema";
+import {
   universalHeaderBlock1Definition,
 } from "../universal_header_block_1/schema";
 import {
@@ -74,6 +79,57 @@ import {
 } from "./index";
 import { parsePageBuilderSchema } from "./pageBuilderSchema";
 import { renderPageBuilderSections } from "./renderPageBuilderSections";
+
+const require = createRequire(import.meta.url);
+
+const { createAiBlockRegistry } = require("./ai/descriptors.cjs") as {
+  createAiBlockRegistry: (helpers: {
+    assertObject: (value: unknown, label: string) => Record<string, unknown>;
+    getArray: (value: unknown, label: string) => unknown[];
+    clone: <T>(value: T) => T;
+    getStructuredSource: (section: { source: unknown }) => Record<string, unknown> | null;
+  }) => Record<string, {
+    editableFields: string[] | ((section: { source: unknown }) => string[]);
+    build: (section: { data: unknown; source: unknown; variant: string | null }) => {
+      content: Record<string, unknown>;
+    };
+  }>;
+};
+
+const aiBlockRegistry = createAiBlockRegistry({
+  assertObject(value, label) {
+    assert.equal(typeof label, "string");
+    assert.notEqual(label.length, 0);
+
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`${label} must be an object.`);
+    }
+
+    return value as Record<string, unknown>;
+  },
+  getArray(value, label) {
+    assert.equal(typeof label, "string");
+    assert.notEqual(label.length, 0);
+
+    if (!Array.isArray(value)) {
+      throw new Error(`${label} must be an array.`);
+    }
+
+    return value;
+  },
+  clone(value) {
+    return structuredClone(value);
+  },
+  getStructuredSource(section) {
+    const source = section.source;
+
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      return null;
+    }
+
+    return source as Record<string, unknown>;
+  },
+});
 
 test("wave 2 registers the our-services block with stable defaults", () => {
   const block = getBlock("our-services");
@@ -1316,7 +1372,7 @@ test("just_pralax_img_horizontal registers stable defaults and renders only the 
   assert.doesNotMatch(markup, /Kolacje|Desery|The Menu/);
 });
 
-test("universal_multilink_block registers stable defaults and renders schema-driven cards", () => {
+test("universal_multilink_block preserves CTA, meta, and description in the shared runtime", () => {
   const block = getBlock("universal_multilink_block");
 
   assert.ok(block);
@@ -1389,9 +1445,117 @@ test("universal_multilink_block registers stable defaults and renders schema-dri
 
   assert.match(markup, /Karta menu/);
   assert.match(markup, /Sprawdz cala karte/);
+  assert.match(markup, /08:00 - 12:00/);
   assert.match(markup, /Sniadania/);
+  assert.match(markup, /Pozycje poranne z sezonowymi dodatkami\./);
   assert.match(markup, /Lunch i kolacja/);
   assert.match(markup, /Otworz desery/);
+});
+
+test("universal_multilink_block_simple registers stable defaults, omits the top CTA without a URL, and limits cards to title plus learn-more", () => {
+  const block = getBlock("universal_multilink_block_simple");
+
+  assert.ok(block);
+  assert.equal(block.blockKey, universalMultilinkBlockSimpleDefinition.blockKey);
+  assert.deepEqual(
+    mvpBlockDefaults.universal_multilink_block_simple,
+    universalMultilinkBlockSimpleDefaultData,
+  );
+
+  const instance = createDefaultBlockInstance("universal_multilink_block_simple", 11);
+
+  assert.equal(instance.id, "universal_multilink_block_simple-11");
+  assert.equal(instance.source, null);
+  assert.deepEqual(instance.data, universalMultilinkBlockSimpleDefaultData);
+
+  const schema = parsePageBuilderSchema({
+    version: 1,
+    page: {
+      slug: "feature18-simple-preview",
+      title: "Feature18 Simple Preview",
+      status: "published",
+    },
+    sections: [
+      {
+        id: "universal-multilink-simple-01",
+        blockKey: "universal_multilink_block_simple",
+        blockVersion: 1,
+        variant: null,
+        enabled: true,
+        data: validateBlockData("universal_multilink_block_simple", {
+          leftColumn: {
+            title: "Szybkie linki",
+            primaryCta: {
+              label: "Ukryj CTA bez URL",
+            },
+          },
+          cards: [
+            {
+              title: "Lunch dnia",
+              linkLabel: "Learn more",
+              linkHref: "/menu#lunch-dnia",
+            },
+            {
+              title: "Desery",
+              linkLabel: "Learn more",
+              linkHref: "/menu#desery",
+            },
+          ],
+        }),
+        source: null,
+        meta: {},
+      },
+    ],
+  });
+
+  const markup = renderToStaticMarkup(
+    <MemoryRouter>
+      <>{renderPageBuilderSections(schema)}</>
+    </MemoryRouter>,
+  );
+
+  assert.match(markup, /Szybkie linki/);
+  assert.doesNotMatch(markup, /Ukryj CTA bez URL/);
+  assert.match(markup, /Lunch dnia/);
+  assert.match(markup, /Desery/);
+  assert.match(markup, /Learn more/);
+  assert.doesNotMatch(markup, /09:00 - 17:00|08:00 - 12:00|Weekend/);
+  assert.doesNotMatch(markup, /Pozycje poranne|Sekcja potwierdza|Karta glowna restauracji/);
+
+  const descriptor = aiBlockRegistry.universal_multilink_block_simple;
+
+  assert.ok(descriptor);
+  assert.deepEqual(descriptor.editableFields, [
+    "content.leftColumn.title",
+    "content.leftColumn.primaryCta.label",
+    "content.leftColumn.primaryCta.href",
+    "content.cards[].title",
+    "content.cards[].linkLabel",
+    "content.cards[].linkHref",
+  ]);
+  assert.deepEqual(
+    descriptor.build(schema.sections[0] ?? { data: null, source: null, variant: null }).content,
+    {
+      leftColumn: {
+        title: "Szybkie linki",
+        primaryCta: {
+          label: "Ukryj CTA bez URL",
+        },
+      },
+      cards: [
+        {
+          title: "Lunch dnia",
+          linkLabel: "Learn more",
+          linkHref: "/menu#lunch-dnia",
+        },
+        {
+          title: "Desery",
+          linkLabel: "Learn more",
+          linkHref: "/menu#desery",
+        },
+      ],
+    },
+  );
 });
 
 test("universal_header_block_1 registers stable defaults and renders direct-edit editorial content", () => {

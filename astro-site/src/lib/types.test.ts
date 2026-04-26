@@ -19,6 +19,7 @@ import {
   promo2BlockSchema,
   restaurantMenuDrawerTypeBlockSchema,
   simpleHeadingAndParagraphBlockSchema,
+  universalMultilinkSimpleSectionBlockSchema,
 } from './types.ts';
 import {
   TEMPLATE_BLOCK_ASTRO_VALIDATION_BLOCK_KEYS,
@@ -975,4 +976,48 @@ test('pageBuilderSchema enforces the first-class parallax menu source contract',
 
   assert.equal(parsed.success, false);
   assert.equal(parsed.error.issues.some((issue) => issue.path.join('.').includes('source.sourceType')), true);
+});
+
+test('universalMultilinkSimpleSectionBlockSchema accepts omitted top CTA URLs and reduced cards', () => {
+  const parsed = universalMultilinkSimpleSectionBlockSchema.parse({
+    id: 'universal-multilink-simple-01',
+    blockKey: 'universal_multilink_block_simple',
+    blockVersion: 1,
+    variant: null,
+    enabled: true,
+    data: {
+      leftColumn: {
+        title: 'Szybkie linki',
+        primaryCta: {
+          label: 'Opcjonalny przycisk',
+        },
+      },
+      cards: [
+        {
+          title: 'Lunch dnia',
+          linkLabel: 'Learn more',
+          linkHref: '/menu#lunch-dnia',
+        },
+      ],
+    },
+    source: null,
+    meta: {},
+  });
+
+  assert.equal(parsed.blockKey, 'universal_multilink_block_simple');
+  assert.deepEqual(parsed.data, {
+    leftColumn: {
+      title: 'Szybkie linki',
+      primaryCta: {
+        label: 'Opcjonalny przycisk',
+      },
+    },
+    cards: [
+      {
+        title: 'Lunch dnia',
+        linkLabel: 'Learn more',
+        linkHref: '/menu#lunch-dnia',
+      },
+    ],
+  });
 });

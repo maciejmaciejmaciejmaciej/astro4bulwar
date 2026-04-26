@@ -88,6 +88,10 @@ import {
   universalMultilinkBlockDefinition,
   universalMultilinkBlockDefaultData,
 } from "../blocks/universal_multilink_block/schema";
+import {
+  universalMultilinkBlockSimpleDefinition,
+  universalMultilinkBlockSimpleDefaultData,
+} from "../blocks/universal_multilink_block_simple/schema";
 import type { PageBuilderSchema } from "../blocks/registry/pageBuilderSchema";
 import { parsePageBuilderSchema } from "../blocks/registry/pageBuilderSchema";
 import { renderPageBuilderSections } from "../blocks/registry/renderPageBuilderSections";
@@ -166,6 +170,16 @@ const TEMPLATE_PAGE_PREVIEW_SCHEMA = parsePageBuilderSchema({
       variant: null,
       enabled: true,
       data: universalMultilinkBlockDefaultData,
+      source: null,
+      meta: {},
+    },
+    {
+      id: "template-universal-multilink-simple-01",
+      blockKey: universalMultilinkBlockSimpleDefinition.blockKey,
+      blockVersion: universalMultilinkBlockSimpleDefinition.version,
+      variant: null,
+      enabled: true,
+      data: universalMultilinkBlockSimpleDefaultData,
       source: null,
       meta: {},
     },
@@ -354,6 +368,7 @@ export default function TemplatePage() {
     ...previewSchema,
     sections: previewSchema.sections.filter((section) => (
       section.id === "template-universal-multilink-01"
+      || section.id === "template-universal-multilink-simple-01"
       || section.id === "template-universal-header-1-01"
       || section.id === "template-universal-header-2-01"
     )),
@@ -374,6 +389,7 @@ export default function TemplatePage() {
         && section.id !== "template-promo2-01"
         && section.id !== "template-our-services-01"
         && section.id !== "template-universal-multilink-01"
+        && section.id !== "template-universal-multilink-simple-01"
         && section.id !== "template-universal-header-1-01"
         && section.id !== "template-universal-header-2-01"
         && section.id !== "template-oferta-posts-01",

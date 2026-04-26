@@ -257,6 +257,20 @@ function createAiBlockRegistry(helpers) {
     };
   }
 
+  function buildUniversalMultilinkSimpleContent(section) {
+    const data = assertObject(section.data, `${section.id}.data`);
+    const leftColumn = assertObject(data.leftColumn, `${section.id}.data.leftColumn`);
+    const primaryCta = assertObject(leftColumn.primaryCta, `${section.id}.data.leftColumn.primaryCta`);
+
+    return {
+      leftColumn: {
+        title: typeof leftColumn.title === 'string' ? leftColumn.title : '',
+        primaryCta: clone(primaryCta),
+      },
+      cards: clone(Array.isArray(data.cards) ? data.cards : []),
+    };
+  }
+
   function buildUniversalHeaderBlock1Content(section) {
     const data = assertObject(section.data, `${section.id}.data`);
     const gallery = assertObject(data.gallery, `${section.id}.data.gallery`);
@@ -714,6 +728,24 @@ function createAiBlockRegistry(helpers) {
       build(section) {
         return {
           content: buildUniversalMultilinkContent(section),
+        };
+      },
+    },
+    'universal_multilink_block_simple': {
+      contentSource: 'page_schema',
+      editableFields: [
+        'content.leftColumn.title',
+        'content.leftColumn.primaryCta.label',
+        'content.leftColumn.primaryCta.href',
+        'content.cards[].title',
+        'content.cards[].linkLabel',
+        'content.cards[].linkHref',
+      ],
+      editRoute: 'Zmiany tytulu sekcji, opcjonalnego przycisku i prostych kart linkujacych wprowadzaj bezposrednio w page_builder_schema_for_ai oraz odpowiadajacym page_builder_schema. Jesli href przycisku nie jest podany, przycisk nie renderuje sie w runtime.',
+      doNotEditDirectly: ['source', 'meta', 'layout'],
+      build(section) {
+        return {
+          content: buildUniversalMultilinkSimpleContent(section),
         };
       },
     },

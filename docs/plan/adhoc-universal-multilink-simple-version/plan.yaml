@@ -1,0 +1,493 @@
+plan_id: adhoc-universal-multilink-simple-version
+objective: Implement a new page-builder and Astro-ready block named Universal Multilink Block simple version as a sibling of universal_multilink_block, with explicit parent-regression coverage, omitted-CTA AI smoke validation, a focused Astro execution gate, and sibling-specific adapters where that reduces risk.
+created_at: '2026-04-26T00:00:00Z'
+created_by: gem-planner
+status: pending
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 6
+  risk_score: medium
+
+tldr: |
+  The minimal safe path is to keep `universal_multilink_block` intact and introduce `universal_multilink_block_simple` behind sibling-specific adapters or wrappers, not data-shape heuristics inside the parent path (sources: user request; docs/plan/adhoc-universal-multilink-simple-version/research_findings_universal-multilink-block.yaml; zip/src/components/sections/Feature18.tsx; astro-site/src/components/PageBuilderSection.astro).
+  Blocking coverage needs to be explicit, not indirect: the React gate should prove the parent still renders `leftColumn.primaryCta`, `cards[].meta`, and `cards[].description`, while the simple sibling proves top-CTA omission plus reduced-card output and AI descriptor/generator behavior (sources: user request; zip/src/blocks/registry/wave2-pagebuilder.test.tsx; zip/src/blocks/registry/registry-invariants.test.tsx; zip/src/blocks/registry/ai/descriptors.cjs).
+  Astro readiness should be justified by a dedicated per-block validation route that renders the simple sibling through `PageBuilderSection.astro`, plus targeted type and registry tests, instead of relying on the broad aggregate validation fixture alone (sources: user request; /memories/repo/astro-readiness.md; astro-site/src/pages/validation/restaurant-menu-drawer-type/index.astro; astro-site/src/lib/types.test.ts; astro-site/src/lib/astroRegistry.test.ts).
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: A shared renderer shortcut for the simple sibling regresses the existing `universal_multilink_block` in React or Astro and drops the parent CTA, meta, or description output.
+      likelihood: medium
+      impact: high
+      mitigation: 'Prefer sibling-specific adapters or wrappers and make the parent regression executable in both stacks before metadata sync; do not infer simple mode from missing parent fields (sources: user request; zip/src/components/sections/Feature18.tsx; astro-site/src/components/UniversalMultilinkBlockSection.astro; zip/src/blocks/registry/wave2-pagebuilder.test.tsx; astro-site/src/lib/types.test.ts).'
+    - scenario: The simple sibling is marked AI-ready or Astro-ready even though the omitted-CTA case only passes broad aggregate fixtures and was never exercised through the dedicated block path.
+      likelihood: medium
+      impact: high
+      mitigation: 'Add sibling-specific AI smoke assertions and a dedicated `src/pages/validation/**` Astro route that renders through `PageBuilderSection.astro`; delay manifest promotion until those focused gates pass (sources: user request; /memories/repo/astro-readiness.md; zip/src/blocks/registry/registry-invariants.test.tsx; astro-site/src/pages/validation/restaurant-menu-drawer-type/index.astro).'
+  assumptions:
+    - 'The sibling block key should remain `universal_multilink_block_simple`, matching the repo''s snake_case naming and existing `_simple` precedent (sources: user request; docs/plan/adhoc-universal-multilink-simple-version/research_findings_universal-multilink-block.yaml; zip/src/blocks/about_2_simple/schema.ts).'
+    - 'A dedicated Astro validation route should live under `astro-site/src/pages/validation/**`, not `__validation`, because the repo memory already records that private routes are skipped for emitted validation pages (sources: /memories/repo/astro-readiness.md; astro-site/src/pages/validation/restaurant-menu-drawer-type/index.astro).'
+    - 'The omitted-top-CTA AI contract can be smoke-tested in a focused existing test file instead of relying only on the broader shared invariant suite, as long as the test calls the descriptor build/editable-field surface directly (sources: user request; zip/src/blocks/registry/registry-invariants.test.tsx; zip/src/blocks/registry/wave2-pagebuilder.test.tsx).'
+
+implementation_specification:
+  code_structure: |
+    Keep the new business contract isolated in `zip/src/blocks/universal_multilink_block_simple/schema.ts`. Prefer a thin sibling-specific adapter or wrapper on each runtime side so the existing parent path remains explicit and stable: in React, feed the sibling through a local adapter or an explicit opt-in mode into `Feature18.tsx`; in Astro, feed the sibling through a local wrapper or explicit dispatcher branch rather than teaching the parent path to guess simple mode from omitted fields.
+    Make the focused executable gates first-class. On the zip side, extend the narrow React block test so it asserts both parent preservation and simple-sibling omission behavior, and add direct descriptor build/editable-field smoke for the missing top CTA URL. On the Astro side, add a dedicated validation route under `astro-site/src/pages/validation/universal-multilink-block-simple/index.astro` that renders a single inline section through `PageBuilderSection.astro`, plus targeted parser and registry tests. Do not rely on the aggregate `templateBlockAstroValidation` fixture as the only Astro gate for this block.
+    Sequence metadata last: only after the focused React, AI, and Astro gates are in place should the plan update `astro-site/src/lib/astroRegistry.ts`, `docs/block-registry/registry.machine.json`, and the human-readable block doc (sources: zip/src/blocks/registry/index.ts; zip/src/blocks/registry/ai/descriptors.cjs; astro-site/src/lib/types.ts; astro-site/src/components/PageBuilderSection.astro; astro-site/src/lib/astroRegistry.ts; docs/block-registry/registry.machine.json).
+  affected_areas:
+    - zip/src/blocks/universal_multilink_block_simple/schema.ts
+    - zip/src/components/sections/Feature18.tsx
+    - zip/src/blocks/registry/index.ts
+    - zip/src/blocks/registry/wave2-pagebuilder.test.tsx
+    - zip/src/blocks/registry/ai/descriptors.cjs
+    - astro-site/src/lib/types.ts
+    - astro-site/src/components/PageBuilderSection.astro
+    - astro-site/src/components/UniversalMultilinkBlockSection.astro
+    - astro-site/src/pages/validation/universal-multilink-block-simple/index.astro
+    - astro-site/src/lib/types.test.ts
+    - astro-site/src/lib/astroRegistry.ts
+    - astro-site/src/lib/astroRegistry.test.ts
+    - docs/block-registry/registry.machine.json
+    - docs/block-registry/universal_multilink_block_simple.md
+  component_details:
+    - component: simple sibling schema and React-side adapter
+      responsibility: Define the reduced simple-sibling contract and feed it into the existing React presentation without weakening the parent block contract.
+      interfaces:
+        - blockKey `universal_multilink_block_simple`
+        - reduced cards with `title`, `linkLabel`, and `linkHref`
+        - explicit sibling-only adapter or mode for optional top CTA rendering
+    - component: zip registry and AI descriptor coverage
+      responsibility: Register the new block in the shared registry and prove that AI descriptor generation behaves correctly when the top CTA URL is omitted.
+      interfaces:
+        - shared registry entry and default instance exposure
+        - descriptor `editableFields` and `build()` output for the simple sibling
+        - focused React assertions for parent and sibling output
+    - component: Astro sibling runtime wiring
+      responsibility: Mirror the reduced contract into Astro parsing and dispatch while keeping the parent block path explicit.
+      interfaces:
+        - Astro block-key union and reduced schema entry
+        - "`PageBuilderSection.astro` branch for the simple sibling"
+        - sibling wrapper or explicit opt-in rendering path for optional CTA omission
+    - component: focused Astro validation route and tests
+      responsibility: Provide a per-block executable Astro gate and targeted contract tests for both the preserved parent and the new simple sibling.
+      interfaces:
+        - dedicated validation route under `src/pages/validation/**`
+        - parent preservation assertions for `primaryCta`, `meta`, and `description`
+        - simple-sibling omitted-CTA and reduced-card assertions
+    - component: Astro registry and documentation metadata
+      responsibility: Promote the block to machine-readable readiness and human-readable documentation only after the focused gates pass.
+      interfaces:
+        - Astro registry projection entry
+        - machine manifest readiness entry
+        - docs/block-registry/universal_multilink_block_simple.md
+  dependencies:
+    - component: zip/src/components/sections/Feature18.tsx
+      relationship: The new sibling should reuse the existing React layout through an explicit sibling-only adapter or mode, while the parent remains the default path.
+    - component: astro-site/src/components/PageBuilderSection.astro
+      relationship: The focused Astro gate should exercise the same dispatcher path production pages use.
+    - component: astro-site/src/pages/validation/restaurant-menu-drawer-type/index.astro
+      relationship: This existing dedicated validation page is the closest pattern for a per-block route that should be copied for the new simple sibling.
+    - component: zip/src/blocks/registry/registry-invariants.test.tsx
+      relationship: Existing shared descriptor smoke shows how to call `createAiBlockRegistry`, but the new plan requires sibling-specific omitted-CTA coverage in a narrower, block-focused gate.
+    - component: docs/block-registry/registry.machine.json
+      relationship: The manifest should trail validated runtime state, not lead it.
+  integration_points:
+    - zip/src/blocks/registry/index.ts
+    - zip/src/blocks/registry/ai/descriptors.cjs
+    - astro-site/src/lib/types.ts
+    - astro-site/src/components/PageBuilderSection.astro
+    - astro-site/src/pages/validation/universal-multilink-block-simple/index.astro
+    - astro-site/src/lib/astroRegistry.ts
+    - docs/block-registry/registry.machine.json
+
+contracts:
+  - from_task: define_simple_multilink_contract
+    to_task: wire_zip_registry_and_ai_smoke
+    interface: Exported sibling schema, explicit adapter semantics, and parent-preservation invariants for React-side coverage.
+    format: TypeScript block definition and renderer contract.
+  - from_task: define_simple_multilink_contract
+    to_task: wire_astro_runtime_with_sibling_wrapper
+    interface: Reduced simple-sibling data shape and explicit omitted-CTA behavior that Astro must mirror without weakening the parent contract.
+    format: Mirrored block schema and runtime prop contract.
+  - from_task: wire_astro_runtime_with_sibling_wrapper
+    to_task: add_focused_astro_validation_route
+    interface: Dispatcher-ready simple sibling render path that can be exercised through a dedicated validation page.
+    format: Astro block-key union member plus `PageBuilderSection.astro` branch contract.
+  - from_task: wire_zip_registry_and_ai_smoke
+    to_task: sync_astro_registry_and_manifest
+    interface: Final sibling key, descriptor path, and focused parent/sibling React plus AI expectations.
+    format: Shared registry metadata and test-backed descriptor contract.
+  - from_task: add_focused_astro_validation_route
+    to_task: sync_astro_registry_and_manifest
+    interface: Dedicated Astro route evidence and parser assertions required before Astro-ready metadata promotion.
+    format: Focused Astro validation route and test evidence contract.
+  - from_task: sync_astro_registry_and_manifest
+    to_task: document_simple_multilink_block
+    interface: Final readiness metadata, renderer path, descriptor path, and safe editable-field list that docs must mirror.
+    format: Machine manifest and registry metadata delta.
+
+tasks:
+  - id: define_simple_multilink_contract
+    title: Define the simple sibling contract and a parent-safe React adapter
+    description: |
+      Introduce the new sibling schema and make the minimum React-side runtime change needed to support it without mutating the parent block behavior.
+
+      The task should:
+      - add `zip/src/blocks/universal_multilink_block_simple/schema.ts`
+      - keep the sibling cards limited to `title`, `linkLabel`, and `linkHref`
+      - make the top CTA optional for the simple sibling only
+      - prefer a thin sibling-local adapter or wrapper over global parent-path branching
+      - avoid any heuristic that treats missing `meta`, `description`, or CTA data as an implicit mode switch for `universal_multilink_block`
+
+      This is the root contract task because the parent block still requires `leftColumn.primaryCta`, `cards[].meta`, and `cards[].description`, and that behavior must stay explicit before any registry or Astro wiring happens (sources: user request; zip/src/blocks/universal_multilink_block/schema.ts; zip/src/components/sections/Feature18.tsx; docs/plan/adhoc-universal-multilink-simple-version/research_findings_universal-multilink-block.yaml).
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - req-1
+      - req-2
+      - req-3
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: zip/src/blocks/universal_multilink_block/schema.ts
+        description: Parent contract that must remain intact.
+      - path: zip/src/components/sections/Feature18.tsx
+        description: Existing React renderer that should only gain explicit sibling-safe behavior.
+      - path: docs/plan/adhoc-universal-multilink-simple-version/research_findings_universal-multilink-block.yaml
+        description: Confirms the current parent field requirements and runtime ownership.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Revised after critique to make the sibling-adapter preference and parent-preservation boundary explicit before downstream wiring.
+        timestamp: '2026-04-26T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: reduced contract with an explicit sibling-only React path
+        verification:
+          - Confirm the parent runtime path still expects and exposes CTA, meta, and description fields.
+          - Confirm the simple sibling contract omits meta and description entirely.
+          - Confirm omitted top CTA support is opt-in for the sibling and not inferred from parent-shaped data.
+        acceptance_criteria:
+          - A new sibling schema exists with the reduced card contract.
+          - The React runtime change is explicitly sibling-scoped.
+          - The parent block path remains the default behavior.
+        failure_modes:
+          - scenario: The sibling support is implemented as a silent parent-path fallback and weakens the original contract.
+            likelihood: medium
+            impact: high
+            mitigation: Prefer a wrapper or explicit mode passed only by the new sibling schema.
+    tech_stack:
+      - TypeScript
+      - React TSX
+      - Zod
+    test_coverage: Follow-up tasks add focused parent and sibling regression coverage.
+
+  - id: wire_zip_registry_and_ai_smoke
+    title: Register the sibling in zip and add explicit React plus AI omitted-CTA coverage
+    description: |
+      Wire the new block into the shared zip registry and make the focused React test prove both the parent regression contract and the sibling's AI-ready omitted-CTA behavior.
+
+      The task should:
+      - register the sibling in `zip/src/blocks/registry/index.ts`
+      - add the sibling descriptor entry to `zip/src/blocks/registry/ai/descriptors.cjs`
+      - extend `zip/src/blocks/registry/wave2-pagebuilder.test.tsx` with a focused block-level gate that:
+        - proves `universal_multilink_block` still renders the parent CTA, card meta, and card description
+        - proves `universal_multilink_block_simple` omits the top CTA when its URL is absent
+        - proves the simple sibling cards render only title plus learn-more link text
+        - calls the descriptor build/editable-fields surface for the omitted-CTA case instead of relying only on broad aggregate descriptor tests
+
+      This task absorbs the critique requirement that AI contract validation be explicit and local to the new sibling (sources: user request; zip/src/blocks/registry/index.ts; zip/src/blocks/registry/wave2-pagebuilder.test.tsx; zip/src/blocks/registry/registry-invariants.test.tsx; zip/src/blocks/registry/ai/descriptors.cjs).
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - req-1
+      - req-3
+      - req-4
+      - req-5
+    priority: high
+    status: pending
+    dependencies:
+      - define_simple_multilink_contract
+    conflicts_with: []
+    context_files:
+      - path: zip/src/blocks/registry/index.ts
+        description: Shared registry entry point for block registration and readiness projection.
+      - path: zip/src/blocks/registry/ai/descriptors.cjs
+        description: AI descriptor registry whose sibling entry must handle omitted top CTA input.
+      - path: zip/src/blocks/registry/wave2-pagebuilder.test.tsx
+        description: Narrowest React test surface for explicit parent and sibling assertions.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Revised after critique to move parent regression and omitted-CTA descriptor smoke into a focused zip-side gate.
+        timestamp: '2026-04-26T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 260
+        focus_area: shared registry wiring plus focused React and AI contract validation
+        verification:
+          - The zip registry resolves the new sibling block key.
+          - The parent block test explicitly preserves CTA, meta, and description markup.
+          - The simple sibling test omits the top CTA when the URL is missing.
+          - Descriptor build and editable-field smoke pass for the omitted-CTA sibling payload.
+        acceptance_criteria:
+          - The shared zip registry recognizes `universal_multilink_block_simple`.
+          - Focused React coverage exists for both parent preservation and simple-sibling omission behavior.
+          - AI descriptor smoke is explicit for the missing top CTA URL case.
+        failure_modes:
+          - scenario: The descriptor entry exists, but omitted-CTA behavior is only implicitly covered by broad registry invariants.
+            likelihood: medium
+            impact: high
+            mitigation: Add sibling-specific descriptor assertions in the focused block test.
+    tech_stack:
+      - TypeScript
+      - React static markup tests
+      - node:test
+      - CommonJS AI registry
+    test_coverage: Extend the focused wave2 page-builder test with both parent and sibling assertions.
+
+  - id: wire_astro_runtime_with_sibling_wrapper
+    title: Mirror the sibling contract into Astro with an explicit wrapper or branch
+    description: |
+      Add the new sibling to Astro parsing and dispatch while keeping the existing parent runtime path explicit.
+
+      The task should:
+      - add the reduced sibling schema and block key to `astro-site/src/lib/types.ts`
+      - dispatch the sibling through `astro-site/src/components/PageBuilderSection.astro`
+      - prefer a thin sibling wrapper or an explicit opt-in branch over a parent-path heuristic when reusing `UniversalMultilinkBlockSection.astro`
+      - keep the parent block contract intact so `leftColumn.primaryCta`, `cards[].meta`, and `cards[].description` stay first-class for `universal_multilink_block`
+
+      This keeps the Astro runtime aligned with the critique's preference for a low-risk sibling wrapper rather than a hidden mutation of the parent path (sources: user request; astro-site/src/lib/types.ts; astro-site/src/components/PageBuilderSection.astro; astro-site/src/components/UniversalMultilinkBlockSection.astro).
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - req-2
+      - req-3
+      - req-4
+    priority: high
+    status: pending
+    dependencies:
+      - define_simple_multilink_contract
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/types.ts
+        description: Astro parsing and block-key ownership for page-builder sections.
+      - path: astro-site/src/components/PageBuilderSection.astro
+        description: Runtime dispatcher that should receive a sibling-specific branch.
+      - path: astro-site/src/components/UniversalMultilinkBlockSection.astro
+        description: Parent Astro renderer that should only change through an explicit sibling-safe path if needed.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Revised after critique to require an explicit Astro sibling wrapper or branch and forbid hidden parent-path inference.
+        timestamp: '2026-04-26T00:00:00Z'
+        estimated_effort: medium
+        estimated_files: 3
+        estimated_lines: 220
+        focus_area: Astro schema and dispatcher parity with sibling-safe runtime reuse
+        verification:
+          - The Astro type layer accepts the reduced simple sibling payload.
+          - "`PageBuilderSection.astro` dispatches the sibling explicitly."
+          - The parent Astro path remains explicit and does not depend on omitted-field heuristics.
+        acceptance_criteria:
+          - The new sibling is a first-class Astro block key.
+          - Astro dispatch uses an explicit sibling-safe render path.
+          - The parent block contract remains intact.
+        failure_modes:
+          - scenario: Astro dispatch reuses the parent path by guessing based on missing fields.
+            likelihood: medium
+            impact: high
+            mitigation: Use a dedicated sibling branch or wrapper keyed by `universal_multilink_block_simple`.
+    tech_stack:
+      - Astro
+      - TypeScript
+      - Zod
+    test_coverage: Follow-up task adds the focused Astro execution gate and regression tests.
+
+  - id: add_focused_astro_validation_route
+    title: Add a dedicated Astro validation route and targeted parent-plus-sibling contract tests
+    description: |
+      Add the smallest executable Astro gate that proves the sibling through the real dispatcher path and also keeps the parent contract explicit.
+
+      The task should:
+      - add `astro-site/src/pages/validation/universal-multilink-block-simple/index.astro`
+      - render a single inline `universal_multilink_block_simple` section through `PageBuilderSection.astro`, not by importing the renderer directly
+      - extend `astro-site/src/lib/types.test.ts` with:
+        - a parent regression assertion that preserves `leftColumn.primaryCta`, `cards[].meta`, and `cards[].description`
+        - a sibling assertion that accepts the omitted-top-CTA case and reduced cards
+      - make the executable validation steps explicit in the task verification instead of treating the aggregate template-block route as sufficient
+
+      This task directly addresses the critique against over-relying on the broad aggregate Astro fixture (sources: user request; /memories/repo/astro-readiness.md; astro-site/src/pages/validation/restaurant-menu-drawer-type/index.astro; astro-site/src/lib/types.test.ts).
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - req-3
+      - req-4
+      - req-5
+    priority: high
+    status: pending
+    dependencies:
+      - wire_astro_runtime_with_sibling_wrapper
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/pages/validation/restaurant-menu-drawer-type/index.astro
+        description: Existing dedicated validation-route pattern that renders through `PageBuilderSection.astro`.
+      - path: astro-site/src/lib/types.test.ts
+        description: Focused Astro-side schema tests where parent and sibling contracts can both be asserted.
+      - path: /memories/repo/astro-readiness.md
+        description: Repo guidance that dedicated per-block routes are preferred when aggregate fixtures are too broad.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Revised after critique to add a dedicated per-block Astro gate and explicit validation steps.
+        timestamp: '2026-04-26T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 2
+        estimated_lines: 190
+        focus_area: dedicated Astro execution path and targeted contract regression
+        verification:
+          - "`node --experimental-strip-types --test src/lib/types.test.ts` passes with explicit parent and sibling assertions."
+          - The dedicated route renders the sibling through `PageBuilderSection.astro`.
+          - An Astro build or equivalent route emission check produces `dist/validation/universal-multilink-block-simple/index.html` for the focused route.
+        acceptance_criteria:
+          - A dedicated Astro validation route exists for the simple sibling.
+          - The parent contract is explicitly regression-tested in Astro.
+          - The simple sibling omitted-CTA case has a focused executable Astro gate.
+        failure_modes:
+          - scenario: The dedicated route bypasses the dispatcher and proves only the leaf renderer, not the production integration path.
+            likelihood: medium
+            impact: high
+            mitigation: Require the route to pass a section through `PageBuilderSection.astro`.
+    tech_stack:
+      - Astro validation route
+      - TypeScript node tests
+    test_coverage: Dedicated route plus targeted parser regression coverage.
+
+  - id: sync_astro_registry_and_manifest
+    title: Sync Astro registry projection and machine readiness after the focused gates pass
+    description: |
+      Promote the simple sibling into Astro-ready metadata only after the focused React, AI, and Astro gates exist.
+
+      The task should:
+      - add the sibling renderer projection to `astro-site/src/lib/astroRegistry.ts`
+      - extend `astro-site/src/lib/astroRegistry.test.ts` with the sibling renderer expectation
+      - add the sibling entry to `docs/block-registry/registry.machine.json`, referencing the validated Astro path, AI descriptor path, and focused validation assets
+
+      Keep this task after the focused gates so readiness metadata reflects an actually proven state, not an aspirational one (sources: /memories/repo/astro-readiness.md; astro-site/src/lib/astroRegistry.ts; astro-site/src/lib/astroRegistry.test.ts; docs/block-registry/registry.machine.json).
+    wave: 4
+    agent: gem-implementer
+    prototype: false
+    covers:
+      - req-4
+      - req-5
+    priority: medium
+    status: pending
+    dependencies:
+      - wire_zip_registry_and_ai_smoke
+      - add_focused_astro_validation_route
+    conflicts_with: []
+    context_files:
+      - path: astro-site/src/lib/astroRegistry.ts
+        description: Shared Astro projection consumed by focused tests and readiness tools.
+      - path: astro-site/src/lib/astroRegistry.test.ts
+        description: Focused renderer-parity test for approved Astro-ready blocks.
+      - path: docs/block-registry/registry.machine.json
+        description: Machine-readable readiness artifact that should trail focused validation.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Revised after critique to ensure manifest promotion is downstream of explicit React, AI, and Astro proof.
+        timestamp: '2026-04-26T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 3
+        estimated_lines: 170
+        focus_area: Astro projection parity and readiness metadata synchronization
+        verification:
+          - "`resolveAstroRenderer` recognizes the new sibling block key."
+          - Astro registry tests expect the sibling renderer path explicitly.
+          - The machine manifest references the focused validation route or test assets rather than only broad aggregate fixtures.
+        acceptance_criteria:
+          - Astro registry projection includes the sibling.
+          - Machine readiness metadata reflects the validated renderer and test surfaces.
+          - No metadata mutation is applied to the parent block entry.
+        failure_modes:
+          - scenario: The manifest marks the sibling ready even though its focused route or AI smoke coverage is not referenced.
+            likelihood: medium
+            impact: high
+            mitigation: Update manifest fields only after the focused gates and include those gate references in the entry.
+    tech_stack:
+      - TypeScript
+      - JSON manifest
+      - node:test
+    test_coverage: Focused Astro registry parity assertions for the sibling renderer.
+
+  - id: document_simple_multilink_block
+    title: Document the sibling contract, explicit parent boundary, and focused validation surfaces
+    description: |
+      Add the human-readable block registry document for the simple sibling after metadata and validation surfaces are final.
+
+      The document should:
+      - explain that `universal_multilink_block_simple` is a sibling, not a mutation of `universal_multilink_block`
+      - describe the reduced card fields and optional top CTA rule
+      - call out the preserved parent-only fields so future edits do not weaken the original contract
+      - list the safe AI-editable fields and point to the focused validation surfaces that justify readiness
+
+      Keep the doc concise and aligned with the final descriptor and manifest metadata rather than copying the parent block doc verbatim (sources: docs/block-registry/universal_multilink_block.md; zip/src/blocks/registry/ai/descriptors.cjs; docs/block-registry/registry.machine.json).
+    wave: 5
+    agent: gem-documentation-writer
+    prototype: false
+    covers:
+      - req-4
+    priority: medium
+    status: pending
+    dependencies:
+      - sync_astro_registry_and_manifest
+    conflicts_with: []
+    context_files:
+      - path: docs/block-registry/universal_multilink_block.md
+        description: Parent documentation reference whose contract boundary must remain explicit.
+      - path: docs/block-registry/registry.machine.json
+        description: Final metadata source the doc should mirror.
+      - path: zip/src/blocks/registry/ai/descriptors.cjs
+        description: Final AI-editable field ownership for the sibling block.
+    planning_pass: 2
+    planning_history:
+      - pass: 2
+        reason: Revised after critique so the documentation preserves the parent boundary and points to the focused validation surfaces.
+        timestamp: '2026-04-26T00:00:00Z'
+        estimated_effort: small
+        estimated_files: 1
+        estimated_lines: 120
+        focus_area: human-readable sibling contract documentation
+        verification:
+          - The doc distinguishes the sibling from the parent block.
+          - The safe editable fields match the final descriptor entry.
+          - The validation references point to the focused sibling gates, not only to broad aggregate coverage.
+        acceptance_criteria:
+          - A new `docs/block-registry/universal_multilink_block_simple.md` exists.
+          - The parent-only fields remain explicitly documented as belonging to the original block.
+          - The simple sibling payload examples follow the reduced contract.
+        failure_modes:
+          - scenario: The doc is copied from the parent and reintroduces meta or description as sibling-owned fields.
+            likelihood: medium
+            impact: medium
+            mitigation: Derive the doc from the reduced contract and final metadata, not from the parent examples.
+    task_type: documentation
+    audience: developers
+    coverage_matrix:
+      - sibling versus parent contract boundary
+      - reduced card fields
+      - optional top CTA semantics
+      - safe AI-editable fields
+      - focused validation surfaces

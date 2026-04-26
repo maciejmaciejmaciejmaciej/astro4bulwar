@@ -138,6 +138,10 @@ const astroRendererProjection = {
     blockKey: 'universal_multilink_block',
     componentPath: 'astro-site/src/components/UniversalMultilinkBlockSection.astro',
   },
+  universal_multilink_block_simple: {
+    blockKey: 'universal_multilink_block_simple',
+    componentPath: 'astro-site/src/components/UniversalMultilinkBlockSimpleSection.astro',
+  },
 } as const satisfies Record<string, AstroRendererDescriptor>;
 
 const sharedRegistryReadiness = (() => {
