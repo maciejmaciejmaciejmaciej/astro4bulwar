@@ -121,14 +121,14 @@ const Project5c = ({
             </motion.div>
 
             <motion.div variants={fadeInUp} className="space-y-4">
-              <div className="theme-radius-surface overflow-hidden border border-outline-variant/20 bg-surface">
+              <div className="theme-radius-surface overflow-hidden border border-[#bfbfbf] bg-[#f7f7f7]">
                 {content.links.map((item, index) => (
                   <a
                     key={`${item.label}-${item.href}`}
                     href={item.href}
                     className={cn(
-                      "flex min-h-16 w-full items-center justify-between gap-6 px-6 py-5 transition-colors duration-300 hover:bg-surface-container-low",
-                      index < content.links.length - 1 ? "border-b border-outline-variant/20" : "",
+                      "flex min-h-16 w-full items-center justify-between gap-6 bg-[#f7f7f7] px-6 py-5 transition-colors duration-300 hover:bg-[#efefef]",
+                      index < content.links.length - 1 ? "border-b border-[#bfbfbf]" : "",
                     )}
                   >
                     <span className="font-headline text-xl text-on-surface">&gt;</span>
