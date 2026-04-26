@@ -212,16 +212,16 @@ export function Feature18Simple({
             {cards.map((card) => (
               <div
                 key={`${card.title}-${card.linkHref}`}
-                className="theme-radius-surface flex min-h-[240px] flex-col justify-between border border-zinc-200 bg-white p-8"
+                className="theme-radius-surface flex min-h-[120px] flex-col gap-4 border border-zinc-200 bg-white p-8"
               >
                 <div>
-                  <h3 className="font-headline text-lg uppercase">
+                  <h3 className="font-headline text-xl leading-tight uppercase">
                     {card.title}
                   </h3>
                 </div>
                 <a
                   href={card.linkHref}
-                  className="inline-flex items-center gap-2 pt-6 font-label text-xs uppercase text-zinc-500 transition-colors hover:text-black"
+                  className="inline-flex items-center gap-2 font-label text-xs uppercase text-zinc-500 transition-colors hover:text-black"
                 >
                   {card.linkLabel}
                   <ChevronRight className="size-4" />
