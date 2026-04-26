@@ -201,7 +201,7 @@ export function Project10({
         <div className="mb-20 mt-12 space-y-12 md:mb-24 md:mt-16 md:space-y-16">
           {content.storySections.map((section) => (
             <motion.section key={section.number} variants={itemVariants}>
-              <div className="grid items-start gap-8 border-b border-outline-variant/20 pb-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12 lg:pb-12">
+              <div className="grid items-start gap-8 border-b border-outline-variant/20 pb-8 lg:pb-12">
                 <div>
                   <span className="font-headline text-4xl text-zinc-400 sm:text-5xl lg:text-6xl">
                     {section.number}
